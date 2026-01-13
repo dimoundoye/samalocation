@@ -1,0 +1,1151 @@
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import {
+  getOwnerProperties,
+  getOwnerTenants,
+  getMessages,
+  sendMessage,
+  togglePropertyPublication,
+  searchUsers,
+  markMessagesAsRead,
+  deleteMessage,
+  updateTenant,
+  deleteTenant,
+  getOwnerReceipts,
+  downloadReceipt,
+  deleteProperty
+} from "@/lib/api";
+import { AddPropertyModal } from "@/components/owner/AddPropertyModal";
+import { OwnerSettings } from "@/components/owner/OwnerSettings";
+import { NotificationBell } from "@/components/NotificationBell";
+import { UserProfile } from "@/components/UserProfile";
+import { AssignTenantDialog } from "@/components/owner/AssignTenantDialog";
+import { EditTenantDialog } from "@/components/owner/EditTenantDialog";
+import { CreateReceiptDialog } from "@/components/owner/CreateReceiptDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Property, PropertyUnit, Tenant, Message, Receipt } from "@/types";
+
+const OwnerDashboard = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { signOut, user } = useAuth();
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [addPropertyOpen, setAddPropertyOpen] = useState(false);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [units, setUnits] = useState<PropertyUnit[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedChat, setSelectedChat] = useState<any>(null); // Contact unique (locataire ou candidat)
+  const [newMessage, setNewMessage] = useState("");
+  const [stats, setStats] = useState({
+    totalProperties: 0,
+    occupiedUnits: 0,
+    activeTenants: 0,
+  });
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedPropertyForAssign, setSelectedPropertyForAssign] = useState<Property | null>(null);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [createReceiptOpen, setCreateReceiptOpen] = useState(false);
+  const [selectedPropertyForReceipt, setSelectedPropertyForReceipt] = useState<Tenant | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [assignTenantOpen, setAssignTenantOpen] = useState(false);
+  const [editTenantOpen, setEditTenantOpen] = useState(false);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+      loadReceipts();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Marquer les messages comme lus quand un chat est sélectionné
+  useEffect(() => {
+    if (!selectedChat || !currentUserId || activeTab !== "messages" || !messages.length) return;
+
+    const markMessagesAsReadLocal = async () => {
+      // Trouver tous les messages non lus de ce contact (reçus par l'utilisateur actuel)
+      const unreadMessages = messages.filter(
+        (m) =>
+          m.sender_id === selectedChat.user_id &&
+          m.receiver_id === currentUserId &&
+          !m.is_read
+      );
+
+      if (unreadMessages.length === 0) return;
+
+      // Marquer tous les messages non lus comme lus
+      const messageIds = unreadMessages.map((m) => m.id);
+      try {
+        // Mettre à jour localement immédiatement pour un effet visuel instantané
+        setMessages((prev) =>
+          prev.map((m) =>
+            messageIds.includes(m.id) ? { ...m, is_read: true } : m
+          )
+        );
+
+        await markMessagesAsRead(messageIds);
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
+      }
+    };
+
+    markMessagesAsReadLocal();
+  }, [selectedChat, currentUserId, messages, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "messages") {
+      loadMessagesOnly();
+    }
+
+    // Polling des messages toutes les 10 secondes
+    const interval = setInterval(() => {
+      if (activeTab === "messages") {
+        loadMessagesOnly();
+      }
+    }, 10000);
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [activeTab]);
+
+  const loadMessagesOnly = async () => {
+    try {
+      if (!user) return;
+      const messagesData = await getMessages();
+      if (messagesData) {
+        setMessages(messagesData);
+      }
+    } catch (error) {
+      console.error("Error reloading messages:", error);
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      if (!user) return;
+
+      setCurrentUserId(user.id);
+
+      // Charger toutes les propriétés du propriétaire
+      const propsData = await getOwnerProperties();
+      setProperties(propsData || []);
+
+      // Extraire les unités
+      const allUnits = (propsData || []).flatMap((p: any) =>
+        (p.property_units || []).map((unit: any) => ({
+          ...unit,
+          property_id: unit.property_id || p.id,
+          properties: unit.properties || p,
+        }))
+      );
+      setUnits(allUnits);
+
+      // Charger les locataires
+      const tenantsData = await getOwnerTenants();
+      setTenants(tenantsData || []);
+
+      // Charger les messages
+      const messagesData = await getMessages();
+      setMessages(messagesData || []);
+
+      // Stats
+      const occupied = allUnits.filter((u: any) => !u.is_available).length;
+      setStats({
+        totalProperties: (propsData || []).length,
+        occupiedUnits: occupied,
+        activeTenants: (tenantsData || []).filter((t: any) => t.status === 'active').length || 0,
+      });
+
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadReceipts = async () => {
+    try {
+      const data = await getOwnerReceipts();
+      setReceipts(data);
+    } catch (error) {
+      console.error("Error loading receipts:", error);
+    }
+  };
+
+  const handleDeleteTenant = async (tenantId: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce locataire ?")) {
+      return;
+    }
+
+    try {
+      await deleteTenant(tenantId);
+      toast({
+        title: "Locataire supprimé",
+        description: "Le locataire a été supprimé avec succès.",
+      });
+      await loadData();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer le locataire.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce message ?")) {
+      return;
+    }
+
+    try {
+      await deleteMessage(messageId);
+
+      // Rafraîchir la liste des messages
+      loadMessagesOnly();
+
+      toast({
+        title: "Message supprimé",
+        description: "Le message a été supprimé avec succès.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer le message.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteProperty = async (propertyId: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce bien ? Toutes les unités et données associées seront définitivement supprimées.")) {
+      return;
+    }
+
+    try {
+      await deleteProperty(propertyId);
+      toast({
+        title: "Bien supprimé",
+        description: "Le bien a été supprimé avec succès.",
+      });
+      await loadData();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer le bien.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedChat) return;
+
+    if (!selectedChat.user_id) {
+      toast({
+        title: "Compte locataire requis",
+        description: "Ce locataire n'a pas encore de compte connecté pour recevoir des messages.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await sendMessage({
+        receiver_id: selectedChat.user_id,
+        message: newMessage
+      });
+
+      setNewMessage("");
+      loadMessagesOnly();
+      // Note: La notification est créée automatiquement par le backend
+
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('fr-FR');
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(amount).replace('XOF', 'F CFA');
+  };
+
+  const sidebarContent = (
+    <>
+      <button
+        onClick={() => navigate("/")}
+        className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity"
+      >
+        <Home className="h-6 w-6 text-primary" />
+        <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          Samalocation
+        </span>
+      </button>
+
+      <nav className="space-y-2">
+        {[
+          { id: "dashboard", label: "Tableau de bord", icon: TrendingUp },
+          { id: "properties", label: "Mes biens", icon: Building2 },
+          { id: "tenants", label: "Locataires", icon: Users },
+          { id: "messages", label: "Messages", icon: MessageSquare },
+          { id: "settings", label: "Paramètres", icon: Settings },
+        ].map((item) => {
+          // Calculer le nombre de messages non lus
+          const unreadCount = item.id === "messages"
+            ? messages.filter(msg => msg.receiver_id === user?.id && !msg.is_read).length
+            : 0;
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === item.id
+                ? "bg-primary text-white"
+                : "hover:bg-secondary text-muted-foreground"
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <item.icon className="h-5 w-5" />
+                <span>{item.label}</span>
+              </div>
+              {unreadCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs"
+                >
+                  {unreadCount}
+                </Badge>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      <Button
+        variant="ghost"
+        onClick={signOut}
+        className="w-full mt-8 justify-start text-muted-foreground"
+      >
+        <LogOut className="mr-3 h-5 w-5" />
+        Déconnexion
+      </Button>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* Desktop Sidebar */}
+      <aside className="w-64 bg-card border-r shadow-soft hidden md:block">
+        <div className="p-6">
+          {sidebarContent}
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Top Bar - Notifications & Profile */}
+          <div className="flex items-center justify-between mb-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              {/* Mobile Menu */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon" className="md:hidden">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-6">
+                  {sidebarContent}
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            {/* Right Side - Notifications & User Profile */}
+            <div className="flex items-center gap-3">
+              <NotificationBell />
+              <UserProfile onSettingsClick={() => setActiveTab("settings")} />
+            </div>
+          </div>
+
+          {/* Dashboard Tab */}
+          {activeTab === "dashboard" && (
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold mb-2">Tableau de bord</h1>
+                  <p className="text-muted-foreground">Bienvenue sur votre espace propriétaire</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    className="gradient-accent text-white w-full sm:w-auto"
+                    onClick={() => setAddPropertyOpen(true)}
+                  >
+                    <Plus className="mr-2 h-5 w-5" />
+                    Ajouter un bien
+                  </Button>
+                </div>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Biens totaux</p>
+                        <p className="text-2xl font-bold">{stats.totalProperties}</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
+                        <Building2 className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Unités occupées</p>
+                        <p className="text-2xl font-bold">{stats.occupiedUnits}</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center">
+                        <TrendingUp className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Locataires actifs</p>
+                        <p className="text-2xl font-bold">{stats.activeTenants}</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center">
+                        <Users className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* Properties Tab */}
+          {activeTab === "properties" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold">Mes biens</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {properties.length} bien{properties.length > 1 ? 's' : ''} enregistré{properties.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <Button onClick={() => setAddPropertyOpen(true)} className="w-full sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Ajouter un bien
+                </Button>
+              </div>
+
+              {properties.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Building2 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold mb-2">Aucun bien enregistré</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Commencez par ajouter votre premier bien immobilier (maison, garage, appartement, studio, chambre ou locale)
+                    </p>
+                    <Button onClick={() => setAddPropertyOpen(true)} className="gradient-accent text-white">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ajouter mon premier bien
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {properties.map((property) => {
+                    const photoUrl = property.photos && property.photos.length > 0
+                      ? property.photos[0]
+                      : property.photo_url;
+
+                    return (
+                      <Card key={property.id} className="shadow-soft hover:shadow-medium transition-shadow overflow-hidden">
+                        {photoUrl && (
+                          <div className="h-48 overflow-hidden relative group">
+                            <img
+                              src={photoUrl}
+                              alt={property.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            {property.photos && property.photos.length > 1 && (
+                              <Badge className="absolute top-2 right-2 bg-black/60 text-white">
+                                +{property.photos.length - 1} photos
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between">
+                            <span>{property.name}</span>
+                            <Badge>{property.property_type}</Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground mb-2">{property.address}</p>
+                          {property.description && (
+                            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                              {property.description}
+                            </p>
+                          )}
+                          {/* Afficher le numéro du propriétaire */}
+                          {(() => {
+                            const ownerProfile = property.owner_profiles
+                              ? Array.isArray(property.owner_profiles)
+                                ? property.owner_profiles[0]
+                                : property.owner_profiles
+                              : null;
+                            const ownerPhone = ownerProfile?.contact_phone || ownerProfile?.phone;
+                            return ownerPhone ? (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                                <Phone className="h-4 w-4" />
+                                <span>{ownerPhone}</span>
+                              </div>
+                            ) : null;
+                          })()}
+                          <div className="space-y-2 mb-4">
+                            <div className="flex justify-between text-sm">
+                              <span>Unités totales:</span>
+                              <span className="font-semibold">{property.property_units?.length || 0}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span>Disponibles:</span>
+                              <span className="font-semibold text-green-600">
+                                {property.property_units?.filter((u: any) => u.is_available).length || 0}
+                              </span>
+                            </div>
+                            {property.property_type === "maison" && property.property_units && property.property_units.length > 0 && (
+                              <div className="mt-2 pt-2 border-t">
+                                <p className="text-xs text-muted-foreground mb-1">Types d'unités :</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {Array.from(new Set(property.property_units.map((u: any) => u.unit_type))).map((type: string) => {
+                                    const count = property.property_units.filter((u: any) => u.unit_type === type).length;
+                                    return (
+                                      <Badge key={type} variant="outline" className="text-xs">
+                                        {count} {type}{count > 1 ? 's' : ''}
+                                      </Badge>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <div className="flex items-center gap-2">
+                              {property.is_published ? (
+                                <Badge variant="default" className="bg-green-600">
+                                  Publié
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                                  Brouillon
+                                </Badge>
+                              )}
+                              <span className="text-xs text-muted-foreground">
+                                {property.property_units?.length || 0} unité{property.property_units?.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={property.is_published ? "outline" : "default"}
+                              onClick={async () => {
+                                try {
+                                  await togglePropertyPublication(property.id);
+
+                                  toast({
+                                    title: property.is_published ? "Bien dépublié" : "Bien publié",
+                                    description: property.is_published
+                                      ? "Le bien n'est plus visible publiquement"
+                                      : "Le bien est maintenant visible par les locataires",
+                                  });
+
+                                  await loadData();
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Erreur",
+                                    description: error.message,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              {property.is_published ? "Dépublier" : "Publier"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDeleteProperty(property.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tenants Tab */}
+          {activeTab === "tenants" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold">Locataires</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {tenants.length} locataire{tenants.length > 1 ? "s" : ""} enregistré{tenants.length > 1 ? "s" : ""}
+                  </p>
+                </div>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => setAssignTenantOpen(true)}
+                  disabled={properties.length === 0}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Affecter un locataire
+                </Button>
+              </div>
+
+              <Card className="shadow-soft">
+                <CardHeader>
+                  <CardTitle>Liste des locataires</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {tenants.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">Aucun locataire enregistré</p>
+                  ) : (
+                    <>
+                      {/* Mobile Card View */}
+                      <div className="grid grid-cols-1 gap-4 md:hidden">
+                        {tenants.map((tenant) => (
+                          <Card key={tenant.id} className="border shadow-sm">
+                            <CardContent className="p-4 space-y-3">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h3 className="font-bold text-lg">{tenant.full_name}</h3>
+                                  <p className="text-sm text-muted-foreground">{tenant.property_name || "N/A"}</p>
+                                </div>
+                                <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
+                                  {tenant.status === "active" ? "Actif" : tenant.status}
+                                </Badge>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                  <p className="text-muted-foreground text-xs uppercase font-semibold">Contact</p>
+                                  <p className="truncate text-xs">{tenant.email}</p>
+                                  <p className="truncate font-medium">{tenant.phone}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground text-xs uppercase font-semibold">Loyer</p>
+                                  <p className="font-medium text-primary">{formatCurrency(tenant.monthly_rent)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground text-xs uppercase font-semibold">Entrée</p>
+                                  <p>{formatDate(tenant.move_in_date)}</p>
+                                </div>
+                              </div>
+
+                              <div className="pt-2 flex flex-wrap gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => {
+                                    setSelectedChat(tenant);
+                                    setActiveTab("messages");
+                                  }}
+                                >
+                                  <MessageSquare className="h-4 w-4 mr-2" />
+                                  Message
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => {
+                                    setSelectedPropertyForReceipt(tenant);
+                                    setCreateReceiptOpen(true);
+                                  }}
+                                >
+                                  Reçu
+                                </Button>
+                                <div className="flex gap-2 w-full">
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => {
+                                      setEditingTenant(tenant);
+                                      setEditTenantOpen(true);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Modifier
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleDeleteTenant(tenant.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Nom</TableHead>
+                              <TableHead>Contact</TableHead>
+                              <TableHead>Bien</TableHead>
+                              <TableHead>Loyer mensuel</TableHead>
+                              <TableHead>Date d'entrée</TableHead>
+                              <TableHead>Statut</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {tenants.map((tenant) => (
+                              <TableRow key={tenant.id}>
+                                <TableCell className="font-medium">{tenant.full_name}</TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    <div>{tenant.email}</div>
+                                    <div className="text-muted-foreground">{tenant.phone}</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>{tenant.property_name}</TableCell>
+                                <TableCell>{formatCurrency(tenant.monthly_rent)}</TableCell>
+                                <TableCell>{formatDate(tenant.move_in_date)}</TableCell>
+                                <TableCell>
+                                  <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
+                                    {tenant.status === "active" ? "Actif" : tenant.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedChat(tenant);
+                                        setActiveTab("messages");
+                                      }}
+                                    >
+                                      <MessageSquare className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedPropertyForReceipt(tenant);
+                                        setCreateReceiptOpen(true);
+                                      }}
+                                    >
+                                      Créer un reçu
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingTenant(tenant);
+                                        setEditTenantOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-destructive"
+                                      onClick={() => handleDeleteTenant(tenant.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Messages Tab */}
+          {activeTab === "messages" && (
+            <div className="space-y-6 h-full">
+              <h2 className={`text-2xl font-bold ${selectedChat ? 'hidden lg:block' : ''}`}>Messages</h2>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)] lg:h-auto">
+                {/* Contacts List */}
+                <Card className={`lg:col-span-1 h-full ${selectedChat ? 'hidden lg:block' : 'block'}`}>
+                  <CardHeader>
+                    <CardTitle>Conversations</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[500px]">
+                      {(() => {
+                        if (!currentUserId) return null;
+
+                        // Créer une liste unique de contacts (locataires + candidats)
+                        const contacts = new Map();
+                        const lastMessageTime = new Map();
+
+                        // Ajouter les locataires existants
+                        tenants.forEach((tenant) => {
+                          if (tenant.user_id) {
+                            contacts.set(tenant.user_id, {
+                              id: tenant.id,
+                              user_id: tenant.user_id,
+                              full_name: tenant.full_name,
+                              email: tenant.email,
+                              subtitle: `${tenant.property_name} - ${tenant.unit_number}`,
+                              type: "tenant",
+                            });
+                          }
+                        });
+
+                        // Compter les messages non lus par utilisateur
+                        const unreadCount = new Map();
+
+                        // Ajouter les personnes qui ont envoyé des messages (candidats)
+                        messages.forEach((msg) => {
+                          // Identifier l'autre personne dans la conversation
+                          const otherUserId = msg.sender_id === currentUserId
+                            ? msg.receiver_id
+                            : msg.sender_id;
+
+                          if (otherUserId) {
+                            // Mettre à jour l'heure du dernier message
+                            const msgTime = new Date(msg.created_at).getTime();
+                            if (!lastMessageTime.has(otherUserId) || msgTime > lastMessageTime.get(otherUserId)) {
+                              lastMessageTime.set(otherUserId, msgTime);
+                            }
+
+                            // Compter les messages non lus (messages reçus seulement)
+                            if (msg.sender_id === otherUserId && !msg.is_read) {
+                              unreadCount.set(otherUserId, (unreadCount.get(otherUserId) || 0) + 1);
+                            }
+
+                            // Si ce n'est pas déjà un locataire, l'ajouter comme candidat
+                            if (!contacts.has(otherUserId)) {
+                              contacts.set(otherUserId, {
+                                id: `candidate_${otherUserId}`,
+                                user_id: otherUserId,
+                                full_name: msg.sender_id === otherUserId ? msg.sender_name : msg.receiver_name || "Candidat",
+                                email: msg.sender_id === otherUserId ? msg.sender_email : msg.receiver_email || "",
+                                subtitle: msg.property_id ? "Candidature" : "Message",
+                                type: "candidate",
+                                unreadCount: 0,
+                              });
+                            }
+                          }
+                        });
+
+                        // Ajouter le nombre de messages non lus à chaque contact
+                        contacts.forEach((contact, userId) => {
+                          contact.unreadCount = unreadCount.get(userId) || 0;
+                        });
+
+                        // Trier les contacts par date du dernier message (plus récent en premier)
+                        const contactsList = Array.from(contacts.values()).sort((a, b) => {
+                          const timeA = lastMessageTime.get(a.user_id) || 0;
+                          const timeB = lastMessageTime.get(b.user_id) || 0;
+                          return timeB - timeA;
+                        });
+
+                        return contactsList.length === 0 ? (
+                          <p className="text-center text-muted-foreground py-8 px-4">Aucune conversation</p>
+                        ) : (
+                          contactsList.map((contact) => (
+                            <div
+                              key={contact.id}
+                              className={`p-4 cursor-pointer hover:bg-secondary transition-colors border-b ${selectedChat?.user_id === contact.user_id ? "bg-secondary" : ""
+                                }`}
+                              onClick={async () => {
+                                setSelectedChat(contact);
+
+                                // Marquer les messages de cette conversation comme lus
+                                const unreadMessages = messages
+                                  .filter(msg => msg.sender_id === contact.user_id && !msg.is_read)
+                                  .map(msg => msg.id);
+
+                                if (unreadMessages.length > 0) {
+                                  try {
+                                    await markMessagesAsRead(unreadMessages);
+                                    // Recharger les données pour mettre à jour le compteur
+                                    loadData();
+                                  } catch (error) {
+                                    console.error("Error marking messages as read:", error);
+                                  }
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <Avatar>
+                                  <AvatarFallback>{contact.full_name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="font-medium truncate">{contact.full_name}</p>
+                                    {contact.unreadCount > 0 && (
+                                      <Badge
+                                        variant="destructive"
+                                        className="h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs"
+                                      >
+                                        {contact.unreadCount}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {contact.subtitle}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        );
+                      })()}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+
+                {/* Chat Area */}
+                <Card className={`lg:col-span-2 h-full flex flex-col ${!selectedChat ? 'hidden lg:block' : 'block'}`}>
+                  {selectedChat ? (
+                    <>
+                      <CardHeader className="border-b py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="lg:hidden"
+                            onClick={() => setSelectedChat(null)}
+                          >
+                            <ArrowLeft className="h-5 w-5" />
+                          </Button>
+                          <Avatar className="h-9 w-9">
+                            <AvatarFallback>{selectedChat.full_name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <CardTitle>{selectedChat.full_name}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{selectedChat.email}</p>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <ScrollArea className="h-[400px] p-4">
+                          {(() => {
+                            if (!currentUserId) return null;
+
+                            const filteredMessages = messages.filter(
+                              (m) =>
+                                (m.sender_id === currentUserId || m.receiver_id === currentUserId) &&
+                                (m.sender_id === selectedChat.user_id || m.receiver_id === selectedChat.user_id)
+                            );
+
+                            if (filteredMessages.length === 0) {
+                              return (
+                                <p className="text-center text-muted-foreground py-8">
+                                  Aucun message dans cette conversation
+                                </p>
+                              );
+                            }
+
+                            return filteredMessages.map((message) => {
+                              // Le message vient du locataire/candidat si sender_id correspond à user_id du contact
+                              const isFromContact = message.sender_id === selectedChat.user_id;
+
+                              return (
+                                <div
+                                  key={message.id}
+                                  className={`mb-4 flex group ${isFromContact ? "justify-start" : "justify-end"
+                                    }`}
+                                  onMouseEnter={async () => {
+                                    // Marquer le message comme lu automatiquement quand il est visible
+                                    if (isFromContact && !message.is_read && currentUserId) {
+                                      try {
+                                        await markMessagesAsRead([message.id]);
+
+                                        // Mettre à jour localement pour éviter le rechargement complet
+                                        setMessages((prev) =>
+                                          prev.map((m) =>
+                                            m.id === message.id ? { ...m, is_read: true } : m
+                                          )
+                                        );
+                                      } catch (error) {
+                                        console.error("Error marking message as read:", error);
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-start gap-2 max-w-[70%]">
+                                    <div
+                                      className={`rounded-lg p-3 ${isFromContact
+                                        ? "bg-secondary"
+                                        : "bg-primary text-white"
+                                        }`}
+                                    >
+                                      <p className="text-sm">{message.message}</p>
+                                      <p className="text-xs opacity-70 mt-1">
+                                        {new Date(message.created_at).toLocaleString('fr-FR')}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => handleDeleteMessage(message.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })()}
+                          <div ref={messagesEndRef} />
+                        </ScrollArea>
+                        <div className="p-4 border-t">
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Tapez votre message..."
+                              value={newMessage}
+                              onChange={(e) => setNewMessage(e.target.value)}
+                              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                            />
+                            <Button onClick={handleSendMessage}>
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </>
+                  ) : (
+                    <CardContent className="flex items-center justify-center h-[500px]">
+                      <div className="text-center text-muted-foreground">
+                        <MessageSquare className="h-16 w-16 mx-auto mb-4" />
+                        <p>Sélectionnez une conversation pour commencer</p>
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === "settings" && <OwnerSettings />}
+        </div>
+      </main >
+
+      <AssignTenantDialog
+        open={assignTenantOpen}
+        onOpenChange={setAssignTenantOpen}
+        properties={properties}
+        units={units}
+        onSuccess={loadData}
+      />
+
+      <AddPropertyModal
+        open={addPropertyOpen}
+        onOpenChange={setAddPropertyOpen}
+        onSuccess={loadData}
+      />
+
+
+      {selectedPropertyForReceipt && (
+        <CreateReceiptDialog
+          open={createReceiptOpen}
+          onOpenChange={setCreateReceiptOpen}
+          propertyId={selectedPropertyForReceipt.property_id}
+          propertyName={selectedPropertyForReceipt.property_name || "Propriété"}
+          tenantId={selectedPropertyForReceipt.user_id}
+          onSuccess={() => {
+            loadReceipts();
+            setCreateReceiptOpen(false);
+            toast({
+              title: "Reçu créé",
+              description: "Le reçu a été créé et est accessible par le locataire"
+            });
+          }}
+        />
+      )}
+
+      <EditTenantDialog
+        open={editTenantOpen}
+        onOpenChange={setEditTenantOpen}
+        tenant={editingTenant}
+        onSuccess={loadData}
+      />
+    </div >
+  );
+};
+
+export default OwnerDashboard;
