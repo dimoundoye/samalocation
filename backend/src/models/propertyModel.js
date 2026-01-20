@@ -5,15 +5,7 @@ const Property = {
      * Get all published properties
      */
     async findAllPublished(limit) {
-        let query = `
-            SELECT p.*, 
-                   (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', id, 'monthly_rent', monthly_rent, 'is_available', is_available, 'unit_type', unit_type, 'bedrooms', bedrooms, 'rent_period', rent_period))
-                    FROM property_units WHERE property_id = p.id) as property_units
-            FROM properties p
-            WHERE is_published = true
-            ORDER BY published_at DESC
-        `;
-
+        let query = 'SELECT * FROM properties WHERE is_published = 1 ORDER BY published_at DESC';
         const params = [];
         if (limit) {
             query += ' LIMIT ?';
@@ -21,6 +13,24 @@ const Property = {
         }
 
         const [rows] = await db.query(query, params);
+
+        // Pour chaque propriété, récupérer ses unités
+        for (let i = 0; i < rows.length; i++) {
+            const [units] = await db.query(
+                'SELECT id, monthly_rent, is_available, unit_type, bedrooms, rent_period, unit_number FROM property_units WHERE property_id = ?',
+                [rows[i].id]
+            );
+            rows[i].property_units = units;
+
+            // Récupérer le profil du propriétaire
+            const [ownerProfiles] = await db.query(`
+                SELECT company_name, phone, phone as contact_phone 
+                FROM owner_profiles 
+                WHERE user_profile_id = ? OR id = ?
+            `, [rows[i].owner_id, rows[i].owner_id]);
+            rows[i].owner_profiles = ownerProfiles;
+        }
+
         return rows;
     },
 
@@ -28,16 +38,28 @@ const Property = {
      * Get properties by owner ID
      */
     async findByOwnerId(ownerId) {
-        const query = `
-            SELECT p.*, 
-                   (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', id, 'monthly_rent', monthly_rent, 'is_available', is_available, 'unit_type', unit_type, 'bedrooms', bedrooms, 'rent_period', rent_period, 'unit_number', unit_number))
-                    FROM property_units WHERE property_id = p.id) as property_units
-            FROM properties p
-            WHERE owner_id = ?
-            ORDER BY created_at DESC
-        `;
+        const [rows] = await db.query(
+            'SELECT * FROM properties WHERE owner_id = ? ORDER BY created_at DESC',
+            [ownerId]
+        );
 
-        const [rows] = await db.query(query, [ownerId]);
+        // Pour chaque propriété, récupérer ses unités
+        for (let i = 0; i < rows.length; i++) {
+            const [units] = await db.query(
+                'SELECT id, monthly_rent, is_available, unit_type, bedrooms, rent_period, unit_number FROM property_units WHERE property_id = ?',
+                [rows[i].id]
+            );
+            rows[i].property_units = units;
+
+            // Récupérer le profil du propriétaire
+            const [ownerProfiles] = await db.query(`
+                SELECT company_name, phone, phone as contact_phone 
+                FROM owner_profiles 
+                WHERE user_profile_id = ? OR id = ?
+            `, [rows[i].owner_id, rows[i].owner_id]);
+            rows[i].owner_profiles = ownerProfiles;
+        }
+
         return rows;
     },
 

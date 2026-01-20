@@ -35,6 +35,7 @@ import { CreateReceiptDialog } from "@/components/owner/CreateReceiptDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { transformProperty } from "@/lib/property";
 import { Property, PropertyUnit, Tenant, Message, Receipt } from "@/types";
 
 const OwnerDashboard = () => {
@@ -154,10 +155,11 @@ const OwnerDashboard = () => {
 
       // Charger toutes les propriétés du propriétaire
       const propsData = await getOwnerProperties();
-      setProperties(propsData || []);
+      const transformedProps = (propsData || []).map((p: any) => transformProperty(p));
+      setProperties(transformedProps);
 
       // Extraire les unités
-      const allUnits = (propsData || []).flatMap((p: any) =>
+      const allUnits = transformedProps.flatMap((p: any) =>
         (p.property_units || []).map((unit: any) => ({
           ...unit,
           property_id: unit.property_id || p.id,

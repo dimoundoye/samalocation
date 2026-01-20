@@ -98,10 +98,10 @@ const Report = {
         const [topReported] = await db.query(`
             SELECT 
                 r.reported_id,
-                ANY_VALUE(up.full_name) as full_name,
-                ANY_VALUE(up.email) as email,
+                MAX(up.full_name) as full_name,
+                MAX(up.email) as email,
                 COUNT(*) as report_count,
-                ANY_VALUE(u.is_blocked) as is_blocked
+                MAX(u.is_blocked) as is_blocked
             FROM reports r
             LEFT JOIN user_profiles up ON r.reported_id COLLATE utf8mb4_unicode_ci = up.id COLLATE utf8mb4_unicode_ci
             LEFT JOIN users u ON r.reported_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci
