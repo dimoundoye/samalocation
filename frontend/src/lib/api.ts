@@ -16,7 +16,7 @@ export {
     getProperties, getPropertyById, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty,
     getMessages, sendMessage, markMessagesAsRead, deleteMessage,
     getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead,
-    login, signup, getMe, searchUsers,
+    getMe, searchUsers,
     getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile,
     getOwnerProfile, updateOwnerProfile,
     getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt,
@@ -24,6 +24,7 @@ export {
     getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties,
     getContactMessages, updateContactMessageStatus
 };
+
 
 export const getHealth = async () => {
     try {
@@ -35,31 +36,8 @@ export const getHealth = async () => {
     }
 };
 
-export const login = async (credentials: any) => {
-    const data = await baseClient("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({
-            email: credentials.email,
-            password: credentials.password,
-            turnstileToken: credentials.turnstileToken,
-        }),
-    });
-    return data;
-};
+export { login, signup } from "../api/auth";
 
-export const signup = async (credentials: any) => {
-    const data = await baseClient("/auth/signup", {
-        method: "POST",
-        body: JSON.stringify({
-            name: credentials.name,
-            email: credentials.email,
-            password: credentials.password,
-            role: credentials.role,
-            turnstileToken: credentials.turnstileToken,
-        }),
-    });
-    return data;
-};
 
 export const uploadPhotos = async (files: File[]) => {
     const token = localStorage.getItem("auth_token");
