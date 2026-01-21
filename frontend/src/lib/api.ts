@@ -9,7 +9,8 @@ import { createReport, getAllReports, getReportStatistics, updateReport, getAllU
 import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties } from "../api/admin";
 import { getContactMessages, updateContactMessageStatus } from "../api/contact";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 
 export {
     getProperties, getPropertyById, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty,

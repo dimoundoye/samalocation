@@ -33,7 +33,9 @@ export const getOwnerReceipts = async (): Promise<Receipt[]> => {
 export const downloadReceipt = async (id: string) => {
     const token = localStorage.getItem("auth_token");
 
-    const response = await fetch(`http://localhost:5000/api/receipts/${id}/download`, {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    const response = await fetch(`${API_BASE_URL}/receipts/${id}/download`, {
+
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`,
