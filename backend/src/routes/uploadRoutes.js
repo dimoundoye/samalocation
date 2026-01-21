@@ -1,41 +1,36 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const authMiddleware = require('../middleware/authMiddleware');
 
-const uploadDir = path.join(__dirname, '../../uploads');
+// Cloudinary configuration is automatically picked up from CLOUDINARY_URL in .env
+// but we can also be explicit if needed. 
+// cloudinary.config({ 
+//   cloud_name: '...', 
+//   api_key: '...', 
+//   api_secret: '...' 
+// });
 
-// Create uploads directory if it doesn't exist
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Set up storage engine
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'samalocation',
+        format: async (req, file) => {
+            const ext = file.mimetype.split('/')[1];
+            return ['jpeg', 'jpg', 'png', 'webp'].includes(ext) ? ext : 'jpg';
+        },
+        public_id: (req, file) => {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            return uniqueSuffix;
+        },
     },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
 });
 
 const upload = multer({
     storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-    fileFilter: (req, file, cb) => {
-        const filetypes = /jpeg|jpg|png|webp/;
-        const mimetype = filetypes.test(file.mimetype);
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-
-        if (mimetype && extname) {
-            return cb(null, true);
-        }
-        cb(new Error("Seuls les formats image (jpeg, jpg, png, webp) sont autorisés."));
-    }
 });
 
 // POST /api/upload
@@ -45,8 +40,9 @@ router.post('/', authMiddleware, upload.array('photos', 5), (req, res) => {
             return res.status(400).json({ status: 'error', message: 'No files uploaded' });
         }
 
+        // multer-storage-cloudinary adds 'path' to the file object which is the Cloudinary URL
         const fileUrls = req.files.map(file => {
-            return `/uploads/${file.filename}`;
+            return file.path;
         });
 
         res.json({
@@ -54,6 +50,7 @@ router.post('/', authMiddleware, upload.array('photos', 5), (req, res) => {
             urls: fileUrls
         });
     } catch (error) {
+        console.error('Upload error:', error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });

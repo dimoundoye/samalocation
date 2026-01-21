@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { login, signup } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { verifyEmail } from "@/api/emailverification";
+import Turnstile from "react-turnstile";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const Auth = () => {
   const setMode = (newMode: string) => setSearchParams({ mode: newMode, type: formData.userType });
   const userType = searchParams.get("type") || "tenant";
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -32,19 +34,17 @@ const Auth = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!turnstileToken) {
+      toast.error("Veuillez confirmer que vous n'êtes pas un robot.");
+      return;
+    }
     setLoading(true);
 
     try {
-      // const temporalEmail = formData.email;
-      // const result =  await verifyEmail(temporalEmail);
-      // if (!result) {
-      //   toast.error("L'adresse email fournie est invalide ou risquée.");
-      //   setLoading(false);
-      //   return;
-      // }
       const data = await login({
         email: formData.email,
         password: formData.password,
+        turnstileToken,
       });
 
       if (data.token) {
@@ -71,6 +71,10 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!turnstileToken) {
+      toast.error("Veuillez confirmer que vous n'êtes pas un robot.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -87,6 +91,7 @@ const Auth = () => {
         phone: formData.phone,
         role: formData.userType,
         companyName: formData.userType === "owner" ? formData.companyName : null,
+        turnstileToken,
       });
 
       if (data.token) {
@@ -132,7 +137,10 @@ const Auth = () => {
         </CardHeader>
 
         <CardContent>
-          <Tabs value={mode} onValueChange={(value) => navigate(`/auth?mode=${value}&type=${formData.userType}`)}>
+          <Tabs value={mode} onValueChange={(value) => {
+            setTurnstileToken(null);
+            navigate(`/auth?mode=${value}&type=${formData.userType}`);
+          }}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Connexion</TabsTrigger>
               <TabsTrigger value="signup">Inscription</TabsTrigger>
@@ -161,6 +169,14 @@ const Auth = () => {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
+                  />
+                </div>
+
+                <div className="flex justify-center py-2">
+                  <Turnstile
+                    sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                    onVerify={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken(null)}
                   />
                 </div>
 
@@ -260,6 +276,15 @@ const Auth = () => {
                     required
                   />
                 </div>
+
+                <div className="flex justify-center py-2">
+                  <Turnstile
+                    sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                    onVerify={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken(null)}
+                  />
+                </div>
+
 
                 <Button type="submit" className="w-full gradient-accent text-white" disabled={loading}>
                   {loading ? (

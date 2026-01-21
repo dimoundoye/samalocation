@@ -35,6 +35,32 @@ export const getHealth = async () => {
     }
 };
 
+export const login = async (credentials: any) => {
+    const data = await baseClient("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+            email: credentials.email,
+            password: credentials.password,
+            turnstileToken: credentials.turnstileToken,
+        }),
+    });
+    return data;
+};
+
+export const signup = async (credentials: any) => {
+    const data = await baseClient("/auth/signup", {
+        method: "POST",
+        body: JSON.stringify({
+            name: credentials.name,
+            email: credentials.email,
+            password: credentials.password,
+            role: credentials.role,
+            turnstileToken: credentials.turnstileToken,
+        }),
+    });
+    return data;
+};
+
 export const uploadPhotos = async (files: File[]) => {
     const token = localStorage.getItem("auth_token");
     const formData = new FormData();
@@ -54,7 +80,11 @@ export const uploadPhotos = async (files: File[]) => {
         if (!response.ok) throw new Error(data.message || "Upload failed");
 
         const baseUrl = API_BASE_URL.replace("/api", "");
-        return data.urls.map((url: string) => `${baseUrl}${url}`);
+        return data.urls.map((url: string) => {
+            if (url.startsWith('http')) return url;
+            return `${baseUrl}${url}`;
+        });
+
     } catch (error) {
         console.error("UploadPhotos error:", error);
         throw error;

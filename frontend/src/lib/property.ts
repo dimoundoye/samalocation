@@ -57,7 +57,7 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
   // Ensuite, vérifier les unités
   units.forEach((unit) => {
     if (!unit) return;
-    
+
     // Essayer de récupérer monthly_rent de différentes façons
     let rent: number = 0;
     if (typeof unit.monthly_rent === "number") {
@@ -67,7 +67,7 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
     } else if (unit.monthly_rent != null) {
       rent = Number(unit.monthly_rent);
     }
-    
+
     if (!Number.isNaN(rent) && rent > 0) {
       rentCandidates.push(rent);
       if (rent < currentMinRent) {
@@ -102,8 +102,16 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
   const hasAvailability = availableUnits.length > 0 || !hasUnitsInfo;
   const displayStatus: "available" | "occupied" = isPublished && hasAvailability ? "available" : "occupied";
 
-  const photosArray = getSafePhotosArray(property.photos);
-  const coverPhoto = property.photo_url || photosArray[0] || null;
+  const formatImageUrl = (url: string | null) => {
+    if (!url) return null;
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    // Prepend backend base URL for local uploads
+    const baseUrl = API_BASE_URL.replace("/api", "");
+    return `${baseUrl}${url}`;
+  };
+
+  const photosArray = getSafePhotosArray(property.photos).map(formatImageUrl).filter(Boolean) as string[];
+  const coverPhoto = formatImageUrl(property.photo_url || photosArray[0] || null);
 
   return {
     ...property,
@@ -118,4 +126,7 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
     primary_rent_period: primaryRentPeriod,
   };
 };
+
+import { API_BASE_URL } from "@/api/baseClient";
+
 

@@ -7,10 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock } from "lucide-react";
 import { baseClient } from "@/api/baseClient";
+import Turnstile from "react-turnstile";
 
 const Contact = () => {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -20,12 +22,23 @@ const Contact = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!turnstileToken) {
+            toast({
+                title: "Vérification requise",
+                description: "Veuillez confirmer que vous n'êtes pas un robot.",
+                variant: "destructive",
+            });
+            return;
+        }
         setLoading(true);
 
         try {
             await baseClient("/contact", {
                 method: "POST",
-                body: JSON.stringify(formData),
+                body: JSON.stringify({
+                    ...formData,
+                    turnstileToken,
+                }),
             });
 
             toast({
@@ -33,6 +46,7 @@ const Contact = () => {
                 description: "Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.",
             });
             setFormData({ name: "", email: "", subject: "", message: "" });
+            setTurnstileToken(null);
         } catch (error: any) {
             toast({
                 title: "Erreur",
@@ -180,23 +194,33 @@ const Contact = () => {
                                                 />
                                             </div>
 
-                                            <Button
-                                                type="submit"
-                                                disabled={loading}
-                                                className="w-full gradient-primary text-white shadow-medium hover:shadow-strong transition-all py-6 text-lg group"
-                                            >
-                                                {loading ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                        Envoi en cours...
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <Send className="h-5 w-5 mr-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                                        Envoyer le message
-                                                    </>
-                                                )}
-                                            </Button>
+                                            <div className="flex flex-col gap-4">
+                                                <div className="flex justify-center">
+                                                    <Turnstile
+                                                        sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                                        onVerify={(token) => setTurnstileToken(token)}
+                                                        onExpire={() => setTurnstileToken(null)}
+                                                    />
+                                                </div>
+
+                                                <Button
+                                                    type="submit"
+                                                    disabled={loading}
+                                                    className="w-full gradient-primary text-white shadow-medium hover:shadow-strong transition-all py-6 text-lg group"
+                                                >
+                                                    {loading ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                            Envoi en cours...
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <Send className="h-5 w-5 mr-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                                            Envoyer le message
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
                                         </form>
                                     </CardContent>
                                 </Card>

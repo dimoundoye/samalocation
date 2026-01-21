@@ -3,11 +3,12 @@ const router = express.Router();
 const db = require('../config/db');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
+const antiBotMiddleware = require('../middleware/antiBotMiddleware');
 const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
 
-// POST /api/contact - Public route to send a message
-router.post('/', async (req, res) => {
+// POST /api/contact - Public route to send a message (With Anti-Bot)
+router.post('/', antiBotMiddleware, async (req, res) => {
     try {
         const { name, email, subject, message } = req.body;
 
@@ -31,7 +32,6 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/contact - Admin route to list messages
-// REMOVED explicit / to test if it fixes the 404
 router.get('/', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const [rows] = await db.query('SELECT * FROM contact_messages ORDER BY created_at DESC');
