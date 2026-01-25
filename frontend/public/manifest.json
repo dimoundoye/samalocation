@@ -1,0 +1,25 @@
+{
+    "short_name": "Samalocation",
+    "name": "Samalocation - Gestion Locative au Sénégal",
+    "icons": [
+        {
+            "src": "/favicon01.png",
+            "sizes": "64x64 32x32 24x24 16x16",
+            "type": "image/png"
+        },
+        {
+            "src": "/favicon01.png",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "/favicon01.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#2563eb",
+    "background_color": "#ffffff"
+}

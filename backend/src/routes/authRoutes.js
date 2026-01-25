@@ -6,10 +6,10 @@ const antiBotMiddleware = require('../middleware/antiBotMiddleware');
 const { signupValidation, loginValidation, changePasswordValidation } = require('../middleware/validationMiddleware');
 
 // Signup
-router.post('/signup', antiBotMiddleware, signupValidation, authController.signup);
+router.post('/signup', signupValidation, authController.signup);
 
 // Login
-router.post('/login', antiBotMiddleware, loginValidation, authController.login);
+router.post('/login', loginValidation, authController.login);
 
 
 
@@ -21,5 +21,11 @@ router.get('/users/search', authMiddleware, authController.searchUsers);
 
 // Change password
 router.post('/change-password', authMiddleware, authController.changePassword);
+
+// Create tenant account (for owners)
+router.post('/create-tenant-account', authMiddleware, authController.createTenantAccount);
+
+// Complete setup (for newly created tenants)
+router.post('/complete-setup', authMiddleware, authController.completeSetup);
 
 module.exports = router;

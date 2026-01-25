@@ -51,17 +51,9 @@ const tenantController = {
             const ownerId = req.user.id;
             const { full_name, email, phone, unit_id, monthly_rent, move_in_date, status, user_id } = req.body;
 
-            console.log('Assigning tenant:', {
-                ownerId,
-                full_name,
-                email,
-                phone,
-                unit_id,
-                user_id: user_id || 'NULL',
-                monthly_rent,
-                move_in_date,
-                status
-            });
+            if (!unit_id) {
+                return response.error(res, 'Unit ID is required', 400);
+            }
 
             // Verify unit ownership
             const property = await Property.findByUnitId(unit_id);

@@ -1,8 +1,10 @@
 export interface User {
     id: string;
+    customId?: string;
     email: string;
     full_name: string;
     role: 'owner' | 'tenant' | 'admin';
+    setupRequired?: boolean;
     created_at?: string;
     is_blocked?: boolean;
 }

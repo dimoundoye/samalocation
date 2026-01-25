@@ -17,7 +17,7 @@ const validate = (req, res, next) => {
  */
 const signupValidation = [
     body('email').isEmail().withMessage('Email invalide').normalizeEmail(),
-    body('password').isLength({ min: 6 }).withMessage('Le mot de passe doit contenir au moins 6 caractères'),
+    body('password').isLength({ min: 8 }).withMessage('Le mot de passe doit contenir au moins 8 caractères'),
     body('name').notEmpty().withMessage('Le nom est requis').trim().escape(),
     body('phone').optional().trim().escape(),
     validate
@@ -27,7 +27,7 @@ const signupValidation = [
  * Validations pour la connexion
  */
 const loginValidation = [
-    body('email').isEmail().withMessage('Email invalide').normalizeEmail(),
+    body('email').notEmpty().withMessage('L\'identifiant est requis'),
     body('password').notEmpty().withMessage('Le mot de passe est requis'),
     validate
 ];
@@ -37,7 +37,7 @@ const loginValidation = [
  */
 const changePasswordValidation = [
     body('currentPassword').notEmpty().withMessage('Ancien mot de passe requis'),
-    body('newPassword').isLength({ min: 6 }).withMessage('Le nouveau mot de passe doit contenir au moins 6 caractères'),
+    body('newPassword').isLength({ min: 8 }).withMessage('Le nouveau mot de passe doit contenir au moins 8 caractères'),
     validate
 ];
 

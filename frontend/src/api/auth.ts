@@ -45,3 +45,27 @@ export const searchUsers = async (query: string, role?: string) => {
         return [];
     }
 };
+
+export const createTenantAccount = async (userData: any) => {
+    try {
+        return await baseClient("/auth/create-tenant-account", {
+            method: "POST",
+            body: JSON.stringify(userData),
+        });
+    } catch (error: any) {
+        console.error("CreateTenantAccount error:", error);
+        throw error;
+    }
+};
+
+export const completeSetup = async (setupData: any) => {
+    try {
+        return await baseClient("/auth/complete-setup", {
+            method: "POST",
+            body: JSON.stringify(setupData),
+        });
+    } catch (error: any) {
+        console.error("CompleteSetup error:", error);
+        throw error;
+    }
+};

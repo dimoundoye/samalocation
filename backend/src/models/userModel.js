@@ -4,41 +4,54 @@ const User = {
     /**
      * Find user by email
      */
+    async findByEmailOrId(identifier) {
+        const [users] = await db.query(
+            'SELECT * FROM users WHERE email = ? OR custom_id = ?',
+            [identifier, identifier]
+        );
+        return users[0] || null;
+    },
+
     async findByEmail(email) {
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
         return users[0] || null;
     },
 
-    
+
     async create(userData) {
-        const { id, email, passwordHash, name, phone, role, companyName } = userData;
+        const { id, customId, email, passwordHash, name, phone, role, companyName, isSetupComplete = true } = userData;
 
-    // Transactional approach could be better, but let's stick to our pattern
-    await db.query(
-        'INSERT INTO users (id, email, password_hash, email_verified) VALUES (?, ?, ?, 1)',
-        [id, email, passwordHash]
-    );
-
-    await db.query(
-        'INSERT INTO user_profiles (id, email, full_name, phone, role) VALUES (?, ?, ?, ?, ?)',
-        [id, email, name, phone, role]
-    );
-
-    if(role === 'owner') {
+        // Transactional approach could be better, but let's stick to our pattern
         await db.query(
-            'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone) VALUES (?, ?, ?, ?)',
-            [id, id, companyName || name, phone]
+            'INSERT INTO users (id, custom_id, email, password_hash, email_verified, is_setup_complete) VALUES (?, ?, ?, ?, 1, ?)',
+            [id, customId, email, passwordHash, isSetupComplete]
         );
+
+        await db.query(
+            'INSERT INTO user_profiles (id, custom_id, email, full_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
+            [id, customId, email, name, phone, role]
+        );
+
+        if (role === 'owner') {
+            await db.query(
+                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone) VALUES (?, ?, ?, ?)',
+                [id, id, companyName || name, phone]
+            );
         }
 
-return { id, email, name, role };
+        return { id, customId, email, name, role };
     },
 
     /**
      * Get user profile by ID
      */
     async findProfileById(id) {
-        const [profiles] = await db.query('SELECT * FROM user_profiles WHERE id = ?', [id]);
+        const [profiles] = await db.query(`
+            SELECT up.*, u.is_setup_complete 
+            FROM user_profiles up
+            JOIN users u ON up.id = u.id
+            WHERE up.id = ?
+        `, [id]);
         return profiles[0] || null;
     },
 
@@ -47,12 +60,12 @@ return { id, email, name, role };
      */
     async search(query, role = null) {
         let sql = `
-            SELECT id, full_name, email, role 
+            SELECT id, custom_id, full_name, email, role 
             FROM user_profiles 
-            WHERE full_name LIKE ? OR email LIKE ?
+            WHERE full_name LIKE ? OR email LIKE ? OR custom_id LIKE ?
         `;
 
-        const params = [`%${query}%`, `%${query}%`];
+        const params = [`%${query}%`, `%${query}%`, `%${query}%`];
 
         if (role) {
             sql += ' AND role = ?';
@@ -102,7 +115,9 @@ return { id, email, name, role };
         const [users] = await db.query(`
             SELECT 
                 u.id,
+                u.custom_id,
                 u.email,
+                u.is_setup_complete,
                 u.created_at,
                 u.is_blocked,
                 u.blocked_at,
@@ -137,6 +152,31 @@ return { id, email, name, role };
             'UPDATE users SET email_verified = TRUE, verification_token = NULL, verification_token_expires = NULL WHERE id = ?',
             [userId]
         );
+        return true;
+    },
+    /**
+     * Marquer la configuration comme terminée
+     */
+    async updateSetupStatus(userId, isComplete) {
+        await db.query(
+            'UPDATE users SET is_setup_complete = ? WHERE id = ?',
+            [isComplete, userId]
+        );
+        return true;
+    },
+
+    /**
+     * Mettre à jour les infos de base lors de la configuration
+     */
+    async finalizeProfile(userId, { name, email, phone }) {
+        await db.query(
+            'UPDATE user_profiles SET full_name = ?, email = ?, phone = ? WHERE id = ?',
+            [name, email, phone, userId]
+        );
+        // Also update the email in the 'users' table if changed
+        if (email) {
+            await db.query('UPDATE users SET email = ? WHERE id = ?', [email, userId]);
+        }
         return true;
     }
 };

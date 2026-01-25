@@ -318,6 +318,7 @@ const AdminDashboard = () => {
                           </div>
                           <div>
                             <p className="font-semibold">{user.full_name}</p>
+                            <p className="text-[10px] font-bold text-primary">{user.custom_id}</p>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
                           </div>
                         </div>

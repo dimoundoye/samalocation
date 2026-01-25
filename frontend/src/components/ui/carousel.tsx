@@ -80,6 +80,29 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
       [scrollPrev, scrollNext],
     );
 
+    const lastScrollTime = React.useRef(0);
+
+    const onWheel = React.useCallback(
+      (event: React.WheelEvent<HTMLDivElement>) => {
+        if (!api || orientation !== "horizontal") return;
+
+        const now = Date.now();
+        if (now - lastScrollTime.current < 500) return; // 500ms throttle
+
+        // Only trigger scroll if horizontal movement is dominant
+        if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+          if (event.deltaX > 20) {
+            api.scrollNext();
+            lastScrollTime.current = now;
+          } else if (event.deltaX < -20) {
+            api.scrollPrev();
+            lastScrollTime.current = now;
+          }
+        }
+      },
+      [api, orientation]
+    );
+
     React.useEffect(() => {
       if (!api || !setApi) {
         return;
@@ -118,6 +141,7 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
         <div
           ref={ref}
           onKeyDownCapture={handleKeyDown}
+          onWheel={onWheel}
           className={cn("relative", className)}
           role="region"
           aria-roledescription="carousel"

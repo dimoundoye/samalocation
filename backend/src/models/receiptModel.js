@@ -53,6 +53,7 @@ const Receipt = {
      * Récupérer un reçu par ID avec toutes les informations
      */
     async findById(id) {
+        console.log('🔍 findById called for receipt:', id);
         const [receipts] = await db.query(
             `SELECT 
                 r.*,
@@ -62,6 +63,7 @@ const Receipt = {
                 owner.full_name as owner_name,
                 owner.email as owner_email,
                 owner.phone as owner_phone,
+                owner_prof.signature_url,
                 p.name as property_name,
                 p.address as property_address,
                 pu.unit_number,
@@ -71,6 +73,7 @@ const Receipt = {
             LEFT JOIN user_profiles tenant ON r.tenant_id = tenant.id
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles owner ON p.owner_id = owner.id
+            LEFT JOIN owner_profiles owner_prof ON p.owner_id = owner_prof.id
             LEFT JOIN property_units pu ON r.property_id = pu.property_id AND (
                 EXISTS (SELECT 1 FROM tenants t2 WHERE t2.user_id = r.tenant_id AND t2.unit_id = pu.id)
             )

@@ -196,7 +196,7 @@ const TenantDashboard = () => {
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de supprimer le message.",
+        description: "Le message n'a pas pu être supprimé.",
         variant: "destructive",
       });
     }
@@ -249,7 +249,7 @@ const TenantDashboard = () => {
       console.error("Error sending message from tenant:", error);
       toast({
         title: "Erreur",
-        description: error.message,
+        description: "L'envoi du message a échoué.",
         variant: "destructive",
       });
     }
@@ -366,9 +366,16 @@ const TenantDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h1 className="text-3xl font-bold mb-2">Tableau de bord</h1>
-                    <p className="text-muted-foreground">
-                      Bienvenue, {tenantProfile?.full_name || tenantProfile?.email || "Locataire"}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <p className="text-muted-foreground">
+                        Bienvenue, {tenantProfile?.full_name || tenantProfile?.email || "Locataire"}
+                      </p>
+                      {user?.customId && (
+                        <Badge variant="outline" className="text-primary font-mono font-bold">
+                          ID: {user.customId}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <Button
@@ -785,7 +792,7 @@ const TenantDashboard = () => {
                                 variant="outline"
                                 onClick={async () => {
                                   try {
-                                    await downloadReceipt(receipt.id);
+                                    await downloadReceipt(receipt.id, receipt.receipt_number, receipt.payment_date);
                                     toast({
                                       title: "Téléchargement réussi",
                                       description: "Le reçu PDF a été téléchargé"

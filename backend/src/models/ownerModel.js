@@ -13,7 +13,7 @@ const Owner = {
      * Update or create owner profile
      */
     async updateProfile(id, data) {
-        const { full_name, company_name, phone, address, bio } = data;
+        const { full_name, company_name, phone, address, bio, signature_url } = data;
         // contact_phone et contact_email sont ignorés car les colonnes n'existent pas
 
         // Mettre à jour user_profiles si full_name est fourni
@@ -30,14 +30,14 @@ const Owner = {
         if (profiles.length === 0) {
             // Créer le profil owner (colonnes existantes uniquement)
             await db.query(
-                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio) VALUES (?, ?, ?, ?, ?, ?)',
-                [id, id, company_name, phone, address, bio]
+                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio, signature_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [id, id, company_name, phone, address, bio, signature_url]
             );
         } else {
             // Mettre à jour le profil owner (colonnes existantes uniquement)
             await db.query(
-                'UPDATE owner_profiles SET company_name = ?, phone = ?, address = ?, bio = ?, updated_at = NOW() WHERE id = ?',
-                [company_name, phone, address, bio, id]
+                'UPDATE owner_profiles SET company_name = ?, phone = ?, address = ?, bio = ?, signature_url = ?, updated_at = NOW() WHERE id = ?',
+                [company_name, phone, address, bio, signature_url, id]
             );
         }
 

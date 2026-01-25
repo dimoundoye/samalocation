@@ -2,13 +2,14 @@ const PDFDocument = require('pdfkit');
 const { format } = require('date-fns');
 const { fr } = require('date-fns/locale');
 const path = require('path');
+const fetch = require('node-fetch');
 
 /**
  * Générer un PDF de reçu de paiement
  * @param {Object} receiptData - Données complètes du reçu
- * @returns {PDFDocument} - Document PDF
+ * @returns {Promise<PDFDocument>} - Document PDF (Promise)
  */
-function generateReceiptPDF(receiptData) {
+async function generateReceiptPDF(receiptData) {
     const doc = new PDFDocument({ margin: 50 });
 
     // Couleurs
@@ -21,8 +22,8 @@ function generateReceiptPDF(receiptData) {
     const logoSize = 60;
 
     try {
-        const logoPath = path.join(__dirname, '../../assets/logo.png');
-        console.log('Loading logo from:', logoPath);
+        const logoPath = path.join(__dirname, '../../assets/favicon01.png');
+        console.log('Loading branded logo from:', logoPath);
         doc.image(logoPath, 50, 40, { width: logoSize });
     } catch (error) {
         console.error('Logo loading error:', error);
@@ -136,6 +137,44 @@ function generateReceiptPDF(receiptData) {
             .fillColor(grayColor)
             .text(`Notes: ${receiptData.notes} `)
             .moveDown(1);
+    }
+
+    // Signature ou Cachet si présent
+    if (receiptData.signature_url) {
+        try {
+            let imageSource = null;
+
+            if (receiptData.signature_url.includes('/uploads/')) {
+                const parts = receiptData.signature_url.split('/uploads/');
+                if (parts[1]) {
+                    imageSource = path.join(__dirname, '../../uploads/', parts[1]);
+                }
+            } else if (receiptData.signature_url.startsWith('http')) {
+                // Fetch remote image (Cloudinary)
+                console.log('Fetching remote signature from:', receiptData.signature_url);
+                const response = await fetch(receiptData.signature_url);
+                if (response.ok) {
+                    imageSource = await response.buffer();
+                } else {
+                    console.error('Failed to fetch remote signature:', response.statusText);
+                }
+            }
+
+            if (imageSource) {
+                // On pousse la signature vers le bas
+                doc.moveDown(4);
+
+                const currentY = doc.y;
+                doc.fontSize(10).fillColor(grayColor).text('Signature / Cachet :', { align: 'right' });
+                doc.image(imageSource, 400, doc.y, { width: 100 });
+
+                // Avancer doc.y après l'image pour éviter le chevauchement avec la ligne du bas
+                doc.y = doc.y + 80;
+                doc.moveDown(2);
+            }
+        } catch (error) {
+            console.error('Error embedding signature in PDF:', error);
+        }
     }
 
     // Ligne séparatrice

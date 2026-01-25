@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
   const [propertyPhotos, setPropertyPhotos] = useState<File[]>([]);
   const [propertyPhotosPreviews, setPropertyPhotosPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const generalInfoRef = useRef<HTMLDivElement>(null);
 
   // Pour les biens simples, on utilise directement les champs
   const [simplePropertyData, setSimplePropertyData] = useState({
@@ -223,43 +224,14 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         handleDialogChange(false);
       }, 300);
     } catch (error: any) {
-      console.error("Submit error:", error);
-
-      const rawMessage = typeof error?.message === "string" ? error.message : "";
-      let friendlyMessage = rawMessage || "Une erreur est survenue lors de l'ajout du bien.";
-
-      const lower = rawMessage.toLowerCase();
-      if (lower.includes("property_type") || lower.includes("check constraint") || lower.includes("violates check constraint") || lower.includes("unit_type")) {
-        friendlyMessage =
-          "Ce type de bien n'est pas encore autorisé dans la base de données. " +
-          "Veuillez exécuter la migration Supabase suivante :\n" +
-          "- 20251114120000_add_villa_property_type.sql\n\n" +
-          "Cette migration ajoute 'villa' et autorise 'maison' comme type d'unité.";
-      } else if (lower.includes("rent_period")) {
-        friendlyMessage =
-          "La période de loyer n'a pas pu être enregistrée. Exécutez la migration Supabase 20251113120000_update_property_schema.sql pour ajouter la colonne rent_period.";
-      } else if (lower.includes("permission denied") || lower.includes("row-level security")) {
-        friendlyMessage =
-          "Vous n'avez pas la permission de créer ce bien. Vérifiez que vous êtes bien connecté en tant que propriétaire.";
-      } else if (lower.includes("null value") || lower.includes("not null")) {
-        friendlyMessage =
-          "Certains champs obligatoires sont manquants. Vérifiez que tous les champs requis sont remplis.";
-      }
-
-      // Afficher le message d'erreur (limiter la longueur pour le toast)
-      const shortMessage = friendlyMessage.length > 200
-        ? friendlyMessage.substring(0, 200) + "..."
-        : friendlyMessage;
-
       toast({
-        title: "Erreur lors de la création",
-        description: shortMessage,
+        title: "Action impossible",
+        description: "L'ajout du bien a échoué. Veuillez vérifier les informations et réessayer.",
         variant: "destructive",
-        duration: 10000, // Afficher plus longtemps pour les erreurs importantes
       });
 
-      // Aussi logger le message complet dans la console
-      console.error("Erreur complète:", friendlyMessage);
+      // Aussi logger le message complet dans la console pour le développeur
+      console.error("Erreur lors de la création:", error);
     } finally {
       setUploading(false);
     }
@@ -296,7 +268,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
           <DialogTitle>Ajouter un bien</DialogTitle>
           <DialogDescription>
@@ -326,6 +298,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                     }`}
                   onClick={() => {
                     if (propertyType !== type.value) {
+                      const prevType = propertyType;
                       setPropertyType(type.value);
                       setSimplePropertyData({
                         monthly_rent: "",
@@ -335,6 +308,13 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                         floors: "",
                         rent_period: "mois",
                       });
+
+                      // Auto-scroll to General Information if selecting for the first time
+                      if (!prevType) {
+                        setTimeout(() => {
+                          generalInfoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }, 100);
+                      }
                     }
                   }}
                 >
@@ -349,7 +329,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
           {propertyType && (
             <>
-              <Card className="shadow-soft">
+              <Card className="shadow-soft" ref={generalInfoRef}>
                 <CardHeader>
                   <CardTitle>Informations générales</CardTitle>
                 </CardHeader>
@@ -611,6 +591,6 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
           )}
         </form>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 };

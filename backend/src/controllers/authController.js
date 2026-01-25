@@ -5,6 +5,39 @@ const { sendVerificationEmail } = require('../utils/emailService');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
+/**
+ * Generate a custom ID: 2 uppercase letters + 5 digits
+ */
+const generateCustomId = async () => {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+
+    let isUnique = false;
+    let customId = '';
+
+    while (!isUnique) {
+        let l1 = letters.charAt(Math.floor(Math.random() * letters.length));
+        let l2 = letters.charAt(Math.floor(Math.random() * letters.length));
+        let n = '';
+        for (let i = 0; i < 5; i++) {
+            n += numbers.charAt(Math.floor(Math.random() * numbers.length));
+        }
+
+        // Randomly shuffle positions? The user said "AA12345 la position peut changer"
+        // Let's stick to a consistent but semi-random format or just a simple AA00000
+        customId = l1 + l2 + n;
+
+        // Check uniqueness
+        const db = require('../config/db');
+        const [existing] = await db.query('SELECT id FROM users WHERE custom_id = ?', [customId]);
+        if (existing.length === 0) {
+            isUnique = true;
+        }
+    }
+
+    return customId;
+};
+
 const authController = {
     /**
      * Signup
@@ -18,11 +51,17 @@ const authController = {
                 return response.error(res, 'Cet e-mail est déjà utilisé.', 400);
             }
 
+            if (password.length < 8) {
+                return response.error(res, 'Le mot de passe doit contenir au moins 8 caractères.', 400);
+            }
+
             const id = uuidv4();
+            const customId = await generateCustomId();
             const passwordHash = await bcrypt.hash(password, 10);
 
             await User.create({
                 id,
+                customId,
                 email,
                 passwordHash,
                 name,
@@ -34,7 +73,7 @@ const authController = {
             const token = generateToken({ id, email, role });
             return response.success(res, {
                 token,
-                user: { id, email, name, role }
+                user: { id, customId, email, name, role }
             }, 'Compte créé avec succès !', 201);
         } catch (error) {
             next(error);
@@ -46,9 +85,9 @@ const authController = {
      */
     async login(req, res, next) {
         try {
-            const { email, password } = req.body;
+            const { email, password } = req.body; // email is now identifier (email or ID)
 
-            const user = await User.findByEmail(email);
+            const user = await User.findByEmailOrId(email);
             if (!user) {
                 return response.error(res, 'Identifiants invalides', 401);
             }
@@ -74,9 +113,11 @@ const authController = {
                 token,
                 user: {
                     id: user.id,
+                    customId: user.custom_id,
                     email: user.email,
                     name: profile.full_name,
-                    role: profile.role
+                    role: profile.role,
+                    setupRequired: !user.is_setup_complete
                 }
             });
         } catch (error) {
@@ -108,9 +149,11 @@ const authController = {
             return response.success(res, {
                 user: {
                     id: profile.id,
+                    customId: profile.custom_id,
                     email: profile.email,
                     name: profile.full_name,
-                    role: profile.role
+                    role: profile.role,
+                    setupRequired: !profile.is_setup_complete
                 }
             });
         } catch (error) {
@@ -147,8 +190,8 @@ const authController = {
                 return response.error(res, 'L\'ancien et le nouveau mot de passe sont requis', 400);
             }
 
-            if (newPassword.length < 6) {
-                return response.error(res, 'Le nouveau mot de passe doit contenir au moins 6 caractères', 400);
+            if (newPassword.length < 8) {
+                return response.error(res, 'Le nouveau mot de passe doit contenir au moins 8 caractères', 400);
             }
 
             const db = require('../config/db');
@@ -170,6 +213,79 @@ const authController = {
             await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, userId]);
 
             return response.success(res, null, 'Mot de passe modifié avec succès');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Create a tenant account (Owner action)
+     */
+    async createTenantAccount(req, res, next) {
+        try {
+            const { name, email, phone } = req.body;
+            const finalName = name || 'Nouveau Locataire';
+
+            // Generate temporary password
+            const tempPassword = Math.random().toString(36).slice(-8).toUpperCase();
+            const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+            const id = uuidv4();
+            const customId = await generateCustomId();
+
+            // Default email if none provided (placeholder)
+            const userEmail = email || `${customId.toLowerCase()}@samalocation.sn`;
+
+            await User.create({
+                id,
+                customId,
+                email: userEmail,
+                passwordHash,
+                name: finalName,
+                phone: phone || '',
+                role: 'tenant',
+                isSetupComplete: false
+            });
+
+            return response.success(res, {
+                id,
+                customId,
+                tempPassword,
+                name: finalName
+            }, 'Compte locataire créé avec succès', 201);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Complete setup (Tenant action)
+     */
+    async completeSetup(req, res, next) {
+        try {
+            const userId = req.user.id;
+            const { name, email, phone, newPassword } = req.body;
+
+            if (!name || !email || !phone || !newPassword) {
+                return response.error(res, 'Toutes les informations sont requises', 400);
+            }
+
+            if (newPassword.length < 8) {
+                return response.error(res, 'Le mot de passe doit contenir au moins 8 caractères', 400);
+            }
+
+            // Update profile
+            await User.finalizeProfile(userId, { name, email, phone });
+
+            // Update password
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            const db = require('../config/db');
+            await db.query('UPDATE users SET password_hash = ?, is_setup_complete = TRUE WHERE id = ?', [hashedPassword, userId]);
+
+            // Synchronize name and email in tenants table
+            await db.query('UPDATE tenants SET full_name = ?, email = ?, phone = ? WHERE user_id = ?', [name, email, phone, userId]);
+
+            return response.success(res, null, 'Configuration terminée avec succès');
         } catch (error) {
             next(error);
         }

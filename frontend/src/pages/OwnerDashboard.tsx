@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft } from "lucide-react";
+import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3 } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -33,6 +34,8 @@ import { AssignTenantDialog } from "@/components/owner/AssignTenantDialog";
 import { EditTenantDialog } from "@/components/owner/EditTenantDialog";
 import { CreateReceiptDialog } from "@/components/owner/CreateReceiptDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { TenantHistoryDialog } from "@/components/owner/TenantHistoryDialog";
+import { ManagementTable } from "@/components/owner/ManagementTable";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { transformProperty } from "@/lib/property";
@@ -66,6 +69,35 @@ const OwnerDashboard = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [assignTenantOpen, setAssignTenantOpen] = useState(false);
   const [editTenantOpen, setEditTenantOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedTenantForHistory, setSelectedTenantForHistory] = useState<Tenant | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("sidebarCollapsed") === "true";
+  });
+
+  const revenueData = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const months = [
+      "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+      "Juil", "Août", "Sep", "Oct", "Nov", "Déc"
+    ];
+
+    return months.map((month, index) => {
+      const monthNum = index + 1;
+      const monthlySum = receipts
+        .filter(r => r.year === currentYear && r.month === monthNum)
+        .reduce((sum, r) => sum + (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount as any) || 0), 0);
+
+      return {
+        name: month,
+        total: monthlySum,
+      };
+    });
+  }, [receipts]);
+
+  useEffect(() => {
+    localStorage.setItem("sidebarCollapsed", String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -115,6 +147,11 @@ const OwnerDashboard = () => {
 
     markMessagesAsReadLocal();
   }, [selectedChat, currentUserId, messages, activeTab]);
+
+  const getMonthName = (month: number) => {
+    const date = new Date(2000, month - 1, 1);
+    return format(date, "MMMM", { locale: fr });
+  };
 
   useEffect(() => {
     if (activeTab === "messages") {
@@ -186,8 +223,8 @@ const OwnerDashboard = () => {
 
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message,
+        title: "Information",
+        description: "Une erreur est survenue lors du chargement des données.",
         variant: "destructive",
       });
     }
@@ -216,8 +253,8 @@ const OwnerDashboard = () => {
       await loadData();
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le locataire.",
+        title: "Action impossible",
+        description: "La suppression du locataire a échoué.",
         variant: "destructive",
       });
     }
@@ -240,8 +277,8 @@ const OwnerDashboard = () => {
       });
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le message.",
+        title: "Action impossible",
+        description: "Le message n'a pas pu être supprimé.",
         variant: "destructive",
       });
     }
@@ -261,8 +298,8 @@ const OwnerDashboard = () => {
       await loadData();
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le bien.",
+        title: "Action impossible",
+        description: "La suppression du bien a échoué.",
         variant: "destructive",
       });
     }
@@ -292,8 +329,8 @@ const OwnerDashboard = () => {
 
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message,
+        title: "Échec de l'envoi",
+        description: "Le message n'a pas pu être envoyé.",
         variant: "destructive",
       });
     }
@@ -307,83 +344,103 @@ const OwnerDashboard = () => {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(amount).replace('XOF', 'F CFA');
   };
 
-  const sidebarContent = (
-    <>
-      <button
-        onClick={() => navigate("/")}
-        className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity"
-      >
-        <Home className="h-6 w-6 text-primary" />
-        <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Samalocation
-        </span>
-      </button>
+  const renderSidebarContent = (isMobile = false) => {
+    const showLabels = isMobile || !isSidebarCollapsed;
+    const itemAlignment = isMobile ? 'justify-start' : (isSidebarCollapsed ? 'justify-center border-r-0' : 'justify-start');
 
-      <nav className="space-y-2">
-        {[
-          { id: "dashboard", label: "Tableau de bord", icon: TrendingUp },
-          { id: "properties", label: "Mes biens", icon: Building2 },
-          { id: "tenants", label: "Locataires", icon: Users },
-          { id: "messages", label: "Messages", icon: MessageSquare },
-          { id: "settings", label: "Paramètres", icon: Settings },
-        ].map((item) => {
-          // Calculer le nombre de messages non lus
-          const unreadCount = item.id === "messages"
-            ? messages.filter(msg => msg.receiver_id === user?.id && !msg.is_read).length
-            : 0;
+    return (
+      <>
+        <button
+          onClick={() => {
+            navigate("/");
+            if (isMobile) setMobileMenuOpen(false);
+          }}
+          className={`flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity overflow-hidden ${isMobile ? 'justify-start' : (isSidebarCollapsed ? 'justify-center' : 'justify-start')}`}
+        >
+          <Home className="h-6 w-6 shrink-0 text-primary" />
+          {showLabels && (
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
+              Samalocation
+            </span>
+          )}
+        </button>
 
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setMobileMenuOpen(false);
-              }}
-              className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === item.id
-                ? "bg-primary text-white"
-                : "hover:bg-secondary text-muted-foreground"
-                }`}
-            >
-              <div className="flex items-center gap-3">
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </div>
-              {unreadCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs"
-                >
-                  {unreadCount}
-                </Badge>
-              )}
-            </button>
-          );
-        })}
-      </nav>
+        <nav className="space-y-2">
+          {[
+            { id: "dashboard", label: "Tableau de bord", icon: TrendingUp },
+            { id: "properties", label: "Mes biens", icon: Building2 },
+            { id: "tenants", label: "Locataires", icon: Users },
+            { id: "management", label: "Gérance", icon: PieChart },
+            { id: "messages", label: "Messages", icon: MessageSquare },
+            { id: "settings", label: "Paramètres", icon: Settings },
+          ].map((item) => {
+            const unreadCount = item.id === "messages"
+              ? messages.filter(msg => msg.receiver_id === user?.id && !msg.is_read).length
+              : 0;
 
-      <Button
-        variant="ghost"
-        onClick={signOut}
-        className="w-full mt-8 justify-start text-muted-foreground"
-      >
-        <LogOut className="mr-3 h-5 w-5" />
-        Déconnexion
-      </Button>
-    </>
-  );
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (isMobile) setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 relative group/nav ${activeTab === item.id
+                  ? "bg-primary text-white"
+                  : "hover:bg-secondary text-muted-foreground"
+                  } ${itemAlignment}`}
+                title={!showLabels ? item.label : ""}
+              >
+                <div className={`flex items-center gap-3 w-full ${isMobile ? 'justify-start' : (isSidebarCollapsed ? 'justify-center' : 'justify-start')}`}>
+                  <item.icon className={`h-5 w-5 shrink-0`} />
+                  {showLabels && <span className="truncate">{item.label}</span>}
+                </div>
+                {unreadCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className={`${!showLabels ? 'absolute -top-1 -right-1 h-4 min-w-[16px] text-[10px]' : 'h-5 min-w-[20px] text-xs'} flex items-center justify-center px-1.5`}
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        <Button
+          variant="ghost"
+          onClick={signOut}
+          className={`w-full mt-8 text-muted-foreground transition-all duration-200 ${isMobile ? 'justify-start px-4' : (isSidebarCollapsed ? 'justify-center px-0' : 'justify-start px-4')}`}
+          title={!showLabels ? "Déconnexion" : ""}
+        >
+          <LogOut className={`h-5 w-5 shrink-0 ${!showLabels ? '' : 'mr-3'}`} />
+          {showLabels && <span>Déconnexion</span>}
+        </Button>
+      </>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside className="w-64 bg-card border-r shadow-soft hidden md:block">
-        <div className="p-6">
-          {sidebarContent}
+      <aside className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-card border-r shadow-soft hidden md:block transition-all duration-300 relative`}>
+        <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'p-3' : 'p-6'}`}>
+          {renderSidebarContent(false)}
         </div>
+
+        {/* Collapse Toggle Button */}
+        <button
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-card border rounded-full flex items-center justify-center shadow-md hover:bg-secondary transition-colors z-50"
+        >
+          {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
+        <div className={`${activeTab === "management" ? "max-w-full" : "max-w-7xl"} mx-auto`}>
           {/* Top Bar - Notifications & Profile */}
           <div className="flex items-center justify-between mb-6 pb-4 border-b">
             <div className="flex items-center gap-3">
@@ -394,8 +451,10 @@ const OwnerDashboard = () => {
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-64 p-6">
-                  {sidebarContent}
+                <SheetContent side="left" className="w-72 p-0 border-r-0">
+                  <div className="p-6 h-full bg-card">
+                    {renderSidebarContent(true)}
+                  </div>
                 </SheetContent>
               </Sheet>
             </div>
@@ -413,7 +472,14 @@ const OwnerDashboard = () => {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold mb-2">Tableau de bord</h1>
-                  <p className="text-muted-foreground">Bienvenue sur votre espace propriétaire</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-muted-foreground">Bienvenue sur votre espace propriétaire</p>
+                    {user?.customId && (
+                      <Badge variant="outline" className="text-primary font-mono font-bold">
+                        ID: {user.customId}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
@@ -470,6 +536,73 @@ const OwnerDashboard = () => {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Revenue Analytics Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Chart */}
+                <Card className="lg:col-span-2 shadow-soft">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-lg font-bold">Croissance des Revenus ({new Date().getFullYear()})</CardTitle>
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px] w-full mt-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                          <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            formatter={(value: number) => [formatCurrency(value), "Revenus"]}
+                          />
+                          <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Table Stats */}
+                <Card className="shadow-soft">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-bold">Détails Mensuels</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="max-h-[300px] overflow-y-auto px-6 pb-6">
+                      <Table>
+                        <TableHeader className="bg-muted/50 sticky top-0">
+                          <TableRow>
+                            <TableHead className="py-2">Mois</TableHead>
+                            <TableHead className="text-right py-2">Montant</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {revenueData.slice().reverse().filter(d => d.total > 0).map((data) => (
+                            <TableRow key={data.name}>
+                              <TableCell className="font-medium py-2">{data.name}</TableCell>
+                              <TableCell className="text-right py-2">{formatCurrency(data.total)}</TableCell>
+                            </TableRow>
+                          ))}
+                          {revenueData.every(d => d.total === 0) && (
+                            <TableRow>
+                              <TableCell colSpan={2} className="text-center py-8 text-muted-foreground italic">
+                                Aucun revenu enregistré
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
 
@@ -504,7 +637,7 @@ const OwnerDashboard = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {properties.map((property) => {
                     const photoUrl = property.photos && property.photos.length > 0
                       ? property.photos[0]
@@ -593,9 +726,6 @@ const OwnerDashboard = () => {
                                   Brouillon
                                 </Badge>
                               )}
-                              <span className="text-xs text-muted-foreground">
-                                {property.property_units?.length || 0} unité{property.property_units?.length !== 1 ? 's' : ''}
-                              </span>
                             </div>
                             <Button
                               size="sm"
@@ -626,7 +756,7 @@ const OwnerDashboard = () => {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="text-destructive"
                               onClick={() => handleDeleteProperty(property.id)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -671,84 +801,67 @@ const OwnerDashboard = () => {
                   ) : (
                     <>
                       {/* Mobile Card View */}
-                      <div className="grid grid-cols-1 gap-4 md:hidden">
+                      <div className="md:hidden space-y-4">
                         {tenants.map((tenant) => (
-                          <Card key={tenant.id} className="border shadow-sm">
-                            <CardContent className="p-4 space-y-3">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h3 className="font-bold text-lg">{tenant.full_name}</h3>
-                                  <p className="text-sm text-muted-foreground">{tenant.property_name || "N/A"}</p>
-                                </div>
-                                <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
-                                  {tenant.status === "active" ? "Actif" : tenant.status}
-                                </Badge>
+                          <Card key={`mobile-tenant-${tenant.id}`} className="p-4 border shadow-sm">
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h3 className="font-bold text-lg">{tenant.full_name}</h3>
+                                <p className="text-sm text-primary font-medium">{tenant.property_name}</p>
+                                <p className="text-xs text-muted-foreground">{tenant.unit_number || 'Unité'}</p>
                               </div>
+                              <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
+                                {tenant.status === "active" ? "Actif" : "Inactif"}
+                              </Badge>
+                            </div>
 
-                              <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div>
-                                  <p className="text-muted-foreground text-xs uppercase font-semibold">Contact</p>
-                                  <p className="truncate text-xs">{tenant.email}</p>
-                                  <p className="truncate font-medium">{tenant.phone}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground text-xs uppercase font-semibold">Loyer</p>
-                                  <p className="font-medium text-primary">{formatCurrency(tenant.monthly_rent)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground text-xs uppercase font-semibold">Entrée</p>
-                                  <p>{formatDate(tenant.move_in_date)}</p>
-                                </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                              <div className="bg-muted/30 p-2 rounded">
+                                <span className="text-[10px] text-muted-foreground uppercase block">Loyer</span>
+                                <span className="font-semibold">{formatCurrency(tenant.monthly_rent)}</span>
                               </div>
+                              <div className="bg-muted/30 p-2 rounded">
+                                <span className="text-[10px] text-muted-foreground uppercase block">Contact</span>
+                                <span className="truncate block text-xs">{tenant.phone}</span>
+                              </div>
+                            </div>
 
-                              <div className="pt-2 flex flex-wrap gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex-1"
-                                  onClick={() => {
-                                    setSelectedChat(tenant);
-                                    setActiveTab("messages");
-                                  }}
-                                >
-                                  <MessageSquare className="h-4 w-4 mr-2" />
-                                  Message
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex-1"
-                                  onClick={() => {
-                                    setSelectedPropertyForReceipt(tenant);
-                                    setCreateReceiptOpen(true);
-                                  }}
-                                >
-                                  Reçu
-                                </Button>
-                                <div className="flex gap-2 w-full">
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    className="flex-1"
-                                    onClick={() => {
-                                      setEditingTenant(tenant);
-                                      setEditTenantOpen(true);
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Modifier
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleDeleteTenant(tenant.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
+                            <div className="flex gap-2 pt-3 border-t">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => {
+                                  setSelectedChat(tenant);
+                                  setActiveTab("messages");
+                                }}
+                              >
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                Chat
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => {
+                                  setSelectedPropertyForReceipt(tenant);
+                                  setCreateReceiptOpen(true);
+                                }}
+                              >
+                                Reçu
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="px-3"
+                                onClick={() => {
+                                  setSelectedTenantForHistory(tenant);
+                                  setHistoryDialogOpen(true);
+                                }}
+                              >
+                                <History className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </Card>
                         ))}
                       </div>
@@ -762,7 +875,6 @@ const OwnerDashboard = () => {
                               <TableHead>Contact</TableHead>
                               <TableHead>Bien</TableHead>
                               <TableHead>Loyer mensuel</TableHead>
-                              <TableHead>Date d'entrée</TableHead>
                               <TableHead>Statut</TableHead>
                               <TableHead>Actions</TableHead>
                             </TableRow>
@@ -779,10 +891,9 @@ const OwnerDashboard = () => {
                                 </TableCell>
                                 <TableCell>{tenant.property_name}</TableCell>
                                 <TableCell>{formatCurrency(tenant.monthly_rent)}</TableCell>
-                                <TableCell>{formatDate(tenant.move_in_date)}</TableCell>
                                 <TableCell>
                                   <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
-                                    {tenant.status === "active" ? "Actif" : tenant.status}
+                                    {tenant.status === "active" ? "Actif" : "Inactif"}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
@@ -805,25 +916,17 @@ const OwnerDashboard = () => {
                                         setCreateReceiptOpen(true);
                                       }}
                                     >
-                                      Créer un reçu
+                                      Reçu
                                     </Button>
                                     <Button
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
                                       onClick={() => {
-                                        setEditingTenant(tenant);
-                                        setEditTenantOpen(true);
+                                        setSelectedTenantForHistory(tenant);
+                                        setHistoryDialogOpen(true);
                                       }}
                                     >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-destructive"
-                                      onClick={() => handleDeleteTenant(tenant.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
+                                      <History className="h-4 w-4" />
                                     </Button>
                                   </div>
                                 </TableCell>
@@ -1102,10 +1205,17 @@ const OwnerDashboard = () => {
             </div>
           )}
 
+          {/* Gérance Tab */}
+          {activeTab === "management" && (
+            <div className="space-y-6">
+              <ManagementTable tenants={tenants} receipts={receipts} />
+            </div>
+          )}
+
           {/* Settings Tab */}
           {activeTab === "settings" && <OwnerSettings />}
         </div>
-      </main >
+      </main>
 
       <AssignTenantDialog
         open={assignTenantOpen}
@@ -1121,7 +1231,6 @@ const OwnerDashboard = () => {
         onSuccess={loadData}
       />
 
-
       {selectedPropertyForReceipt && (
         <CreateReceiptDialog
           open={createReceiptOpen}
@@ -1129,13 +1238,11 @@ const OwnerDashboard = () => {
           propertyId={selectedPropertyForReceipt.property_id}
           propertyName={selectedPropertyForReceipt.property_name || "Propriété"}
           tenantId={selectedPropertyForReceipt.user_id}
+          tenantName={selectedPropertyForReceipt.full_name}
+          monthlyRent={selectedPropertyForReceipt.monthly_rent}
           onSuccess={() => {
             loadReceipts();
             setCreateReceiptOpen(false);
-            toast({
-              title: "Reçu créé",
-              description: "Le reçu a été créé et est accessible par le locataire"
-            });
           }}
         />
       )}
@@ -1146,7 +1253,14 @@ const OwnerDashboard = () => {
         tenant={editingTenant}
         onSuccess={loadData}
       />
-    </div >
+
+      <TenantHistoryDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        tenant={selectedTenantForHistory}
+        receipts={receipts}
+      />
+    </div>
   );
 };
 

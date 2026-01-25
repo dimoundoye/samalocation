@@ -16,9 +16,11 @@ interface CreateReceiptDialogProps {
     propertyId: string;
     propertyName: string;
     tenantId?: string; // Optional pre-selected tenant ID
+    tenantName?: string; // Optional pre-selected tenant name
+    monthlyRent?: number; // Optional pre-selected monthly rent
 }
 
-export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId, propertyName, tenantId }: CreateReceiptDialogProps) => {
+export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId, propertyName, tenantId, tenantName, monthlyRent }: CreateReceiptDialogProps) => {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [tenants, setTenants] = useState<any[]>([]);
@@ -37,21 +39,33 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         if (open) {
             console.log('🔍 Dialog opened - tenantId:', tenantId, 'propertyId:', propertyId);
             loadTenants();
-            // Reset form with property ID and optional tenant ID
+            // Reset form with property ID and optional tenant ID and amount
             setFormData(prev => ({
                 ...prev,
                 property_id: propertyId,
-                tenant_id: tenantId || ""
+                tenant_id: tenantId || "",
+                amount: monthlyRent ? String(monthlyRent) : prev.amount
             }));
         }
-    }, [open, propertyId, tenantId]);
+    }, [open, propertyId, tenantId, monthlyRent]);
 
     const loadTenants = async () => {
         try {
             const data = await getOwnerTenants();
-            setTenants(data);
+
+            // Si un locataire est présélectionné et n'est pas dans la liste, on s'assure qu'il y soit
+            const allTenants = [...data];
+            if (tenantId && tenantName && !allTenants.find((t: any) => t.user_id === tenantId)) {
+                allTenants.push({ user_id: tenantId, full_name: tenantName, id: 'temp' });
+            }
+
+            setTenants(allTenants);
         } catch (error) {
             console.error("Error loading tenants:", error);
+            // Fallback si on a les infos du locataire
+            if (tenantId && tenantName) {
+                setTenants([{ user_id: tenantId, full_name: tenantName, id: 'temp' }]);
+            }
         }
     };
 
@@ -126,7 +140,7 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[525px]">
+            <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
                 <DialogHeader>
                     <DialogTitle>Créer un reçu de paiement</DialogTitle>
                     <DialogDescription>

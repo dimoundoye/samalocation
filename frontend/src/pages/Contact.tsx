@@ -22,7 +22,8 @@ const Contact = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!turnstileToken) {
+        const isDev = import.meta.env.DEV;
+        if (!turnstileToken && !isDev) {
             toast({
                 title: "Vérification requise",
                 description: "Veuillez confirmer que vous n'êtes pas un robot.",
@@ -30,6 +31,7 @@ const Contact = () => {
             });
             return;
         }
+
         setLoading(true);
 
         try {
@@ -195,13 +197,16 @@ const Contact = () => {
                                             </div>
 
                                             <div className="flex flex-col gap-4">
-                                                <div className="flex justify-center">
-                                                    <Turnstile
-                                                        sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                                                        onVerify={(token) => setTurnstileToken(token)}
-                                                        onExpire={() => setTurnstileToken(null)}
-                                                    />
-                                                </div>
+                                                {!import.meta.env.DEV && (
+                                                    <div className="flex justify-center">
+                                                        <Turnstile
+                                                            sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                                            onVerify={(token) => setTurnstileToken(token)}
+                                                            onExpire={() => setTurnstileToken(null)}
+                                                        />
+                                                    </div>
+                                                )}
+
 
                                                 <Button
                                                     type="submit"

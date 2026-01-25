@@ -1,5 +1,7 @@
 import { baseClient } from "./baseClient";
 import { Receipt, CreateReceiptData } from "@/types";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 // Créer un reçu (propriétaire)
 export const createReceipt = async (data: CreateReceiptData) => {
@@ -30,7 +32,7 @@ export const getOwnerReceipts = async (): Promise<Receipt[]> => {
 };
 
 // Télécharger un reçu en PDF
-export const downloadReceipt = async (id: string) => {
+export const downloadReceipt = async (id: string, receiptNumber?: string, paymentDate?: string) => {
     const token = localStorage.getItem("auth_token");
 
     const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -49,11 +51,22 @@ export const downloadReceipt = async (id: string) => {
     // Créer un blob à partir de la réponse
     const blob = await response.blob();
 
+    // Générer un nom de fichier propre
+    let filename = `recu-${id}.pdf`;
+    if (receiptNumber && paymentDate) {
+        try {
+            const formattedDate = format(new Date(paymentDate), "dd.MM.yyyy");
+            filename = `Reçu N°${receiptNumber} ${formattedDate}.pdf`;
+        } catch (e) {
+            console.error("Error formatting date for filename:", e);
+        }
+    }
+
     // Créer un lien de téléchargement temporaire
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `recu-${id}.pdf`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
 

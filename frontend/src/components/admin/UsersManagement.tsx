@@ -69,9 +69,10 @@ const UsersManagement = () => {
     const filtered = users.filter((user) => {
       const email = user.email?.toLowerCase() || "";
       const fullName = user.full_name?.toLowerCase() || "";
+      const customId = user.custom_id?.toLowerCase() || "";
       const search = searchTerm.toLowerCase();
 
-      return email.includes(search) || fullName.includes(search);
+      return email.includes(search) || fullName.includes(search) || customId.includes(search);
     });
 
     setFilteredUsers(filtered);
@@ -181,6 +182,7 @@ const UsersManagement = () => {
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <p className="font-bold">{user.full_name}</p>
+                        <p className="text-xs font-semibold text-primary">{user.custom_id}</p>
                         <p className="text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</p>
                       </div>
                       {getUserTypeBadge(user.role)}
@@ -236,6 +238,7 @@ const UsersManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>ID</TableHead>
                     <TableHead>Nom</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Type</TableHead>
@@ -254,6 +257,7 @@ const UsersManagement = () => {
                   ) : (
                     filteredUsers.map((user) => (
                       <TableRow key={user.id}>
+                        <TableCell className="font-mono text-primary font-bold">{user.custom_id}</TableCell>
                         <TableCell className="font-medium">{user.full_name}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{getUserTypeBadge(user.role)}</TableCell>

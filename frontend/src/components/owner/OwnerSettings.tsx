@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountSettings } from "@/components/shared/AccountSettings";
+import { X, FileText } from "lucide-react";
 
 export const OwnerSettings = () => {
   const { toast } = useToast();
@@ -19,6 +20,7 @@ export const OwnerSettings = () => {
     companyName: "",
     contactEmail: "",
     address: "",
+    signatureUrl: "",
   });
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export const OwnerSettings = () => {
           companyName: data.company_name || "",
           contactEmail: data.contact_email || "",
           address: data.address || "",
+          signatureUrl: data.signature_url || "",
         });
       } else {
         // Reset profile if no data is found
@@ -50,12 +53,13 @@ export const OwnerSettings = () => {
           companyName: "",
           contactEmail: "",
           address: "",
+          signatureUrl: "",
         });
       }
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de charger le profil",
+        title: "Information",
+        description: "Impossible de charger les données du profil pour le moment.",
         variant: "destructive",
       });
     } finally {
@@ -75,6 +79,7 @@ export const OwnerSettings = () => {
         company_name: profile.companyName,
         contact_email: profile.contactEmail,
         address: profile.address,
+        signature_url: profile.signatureUrl,
       };
 
       const result = await updateOwnerProfile(profileData);
@@ -89,8 +94,8 @@ export const OwnerSettings = () => {
       });
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de mettre à jour le profil",
+        title: "Action impossible",
+        description: "La mise à jour du profil a échoué. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {
@@ -180,7 +185,72 @@ export const OwnerSettings = () => {
                 />
               </div>
 
-              <Button onClick={handleUpdateProfile} disabled={loading}>
+              <div className="space-y-4 pt-4 border-t">
+                <Label className="text-base font-semibold">Signature ou Cachet</Label>
+                <p className="text-sm text-muted-foreground">
+                  Cette signature ou cachet sera automatiquement apposé sur tous vos reçus de loyer.
+                </p>
+
+                <div className="flex flex-col gap-4">
+                  {profile.signatureUrl ? (
+                    <div className="relative w-48 h-32 border rounded-lg overflow-hidden bg-white flex items-center justify-center p-2">
+                      <img
+                        src={profile.signatureUrl}
+                        alt="Signature"
+                        className="max-w-full max-h-full object-contain"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6"
+                        onClick={() => setProfile({ ...profile, signatureUrl: "" })}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="w-48 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground gap-2 bg-muted/20">
+                      <FileText className="h-8 w-8 opacity-20" />
+                      <span className="text-xs">Aucune signature</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      className="max-w-xs"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        try {
+                          setLoading(true);
+                          const { uploadPhotos } = await import("@/lib/api");
+                          const urls = await uploadPhotos([file]);
+                          if (urls && urls.length > 0) {
+                            setProfile({ ...profile, signatureUrl: urls[0] });
+                            toast({
+                              title: "Signature téléchargée",
+                              description: "N'oubliez pas d'enregistrer les modifications.",
+                            });
+                          }
+                        } catch (error: any) {
+                          toast({
+                            title: "Transfert échoué",
+                            description: "Le chargement de l'image a rencontré un problème.",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Button onClick={handleUpdateProfile} disabled={loading} className="w-full sm:w-auto">
                 {loading ? "Enregistrement..." : "Enregistrer les modifications"}
               </Button>
             </CardContent>

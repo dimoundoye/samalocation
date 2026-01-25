@@ -217,7 +217,7 @@ const Search = () => {
               <p className="text-sm text-muted-foreground mt-2">Revenez plus tard pour voir les nouvelles offres.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {filteredProperties.map((property) => {
                 const ownerProfile = (property as any).owner_profiles
                   ? Array.isArray((property as any).owner_profiles)

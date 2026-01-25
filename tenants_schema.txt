@@ -1,0 +1,12 @@
+id varchar(36)
+user_id varchar(36)
+unit_id varchar(36)
+full_name varchar(255)
+phone varchar(50)
+email varchar(255)
+move_in_date date
+lease_end_date date
+deposit_amount int
+monthly_rent int
+status enum('active','pending','terminated')
+created_at datetime

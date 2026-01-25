@@ -146,7 +146,7 @@ const receiptController = {
             }
 
             // Générer le PDF
-            const doc = generateReceiptPDF(receipt);
+            const doc = await generateReceiptPDF(receipt);
 
             // Configurer les headers pour le téléchargement
             res.setHeader('Content-Type', 'application/pdf');

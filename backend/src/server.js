@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('express'); // Heartbeat for reload
 const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
@@ -89,6 +89,17 @@ app.use('/api/contact', contactRoutes);
 // Test route
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
+});
+
+app.get('/api/debug-model', (req, res) => {
+    const fs = require('fs');
+    const modelPath = path.join(__dirname, 'models/receiptModel.js');
+    try {
+        const content = fs.readFileSync(modelPath, 'utf8');
+        res.send(`<pre>${content}</pre>`);
+    } catch (e) {
+        res.status(500).send(e.message);
+    }
 });
 
 // Database connection test

@@ -19,10 +19,11 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, UserPlus, CheckCircle } from "lucide-react";
-import { searchUsers, assignTenant, createNotification } from "@/lib/api";
+import { searchUsers, assignTenant, createNotification, createTenantAccount } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Check, Copy, AlertCircle } from "lucide-react";
 
 interface AssignTenantDialogProps {
   open: boolean;
@@ -55,6 +56,8 @@ export const AssignTenantDialog = ({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [createAccount, setCreateAccount] = useState(false);
+  const [tempCredentials, setTempCredentials] = useState<{ customId: string, tempPassword: string } | null>(null);
 
   // Log pour debug
   useEffect(() => {
@@ -135,6 +138,8 @@ export const AssignTenantDialog = ({
       setSearchQuery("");
       setSearchResults([]);
       setSelectedUser(null);
+      setCreateAccount(false);
+      setTempCredentials(null);
     }
     onOpenChange(nextOpen);
   };
@@ -197,7 +202,7 @@ export const AssignTenantDialog = ({
       return;
     }
 
-    if (!fullName.trim()) {
+    if (!fullName.trim() && !createAccount) {
       toast({
         title: "Nom requis",
         description: "Veuillez renseigner le nom du locataire.",
@@ -215,22 +220,14 @@ export const AssignTenantDialog = ({
       return;
     }
 
-    // Pour les nouveaux locataires (sans user_id), email et phone sont requis
-    // Pour les utilisateurs existants, on utilisera leurs infos de profil
-    if (!selectedUser) {
+    // Pour les nouveaux locataires (sans user_id)
+    // On ne demande plus l'email et le téléphone obligatoirement si on crée un compte
+    // car le locataire remplira ces infos lui-même lors de sa première connexion.
+    if (!selectedUser && searchMode === "existing") {
       if (!email.trim()) {
         toast({
           title: "Email requis",
           description: "Veuillez renseigner l'adresse email du locataire.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!phone.trim()) {
-        toast({
-          title: "Téléphone requis",
-          description: "Veuillez renseigner le numéro de téléphone du locataire.",
           variant: "destructive",
         });
         return;
@@ -251,15 +248,38 @@ export const AssignTenantDialog = ({
     try {
       setSubmitting(true);
 
+      let userId = selectedUser?.id || null;
+      let accountResult = null;
+
+      // Create account if requested
+      if (searchMode === "new" && createAccount && !userId) {
+        try {
+          accountResult = await createTenantAccount({
+            name: fullName.trim() || "Nouveau Locataire",
+            email: email.trim(),
+            phone: phone.trim()
+          });
+          userId = accountResult.id;
+        } catch (error: any) {
+          toast({
+            title: "Erreur de création de compte",
+            description: error.message || "Impossible de créer le compte locataire.",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const tenantData: any = {
-        full_name: fullName.trim(),
+        full_name: fullName.trim() || (accountResult?.name) || "Nouveau Locataire",
         email: email.trim() || null,
         phone: phone.trim() || null,
         unit_id: selectedUnitId,
         monthly_rent: rentValue,
         move_in_date: moveInDate,
         status,
-        user_id: selectedUser?.id || null,
+        user_id: userId,
       };
 
       const insertedTenant = await assignTenant(tenantData);
@@ -268,16 +288,24 @@ export const AssignTenantDialog = ({
         throw new Error("Erreur lors de l'affectation du locataire");
       }
 
+      // Si on a créé des identifiants, les afficher MAINTENANT
+      if (accountResult) {
+        setTempCredentials({
+          customId: accountResult.customId,
+          tempPassword: accountResult.tempPassword
+        });
+      }
+
       // Si le locataire a un compte utilisateur, lui envoyer une notification
       if (insertedTenant.user_id) {
         try {
-          await createNotification(
-            insertedTenant.user_id,
-            "tenant",
-            "Nouveau bail",
-            `Vous avez été affecté(e) au bien ${insertedTenant.property_name || 'un nouveau bien'}`,
-            "/tenant-dashboard"
-          );
+          await createNotification({
+            user_id: insertedTenant.user_id,
+            type: "tenant",
+            title: "Nouveau bail",
+            message: `Vous avez été affecté(e) au bien ${insertedTenant.property_name || 'un nouveau bien'}`,
+            link: "/tenant-dashboard"
+          });
         } catch (notifError) {
           console.error("Error creating tenant notification:", notifError);
         }
@@ -289,12 +317,14 @@ export const AssignTenantDialog = ({
       });
 
       onSuccess();
-      handleClose(false);
+      if (!accountResult) {
+        handleClose(false);
+      }
     } catch (error: any) {
       console.error("Error assigning tenant:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'affecter ce locataire.",
+        description: error.message || "Impossible d'affecter ce locataire. Vérifiez que toutes les informations sont correctes.",
         variant: "destructive",
       });
     } finally {
@@ -330,7 +360,7 @@ export const AssignTenantDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
           <DialogTitle>Associer un locataire</DialogTitle>
           <DialogDescription>
@@ -418,154 +448,225 @@ export const AssignTenantDialog = ({
             <p className="text-sm text-muted-foreground">
               Créez un nouveau locataire qui n'a pas encore de compte.
             </p>
+            <div className="flex items-center space-x-2 p-2 border rounded-md bg-secondary/20">
+              <input
+                type="checkbox"
+                id="create-account"
+                checked={createAccount}
+                onChange={(e) => setCreateAccount(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="create-account" className="cursor-pointer">
+                Générer un compte de connexion (ID + Mot de passe)
+              </Label>
+            </div>
           </TabsContent>
         </Tabs>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Bien</Label>
-              <Select
-                value={selectedPropertyId}
-                onValueChange={(value) => {
-                  setSelectedPropertyId(value);
-                  setSelectedUnitId("");
-                  setMonthlyRent("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez un bien" />
-                </SelectTrigger>
-                <SelectContent>
-                  {!properties || properties.length === 0 ? (
-                    <SelectItem value="no-properties" disabled>
-                      Aucun bien disponible
-                    </SelectItem>
-                  ) : (
-                    properties.map((property) => (
-                      <SelectItem key={property.id} value={property.id}>
-                        {property.name || "Sans nom"}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+        {tempCredentials ? (
+          <div className="space-y-4 py-4 animate-in fade-in zoom-in duration-300">
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg text-center space-y-3">
+              <CheckCircle className="h-12 w-12 text-primary mx-auto" />
+              <h3 className="text-lg font-bold">Compte créé avec succès !</h3>
+              <p className="text-sm text-muted-foreground">
+                Veuillez copier ces informations et les transmettre au locataire. Elles ne seront plus affichées.
+              </p>
             </div>
 
-            <div>
-              <Label>Unité</Label>
-              <Select
-                value={selectedUnitId}
-                onValueChange={(value) => {
-                  setSelectedUnitId(value);
-                  const unit = availableUnits.find((item) => item.id === value);
-                  if (unit && unit.monthly_rent != null) {
-                    setMonthlyRent(String(unit.monthly_rent));
-                  } else {
+            <div className="grid grid-cols-1 gap-3">
+              <div className="p-3 border rounded-md flex items-center justify-between bg-white shadow-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase font-semibold">Identifiant (ID)</p>
+                  <p className="text-lg font-mono font-bold text-primary">{tempCredentials.customId}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(tempCredentials.customId);
+                    toast({ title: "Copié !", description: "L'identifiant a été copié." });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="p-3 border rounded-md flex items-center justify-between bg-white shadow-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase font-semibold">Mot de passe temporaire</p>
+                  <p className="text-lg font-mono font-bold text-primary">{tempCredentials.tempPassword}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(tempCredentials.tempPassword);
+                    toast({ title: "Copié !", description: "Le mot de passe a été copié." });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <p className="text-xs text-blue-800">
+                Le locataire sera invité à configurer son profil et changer son mot de passe lors de sa première connexion.
+              </p>
+            </div>
+
+            <Button className="w-full" onClick={() => handleClose(false)}>
+              J'ai copié les informations
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Bien</Label>
+                <Select
+                  value={selectedPropertyId}
+                  onValueChange={(value) => {
+                    setSelectedPropertyId(value);
+                    setSelectedUnitId("");
                     setMonthlyRent("");
-                  }
-                }}
-                disabled={!selectedPropertyId || availableUnits.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={selectedPropertyId ? "Sélectionnez une unité" : "Choisissez d'abord un bien"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {!availableUnits || availableUnits.length === 0 ? (
-                    <SelectItem value="no-units" disabled>
-                      {selectedPropertyId ? "Aucune unité disponible" : "Choisissez d'abord un bien"}
-                    </SelectItem>
-                  ) : (
-                    availableUnits.map((unit) => {
-                      const period =
-                        typeof unit?.rent_period === "string" ? unit.rent_period : "mois";
-                      return (
-                        <SelectItem key={unit.id} value={unit.id}>
-                          {unit.unit_number || "Sans numéro"} • {unit.monthly_rent?.toLocaleString() || "0"} F/{period}
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionnez un bien" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {!properties || properties.length === 0 ? (
+                      <SelectItem value="no-properties" disabled>
+                        Aucun bien disponible
+                      </SelectItem>
+                    ) : (
+                      properties.map((property) => (
+                        <SelectItem key={property.id} value={property.id}>
+                          {property.name || "Sans nom"}
                         </SelectItem>
-                      );
-                    })
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Nom complet *</Label>
-              <Input
-                value={fullName}
-                onChange={(e) => {
-                  setFullName(e.target.value);
-                  if (searchMode === "existing") setSelectedUser(null);
-                }}
-                placeholder="Nom et prénom"
-                disabled={!!selectedUser}
-              />
+              <div>
+                <Label>Unité</Label>
+                <Select
+                  value={selectedUnitId}
+                  onValueChange={(value) => {
+                    setSelectedUnitId(value);
+                    const unit = availableUnits.find((item) => item.id === value);
+                    if (unit && unit.monthly_rent != null) {
+                      setMonthlyRent(String(unit.monthly_rent));
+                    } else {
+                      setMonthlyRent("");
+                    }
+                  }}
+                  disabled={!selectedPropertyId || availableUnits.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={selectedPropertyId ? "Sélectionnez une unité" : "Choisissez d'abord un bien"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {!availableUnits || availableUnits.length === 0 ? (
+                      <SelectItem value="no-units" disabled>
+                        {selectedPropertyId ? "Aucune unité disponible" : "Choisissez d'abord un bien"}
+                      </SelectItem>
+                    ) : (
+                      availableUnits.map((unit) => {
+                        const period =
+                          typeof unit?.rent_period === "string" ? unit.rent_period : "mois";
+                        return (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.unit_number || "Sans numéro"} • {unit.monthly_rent?.toLocaleString() || "0"} F/{period}
+                          </SelectItem>
+                        );
+                      })
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (searchMode === "existing") setSelectedUser(null);
-                }}
-                placeholder="email@exemple.com"
-                disabled={!!selectedUser}
-              />
-            </div>
-            <div>
-              <Label>Téléphone</Label>
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Ex : +221 77 000 00 00"
-              />
-            </div>
-            <div>
-              <Label>Loyer mensuel (F CFA) *</Label>
-              <Input
-                type="number"
-                value={monthlyRent}
-                onChange={(e) => setMonthlyRent(e.target.value)}
-                placeholder="Ex : 150000"
-              />
-            </div>
-            <div>
-              <Label>Date d'entrée *</Label>
-              <Input
-                type="date"
-                value={moveInDate}
-                onChange={(e) => setMoveInDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Statut</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez un statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Actif</SelectItem>
-                  <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="inactive">Inactif</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={submitting}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Enregistrement..." : "Enregistrer"}
-            </Button>
-          </DialogFooter>
-        </form>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Nom complet *</Label>
+                <Input
+                  value={fullName}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    if (searchMode === "existing") setSelectedUser(null);
+                  }}
+                  placeholder="Nom et prénom"
+                  disabled={!!selectedUser}
+                />
+              </div>
+              <div>
+                <Label>Email (Optionnel)</Label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (searchMode === "existing") setSelectedUser(null);
+                  }}
+                  placeholder="email@exemple.com"
+                  disabled={!!selectedUser}
+                />
+              </div>
+              <div>
+                <Label>Téléphone (Optionnel)</Label>
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Ex : +221 77 000 00 00"
+                />
+              </div>
+              <div>
+                <Label>Loyer mensuel (F CFA) *</Label>
+                <Input
+                  type="number"
+                  value={monthlyRent}
+                  onChange={(e) => setMonthlyRent(e.target.value)}
+                  placeholder="Ex : 150000"
+                />
+              </div>
+              <div>
+                <Label>Date d'entrée *</Label>
+                <Input
+                  type="date"
+                  value={moveInDate}
+                  onChange={(e) => setMoveInDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Statut</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionnez un statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Actif</SelectItem>
+                    <SelectItem value="pending">En attente</SelectItem>
+                    <SelectItem value="terminated">Terminé</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={submitting}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

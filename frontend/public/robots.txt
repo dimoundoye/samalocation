@@ -6,4 +6,4 @@ Disallow: /owner-dashboard/
 Disallow: /tenant-dashboard/
 Disallow: /api/
 
-Sitemap: https://samalocation.netlify.app/sitemap.xml
+Sitemap: https://samalocation.com/sitemap.xml

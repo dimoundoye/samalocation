@@ -4,9 +4,11 @@ import { getMe } from "@/lib/api";
 
 interface User {
   id: string;
+  customId?: string;
   email: string;
   name: string;
   role: string;
+  setupRequired?: boolean;
 }
 
 interface AuthContextType {
@@ -46,7 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const token = localStorage.getItem("auth_token");
       if (token) {
         try {
-          const data = await getMe(token);
+          const data = await getMe();
           if (data?.user) {
             setUser(data.user);
             setUserRole(data.user.role);

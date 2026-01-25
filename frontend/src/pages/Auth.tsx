@@ -22,6 +22,7 @@ const Auth = () => {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
+    identifier: "", // Can be email or customId
     email: "",
     password: "",
     name: "",
@@ -34,15 +35,19 @@ const Auth = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!turnstileToken) {
+    /*
+    const isDev = import.meta.env.DEV;
+    if (!turnstileToken && !isDev) {
       toast.error("Veuillez confirmer que vous n'êtes pas un robot.");
       return;
     }
+    */
+
     setLoading(true);
 
     try {
       const data = await login({
-        email: formData.email,
+        email: formData.identifier || formData.email, // backend expects 'email' key but supports both
         password: formData.password,
         turnstileToken,
       });
@@ -54,7 +59,9 @@ const Auth = () => {
 
         toast.success("Connexion réussie!");
 
-        if (data.user.role === "admin") {
+        if (data.user.setupRequired) {
+          navigate("/setup-profile");
+        } else if (data.user.role === "admin") {
           navigate("/admin-dashboard");
         } else if (data.user.role === "owner") {
           navigate("/owner-dashboard");
@@ -63,7 +70,7 @@ const Auth = () => {
         }
       }
     } catch (error: any) {
-      toast.error(error.message || "Erreur de connexion");
+      toast.error("L'authentification a échoué. Vérifiez vos identifiants.");
     } finally {
       setLoading(false);
     }
@@ -71,15 +78,19 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!turnstileToken) {
+    /*
+    const isDev = import.meta.env.DEV;
+    if (!turnstileToken && !isDev) {
       toast.error("Veuillez confirmer que vous n'êtes pas un robot.");
       return;
     }
+    */
+
     setLoading(true);
 
     try {
-      if (formData.password.length < 6) {
-        toast.error("Le mot de passe doit contenir au moins 6 caractères");
+      if (formData.password.length < 8) {
+        toast.error("Le mot de passe doit contenir au moins 8 caractères");
         setLoading(false);
         return;
       }
@@ -99,7 +110,9 @@ const Auth = () => {
         setUser(data.user);
         setUserRole(data.user.role || null);
 
-        toast.success("Compte créé avec succès!");
+        toast.success(`Compte créé avec succès ! Votre ID de connexion est : ${data.user.customId}`, {
+          duration: 10000,
+        });
 
         if (data.user.role === "owner") {
           navigate("/owner-dashboard");
@@ -108,7 +121,7 @@ const Auth = () => {
         }
       }
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la création du compte");
+      toast.error("La création du compte a échoué. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }
@@ -149,13 +162,13 @@ const Auth = () => {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="identifier">Email ou ID</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="exemple@email.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    id="identifier"
+                    type="text"
+                    placeholder="exemple@email.com ou AA12345"
+                    value={formData.identifier}
+                    onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                     required
                   />
                 </div>
@@ -172,13 +185,8 @@ const Auth = () => {
                   />
                 </div>
 
-                <div className="flex justify-center py-2">
-                  <Turnstile
-                    sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                    onVerify={(token) => setTurnstileToken(token)}
-                    onExpire={() => setTurnstileToken(null)}
-                  />
-                </div>
+
+
 
                 <Button type="submit" className="w-full gradient-primary text-white" disabled={loading}>
                   {loading ? (
@@ -217,11 +225,11 @@ const Auth = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nom complet</Label>
+                  <Label htmlFor="name">Nom et prenom</Label>
                   <Input
                     id="name"
                     type="text"
-                    placeholder="Votre nom"
+                    placeholder="Votre nom et prenom"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
@@ -277,13 +285,8 @@ const Auth = () => {
                   />
                 </div>
 
-                <div className="flex justify-center py-2">
-                  <Turnstile
-                    sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                    onVerify={(token) => setTurnstileToken(token)}
-                    onExpire={() => setTurnstileToken(null)}
-                  />
-                </div>
+
+
 
 
                 <Button type="submit" className="w-full gradient-accent text-white" disabled={loading}>

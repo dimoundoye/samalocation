@@ -1,7 +1,7 @@
 import { getProperties, getPropertyById, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty } from "../api/properties";
 import { getMessages, sendMessage, markMessagesAsRead, deleteMessage } from "../api/messages";
 import { getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead } from "../api/notifications";
-import { login, signup, getMe, searchUsers } from "../api/auth";
+import { login, signup, getMe, searchUsers, createTenantAccount, completeSetup } from "../api/auth";
 import { getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile } from "../api/tenant";
 import { getOwnerProfile, updateOwnerProfile } from "../api/owner";
 import { getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt } from "../api/receipts";
@@ -16,7 +16,7 @@ export {
     getProperties, getPropertyById, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty,
     getMessages, sendMessage, markMessagesAsRead, deleteMessage,
     getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead,
-    getMe, searchUsers,
+    getMe, searchUsers, createTenantAccount, completeSetup,
     getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile,
     getOwnerProfile, updateOwnerProfile,
     getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt,

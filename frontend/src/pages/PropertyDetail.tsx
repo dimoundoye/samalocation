@@ -5,6 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import Navbar from "@/components/Navbar";
 import { useToast } from "@/hooks/use-toast";
 import { transformProperty, FormattedProperty } from "@/lib/property";
@@ -332,7 +339,7 @@ const PropertyDetail = () => {
                   <img
                     src={coverPhoto}
                     alt={property.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-contain bg-secondary/20 group-hover:scale-105 transition-transform duration-300"
                   />
                   <Badge
                     className={`absolute top-4 right-4 ${property.display_status === "available"
@@ -350,17 +357,17 @@ const PropertyDetail = () => {
                 </div>
 
                 {galleryPhotos.length > 0 && (
-                  <div className="flex gap-3 overflow-x-auto pb-2">
+                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                     {galleryPhotos.map((photo, index) => (
                       <button
                         key={index}
                         onClick={() => openGallery(index + 1)}
-                        className="min-w-[140px] md:min-w-[180px] h-24 rounded-lg overflow-hidden border hover:border-primary transition-colors cursor-pointer"
+                        className="w-24 h-16 md:w-32 md:h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all cursor-pointer"
                       >
                         <img
                           src={photo}
                           alt={`Photo ${index + 2}`}
-                          className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                          className="w-full h-full object-cover"
                         />
                       </button>
                     ))}
@@ -372,7 +379,7 @@ const PropertyDetail = () => {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle className="text-3xl mb-2">{property.name}</CardTitle>
+                      <CardTitle className="text-xl md:text-3xl mb-2">{property.name}</CardTitle>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <MapPin className="h-5 w-5" />
                         <span>{property.address}</span>
@@ -382,7 +389,7 @@ const PropertyDetail = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div>
-                    <span className="text-4xl font-bold text-primary">
+                    <span className="text-2xl md:text-4xl font-bold text-primary">
                       {property.rent_amount && property.rent_amount > 0
                         ? formatCurrency(property.rent_amount)
                         : "Prix sur demande"}
@@ -604,7 +611,7 @@ const PropertyDetail = () => {
 
           <section className="mt-16">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Biens similaires</h2>
+              <h2 className="text-xl md:text-2xl font-bold">Biens similaires</h2>
               <Button variant="ghost" onClick={() => navigate("/search")} className="text-primary hover:text-primary">
                 Voir tous les biens
               </Button>
@@ -621,32 +628,46 @@ const PropertyDetail = () => {
                 Aucun autre bien similaire n'est disponible pour le moment.
               </p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {suggestedProperties.map((suggestion) => {
-                  const ownerProfile = (suggestion as any).owner_profiles
-                    ? Array.isArray((suggestion as any).owner_profiles)
-                      ? (suggestion as any).owner_profiles[0]
-                      : (suggestion as any).owner_profiles
-                    : null;
-                  const ownerPhone = ownerProfile?.contact_phone || ownerProfile?.phone;
+              <Carousel
+                opts={{
+                  align: "start",
+                  loop: true,
+                  dragFree: true,
+                }}
+                className="w-full"
+              >
+                <CarouselContent className="-ml-4">
+                  {suggestedProperties.map((suggestion) => {
+                    const ownerProfile = (suggestion as any).owner_profiles
+                      ? Array.isArray((suggestion as any).owner_profiles)
+                        ? (suggestion as any).owner_profiles[0]
+                        : (suggestion as any).owner_profiles
+                      : null;
+                    const ownerPhone = ownerProfile?.contact_phone || ownerProfile?.phone;
 
-                  return (
-                    <PropertyCard
-                      key={suggestion.id}
-                      id={suggestion.id}
-                      image={suggestion.cover_photo || suggestion.photo_url || propertyFallback}
-                      title={suggestion.name}
-                      location={suggestion.address}
-                      price={suggestion.rent_amount || 0}
-                      type={suggestion.property_type}
-                      status={suggestion.display_status}
-                      bedrooms={suggestion.aggregated_bedrooms || undefined}
-                      rentPeriod={suggestion.primary_rent_period}
-                      ownerPhone={ownerPhone}
-                    />
-                  );
-                })}
-              </div>
+                    return (
+                      <CarouselItem key={suggestion.id} className="pl-4 basis-[85%] md:basis-1/2 lg:basis-1/3">
+                        <PropertyCard
+                          id={suggestion.id}
+                          image={suggestion.cover_photo || suggestion.photo_url || propertyFallback}
+                          title={suggestion.name}
+                          location={suggestion.address}
+                          price={suggestion.rent_amount || 0}
+                          type={suggestion.property_type}
+                          status={suggestion.display_status}
+                          bedrooms={suggestion.aggregated_bedrooms || undefined}
+                          rentPeriod={suggestion.primary_rent_period}
+                          ownerPhone={ownerPhone}
+                        />
+                      </CarouselItem>
+                    );
+                  })}
+                </CarouselContent>
+                <div className="hidden md:block">
+                  <CarouselPrevious className="-left-12" />
+                  <CarouselNext className="-right-12" />
+                </div>
+              </Carousel>
             )}
           </section>
         </div>
@@ -740,11 +761,11 @@ const PropertyDetail = () => {
               )}
 
               {/* Image principale */}
-              <div className="w-full h-full flex items-center justify-center p-4">
+              <div className="w-full h-full flex items-center justify-center p-4 lg:p-8">
                 <img
                   src={allPhotos[selectedImageIndex]}
                   alt={`Photo ${selectedImageIndex + 1}`}
-                  className="max-w-full max-h-full object-contain"
+                  className="max-w-full max-h-[70vh] lg:max-h-[80vh] object-contain shadow-2xl transition-all duration-300"
                 />
               </div>
 

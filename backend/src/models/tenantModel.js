@@ -5,7 +5,10 @@ const Tenant = {
      * Get active lease info for a tenant user  
      */
     async findActiveLeaseByUserId(userId) {
-        console.log('Finding active lease for userId:', userId);
+
+        // Récupérer le user_profile du locataire pour avoir son email (fallback)
+        const [profiles] = await db.query('SELECT email FROM user_profiles WHERE id = ?', [userId]);
+        const userEmail = profiles[0]?.email;
 
         const [tenants] = await db.query(`
             SELECT t.*, 
@@ -18,9 +21,10 @@ const Tenant = {
             LEFT JOIN property_units pu ON t.unit_id = pu.id
             LEFT JOIN properties p ON pu.property_id = p.id
             LEFT JOIN user_profiles owner_prof ON p.owner_id = owner_prof.id
-            WHERE t.user_id = ? AND t.status = 'active'
+            WHERE (t.user_id = ? OR (t.email = ? AND t.email IS NOT NULL AND t.email != '')) 
+            AND t.status IN ('active', 'pending')
             LIMIT 1
-        `, [userId]);
+        `, [userId, userEmail]);
 
         console.log('Found tenant lease:', tenants[0] || null);
 
