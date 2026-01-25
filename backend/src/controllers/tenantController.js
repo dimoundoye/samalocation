@@ -10,18 +10,17 @@ const tenantController = {
     async getMyLease(req, res, next) {
         try {
             const userId = req.user.id;
-            const lease = await Tenant.findActiveLeaseByUserId(userId);
+            const leases = await Tenant.findActiveLeasesByUserId(userId);
 
-            // Format the response to match frontend expectations
+            // Format the response: return the list of leases
+            // We keep a 'tenant' (first lease) and 'profile' for basic backward compatibility if needed, 
+            // but the main data is now 'leases'
             const responseData = {
-                tenant: lease,
-                profile: lease?.profile || null,
-                owner: lease?.ownerProfile || null,
-                ownerUserProfile: lease ? {
-                    full_name: lease.owner_name,
-                    email: lease.owner_email,
-                    phone: lease.owner_phone
-                } : null
+                leases: leases,
+                profile: leases.length > 0 ? leases[0].profile : null,
+                // These are for the primary lease
+                tenant: leases.length > 0 ? leases[0] : null,
+                owner: leases.length > 0 ? leases[0].ownerProfile : null,
             };
 
             return response.success(res, responseData);
@@ -144,24 +143,25 @@ const tenantController = {
             const userId = req.user.id;
             const { full_name, email, phone } = req.body;
 
-            // Trouver le locataire associé à cet utilisateur
-            const tenant = await Tenant.findActiveLeaseByUserId(userId);
-            if (!tenant) {
+            // Trouver les locations associées à cet utilisateur
+            const leases = await Tenant.findActiveLeasesByUserId(userId);
+            if (leases.length === 0) {
                 return response.error(res, 'No active lease found for this user', 404);
             }
 
-            // Mettre à jour les informations du locataire
+            // Mettre à jour les informations du locataire (on met à jour le premier trouvé ou tous?)
+            // En général le profil est lié au user_id, donc on met à jour tous les records 'tenants' liés?
+            // Le but ici est surtout de synchroniser le nom/email dans la table 'tenants'
             const updateData = {};
             if (full_name !== undefined) updateData.full_name = full_name;
             if (email !== undefined) updateData.email = email;
             if (phone !== undefined) updateData.phone = phone;
 
-            await Tenant.update(tenant.id, updateData);
+            for (const lease of leases) {
+                await Tenant.update(lease.id, updateData);
+            }
 
-            // Récupérer les données mises à jour
-            const updatedTenant = await Tenant.findById(tenant.id);
-
-            return response.success(res, updatedTenant, 'Profile updated successfully');
+            return response.success(res, null, 'Profile updated successfully for all leases');
         } catch (error) {
             console.error('Error in updateMyProfile:', error);
             next(error);

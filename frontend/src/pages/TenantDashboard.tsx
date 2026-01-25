@@ -39,6 +39,7 @@ const TenantDashboard = () => {
   const [currentOwnerId, setCurrentOwnerId] = useState<string | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [leases, setLeases] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -139,7 +140,9 @@ const TenantDashboard = () => {
     try {
       const data = await getTenantMe();
       setTenantProfile(data.profile);
-      setTenantData(data.tenant);
+      const activeLeases = data.leases || (data.tenant ? [data.tenant] : []);
+      setLeases(activeLeases);
+      setTenantData(activeLeases.length > 0 ? activeLeases[0] : null);
       setOwnerProfile(data.owner);
       setOwnerUserProfile(data.ownerUserProfile);
     } catch (error) {
@@ -401,71 +404,81 @@ const TenantDashboard = () => {
                   </Button>
                 </div>
 
-                {/* Current Rental */}
-                {tenantData ? (
-                  <Card className="shadow-soft">
-                    <CardHeader>
-                      <CardTitle>Ma location actuelle</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-col md:flex-row gap-6">
-                        {tenantData.photo_url && (
-                          <img
-                            src={tenantData.photo_url}
-                            alt="Location"
-                            className="w-full md:w-48 h-32 object-cover rounded-lg"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <h3 className="text-xl font-semibold mb-2">
-                            {tenantData.property_name}
-                          </h3>
-                          <p className="text-muted-foreground mb-4">
-                            {tenantData.property_address}
-                          </p>
+                {/* Current Rental(s) */}
+                <div className="space-y-4">
+                  <h2 className="text-xl font-bold px-1">Mes locations</h2>
+                  {leases.length > 0 ? (
+                    leases.map((lease) => (
+                      <Card key={lease.id} className="shadow-soft hover:shadow-md transition-shadow transition-all duration-300 overflow-hidden border-l-4 border-l-primary">
+                        <CardHeader className="pb-2">
+                          <div className="flex justify-between items-start">
+                            <CardTitle className="text-lg">Location: {lease.property_name}</CardTitle>
+                            <Badge variant={lease.status === "active" ? "default" : "secondary"}>
+                              {lease.status === "active" ? "Actif" : lease.status}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex flex-col md:flex-row gap-6">
+                            {lease.photo_url && (
+                              <img
+                                src={lease.photo_url}
+                                alt="Location"
+                                className="w-full md:w-32 h-24 object-cover rounded-lg"
+                              />
+                            )}
+                            <div className="flex-1">
+                              <p className="text-muted-foreground mb-3 text-sm flex items-center gap-1">
+                                <Search className="h-3 w-3" /> {lease.property_address}
+                              </p>
 
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <p className="text-sm text-muted-foreground">Loyer mensuel</p>
-                              <p className="text-lg font-bold text-primary">
-                                {formatCurrency(tenantData.monthly_rent)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Unité</p>
-                              <p className="text-lg font-semibold">
-                                {tenantData.unit_number}
-                              </p>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Loyer</p>
+                                  <p className="font-bold text-primary">
+                                    {formatCurrency(lease.monthly_rent)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Unité</p>
+                                  <p className="font-semibold">
+                                    {lease.unit_number || "N/A"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Arrivée</p>
+                                  <p className="text-sm">
+                                    {lease.move_in_date ? formatDate(lease.move_in_date) : "Non définie"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Propriétaire</p>
+                                  <p className="text-sm font-medium">
+                                    {lease.owner_name || "N/A"}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
                           </div>
-
-                          <Badge variant={tenantData.status === "active" ? "default" : "secondary"}>
-                            {tenantData.status === "active" ? "Actif" : tenantData.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="shadow-soft border-l-4 border-l-blue-500">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <Home className="h-12 w-12 text-blue-500 flex-shrink-0" />
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg mb-2">Aucune location active</h3>
-                          <p className="text-muted-foreground mb-4">
-                            Vous n'avez pas encore de location assignée. Contactez le propriétaire ou l'administrateur pour plus d'informations.
-                          </p>
-                          {ownerProfile && (
-                            <p className="text-sm text-muted-foreground">
-                              Vous pouvez néanmoins signaler un problème concernant votre propriétaire en utilisant le bouton ci-dessus.
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <Card className="shadow-soft border-l-4 border-l-blue-500">
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-4">
+                          <Home className="h-12 w-12 text-blue-500 flex-shrink-0" />
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg mb-2">Aucune location active</h3>
+                            <p className="text-muted-foreground mb-4">
+                              Vous n'avez pas encore de location assignée. Contactez le propriétaire ou l'administrateur pour plus d'informations.
                             </p>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
@@ -539,21 +552,20 @@ const TenantDashboard = () => {
                             }
                           });
 
-                          // Si on a un locataire actif avec un propriétaire, l'ajouter même s'il n'y a pas encore de messages
-                          if (tenantData?.owner_id) {
-                            const ownerId = tenantData.owner_id;
-                            if (!contacts.has(ownerId)) {
-                              contacts.set(ownerId, {
-                                id: `owner_${ownerId}`,
-                                user_id: ownerId,
-                                full_name: "Mon propriétaire",
-                                email: "",
-                                subtitle: tenantData.property_name || "Propriétaire",
+                          // Ajouter tous les propriétaires des baux actifs même s'il n'y a pas encore de messages
+                          leases.forEach((lease) => {
+                            if (lease.owner_id && !contacts.has(lease.owner_id)) {
+                              contacts.set(lease.owner_id, {
+                                id: `owner_${lease.owner_id}`,
+                                user_id: lease.owner_id,
+                                full_name: lease.owner_name || "Mon propriétaire",
+                                email: lease.owner_email || "",
+                                subtitle: lease.property_name || "Propriétaire",
                                 type: "owner",
                                 unreadCount: 0,
                               });
                             }
-                          }
+                          });
 
                           // Ajouter le nombre de messages non lus à chaque contact
                           contacts.forEach((contact, userId) => {

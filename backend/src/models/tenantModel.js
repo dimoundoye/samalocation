@@ -2,10 +2,9 @@ const db = require('../config/db');
 
 const Tenant = {
     /**
-     * Get active lease info for a tenant user  
+     * Get all active lease info for a tenant user  
      */
-    async findActiveLeaseByUserId(userId) {
-
+    async findActiveLeasesByUserId(userId) {
         // Récupérer le user_profile du locataire pour avoir son email (fallback)
         const [profiles] = await db.query('SELECT email FROM user_profiles WHERE id = ?', [userId]);
         const userEmail = profiles[0]?.email;
@@ -23,15 +22,11 @@ const Tenant = {
             LEFT JOIN user_profiles owner_prof ON p.owner_id = owner_prof.id
             WHERE (t.user_id = ? OR (t.email = ? AND t.email IS NOT NULL AND t.email != '')) 
             AND t.status IN ('active', 'pending')
-            LIMIT 1
         `, [userId, userEmail]);
 
-        console.log('Found tenant lease:', tenants[0] || null);
-
-        // Si on trouve un tenant, récupérer aussi le user_profile et tenant_profile
-        if (tenants[0]) {
-            const tenant = tenants[0];
-
+        // Pour chaque lease, récupérer les profils
+        const enrichedLeases = [];
+        for (const tenant of tenants) {
             // Récupérer le user_profile du locataire
             const [userProfile] = await db.query(`
                 SELECT id, email, full_name, phone, role
@@ -54,10 +49,10 @@ const Tenant = {
             }
 
             tenant.profile = userProfile[0] || null;
-            return tenant;
+            enrichedLeases.push(tenant);
         }
 
-        return null;
+        return enrichedLeases;
     },
 
     /**

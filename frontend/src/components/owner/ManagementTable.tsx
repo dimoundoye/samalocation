@@ -396,13 +396,15 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
                                 {Object.entries(groupedTenants).map(([propId, group]) => (
                                     <>
                                         {/* Property Group Header */}
-                                        <TableRow key={`prop-${propId}`} className="bg-muted/20">
-                                            <TableCell colSpan={months.length + 2} className="py-2 px-4 font-bold text-primary flex items-center gap-2">
-                                                <Building2 className="h-4 w-4" />
-                                                {group.propertyName}
-                                                <Badge variant="outline" className="ml-2 font-normal">
-                                                    {group.tenants.length} Locataire{group.tenants.length > 1 ? 's' : ''}
-                                                </Badge>
+                                        <TableRow key={`prop-${propId}`} className="bg-primary/10 hover:bg-primary/15 transition-colors">
+                                            <TableCell colSpan={months.length + 2} className="py-2.5 px-4 font-bold text-primary border-b border-primary/20">
+                                                <div className="flex items-center gap-2">
+                                                    <Building2 className="h-4 w-4" />
+                                                    <span className="uppercase tracking-wider text-xs">{group.propertyName}</span>
+                                                    <Badge variant="outline" className="ml-2 font-normal bg-white/50">
+                                                        {group.tenants.length} Locataire{group.tenants.length > 1 ? 's' : ''}
+                                                    </Badge>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
 
@@ -457,7 +459,7 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
 
                                         {/* Property Subtotal Row */}
                                         <TableRow key={`subtotal-${propId}`} className="bg-primary/5 font-semibold">
-                                            <TableCell className="sticky left-0 bg-primary/5 z-10 border-r text-primary">
+                                            <TableCell className="sticky left-0 bg-primary/5 z-10 border-r border-t border-primary/20 text-primary">
                                                 TOTAL {group.propertyName.toUpperCase()}
                                             </TableCell>
                                             {months.map((month) => {
@@ -484,6 +486,11 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
                                                     return acc + tenantTotal;
                                                 }, 0))}
                                             </TableCell>
+                                        </TableRow>
+
+                                        {/* Spacer row for better separation between groups */}
+                                        <TableRow className="h-4 border-none bg-transparent hover:bg-transparent">
+                                            <TableCell colSpan={months.length + 2} className="border-none py-2" />
                                         </TableRow>
                                     </>
                                 ))}

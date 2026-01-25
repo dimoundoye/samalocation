@@ -45,7 +45,8 @@ const authController = {
      */
     async signup(req, res, next) {
         try {
-            const { email, password, name, phone, role, companyName, turnstileToken } = req.body;
+            let { email, password, name, phone, role, companyName, turnstileToken } = req.body;
+            email = email?.toLowerCase();
 
             // Vérification Turnstile
             const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);
@@ -92,7 +93,8 @@ const authController = {
      */
     async login(req, res, next) {
         try {
-            const { email, password, turnstileToken } = req.body; // email is now identifier (email or ID)
+            let { email, password, turnstileToken } = req.body; // email is now identifier (email or ID)
+            email = email?.toLowerCase();
 
             // Vérification Turnstile
             const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);

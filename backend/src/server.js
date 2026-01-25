@@ -43,9 +43,9 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
-            connectSrc: ["'self'", "https://res.cloudinary.com", "https://samalocation.onrender.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "*"], // Allow all images (vibrant design)
+            connectSrc: ["'self'", "https://res.cloudinary.com", "*"], // Allow connections to any (Cloudinary, backend, etc)
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
@@ -54,11 +54,7 @@ app.use(helmet({
     },
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginEmbedderPolicy: false,
-    hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true
-    },
+    hsts: false, // 🛠️ Désactiver HSTS pour éviter les erreurs de protocole SSL en développement/déploiement précoce
     frameguard: { action: "deny" },
     xContentTypeOptions: true,
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },

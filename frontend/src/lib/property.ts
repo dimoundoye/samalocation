@@ -20,6 +20,8 @@ export interface FormattedProperty extends RawProperty {
   cover_photo: string | null;
   available_units: number;
   aggregated_bedrooms: number;
+  aggregated_area: number;
+  aggregated_bathrooms: number;
   property_units: any[];
   primary_rent_period: "jour" | "semaine" | "mois";
 }
@@ -97,6 +99,28 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
     return sum;
   }, 0);
 
+  const aggregatedArea = units.reduce((sum, unit) => {
+    if (typeof unit?.area_sqm === "number") {
+      return sum + unit.area_sqm;
+    }
+    if (typeof unit?.area_sqm === "string") {
+      const parsed = parseInt(unit.area_sqm, 10);
+      return sum + (isNaN(parsed) ? 0 : parsed);
+    }
+    return sum;
+  }, 0);
+
+  const aggregatedBathrooms = units.reduce((sum, unit) => {
+    if (typeof unit?.bathrooms === "number") {
+      return sum + unit.bathrooms;
+    }
+    if (typeof unit?.bathrooms === "string") {
+      const parsed = parseInt(unit.bathrooms, 10);
+      return sum + (isNaN(parsed) ? 0 : parsed);
+    }
+    return sum;
+  }, 0);
+
   const isPublished = property.is_published ?? property.status === "published";
   const hasUnitsInfo = units.length > 0;
   const hasAvailability = availableUnits.length > 0 || !hasUnitsInfo;
@@ -122,6 +146,8 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
     display_status: displayStatus,
     cover_photo: coverPhoto,
     aggregated_bedrooms: aggregatedBedrooms,
+    aggregated_area: aggregatedArea,
+    aggregated_bathrooms: aggregatedBathrooms,
     photos: photosArray,
     primary_rent_period: primaryRentPeriod,
   };

@@ -17,7 +17,7 @@ const Property = {
         // Pour chaque propriété, récupérer ses unités
         for (let i = 0; i < rows.length; i++) {
             const [units] = await db.query(
-                'SELECT id, monthly_rent, is_available, unit_type, bedrooms, rent_period, unit_number FROM property_units WHERE property_id = ?',
+                'SELECT id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, area_sqm, rent_period, unit_number FROM property_units WHERE property_id = ?',
                 [rows[i].id]
             );
             rows[i].property_units = units;
@@ -46,7 +46,7 @@ const Property = {
         // Pour chaque propriété, récupérer ses unités
         for (let i = 0; i < rows.length; i++) {
             const [units] = await db.query(
-                'SELECT id, monthly_rent, is_available, unit_type, bedrooms, rent_period, unit_number FROM property_units WHERE property_id = ?',
+                'SELECT id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, area_sqm, rent_period, unit_number FROM property_units WHERE property_id = ?',
                 [rows[i].id]
             );
             rows[i].property_units = units;

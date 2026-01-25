@@ -74,6 +74,7 @@ const OwnerDashboard = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem("sidebarCollapsed") === "true";
   });
+  const [tenantSearch, setTenantSearch] = useState("");
 
   const revenueData = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -781,14 +782,24 @@ const OwnerDashboard = () => {
                     {tenants.length} locataire{tenants.length > 1 ? "s" : ""} enregistré{tenants.length > 1 ? "s" : ""}
                   </p>
                 </div>
-                <Button
-                  className="w-full sm:w-auto"
-                  onClick={() => setAssignTenantOpen(true)}
-                  disabled={properties.length === 0}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Affecter un locataire
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <div className="relative w-full sm:w-64">
+                    <Input
+                      placeholder="Rechercher un locataire..."
+                      value={tenantSearch}
+                      onChange={(e) => setTenantSearch(e.target.value)}
+                      className="pl-3 py-1 text-sm h-9"
+                    />
+                  </div>
+                  <Button
+                    className="w-full sm:w-auto"
+                    onClick={() => setAssignTenantOpen(true)}
+                    disabled={properties.length === 0}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Affecter un locataire
+                  </Button>
+                </div>
               </div>
 
               <Card className="shadow-soft">
@@ -796,147 +807,159 @@ const OwnerDashboard = () => {
                   <CardTitle>Liste des locataires</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {tenants.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Aucun locataire enregistré</p>
-                  ) : (
-                    <>
-                      {/* Mobile Card View */}
-                      <div className="md:hidden space-y-4">
-                        {tenants.map((tenant) => (
-                          <Card key={`mobile-tenant-${tenant.id}`} className="p-4 border shadow-sm">
-                            <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <h3 className="font-bold text-lg">{tenant.full_name}</h3>
-                                <p className="text-sm text-primary font-medium">{tenant.property_name}</p>
-                                <p className="text-xs text-muted-foreground">{tenant.unit_number || 'Unité'}</p>
-                              </div>
-                              <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
-                                {tenant.status === "active" ? "Actif" : "Inactif"}
-                              </Badge>
-                            </div>
+                  {(() => {
+                    const filteredTenants = tenants.filter(t =>
+                      t.full_name.toLowerCase().includes(tenantSearch.toLowerCase()) ||
+                      t.email.toLowerCase().includes(tenantSearch.toLowerCase()) ||
+                      (t.property_name || "").toLowerCase().includes(tenantSearch.toLowerCase())
+                    );
 
-                            <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                              <div className="bg-muted/30 p-2 rounded">
-                                <span className="text-[10px] text-muted-foreground uppercase block">Loyer</span>
-                                <span className="font-semibold">{formatCurrency(tenant.monthly_rent)}</span>
-                              </div>
-                              <div className="bg-muted/30 p-2 rounded">
-                                <span className="text-[10px] text-muted-foreground uppercase block">Contact</span>
-                                <span className="truncate block text-xs">{tenant.phone}</span>
-                              </div>
-                            </div>
+                    if (filteredTenants.length === 0) {
+                      return <p className="text-center text-muted-foreground py-8">
+                        {tenantSearch ? "Aucun locataire ne correspond à votre recherche" : "Aucun locataire enregistré"}
+                      </p>;
+                    }
 
-                            <div className="flex gap-2 pt-3 border-t">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1"
-                                onClick={() => {
-                                  setSelectedChat(tenant);
-                                  setActiveTab("messages");
-                                }}
-                              >
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                Chat
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1"
-                                onClick={() => {
-                                  setSelectedPropertyForReceipt(tenant);
-                                  setCreateReceiptOpen(true);
-                                }}
-                              >
-                                Reçu
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="px-3"
-                                onClick={() => {
-                                  setSelectedTenantForHistory(tenant);
-                                  setHistoryDialogOpen(true);
-                                }}
-                              >
-                                <History className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
+                    return (
+                      <>
+                        {/* Mobile Card View */}
+                        <div className="md:hidden space-y-4">
+                          {filteredTenants.map((tenant) => (
+                            <Card key={`mobile-tenant-${tenant.id}`} className="p-4 border shadow-sm">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  <h3 className="font-bold text-lg">{tenant.full_name}</h3>
+                                  <p className="text-sm text-primary font-medium">{tenant.property_name}</p>
+                                  <p className="text-xs text-muted-foreground">{tenant.unit_number || 'Unité'}</p>
+                                </div>
+                                <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
+                                  {tenant.status === "active" ? "Actif" : "Inactif"}
+                                </Badge>
+                              </div>
 
-                      {/* Desktop Table View */}
-                      <div className="hidden md:block overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Nom</TableHead>
-                              <TableHead>Contact</TableHead>
-                              <TableHead>Bien</TableHead>
-                              <TableHead>Loyer mensuel</TableHead>
-                              <TableHead>Statut</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {tenants.map((tenant) => (
-                              <TableRow key={tenant.id}>
-                                <TableCell className="font-medium">{tenant.full_name}</TableCell>
-                                <TableCell>
-                                  <div className="text-sm">
-                                    <div>{tenant.email}</div>
-                                    <div className="text-muted-foreground">{tenant.phone}</div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>{tenant.property_name}</TableCell>
-                                <TableCell>{formatCurrency(tenant.monthly_rent)}</TableCell>
-                                <TableCell>
-                                  <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
-                                    {tenant.status === "active" ? "Actif" : "Inactif"}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedChat(tenant);
-                                        setActiveTab("messages");
-                                      }}
-                                    >
-                                      <MessageSquare className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedPropertyForReceipt(tenant);
-                                        setCreateReceiptOpen(true);
-                                      }}
-                                    >
-                                      Reçu
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedTenantForHistory(tenant);
-                                        setHistoryDialogOpen(true);
-                                      }}
-                                    >
-                                      <History className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
+                              <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                                <div className="bg-muted/30 p-2 rounded">
+                                  <span className="text-[10px] text-muted-foreground uppercase block">Loyer</span>
+                                  <span className="font-semibold">{formatCurrency(tenant.monthly_rent)}</span>
+                                </div>
+                                <div className="bg-muted/30 p-2 rounded">
+                                  <span className="text-[10px] text-muted-foreground uppercase block">Contact</span>
+                                  <span className="truncate block text-xs">{tenant.phone}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2 pt-3 border-t">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => {
+                                    setSelectedChat(tenant);
+                                    setActiveTab("messages");
+                                  }}
+                                >
+                                  <MessageSquare className="h-4 w-4 mr-2" />
+                                  Chat
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => {
+                                    setSelectedPropertyForReceipt(tenant);
+                                    setCreateReceiptOpen(true);
+                                  }}
+                                >
+                                  Reçu
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="px-3"
+                                  onClick={() => {
+                                    setSelectedTenantForHistory(tenant);
+                                    setHistoryDialogOpen(true);
+                                  }}
+                                >
+                                  <History className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Nom</TableHead>
+                                <TableHead>Contact</TableHead>
+                                <TableHead>Bien</TableHead>
+                                <TableHead>Loyer mensuel</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead>Actions</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </>
-                  )}
+                            </TableHeader>
+                            <TableBody>
+                              {filteredTenants.map((tenant) => (
+                                <TableRow key={tenant.id}>
+                                  <TableCell className="font-medium">{tenant.full_name}</TableCell>
+                                  <TableCell>
+                                    <div className="text-sm">
+                                      <div>{tenant.email}</div>
+                                      <div className="text-muted-foreground">{tenant.phone}</div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{tenant.property_name}</TableCell>
+                                  <TableCell>{formatCurrency(tenant.monthly_rent)}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
+                                      {tenant.status === "active" ? "Actif" : "Inactif"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedChat(tenant);
+                                          setActiveTab("messages");
+                                        }}
+                                      >
+                                        <MessageSquare className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedPropertyForReceipt(tenant);
+                                          setCreateReceiptOpen(true);
+                                        }}
+                                      >
+                                        Reçu
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedTenantForHistory(tenant);
+                                          setHistoryDialogOpen(true);
+                                        }}
+                                      >
+                                        <History className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </div>

@@ -237,6 +237,8 @@ const Search = () => {
                     type={property.property_type}
                     status={property.display_status}
                     bedrooms={property.aggregated_bedrooms || undefined}
+                    area={property.aggregated_area || undefined}
+                    bathrooms={property.aggregated_bathrooms || undefined}
                     rentPeriod={property.primary_rent_period}
                     isApplied={currentUserId && property.id ? appliedPropertyIds.includes(property.id) : false}
                     ownerPhone={ownerPhone}

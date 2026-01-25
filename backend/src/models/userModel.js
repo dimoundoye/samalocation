@@ -5,15 +5,17 @@ const User = {
      * Find user by email
      */
     async findByEmailOrId(identifier) {
+        const normalizedIdentifier = identifier?.toLowerCase();
         const [users] = await db.query(
-            'SELECT * FROM users WHERE email = ? OR custom_id = ?',
-            [identifier, identifier]
+            'SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(custom_id) = ?',
+            [normalizedIdentifier, normalizedIdentifier]
         );
         return users[0] || null;
     },
 
     async findByEmail(email) {
-        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        const normalizedEmail = email?.toLowerCase();
+        const [users] = await db.query('SELECT * FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
         return users[0] || null;
     },
 

@@ -83,6 +83,8 @@ const Index = () => {
       type: "Appartement",
       status: "available" as const,
       bedrooms: 3,
+      bathrooms: 2,
+      area: 120,
       rentPeriod: "mois" as const,
     },
     {
@@ -93,6 +95,8 @@ const Index = () => {
       type: "Maison",
       status: "available" as const,
       bedrooms: 4,
+      bathrooms: 3,
+      area: 250,
       rentPeriod: "mois" as const,
     },
     {
@@ -103,6 +107,8 @@ const Index = () => {
       type: "Studio",
       status: "occupied" as const,
       bedrooms: 1,
+      bathrooms: 1,
+      area: 35,
       rentPeriod: "mois" as const,
     },
   ] as const;
@@ -336,6 +342,8 @@ const Index = () => {
                   type={property.type}
                   status={property.status}
                   bedrooms={property.bedrooms}
+                  bathrooms={property.bathrooms}
+                  area={property.area}
                   rentPeriod={property.rentPeriod}
                 />
               ))}
@@ -359,7 +367,7 @@ const Index = () => {
                   const ownerPhone = ownerProfile?.contact_phone || ownerProfile?.phone;
 
                   return (
-                    <CarouselItem key={property.id} className="pl-4 basis-[85%] md:basis-1/2 lg:basis-1/4">
+                    <CarouselItem key={property.id} className="pl-4 basis-full md:basis-1/2 lg:basis-1/4">
                       <PropertyCard
                         id={property.id}
                         image={property.cover_photo || property.photo_url || property1}
@@ -369,6 +377,8 @@ const Index = () => {
                         type={property.property_type}
                         status={property.display_status}
                         bedrooms={property.aggregated_bedrooms || undefined}
+                        area={property.aggregated_area || undefined}
+                        bathrooms={property.aggregated_bathrooms || undefined}
                         rentPeriod={property.primary_rent_period}
                         isApplied={property.id ? appliedPropertyIds.includes(property.id) : false}
                         ownerPhone={ownerPhone}

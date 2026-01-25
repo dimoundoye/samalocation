@@ -332,41 +332,54 @@ const PropertyDetail = () => {
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <div className="space-y-4">
-                <div
-                  className="relative h-[320px] md:h-[400px] rounded-xl overflow-hidden shadow-medium cursor-pointer group"
-                  onClick={() => openGallery(0)}
-                >
-                  <img
-                    src={coverPhoto}
-                    alt={property.name}
-                    className="w-full h-full object-contain bg-secondary/20 group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <Badge
-                    className={`absolute top-4 right-4 ${property.display_status === "available"
-                      ? "bg-green-500 hover:bg-green-600"
-                      : "bg-muted hover:bg-muted"
-                      }`}
-                  >
-                    {property.display_status === "available" ? "Disponible" : "Non disponible"}
-                  </Badge>
-                  {allPhotos.length > 1 && (
-                    <div className="absolute bottom-4 left-4 bg-black/60 text-white px-3 py-1 rounded-md text-sm">
-                      Voir toutes les photos ({allPhotos.length})
-                    </div>
-                  )}
+                <div className="relative rounded-xl overflow-hidden shadow-medium bg-secondary/20 group">
+                  <Carousel className="w-full" opts={{ loop: true }}>
+                    <CarouselContent>
+                      {allPhotos.map((photo, index) => (
+                        <CarouselItem key={index} className="relative aspect-video md:aspect-[16/10] overflow-hidden cursor-pointer" onClick={() => openGallery(index)}>
+                          <img
+                            src={photo}
+                            alt={`${property.name} - Photo ${index + 1}`}
+                            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                          />
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    {allPhotos.length > 1 && (
+                      <>
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-2 md:pl-4 pointer-events-none">
+                          <CarouselPrevious className="relative pointer-events-auto h-8 w-8 md:h-10 md:w-10 bg-white/20 hover:bg-white/40 border-none text-white backdrop-blur-sm" />
+                        </div>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 md:pr-4 pointer-events-none">
+                          <CarouselNext className="relative pointer-events-auto h-8 w-8 md:h-10 md:w-10 bg-white/20 hover:bg-white/40 border-none text-white backdrop-blur-sm" />
+                        </div>
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-medium tracking-wide">
+                          {allPhotos.length} photos
+                        </div>
+                      </>
+                    )}
+                    <Badge
+                      className={`absolute top-4 right-4 z-10 ${property.display_status === "available"
+                        ? "bg-green-500 hover:bg-green-600"
+                        : "bg-muted hover:bg-muted"
+                        }`}
+                    >
+                      {property.display_status === "available" ? "Disponible" : "Non disponible"}
+                    </Badge>
+                  </Carousel>
                 </div>
 
-                {galleryPhotos.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                    {galleryPhotos.map((photo, index) => (
+                {allPhotos.length > 1 && (
+                  <div className="hidden md:flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                    {allPhotos.map((photo, index) => (
                       <button
                         key={index}
-                        onClick={() => openGallery(index + 1)}
-                        className="w-24 h-16 md:w-32 md:h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all cursor-pointer"
+                        onClick={() => openGallery(index)}
+                        className="w-24 h-16 md:w-32 md:h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all cursor-pointer opacity-70 hover:opacity-100"
                       >
                         <img
                           src={photo}
-                          alt={`Photo ${index + 2}`}
+                          alt={`Thumbnail ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
                       </button>
@@ -646,7 +659,7 @@ const PropertyDetail = () => {
                     const ownerPhone = ownerProfile?.contact_phone || ownerProfile?.phone;
 
                     return (
-                      <CarouselItem key={suggestion.id} className="pl-4 basis-[85%] md:basis-1/2 lg:basis-1/3">
+                      <CarouselItem key={suggestion.id} className="pl-4 basis-full md:basis-1/2 lg:basis-1/3">
                         <PropertyCard
                           id={suggestion.id}
                           image={suggestion.cover_photo || suggestion.photo_url || propertyFallback}
@@ -656,6 +669,8 @@ const PropertyDetail = () => {
                           type={suggestion.property_type}
                           status={suggestion.display_status}
                           bedrooms={suggestion.aggregated_bedrooms || undefined}
+                          area={suggestion.aggregated_area || undefined}
+                          bathrooms={suggestion.aggregated_bathrooms || undefined}
                           rentPeriod={suggestion.primary_rent_period}
                           ownerPhone={ownerPhone}
                         />

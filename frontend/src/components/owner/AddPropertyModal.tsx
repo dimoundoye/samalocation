@@ -91,7 +91,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
   const propertyTypes = [
     { value: "maison", label: "Maison", icon: Home },
     { value: "villa", label: "Villa", icon: Layers },
-    { value: "appartement", label: "Appartement", icon: Building2 },
+    { value: "appartement", label: "Appartement ou Studio", icon: Building2 },
     { value: "chambre", label: "Chambre", icon: BedDouble },
     { value: "garage", label: "Garage", icon: Warehouse },
     { value: "locale", label: "Local", icon: Store },

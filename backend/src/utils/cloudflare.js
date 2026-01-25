@@ -7,9 +7,13 @@ const fetch = require('node-fetch');
  * @returns {Promise<boolean>} - True si le jeton est valide
  */
 async function verifyTurnstileToken(token, remoteIp = null) {
-    if (!token) return false;
+    // 🧪 Auto-bypass en développement/test pour faciliter les tests locaux
+    if (process.env.NODE_ENV !== 'production') {
+        // console.log('🛡️ Turnstile bypass actif (Mode Dévelopement)');
+        return true;
+    }
 
-    const secretKey = process.env.TURNSTILE_SECRET_KEY;
+    if (!token) return false;
     if (!secretKey) {
         console.warn('⚠️ TURNSTILE_SECRET_KEY non configuré dans le backend.');
         return true; // Ne pas bloquer si la clé est absente (mode dégradé)

@@ -48,7 +48,7 @@ const Auth = () => {
       const data = await login({
         email: formData.identifier || formData.email, // backend expects 'email' key but supports both
         password: formData.password,
-        turnstileToken,
+        turnstileToken: turnstileToken || "",
       });
 
       if (data.token) {
@@ -100,7 +100,7 @@ const Auth = () => {
         phone: formData.phone,
         role: formData.userType,
         companyName: formData.userType === "owner" ? formData.companyName : null,
-        turnstileToken,
+        turnstileToken: turnstileToken || "",
       });
 
       if (data.token) {
@@ -181,12 +181,15 @@ const Auth = () => {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
                   />
-                </div>                <div className="flex justify-center py-2">
-                  <Turnstile
-                    sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                    onVerify={(token) => setTurnstileToken(token)}
-                  />
                 </div>
+                {import.meta.env.PROD && (
+                  <div className="flex justify-center py-2">
+                    <Turnstile
+                      sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                      onVerify={(token) => setTurnstileToken(token)}
+                    />
+                  </div>
+                )}
 
                 <Button type="submit" className="w-full gradient-primary text-white" disabled={loading}>
                   {loading ? (
@@ -284,12 +287,14 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <div className="flex justify-center py-2">
-                  <Turnstile
-                    sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                    onVerify={(token) => setTurnstileToken(token)}
-                  />
-                </div>
+                {import.meta.env.PROD && (
+                  <div className="flex justify-center py-2">
+                    <Turnstile
+                      sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                      onVerify={(token) => setTurnstileToken(token)}
+                    />
+                  </div>
+                )}
 
                 <Button type="submit" className="w-full gradient-accent text-white" disabled={loading}>
                   {loading ? (
