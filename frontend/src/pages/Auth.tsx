@@ -35,13 +35,12 @@ const Auth = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    /*
     const isDev = import.meta.env.DEV;
     if (!turnstileToken && !isDev) {
       toast.error("Veuillez confirmer que vous n'êtes pas un robot.");
+      setLoading(false);
       return;
     }
-    */
 
     setLoading(true);
 
@@ -78,13 +77,12 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    /*
     const isDev = import.meta.env.DEV;
     if (!turnstileToken && !isDev) {
       toast.error("Veuillez confirmer que vous n'êtes pas un robot.");
+      setLoading(false);
       return;
     }
-    */
 
     setLoading(true);
 
@@ -183,10 +181,12 @@ const Auth = () => {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
                   />
+                </div>                <div className="flex justify-center py-2">
+                  <Turnstile
+                    sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                    onVerify={(token) => setTurnstileToken(token)}
+                  />
                 </div>
-
-
-
 
                 <Button type="submit" className="w-full gradient-primary text-white" disabled={loading}>
                   {loading ? (
@@ -284,10 +284,12 @@ const Auth = () => {
                     required
                   />
                 </div>
-
-
-
-
+                <div className="flex justify-center py-2">
+                  <Turnstile
+                    sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                    onVerify={(token) => setTurnstileToken(token)}
+                  />
+                </div>
 
                 <Button type="submit" className="w-full gradient-accent text-white" disabled={loading}>
                   {loading ? (

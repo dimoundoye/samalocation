@@ -4,6 +4,7 @@ const { generateToken, verifyToken, generateVerificationToken } = require('../ut
 const { sendVerificationEmail } = require('../utils/emailService');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const { verifyTurnstileToken } = require('../utils/cloudflare');
 
 /**
  * Generate a custom ID: 2 uppercase letters + 5 digits
@@ -44,7 +45,13 @@ const authController = {
      */
     async signup(req, res, next) {
         try {
-            const { email, password, name, phone, role, companyName } = req.body;
+            const { email, password, name, phone, role, companyName, turnstileToken } = req.body;
+
+            // Vérification Turnstile
+            const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);
+            if (!isHuman) {
+                return response.error(res, "Veuillez confirmer que vous n'êtes pas un robot.", 403);
+            }
 
             const existingUser = await User.findByEmail(email);
             if (existingUser) {
@@ -85,7 +92,13 @@ const authController = {
      */
     async login(req, res, next) {
         try {
-            const { email, password } = req.body; // email is now identifier (email or ID)
+            const { email, password, turnstileToken } = req.body; // email is now identifier (email or ID)
+
+            // Vérification Turnstile
+            const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);
+            if (!isHuman) {
+                return response.error(res, "Veuillez confirmer que vous n'êtes pas un robot.", 403);
+            }
 
             const user = await User.findByEmailOrId(email);
             if (!user) {
