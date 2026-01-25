@@ -12,6 +12,9 @@ router.get('/owner', authMiddleware, propertyController.getOwnerProperties);
 // Get single property details (public)
 router.get('/:id', propertyController.getPropertyById);
 
+// Get similar properties (public)
+router.get('/:id/similar', propertyController.getSimilarProperties);
+
 // Create property (protected)
 router.post('/', authMiddleware, propertyController.createProperty);
 

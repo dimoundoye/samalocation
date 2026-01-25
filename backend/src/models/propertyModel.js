@@ -4,12 +4,23 @@ const Property = {
     /**
      * Get all published properties
      */
-    async findAllPublished(limit) {
+    async countAllPublished() {
+        const [rows] = await db.query('SELECT COUNT(*) as count FROM properties WHERE is_published = 1');
+        return rows[0].count;
+    },
+
+    async findAllPublished(limit, offset = 0) {
         let query = 'SELECT * FROM properties WHERE is_published = 1 ORDER BY published_at DESC';
         const params = [];
+
         if (limit) {
             query += ' LIMIT ?';
             params.push(parseInt(limit));
+
+            if (offset) {
+                query += ' OFFSET ?';
+                params.push(parseInt(offset));
+            }
         }
 
         const [rows] = await db.query(query, params);
@@ -149,6 +160,41 @@ const Property = {
         `, [unitId]);
         return rows[0] || null;
     },
+
+    /**
+     * Find similar properties
+     */
+    async findSimilar(propertyId, type, address, limit = 4) {
+        // Extraire un quartier potentiel de l'adresse (ex: "Almadies" de "Rue 10, Almadies")
+        const addressParts = address ? address.split(',') : [];
+        const neighborhood = addressParts.length > 1 ? addressParts[addressParts.length - 1].trim() : address;
+
+        let query = `
+            SELECT * FROM properties 
+            WHERE id != ? AND is_published = 1 
+            AND (property_type = ? OR address LIKE ?)
+            ORDER BY published_at DESC LIMIT ?
+        `;
+        const params = [propertyId, type, `%${neighborhood}%`, parseInt(limit)];
+
+        const [rows] = await db.query(query, params);
+
+        // Fetch units and owner for each
+        for (let i = 0; i < rows.length; i++) {
+            const [units] = await db.query('SELECT * FROM property_units WHERE property_id = ?', [rows[i].id]);
+            rows[i].property_units = units;
+
+            const [ownerProfiles] = await db.query(`
+                SELECT company_name, phone, phone as contact_phone 
+                FROM owner_profiles 
+                WHERE user_profile_id = ? OR id = ?
+            `, [rows[i].owner_id, rows[i].owner_id]);
+            rows[i].owner_profiles = ownerProfiles;
+        }
+
+        return rows;
+    },
+
     /**
      * Delete a property (only if owned by the owner)
      */

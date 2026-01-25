@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { transformProperty, FormattedProperty } from "@/lib/property";
 import propertyFallback from "@/assets/property-1.jpg";
 import PropertyCard from "@/components/PropertyCard";
-import { getPropertyById, getProperties, sendMessage, createNotification, getMessages } from "@/lib/api";
+import { getPropertyById, getProperties, sendMessage, createNotification, getMessages, getSimilarProperties } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const PropertyDetail = () => {
@@ -155,10 +155,8 @@ const PropertyDetail = () => {
       try {
         setSuggestionsLoading(true);
 
-        const data = await getProperties({ limit: 5 });
-        const filtered = data.filter((item: any) => item.id !== property.id).slice(0, 4);
-
-        const formatted = filtered.map((item: any) => transformProperty(item));
+        const data = await getSimilarProperties(property.id);
+        const formatted = data.map((item: any) => transformProperty(item));
         setSuggestedProperties(formatted);
       } catch (error) {
         console.error("Error loading suggested properties:", error);
@@ -681,6 +679,9 @@ const PropertyDetail = () => {
                 <div className="hidden md:block">
                   <CarouselPrevious className="-left-12" />
                   <CarouselNext className="-right-12" />
+                </div>
+                <div className="md:hidden absolute -right-2 top-1/2 -translate-y-1/2 z-10">
+                  <CarouselNext className="h-8 w-8 bg-white/90 shadow-medium border-none text-primary" />
                 </div>
               </Carousel>
             )}

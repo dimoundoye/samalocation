@@ -4,7 +4,7 @@ import PropertyCard from "@/components/PropertyCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search as SearchIcon, SlidersHorizontal, ArrowLeft, Home } from "lucide-react";
+import { Search as SearchIcon, SlidersHorizontal, ArrowLeft, Home, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,27 +22,36 @@ const Search = () => {
   const [properties, setProperties] = useState<FormattedProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [appliedPropertyIds, setAppliedPropertyIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const { user } = useAuth();
 
   useEffect(() => {
-    loadProperties();
+    loadProperties(currentPage);
     if (user) {
       loadAppliedProperties();
     }
-  }, [user]);
+  }, [user, currentPage]);
 
   // Redundant checkAuth removed, useAuth handles it now
   const isAuthenticated = !!user;
   const currentUserId = user?.id || null;
 
-  const loadProperties = async () => {
+  const loadProperties = async (page = 1) => {
     try {
       setLoading(true);
       // Utiliser notre nouveau backend local
-      const data = await getProperties();
+      const data = await getProperties({ limit: 20, page });
 
-      const formatted = data.map((property: any) => transformProperty(property));
+      // The backend now returns { properties, pagination }
+      const propertiesList = data.properties || [];
+      const pagination = data.pagination;
+
+      const formatted = propertiesList.map((property: any) => transformProperty(property));
       setProperties(formatted);
+      if (pagination) {
+        setTotalPages(pagination.pages);
+      }
     } catch (error: any) {
       console.error("Error loading properties:", error);
       toast({
@@ -52,6 +61,7 @@ const Search = () => {
       });
     } finally {
       setLoading(false);
+      window.scrollTo(0, 0);
     }
   };
 
@@ -217,34 +227,62 @@ const Search = () => {
               <p className="text-sm text-muted-foreground mt-2">Revenez plus tard pour voir les nouvelles offres.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {filteredProperties.map((property) => {
-                const ownerProfile = (property as any).owner_profiles
-                  ? Array.isArray((property as any).owner_profiles)
-                    ? (property as any).owner_profiles[0]
-                    : (property as any).owner_profiles
-                  : null;
-                const ownerPhone = ownerProfile?.contact_phone || ownerProfile?.phone;
+            <div className="space-y-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {filteredProperties.map((property) => {
+                  const ownerProfile = (property as any).owner_profiles
+                    ? Array.isArray((property as any).owner_profiles)
+                      ? (property as any).owner_profiles[0]
+                      : (property as any).owner_profiles
+                    : null;
+                  const ownerPhone = ownerProfile?.contact_phone || ownerProfile?.phone;
 
-                return (
-                  <PropertyCard
-                    key={property.id}
-                    id={property.id}
-                    image={property.cover_photo || property.photo_url || property1}
-                    title={property.name}
-                    location={property.address}
-                    price={property.rent_amount || 0}
-                    type={property.property_type}
-                    status={property.display_status}
-                    bedrooms={property.aggregated_bedrooms || undefined}
-                    area={property.aggregated_area || undefined}
-                    bathrooms={property.aggregated_bathrooms || undefined}
-                    rentPeriod={property.primary_rent_period}
-                    isApplied={currentUserId && property.id ? appliedPropertyIds.includes(property.id) : false}
-                    ownerPhone={ownerPhone}
-                  />
-                );
-              })}
+                  return (
+                    <PropertyCard
+                      key={property.id}
+                      id={property.id}
+                      image={property.cover_photo || property.photo_url || property1}
+                      title={property.name}
+                      location={property.address}
+                      price={property.rent_amount || 0}
+                      type={property.property_type}
+                      status={property.display_status}
+                      bedrooms={property.aggregated_bedrooms || undefined}
+                      area={property.aggregated_area || undefined}
+                      bathrooms={property.aggregated_bathrooms || undefined}
+                      rentPeriod={property.primary_rent_period}
+                      isApplied={currentUserId && property.id ? appliedPropertyIds.includes(property.id) : false}
+                      ownerPhone={ownerPhone}
+                    />
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 pt-10 border-t">
+                  <Button
+                    variant="outline"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    className="flex items-center gap-2 px-6"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Précédent
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Page {currentPage} sur {totalPages}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    className="flex items-center gap-2 px-6"
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

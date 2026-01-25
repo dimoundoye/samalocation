@@ -8,9 +8,22 @@ const propertyController = {
      */
     async getAllPublished(req, res, next) {
         try {
-            const { limit } = req.query;
-            const properties = await Property.findAllPublished(limit);
-            return response.success(res, properties);
+            const limit = parseInt(req.query.limit) || 20;
+            const page = parseInt(req.query.page) || 1;
+            const offset = (page - 1) * limit;
+
+            const total = await Property.countAllPublished();
+            const properties = await Property.findAllPublished(limit, offset);
+
+            return response.success(res, {
+                properties,
+                pagination: {
+                    total,
+                    pages: Math.ceil(total / limit),
+                    current_page: page,
+                    limit
+                }
+            });
         } catch (error) {
             next(error);
         }
@@ -115,6 +128,30 @@ const propertyController = {
             }
 
             return response.success(res, null, 'Property deleted successfully');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Get similar properties
+     */
+    async getSimilarProperties(req, res, next) {
+        try {
+            const { id } = req.params;
+            const property = await Property.findById(id);
+
+            if (!property) {
+                return response.error(res, 'Property not found', 404);
+            }
+
+            const similar = await Property.findSimilar(
+                id,
+                property.property_type,
+                property.address
+            );
+
+            return response.success(res, similar);
         } catch (error) {
             next(error);
         }

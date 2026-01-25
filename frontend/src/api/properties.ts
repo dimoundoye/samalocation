@@ -1,6 +1,6 @@
 import { baseClient } from "./baseClient";
 
-export const getProperties = async (params: { limit?: number } = {}) => {
+export const getProperties = async (params: { limit?: number; page?: number } = {}) => {
     try {
         return await baseClient("/properties", { params });
     } catch (error) {
@@ -15,6 +15,15 @@ export const getPropertyById = async (id: string) => {
     } catch (error) {
         console.error(`Failed to fetch property ${id}:`, error);
         return null;
+    }
+};
+
+export const getSimilarProperties = async (id: string) => {
+    try {
+        return await baseClient(`/properties/${id}/similar`);
+    } catch (error) {
+        console.error(`Failed to fetch similar properties for ${id}:`, error);
+        return [];
     }
 };
 

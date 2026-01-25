@@ -1,4 +1,4 @@
-import { getProperties, getPropertyById, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty } from "../api/properties";
+import { getProperties, getPropertyById, getSimilarProperties, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty } from "../api/properties";
 import { getMessages, sendMessage, markMessagesAsRead, deleteMessage } from "../api/messages";
 import { getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead } from "../api/notifications";
 import { login, signup, getMe, searchUsers, createTenantAccount, completeSetup } from "../api/auth";
@@ -13,7 +13,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 
 
 export {
-    getProperties, getPropertyById, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty,
+    getProperties, getPropertyById, getSimilarProperties, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty,
     getMessages, sendMessage, markMessagesAsRead, deleteMessage,
     getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead,
     getMe, searchUsers, createTenantAccount, completeSetup,

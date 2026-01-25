@@ -60,10 +60,10 @@ const PropertyCard = ({
 
   return (
     <Card
-      className="overflow-hidden shadow-medium hover:shadow-strong transition-all duration-300 group cursor-pointer flex flex-row sm:flex-col min-h-[165px] sm:h-auto w-full"
+      className="overflow-hidden shadow-medium hover:shadow-strong transition-all duration-300 group cursor-pointer flex flex-row sm:flex-col min-h-[160px] max-h-[160px] sm:min-h-0 sm:max-h-none sm:h-auto w-full"
       onClick={handleViewDetails}
     >
-      <div className="relative w-[38%] sm:w-full h-auto sm:h-48 overflow-hidden shrink-0">
+      <div className="relative w-[38%] sm:w-full h-[160px] sm:h-48 overflow-hidden shrink-0">
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
         <img
           src={image}

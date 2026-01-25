@@ -100,25 +100,23 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
   }, 0);
 
   const aggregatedArea = units.reduce((sum, unit) => {
+    let area = 0;
     if (typeof unit?.area_sqm === "number") {
-      return sum + unit.area_sqm;
+      area = unit.area_sqm;
+    } else if (typeof unit?.area_sqm === "string") {
+      area = parseFloat(unit.area_sqm);
     }
-    if (typeof unit?.area_sqm === "string") {
-      const parsed = parseInt(unit.area_sqm, 10);
-      return sum + (isNaN(parsed) ? 0 : parsed);
-    }
-    return sum;
+    return sum + (isNaN(area) ? 0 : area);
   }, 0);
 
   const aggregatedBathrooms = units.reduce((sum, unit) => {
+    let bathrooms = 0;
     if (typeof unit?.bathrooms === "number") {
-      return sum + unit.bathrooms;
+      bathrooms = unit.bathrooms;
+    } else if (typeof unit?.bathrooms === "string") {
+      bathrooms = parseFloat(unit.bathrooms);
     }
-    if (typeof unit?.bathrooms === "string") {
-      const parsed = parseInt(unit.bathrooms, 10);
-      return sum + (isNaN(parsed) ? 0 : parsed);
-    }
-    return sum;
+    return sum + (isNaN(bathrooms) ? 0 : bathrooms);
   }, 0);
 
   const isPublished = property.is_published ?? property.status === "published";

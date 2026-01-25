@@ -47,7 +47,11 @@ const Index = () => {
     try {
       setLoadingProperties(true);
       const data = await getProperties({ limit: 6 });
-      const formatted = data.map((property: any) => transformProperty(property));
+
+      // Handle both direct array (old) and paginated object (new)
+      const propertiesList = Array.isArray(data) ? data : (data.properties || []);
+
+      const formatted = propertiesList.map((property: any) => transformProperty(property));
       setFeaturedProperties(formatted);
     } catch (error) {
       console.error("Error loading featured properties:", error);
@@ -390,6 +394,9 @@ const Index = () => {
               <div className="hidden md:block">
                 <CarouselPrevious className="-left-12" />
                 <CarouselNext className="-right-12" />
+              </div>
+              <div className="md:hidden absolute -right-2 top-1/2 -translate-y-1/2 z-10">
+                <CarouselNext className="h-8 w-8 bg-white/90 shadow-medium border-none text-primary" />
               </div>
             </Carousel>
           )}
