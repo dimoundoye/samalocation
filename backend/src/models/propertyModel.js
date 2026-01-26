@@ -4,20 +4,45 @@ const Property = {
     /**
      * Get all published properties
      */
-    async countAllPublished() {
-        const [rows] = await db.query('SELECT COUNT(*) as count FROM properties WHERE is_published = 1');
+    async countAllPublished(filters = {}) {
+        let query = 'SELECT COUNT(*) as count FROM properties WHERE is_published = 1';
+        const params = [];
+
+        if (filters.type && filters.type !== 'all') {
+            query += ' AND property_type = ?';
+            params.push(filters.type);
+        }
+
+        if (filters.search) {
+            query += ' AND (name LIKE ? OR address LIKE ?)';
+            params.push(`%${filters.search}%`, `%${filters.search}%`);
+        }
+
+        const [rows] = await db.query(query, params);
         return rows[0].count;
     },
 
-    async findAllPublished(limit, offset = 0) {
-        let query = 'SELECT * FROM properties WHERE is_published = 1 ORDER BY published_at DESC';
+    async findAllPublished(limit, offset = 0, filters = {}) {
+        let query = 'SELECT * FROM properties WHERE is_published = 1';
         const params = [];
+
+        if (filters.type && filters.type !== 'all') {
+            query += ' AND property_type = ?';
+            params.push(filters.type);
+        }
+
+        if (filters.search) {
+            query += ' AND (name LIKE ? OR address LIKE ?)';
+            params.push(`%${filters.search}%`, `%${filters.search}%`);
+        }
+
+        query += ' ORDER BY published_at DESC';
 
         if (limit) {
             query += ' LIMIT ?';
             params.push(parseInt(limit));
 
-            if (offset) {
+            if (offset !== undefined) {
                 query += ' OFFSET ?';
                 params.push(parseInt(offset));
             }
@@ -25,24 +50,40 @@ const Property = {
 
         const [rows] = await db.query(query, params);
 
-        // Pour chaque propriété, récupérer ses unités
-        for (let i = 0; i < rows.length; i++) {
-            const [units] = await db.query(
-                'SELECT id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, area_sqm, rent_period, unit_number FROM property_units WHERE property_id = ?',
-                [rows[i].id]
-            );
-            rows[i].property_units = units;
+        if (rows.length === 0) return [];
 
-            // Récupérer le profil du propriétaire
-            const [ownerProfiles] = await db.query(`
-                SELECT company_name, phone, phone as contact_phone 
+        const propertyIds = rows.map(r => r.id).filter(Boolean);
+        const ownerIds = [...new Set(rows.map(r => r.owner_id))].filter(Boolean);
+
+        if (propertyIds.length === 0) return rows;
+
+        // Batch fetch units
+        const [allUnits] = await db.query(
+            'SELECT id, property_id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, area_sqm, rent_period, unit_number FROM property_units WHERE property_id IN (?)',
+            [propertyIds]
+        );
+
+        // Batch fetch owner profiles using UNION for better index performance than OR
+        let allOwnerProfiles = [];
+        if (ownerIds.length > 0) {
+            const [profiles] = await db.query(`
+                SELECT user_profile_id, id, company_name, phone, phone as contact_phone 
                 FROM owner_profiles 
-                WHERE user_profile_id = ? OR id = ?
-            `, [rows[i].owner_id, rows[i].owner_id]);
-            rows[i].owner_profiles = ownerProfiles;
+                WHERE user_profile_id IN (?)
+                UNION
+                SELECT user_profile_id, id, company_name, phone, phone as contact_phone 
+                FROM owner_profiles 
+                WHERE id IN (?)
+            `, [ownerIds, ownerIds]);
+            allOwnerProfiles = profiles;
         }
 
-        return rows;
+        // Map units and owners to properties
+        return rows.map(row => ({
+            ...row,
+            property_units: allUnits.filter(u => u.property_id === row.id),
+            owner_profiles: allOwnerProfiles.filter(o => o.user_profile_id === row.owner_id || o.id === row.owner_id)
+        }));
     },
 
     /**
@@ -54,24 +95,29 @@ const Property = {
             [ownerId]
         );
 
-        // Pour chaque propriété, récupérer ses unités
-        for (let i = 0; i < rows.length; i++) {
-            const [units] = await db.query(
-                'SELECT id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, area_sqm, rent_period, unit_number FROM property_units WHERE property_id = ?',
-                [rows[i].id]
-            );
-            rows[i].property_units = units;
+        if (rows.length === 0) return [];
 
-            // Récupérer le profil du propriétaire
-            const [ownerProfiles] = await db.query(`
-                SELECT company_name, phone, phone as contact_phone 
-                FROM owner_profiles 
-                WHERE user_profile_id = ? OR id = ?
-            `, [rows[i].owner_id, rows[i].owner_id]);
-            rows[i].owner_profiles = ownerProfiles;
-        }
+        const propertyIds = rows.map(r => r.id);
 
-        return rows;
+        // Batch fetch units
+        const [allUnits] = await db.query(
+            'SELECT id, property_id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, area_sqm, rent_period, unit_number FROM property_units WHERE property_id IN (?)',
+            [propertyIds]
+        );
+
+        // Batch fetch owner profiles
+        const [allOwnerProfiles] = await db.query(`
+            SELECT user_profile_id, company_name, phone, phone as contact_phone 
+            FROM owner_profiles 
+            WHERE user_profile_id = ? OR id = ?
+        `, [ownerId, ownerId]);
+
+        // Map units and owners to properties
+        return rows.map(row => ({
+            ...row,
+            property_units: allUnits.filter(u => u.property_id === row.id),
+            owner_profiles: allOwnerProfiles
+        }));
     },
 
     /**
@@ -179,20 +225,34 @@ const Property = {
 
         const [rows] = await db.query(query, params);
 
-        // Fetch units and owner for each
-        for (let i = 0; i < rows.length; i++) {
-            const [units] = await db.query('SELECT * FROM property_units WHERE property_id = ?', [rows[i].id]);
-            rows[i].property_units = units;
+        if (rows.length === 0) return [];
 
-            const [ownerProfiles] = await db.query(`
-                SELECT company_name, phone, phone as contact_phone 
+        const propertyIds = rows.map(r => r.id).filter(Boolean);
+        const ownerIds = [...new Set(rows.map(r => r.owner_id))].filter(Boolean);
+
+        // Batch fetch units
+        const [allUnits] = await db.query(
+            'SELECT * FROM property_units WHERE property_id IN (?)',
+            [propertyIds]
+        );
+
+        // Batch fetch owner profiles
+        let allOwnerProfiles = [];
+        if (ownerIds.length > 0) {
+            const [profiles] = await db.query(`
+                SELECT user_profile_id, id, company_name, phone, phone as contact_phone 
                 FROM owner_profiles 
-                WHERE user_profile_id = ? OR id = ?
-            `, [rows[i].owner_id, rows[i].owner_id]);
-            rows[i].owner_profiles = ownerProfiles;
+                WHERE user_profile_id IN (?) OR id IN (?)
+            `, [ownerIds, ownerIds]);
+            allOwnerProfiles = profiles;
         }
 
-        return rows;
+        // Map units and owners to properties
+        return rows.map(row => ({
+            ...row,
+            property_units: allUnits.filter(u => u.property_id === row.id),
+            owner_profiles: allOwnerProfiles.filter(o => o.user_profile_id === row.owner_id || o.id === row.owner_id)
+        }));
     },
 
     /**

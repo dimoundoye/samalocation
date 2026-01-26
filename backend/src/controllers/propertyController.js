@@ -12,8 +12,13 @@ const propertyController = {
             const page = parseInt(req.query.page) || 1;
             const offset = (page - 1) * limit;
 
-            const total = await Property.countAllPublished();
-            const properties = await Property.findAllPublished(limit, offset);
+            const filters = {
+                search: req.query.search || '',
+                type: req.query.type || 'all'
+            };
+
+            const total = await Property.countAllPublished(filters);
+            const properties = await Property.findAllPublished(limit, offset, filters);
 
             return response.success(res, {
                 properties,

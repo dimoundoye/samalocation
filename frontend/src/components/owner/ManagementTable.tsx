@@ -324,57 +324,8 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                {/* Mobile Simplified View */}
-                <div className="md:hidden space-y-4 p-4">
-                    {Object.entries(groupedTenants).map(([propId, group]) => {
-                        const groupTotal = group.tenants.reduce((acc, t) => {
-                            let tenantTotal = 0;
-                            months.forEach(m => {
-                                const r = paymentData[t.id][m.id];
-                                if (r) tenantTotal += typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0;
-                            });
-                            return acc + tenantTotal;
-                        }, 0);
-
-                        return (
-                            <Card key={`mobile-group-${propId}`} className="p-4 border-l-4 border-l-primary">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <h3 className="font-bold text-lg flex items-center gap-2">
-                                            <Building2 className="h-4 w-4 text-primary" />
-                                            {group.propertyName}
-                                        </h3>
-                                        <p className="text-sm text-muted-foreground">
-                                            {group.tenants.length} Locataire{group.tenants.length > 1 ? 's' : ''}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-xs uppercase text-muted-foreground font-semibold">Total Annuel</div>
-                                        <div className="font-bold text-primary">{formatCurrency(groupTotal)}</div>
-                                    </div>
-                                </div>
-                                <div className="mt-3 pt-3 border-t text-sm">
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span>Dernière activité</span>
-                                        <span className="text-foreground">Ce mois</span>
-                                    </div>
-                                </div>
-                            </Card>
-                        );
-                    })}
-
-                    <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/10">
-                        <div className="flex justify-between items-center">
-                            <span className="font-bold text-primary">TOTAL GLOBAL {selectedYear}</span>
-                            <span className="font-black text-primary text-lg">
-                                {formatCurrency(Object.values(monthlyTotals).reduce((a, b) => (Number(a) || 0) + (Number(b) || 0), 0))}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Desktop Full View */}
-                <ScrollArea className="w-full hidden md:block">
+                {/* Unified Full Table View with Horizontal Scroll */}
+                <ScrollArea className="w-full">
                     <div className="min-w-[1000px]">
                         <Table>
                             <TableHeader>

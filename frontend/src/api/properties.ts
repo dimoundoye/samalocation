@@ -1,11 +1,11 @@
 import { baseClient } from "./baseClient";
 
-export const getProperties = async (params: { limit?: number; page?: number } = {}) => {
+export const getProperties = async (params: { limit?: number; page?: number; search?: string; type?: string } = {}) => {
     try {
         return await baseClient("/properties", { params });
     } catch (error) {
         console.error("Failed to fetch properties:", error);
-        return [];
+        return { properties: [], pagination: { total: 0, pages: 0, current_page: 1, limit: 20 } };
     }
 };
 

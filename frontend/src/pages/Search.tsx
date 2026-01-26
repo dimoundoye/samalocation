@@ -27,11 +27,15 @@ const Search = () => {
   const { user } = useAuth();
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, propertyType]);
+
+  useEffect(() => {
     loadProperties(currentPage);
     if (user) {
       loadAppliedProperties();
     }
-  }, [user, currentPage]);
+  }, [user, currentPage, searchTerm, propertyType]);
 
   // Redundant checkAuth removed, useAuth handles it now
   const isAuthenticated = !!user;
@@ -40,8 +44,13 @@ const Search = () => {
   const loadProperties = async (page = 1) => {
     try {
       setLoading(true);
-      // Utiliser notre nouveau backend local
-      const data = await getProperties({ limit: 20, page });
+      // Utiliser notre nouveau backend local avec filtres
+      const data = await getProperties({
+        limit: 20,
+        page,
+        search: searchTerm,
+        type: propertyType
+      });
 
       // The backend now returns { properties, pagination }
       const propertiesList = data.properties || [];

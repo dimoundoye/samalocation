@@ -680,8 +680,8 @@ const PropertyDetail = () => {
                   <CarouselPrevious className="-left-12" />
                   <CarouselNext className="-right-12" />
                 </div>
-                <div className="md:hidden absolute -right-2 top-1/2 -translate-y-1/2 z-10">
-                  <CarouselNext className="h-8 w-8 bg-white/90 shadow-medium border-none text-primary" />
+                <div className="md:hidden absolute -right-6 top-1/2 -translate-y-1/2 z-20">
+                  <CarouselNext className="h-16 w-16 bg-white shadow-strong border-2 border-primary/20 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
                 </div>
               </Carousel>
             )}
