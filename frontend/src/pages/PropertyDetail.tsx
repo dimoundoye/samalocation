@@ -461,7 +461,7 @@ const PropertyDetail = () => {
 
                   {property.description && (
                     <div>
-                      <h3 className="text-xl font-semibold mb-3">Description</h3>
+                      <h3 className="text-lg md:text-xl font-semibold mb-3">Description</h3>
                       <p className="text-muted-foreground leading-relaxed">
                         {property.description}
                       </p>
@@ -470,7 +470,7 @@ const PropertyDetail = () => {
 
                   {hasUnitsDetails ? (
                     <div>
-                      <h3 className="text-xl font-semibold mb-3">Unités disponibles</h3>
+                      <h3 className="text-lg md:text-xl font-semibold mb-3">Unités disponibles</h3>
                       <div className="space-y-3">
                         {property.property_units.map((unit: any) => (
                           <div
@@ -527,7 +527,7 @@ const PropertyDetail = () => {
                   )}
 
                   <div>
-                    <h3 className="text-xl font-semibold mb-3">Équipements</h3>
+                    <h3 className="text-lg md:text-xl font-semibold mb-3">Équipements</h3>
                     {equipmentList.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {equipmentList.map((equipment) => (
@@ -680,8 +680,11 @@ const PropertyDetail = () => {
                   <CarouselPrevious className="-left-12" />
                   <CarouselNext className="-right-12" />
                 </div>
-                <div className="md:hidden absolute -right-6 top-1/2 -translate-y-1/2 z-20">
-                  <CarouselNext className="h-16 w-16 bg-white shadow-strong border-2 border-primary/20 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
+                <div className="md:hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 opacity-50">
+                  <CarouselPrevious className="h-10 w-10 bg-white/80 shadow-strong border border-primary/10 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
+                </div>
+                <div className="md:hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-50">
+                  <CarouselNext className="h-10 w-10 bg-white/80 shadow-strong border border-primary/10 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
                 </div>
               </Carousel>
             )}

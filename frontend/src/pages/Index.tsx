@@ -395,8 +395,11 @@ const Index = () => {
                 <CarouselPrevious className="-left-12" />
                 <CarouselNext className="-right-12" />
               </div>
-              <div className="md:hidden absolute -right-6 top-1/2 -translate-y-1/2 z-20">
-                <CarouselNext className="h-16 w-16 bg-white shadow-strong border-2 border-primary/20 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
+              <div className="md:hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 opacity-50">
+                <CarouselPrevious className="h-10 w-10 bg-white/80 shadow-strong border border-primary/10 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
+              </div>
+              <div className="md:hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-50">
+                <CarouselNext className="h-10 w-10 bg-white/80 shadow-strong border border-primary/10 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
               </div>
             </Carousel>
           )}
@@ -506,7 +509,6 @@ const Index = () => {
           <div className="pt-12 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="text-muted-foreground text-sm">
               © 2026 Samalocation. Tous droits réservés au Sénégal
-              <a href="/daqueen" className="opacity-0 cursor-default ml-1">.</a>
             </p>
             <div className="flex gap-6">
               {/* Social icons placeholder */}
