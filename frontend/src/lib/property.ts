@@ -10,6 +10,8 @@ export interface RawProperty {
   photo_url?: string | null;
   photos?: string[] | null;
   property_units?: any[] | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   [key: string]: any;
 }
 
@@ -26,15 +28,30 @@ export interface FormattedProperty extends RawProperty {
   primary_rent_period: "jour" | "semaine" | "mois";
 }
 
-const getSafePhotosArray = (photos: RawProperty["photos"]) => {
+const getSafePhotosArray = (photos: any) => {
   if (!photos) return [];
 
   if (Array.isArray(photos)) {
-    return photos as string[];
+    return photos;
   }
 
   try {
-    const parsed = JSON.parse(photos as unknown as string);
+    const parsed = typeof photos === 'string' ? JSON.parse(photos) : photos;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const getSafeEquipmentsArray = (equipments: any) => {
+  if (!equipments) return [];
+
+  if (Array.isArray(equipments)) {
+    return equipments;
+  }
+
+  try {
+    const parsed = typeof equipments === 'string' ? JSON.parse(equipments) : equipments;
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -135,6 +152,25 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
   const photosArray = getSafePhotosArray(property.photos).map(formatImageUrl).filter(Boolean) as string[];
   const coverPhoto = formatImageUrl(property.photo_url || photosArray[0] || null);
 
+  const parseCoord = (val: any) => {
+    if (val === null || val === undefined) return null;
+    const parsed = parseFloat(val.toString());
+    return isNaN(parsed) ? null : parsed;
+  };
+
+  const lat = parseCoord(property.latitude);
+  const lng = parseCoord(property.longitude);
+
+  if (!lat || !lng) {
+    console.log(`Property "${property.name}" (id: ${property.id}) has invalid/missing coords:`, {
+      rawLat: property.latitude,
+      rawLng: property.longitude,
+      parsedLat: lat,
+      parsedLng: lng,
+      isPublished: property.is_published
+    });
+  }
+
   return {
     ...property,
     rent_amount: computedRent,
@@ -146,7 +182,10 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
     aggregated_bedrooms: aggregatedBedrooms,
     aggregated_area: aggregatedArea,
     aggregated_bathrooms: aggregatedBathrooms,
+    latitude: lat,
+    longitude: lng,
     photos: photosArray,
+    equipments: getSafeEquipmentsArray(property.equipments),
     primary_rent_period: primaryRentPeriod,
   };
 };

@@ -20,7 +20,7 @@ import PropertyCard from "@/components/PropertyCard";
 import { getPropertyById, getProperties, sendMessage, createNotification, getMessages, getSimilarProperties } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
-const PropertyDetail = () => {
+const DetailPropriete = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -587,10 +587,18 @@ const PropertyDetail = () => {
                   <div className="pt-4 border-t">
                     <h4 className="font-semibold mb-3">Propriétaire</h4>
                     <div className="space-y-2 text-sm">
-                      <p>
-                        <span className="text-muted-foreground">Nom: </span>
-                        <span className="font-medium">{ownerCompanyName}</span>
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p>
+                          <span className="text-muted-foreground">Nom: </span>
+                          <span className="font-medium">{ownerCompanyName}</span>
+                        </p>
+                        {(ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified') && (
+                          <Badge variant="secondary" className="bg-green-50 text-green-600 border-green-200 text-[10px] h-5 px-1.5 flex items-center gap-1">
+                            <Shield className="h-3 w-3" />
+                            Vérifié
+                          </Badge>
+                        )}
+                      </div>
                       {ownerContactPhone && (
                         <p className="flex items-center gap-2">
                           <Phone className="h-4 w-4 text-primary" />
@@ -671,6 +679,7 @@ const PropertyDetail = () => {
                           bathrooms={suggestion.aggregated_bathrooms || undefined}
                           rentPeriod={suggestion.primary_rent_period}
                           ownerPhone={ownerPhone}
+                          isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
                         />
                       </CarouselItem>
                     );
@@ -836,5 +845,5 @@ const PropertyDetail = () => {
   );
 };
 
-export default PropertyDetail;
+export default DetailPropriete;
 

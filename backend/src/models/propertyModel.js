@@ -67,11 +67,11 @@ const Property = {
         let allOwnerProfiles = [];
         if (ownerIds.length > 0) {
             const [profiles] = await db.query(`
-                SELECT user_profile_id, id, company_name, phone, phone as contact_phone 
+                SELECT user_profile_id, id, company_name, phone, phone as contact_phone, verification_status, is_verified
                 FROM owner_profiles 
                 WHERE user_profile_id IN (?)
                 UNION
-                SELECT user_profile_id, id, company_name, phone, phone as contact_phone 
+                SELECT user_profile_id, id, company_name, phone, phone as contact_phone, verification_status, is_verified
                 FROM owner_profiles 
                 WHERE id IN (?)
             `, [ownerIds, ownerIds]);
@@ -91,8 +91,8 @@ const Property = {
      */
     async findByOwnerId(ownerId) {
         const [rows] = await db.query(
-            'SELECT * FROM properties WHERE owner_id = ? ORDER BY created_at DESC',
-            [ownerId]
+            'SELECT * FROM properties WHERE owner_id = ? OR owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = ?) ORDER BY created_at DESC',
+            [ownerId, ownerId]
         );
 
         if (rows.length === 0) return [];
@@ -107,7 +107,7 @@ const Property = {
 
         // Batch fetch owner profiles
         const [allOwnerProfiles] = await db.query(`
-            SELECT user_profile_id, company_name, phone, phone as contact_phone 
+            SELECT user_profile_id, company_name, phone, phone as contact_phone, verification_status, is_verified
             FROM owner_profiles 
             WHERE user_profile_id = ? OR id = ?
         `, [ownerId, ownerId]);
@@ -135,7 +135,7 @@ const Property = {
 
         // Fetch owner profile
         const [ownerProfiles] = await db.query(`
-            SELECT company_name, phone, phone as contact_phone 
+            SELECT company_name, phone, phone as contact_phone, verification_status, is_verified
             FROM owner_profiles 
             WHERE user_profile_id = ? OR id = ?
         `, [property.owner_id, property.owner_id]);
@@ -148,11 +148,11 @@ const Property = {
      * Create a new property
      */
     async create(data) {
-        const { id, owner_id, property_type, name, address, description, photos, photo_url, equipments } = data;
+        const { id, owner_id, property_type, name, address, latitude, longitude, description, photos, photo_url, equipments } = data;
 
         await db.query(
-            'INSERT INTO properties (id, owner_id, property_type, name, address, description, photos, photo_url, is_published, equipments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [id, owner_id, property_type, name, address, description, JSON.stringify(photos || []), photo_url, false, JSON.stringify(equipments || [])]
+            'INSERT INTO properties (id, owner_id, property_type, name, address, latitude, longitude, description, photos, photo_url, is_published, equipments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [id, owner_id, property_type, name, address, latitude || null, longitude || null, description, JSON.stringify(photos || []), photo_url, false, JSON.stringify(equipments || [])]
         );
 
         return this.findById(id);
@@ -200,10 +200,10 @@ const Property = {
     async findByUnitId(unitId) {
         const [rows] = await db.query(`
             SELECT p.*
-            FROM properties p
+                FROM properties p
             JOIN property_units pu ON p.id = pu.property_id
             WHERE pu.id = ?
-        `, [unitId]);
+                `, [unitId]);
         return rows[0] || null;
     },
 
@@ -217,11 +217,11 @@ const Property = {
 
         let query = `
             SELECT * FROM properties 
-            WHERE id != ? AND is_published = 1 
-            AND (property_type = ? OR address LIKE ?)
+            WHERE id != ? AND is_published = 1
+            AND(property_type = ? OR address LIKE ?)
             ORDER BY published_at DESC LIMIT ?
-        `;
-        const params = [propertyId, type, `%${neighborhood}%`, parseInt(limit)];
+                `;
+        const params = [propertyId, type, `% ${neighborhood}% `, parseInt(limit)];
 
         const [rows] = await db.query(query, params);
 
@@ -240,9 +240,9 @@ const Property = {
         let allOwnerProfiles = [];
         if (ownerIds.length > 0) {
             const [profiles] = await db.query(`
-                SELECT user_profile_id, id, company_name, phone, phone as contact_phone 
+                SELECT user_profile_id, id, company_name, phone, phone as contact_phone, verification_status, is_verified
                 FROM owner_profiles 
-                WHERE user_profile_id IN (?) OR id IN (?)
+                WHERE user_profile_id IN(?) OR id IN(?)
             `, [ownerIds, ownerIds]);
             allOwnerProfiles = profiles;
         }
@@ -255,16 +255,66 @@ const Property = {
         }));
     },
 
-    /**
-     * Delete a property (only if owned by the owner)
-     */
     async delete(id, ownerId) {
         // First verify ownership
         const [properties] = await db.query('SELECT id FROM properties WHERE id = ? AND owner_id = ?', [id, ownerId]);
         if (properties.length === 0) return false;
 
-        // Delete property (cascading deletes will handle units, tenants, receipts if foreign keys are set up with ON DELETE CASCADE)
         await db.query('DELETE FROM properties WHERE id = ?', [id]);
+        return true;
+    },
+
+    /**
+     * Update a property
+     */
+    async update(id, ownerId, data) {
+        // Verify ownership
+        const [properties] = await db.query('SELECT id FROM properties WHERE id = ? AND owner_id = ?', [id, ownerId]);
+        if (properties.length === 0) return null;
+
+        const { name, address, latitude, longitude, description, photos, photo_url, equipments } = data;
+
+        const updateFields = [];
+        const params = [];
+
+        if (name) { updateFields.push('name = ?'); params.push(name); }
+        if (address) { updateFields.push('address = ?'); params.push(address); }
+        if (latitude !== undefined) { updateFields.push('latitude = ?'); params.push(latitude); }
+        if (longitude !== undefined) { updateFields.push('longitude = ?'); params.push(longitude); }
+        if (description !== undefined) { updateFields.push('description = ?'); params.push(description); }
+        if (photos) { updateFields.push('photos = ?'); params.push(JSON.stringify(photos)); }
+        if (photo_url) { updateFields.push('photo_url = ?'); params.push(photo_url); }
+        if (equipments) { updateFields.push('equipments = ?'); params.push(JSON.stringify(equipments)); }
+
+        if (updateFields.length === 0) return this.findById(id);
+
+        params.push(id);
+        await db.query(`UPDATE properties SET ${updateFields.join(', ')} WHERE id = ? `, params);
+
+        return this.findById(id);
+    },
+
+    /**
+     * Safe migration to add missing columns
+     */
+    async migrate() {
+        const queries = [
+            "ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8) NULL AFTER address",
+            "ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8) NULL AFTER latitude",
+            "ALTER TABLE properties ADD COLUMN IF NOT EXISTS equipments JSON NULL"
+        ];
+
+        for (const sql of queries) {
+            try {
+                // MySQL 8.0.19+ supports ADD COLUMN IF NOT EXISTS, but older versions don't.
+                // We'll use a safer approach: try/catch the error if column exists.
+                await db.query(sql.replace(' IF NOT EXISTS', ''));
+            } catch (err) {
+                if (!err.message.includes('Duplicate column name')) {
+                    throw err;
+                }
+            }
+        }
         return true;
     }
 };

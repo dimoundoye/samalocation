@@ -85,7 +85,14 @@ const Terms = () => {
                             </section>
 
                             <section>
-                                <h2 className="text-2xl font-semibold mb-4 text-primary">9. Contact</h2>
+                                <h2 className="text-2xl font-semibold mb-4 text-primary">9. Profils Vérifiés</h2>
+                                <p className="text-muted-foreground leading-relaxed">
+                                    Samalocation propose un badge "Vérifié" pour les propriétaires ayant soumis une pièce d'identité valide. Ce badge est un indicateur de confiance basé sur une revue manuelle des documents fournis. Bien que nous fassions nos meilleurs efforts pour valider l'identité, ce badge ne constitue pas une garantie absolue et ne décharge pas les locataires de leur obligation de vigilance lors de la conclusion d'un bail.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-semibold mb-4 text-primary">10. Contact</h2>
                                 <p className="text-muted-foreground">
                                     Pour toute question relative à ces conditions, contactez-nous :
                                 </p>
@@ -97,7 +104,7 @@ const Terms = () => {
 
                             <section className="pt-6 border-t text-center">
                                 <p className="text-sm text-muted-foreground italic">
-                                    Dernière mise à jour : Janvier 2026
+                                    Dernière mise à jour : 31 Janvier 2026
                                 </p>
                             </section>
                         </CardContent>

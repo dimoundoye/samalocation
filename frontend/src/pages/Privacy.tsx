@@ -25,9 +25,9 @@ const Privacy = () => {
                   Nous collectons les informations nécessaires au bon fonctionnement de la plateforme :
                 </p>
                 <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
-                  <li>Identité (nom complet, email, téléphone)</li>
+                  <li>Identité (nom complet, email, téléphone, pièce d'identité pour les propriétaires)</li>
                   <li>Informations sur les biens immobiliers (photos, descriptifs, adresses)</li>
-                  <li>Documents de gestion (reçus de loyer, contrats)</li>
+                  <li>Documents de gestion (reçus de loyer, contrats, scans de CNI/Passeport pour vérification)</li>
                   <li>Communications entre utilisateurs (conservées pendant 5 mois)</li>
                 </ul>
               </section>
@@ -42,6 +42,7 @@ const Privacy = () => {
                   <li>La génération et la conservation des reçus de paiement</li>
                   <li>L'envoi de notifications (nouveaux messages, nouveaux reçus)</li>
                   <li>La modération via le système de signalement</li>
+                  <li>La vérification de l'identité des propriétaires pour renforcer la sécurité</li>
                   <li>L'analyse statistique de la plateforme</li>
                 </ul>
               </section>
@@ -49,7 +50,7 @@ const Privacy = () => {
               <section>
                 <h2 className="text-2xl font-semibold mb-3 text-primary">4. Protection des données</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Nous utilisons des protocoles de sécurité avancés pour protéger vos informations contre tout accès non autorisé. Vos mots de passe sont cryptés et vos documents sont stockés de manière sécurisée.
+                  Nous utilisons des protocoles de sécurité avancés pour protéger vos informations contre tout accès non autorisé. Vos mots de passe sont cryptés et vos documents (y compris les scans d'identité) sont stockés de manière sécurisée et ne sont accessibles qu'au personnel administratif autorisé.
                 </p>
               </section>
 
@@ -86,7 +87,7 @@ const Privacy = () => {
 
               <section className="pt-6 border-t text-center">
                 <p className="text-sm text-muted-foreground italic">
-                  Dernière mise à jour : Janvier 2026
+                  Dernière mise à jour : 31 Janvier 2026
                 </p>
               </section>
             </CardContent>

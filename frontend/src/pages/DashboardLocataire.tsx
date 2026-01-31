@@ -10,19 +10,22 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, Wrench } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfile } from "@/components/UserProfile";
 import { AccountSettings } from "@/components/shared/AccountSettings";
 import { ReportOwnerDialog } from "@/components/tenant/ReportOwnerDialog";
+import { MaintenanceTab } from "@/components/tenant/MaintenanceTab";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead } from "@/lib/api";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { useSocket } from "@/contexts/SocketContext";
 
-const TenantDashboard = () => {
+const DashboardLocataire = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, signOut } = useAuth();
@@ -53,19 +56,39 @@ const TenantDashboard = () => {
     loadNotifications(); // Charger les notifications au montage
   }, []); // Charge une seule fois au montage
 
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (msg: any) => {
+      console.log("[SOCKET] Tenant received new message:", msg);
+      setMessages((prev) => {
+        // Prevent duplicates
+        if (prev.some(m => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+
+      // Show toast if the message is from a different contact than the one currently selected
+      if (!selectedChat || selectedChat.user_id !== msg.sender_id) {
+        toast({
+          title: "Nouveau message",
+          description: `Vous avez reçu un message de ${msg.sender_name || 'votre propriétaire'}.`,
+        });
+      }
+    };
+
+    socket.on("new_message", handleNewMessage);
+
+    return () => {
+      socket.off("new_message", handleNewMessage);
+    };
+  }, [socket, selectedChat, toast]);
+
   useEffect(() => {
     if (activeTab === "messages") {
       loadMessages();
     }
-
-    // Polling des messages toutes les 10 secondes si on est sur l'onglet messages
-    const interval = setInterval(() => {
-      if (activeTab === "messages") {
-        loadMessages();
-      }
-    }, 10000);
-
-    return () => clearInterval(interval);
   }, [activeTab]);
 
   useEffect(() => {
@@ -257,6 +280,24 @@ const TenantDashboard = () => {
       });
     }
   };
+  const handleDownloadReceipt = async (receiptId: string) => {
+    try {
+      const receipt = receipts.find(r => r.id === receiptId);
+      if (!receipt) throw new Error("Reçu non trouvé");
+      await downloadReceipt(receipt.id, receipt.receipt_number, receipt.payment_date);
+      toast({
+        title: "Téléchargement réussi",
+        description: "Le reçu PDF a été téléchargé",
+      });
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de télécharger le reçu",
+        variant: "destructive",
+      });
+    }
+  };
 
   const sidebarContent = (
     <>
@@ -276,6 +317,7 @@ const TenantDashboard = () => {
           { id: "search", label: "Rechercher", icon: Search },
           { id: "messages", label: "Messages", icon: MessageSquare },
           { id: "documents", label: "Mes documents", icon: FileText },
+          { id: "maintenance", label: "Maintenance", icon: Wrench },
           { id: "settings", label: "Paramètres", icon: Settings },
         ].map((item) => {
           // Calculer le nombre de messages non lus
@@ -354,7 +396,8 @@ const TenantDashboard = () => {
               </SheetContent>
             </Sheet>
 
-            <div className="flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+              <ThemeToggle />
               <NotificationBell />
               <UserProfile />
             </div>
@@ -802,21 +845,7 @@ const TenantDashboard = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={async () => {
-                                  try {
-                                    await downloadReceipt(receipt.id, receipt.receipt_number, receipt.payment_date);
-                                    toast({
-                                      title: "Téléchargement réussi",
-                                      description: "Le reçu PDF a été téléchargé"
-                                    });
-                                  } catch (error) {
-                                    toast({
-                                      title: "Erreur",
-                                      description: "Impossible de télécharger le reçu",
-                                      variant: "destructive"
-                                    });
-                                  }
-                                }}
+                                onClick={() => handleDownloadReceipt(receipt.id)}
                               >
                                 <Download className="h-4 w-4 mr-2" />
                                 Télécharger PDF
@@ -828,6 +857,13 @@ const TenantDashboard = () => {
                     )}
                   </CardContent>
                 </Card>
+              </div>
+            )}
+
+            {/* Maintenance Tab */}
+            {activeTab === "maintenance" && (
+              <div className="space-y-6">
+                <MaintenanceTab />
               </div>
             )}
 
@@ -926,10 +962,11 @@ const TenantDashboard = () => {
           onOpenChange={setReportDialogOpen}
           ownerId={currentOwnerId}
           ownerName={ownerProfile?.company_name || ownerProfile?.full_name || tenantData?.owner_name || "le propriétaire"}
+          leases={leases}
         />
       )}
     </div>
   );
 };
 
-export default TenantDashboard;
+export default DashboardLocataire;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -27,6 +28,7 @@ export const NotificationBell = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { user } = useAuth();
 
@@ -48,6 +50,7 @@ export const NotificationBell = () => {
       if (!user) return;
 
       const data = await getNotifications();
+      console.log("[NOTIF] Fetched:", data);
       if (data) {
         setNotifications(data);
         const unread = data.filter((n: any) => !n.is_read).length;
@@ -97,6 +100,8 @@ export const NotificationBell = () => {
         return "👤";
       case "receipt":
         return "📄";
+      case "maintenance":
+        return "🛠️";
       default:
         return "🔔";
     }
@@ -164,6 +169,9 @@ export const NotificationBell = () => {
                   onClick={() => {
                     if (!notification.is_read) {
                       markAsRead(notification.id);
+                    }
+                    if (notification.link) {
+                      navigate(notification.link);
                     }
                     setOpen(false);
                   }}

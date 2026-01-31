@@ -7,7 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountSettings } from "@/components/shared/AccountSettings";
-import { X, FileText } from "lucide-react";
+import { X, FileText, Scan, Shield, CheckCircle2, Clock } from "lucide-react";
+import { SignatureScanner } from "./SignatureScanner";
+import { uploadPhotos } from "@/lib/api";
 
 export const OwnerSettings = () => {
   const { toast } = useToast();
@@ -21,7 +23,10 @@ export const OwnerSettings = () => {
     contactEmail: "",
     address: "",
     signatureUrl: "",
+    idCardUrl: "",
+    verificationStatus: "none" as "none" | "pending" | "verified" | "rejected",
   });
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -42,6 +47,8 @@ export const OwnerSettings = () => {
           contactEmail: data.contact_email || "",
           address: data.address || "",
           signatureUrl: data.signature_url || "",
+          idCardUrl: data.id_card_url || "",
+          verificationStatus: data.verification_status || "none",
         });
       } else {
         // Reset profile if no data is found
@@ -54,6 +61,8 @@ export const OwnerSettings = () => {
           contactEmail: "",
           address: "",
           signatureUrl: "",
+          idCardUrl: "",
+          verificationStatus: "none",
         });
       }
     } catch (error: any) {
@@ -80,6 +89,8 @@ export const OwnerSettings = () => {
         contact_email: profile.contactEmail,
         address: profile.address,
         signature_url: profile.signatureUrl,
+        id_card_url: profile.idCardUrl,
+        verification_status: profile.verificationStatus,
       };
 
       const result = await updateOwnerProfile(profileData);
@@ -186,6 +197,109 @@ export const OwnerSettings = () => {
               </div>
 
               <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Vérification d'identité</Label>
+                  {profile.verificationStatus === 'verified' && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 text-green-600 text-xs font-bold">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Profil Vérifié
+                    </div>
+                  )}
+                  {profile.verificationStatus === 'pending' && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/10 text-amber-600 text-xs font-bold">
+                      <Clock className="h-3.5 w-3.5" /> Vérification en cours
+                    </div>
+                  )}
+                  {profile.verificationStatus === 'rejected' && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/10 text-red-600 text-xs font-bold">
+                      <X className="h-3.5 w-3.5" /> Vérification rejetée
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  Faites vérifier votre profil pour rassurer les futurs locataires. Téléchargez une copie lisible de votre CNI ou Passeport.
+                </p>
+
+                <div className="flex flex-col gap-4">
+                  {profile.idCardUrl ? (
+                    <div className="relative w-full max-w-sm aspect-video border rounded-lg overflow-hidden bg-muted/10 group">
+                      <img
+                        src={profile.idCardUrl}
+                        alt="Pièce d'identité"
+                        className="w-full h-full object-contain"
+                      />
+                      {profile.verificationStatus !== 'verified' && (
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setProfile({ ...profile, idCardUrl: "", verificationStatus: 'none' })}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full max-w-sm aspect-video border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground gap-3 bg-muted/20">
+                      <Shield className="h-10 w-10 opacity-20" />
+                      <div className="text-center px-4">
+                        <p className="text-sm font-medium">Aucun document soumis</p>
+                        <p className="text-xs opacity-70">Formats JPG, PNG ou PDF supportés</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {profile.verificationStatus !== 'verified' && profile.verificationStatus !== 'pending' && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        id="idCardUpload"
+                        className="hidden"
+                        accept="image/*,.pdf"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          try {
+                            setLoading(true);
+                            const urls = await uploadPhotos([file]);
+                            if (urls && urls.length > 0) {
+                              setProfile({
+                                ...profile,
+                                idCardUrl: urls[0],
+                                verificationStatus: 'pending'
+                              });
+                              toast({
+                                title: "Document téléchargé",
+                                description: "Votre document a été soumis pour vérification.",
+                              });
+                            }
+                          } catch (error) {
+                            toast({
+                              title: "Erreur",
+                              description: "Échec du téléchargement du document.",
+                              variant: "destructive",
+                            });
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        asChild
+                        className="gap-2"
+                      >
+                        <label htmlFor="idCardUpload" className="cursor-pointer">
+                          <FileText className="h-4 w-4" /> Soumettre ma pièce d'identité
+                        </label>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
                 <Label className="text-base font-semibold">Signature ou Cachet</Label>
                 <p className="text-sm text-muted-foreground">
                   Cette signature ou cachet sera automatiquement apposé sur tous vos reçus de loyer.
@@ -216,29 +330,33 @@ export const OwnerSettings = () => {
                   )}
 
                   <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      className="max-w-xs"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
+                    <Button
+                      variant="outline"
+                      onClick={() => setScannerOpen(true)}
+                      className="gap-2"
+                    >
+                      <Scan className="h-4 w-4" /> Scanner une signature ou un cachet
+                    </Button>
 
+                    <SignatureScanner
+                      open={scannerOpen}
+                      onOpenChange={setScannerOpen}
+                      onSave={async (blob) => {
                         try {
                           setLoading(true);
-                          const { uploadPhotos } = await import("@/lib/api");
+                          const file = new File([blob], "signature.png", { type: "image/png" });
                           const urls = await uploadPhotos([file]);
                           if (urls && urls.length > 0) {
                             setProfile({ ...profile, signatureUrl: urls[0] });
                             toast({
-                              title: "Signature téléchargée",
-                              description: "N'oubliez pas d'enregistrer les modifications.",
+                              title: "Signature enregistrée",
+                              description: "N'oubliez pas d'enregistrer toutes les modifications.",
                             });
                           }
-                        } catch (error: any) {
+                        } catch (error) {
                           toast({
-                            title: "Transfert échoué",
-                            description: "Le chargement de l'image a rencontré un problème.",
+                            title: "Erreur",
+                            description: "Échec du téléchargement de la signature.",
                             variant: "destructive",
                           });
                         } finally {

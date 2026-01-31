@@ -81,3 +81,15 @@ export const deleteProperty = async (id: string) => {
         throw error;
     }
 };
+
+export const updateProperty = async (id: string, data: any) => {
+    try {
+        return await baseClient(`/properties/${id}`, {
+            method: "PUT",
+            body: JSON.stringify(data),
+        });
+    } catch (error) {
+        console.error("UpdateProperty error:", error);
+        return null;
+    }
+};

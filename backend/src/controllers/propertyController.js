@@ -139,6 +139,39 @@ const propertyController = {
     },
 
     /**
+     * Update property
+     */
+    async updateProperty(req, res, next) {
+        try {
+            const ownerId = req.user.id;
+            const propertyId = req.params.id;
+            const updateData = req.body;
+
+            const updatedProperty = await Property.update(propertyId, ownerId, updateData);
+            if (!updatedProperty) {
+                return response.error(res, 'Property not found or not owned by you', 404);
+            }
+
+            return response.success(res, updatedProperty, 'Property updated successfully');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Run database migration for coordinates
+     */
+    async runMigration(req, res, next) {
+        try {
+            await Property.migrate();
+            return response.success(res, null, 'Migration successful (latitude, longitude, equipments added)');
+        } catch (error) {
+            console.error('Migration error:', error);
+            return response.error(res, 'Migration failed: ' + error.message, 500);
+        }
+    },
+
+    /**
      * Get similar properties
      */
     async getSimilarProperties(req, res, next) {

@@ -94,7 +94,7 @@ const Contact = () => {
                                     {
                                         icon: Phone,
                                         title: "Téléphone",
-                                        content: "+221 78 587 78 97",
+                                        content: "+221 76 162 95 29",
                                         subContent: "Lun-Ven, 9h-18h",
                                         color: "bg-green-500/10 text-green-600",
                                     },
@@ -237,7 +237,7 @@ const Contact = () => {
 
             <footer className="py-8 px-4 border-t bg-secondary/20">
                 <div className="container mx-auto text-center text-muted-foreground">
-                    <p>© 2025 Samalocation. Tous droits réservés.</p>
+                    <p>© 2026 Samalocation. Tous droits réservés.</p>
                     <div className="flex flex-wrap justify-center gap-6 mt-4">
                         <a href="/privacy" className="hover:text-primary transition-colors">Politique de confidentialité</a>
                         <a href="/terms" className="hover:text-primary transition-colors">Conditions d'utilisation</a>

@@ -16,10 +16,12 @@ import PropertiesManagement from "@/components/admin/PropertiesManagement";
 import ReportsManagement from "@/components/admin/ReportsManagement";
 import ContactsManagement from "@/components/admin/ContactsManagement";
 import AdminSettings from "@/components/admin/AdminSettings";
-import { getAdminStatistics, getRecentUsers } from "@/lib/api";
+import VerificationsManagement from "@/components/admin/VerificationsManagement";
+import { getAdminStatistics, getRecentUsers, getPendingVerifications } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { User, AdminStatistics } from "@/types";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -35,7 +37,8 @@ const AdminDashboard = () => {
     publishedProperties: 0,
     newUsersCount: 0,
     newPropertiesCount: 0,
-    pendingReportsCount: 0
+    pendingReportsCount: 0,
+    pendingVerificationsCount: 0
   });
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
 
@@ -55,7 +58,7 @@ const AdminDashboard = () => {
     try {
       const [statsData, usersData] = await Promise.all([
         getAdminStatistics({ lastUsersCheck, lastPropertiesCheck }),
-        getRecentUsers(10)
+        getRecentUsers(10, lastUsersCheck)
       ]);
 
       setStatistics(statsData);
@@ -95,6 +98,7 @@ const AdminDashboard = () => {
           { id: "overview", label: "Tableau de bord", icon: TrendingUp },
           { id: "users", label: "Utilisateurs", icon: Users },
           { id: "properties", label: "Propriétés", icon: Building2 },
+          { id: "verifications", label: "Vérifications", icon: Shield },
           { id: "reports", label: "Signalements", icon: AlertTriangle },
           { id: "support", label: "Messages Support", icon: MessageSquare },
           { id: "settings", label: "Paramètres", icon: Settings },
@@ -106,7 +110,9 @@ const AdminDashboard = () => {
               ? statistics.newPropertiesCount
               : item.id === "reports"
                 ? statistics.pendingReportsCount
-                : 0;
+                : item.id === "verifications"
+                  ? statistics.pendingVerificationsCount
+                  : 0;
 
           return (
             <button
@@ -116,7 +122,7 @@ const AdminDashboard = () => {
                 setMobileMenuOpen(false);
 
                 // Réinitialiser le badge lors de la consultation
-                if (item.id === "users") {
+                if (item.id === "users" || item.id === "overview") {
                   localStorage.setItem("admin_last_users_check", new Date().toISOString());
                   setStatistics(prev => ({ ...prev, newUsersCount: 0 }));
                 } else if (item.id === "properties") {
@@ -184,9 +190,14 @@ const AdminDashboard = () => {
           </div>
 
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">Tableau de bord administrateur</h1>
-            <p className="text-muted-foreground">Vue d'ensemble de la plateforme Samalocation</p>
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">Tableau de bord administrateur</h1>
+              <p className="text-muted-foreground">Vue d'ensemble de la plateforme Samalocation</p>
+            </div>
+            <div className="flex items-center gap-3 self-end sm:self-auto">
+              <ThemeToggle />
+            </div>
           </div>
 
           {/* Conditional Content Based on Active Tab */}
@@ -204,9 +215,19 @@ const AdminDashboard = () => {
             <div>
               <div className="mb-6">
                 <h1 className="text-2xl md:text-3xl font-bold mb-2">Gestion des propriétés</h1>
-                <p className="text-muted-foreground">Gérez les biens immobiliers de la plateforme</p>
+                <p className="text-muted-foreground">Gerez les biens immobiliers de la plateforme</p>
               </div>
               <PropertiesManagement />
+            </div>
+          )}
+
+          {activeTab === "verifications" && (
+            <div>
+              <div className="mb-6">
+                <h1 className="text-2xl md:text-3xl font-bold mb-2">Vérification des propriétaires</h1>
+                <p className="text-muted-foreground">Examinez les pièces d'identité et validez les profils</p>
+              </div>
+              <VerificationsManagement />
             </div>
           )}
 
@@ -310,25 +331,32 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {recentUsers.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                            <Users className="h-5 w-5 text-white" />
+                    {recentUsers.length > 0 ? (
+                      recentUsers.map((user) => (
+                        <div key={user.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg animate-fade-in-up">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                              <Users className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-semibold">{user.full_name}</p>
+                              <p className="text-[10px] font-bold text-primary">{user.customId}</p>
+                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold">{user.full_name}</p>
-                            <p className="text-[10px] font-bold text-primary">{user.custom_id}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                          <div className="text-right">
+                            <Badge variant={user.role === 'owner' ? 'default' : 'secondary'}>
+                              {user.role === 'owner' ? 'Propriétaire' : 'Locataire'}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <Badge variant={user.role === 'owner' ? 'default' : 'secondary'}>
-                            {user.role === 'owner' ? 'Propriétaire' : 'Locataire'}
-                          </Badge>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-10 bg-secondary/10 rounded-lg border-2 border-dashed border-secondary">
+                        <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
+                        <p className="text-muted-foreground">Aucun nouvel utilisateur depuis votre dernière visite.</p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </CardContent>
               </Card>

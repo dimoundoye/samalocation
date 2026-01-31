@@ -13,13 +13,15 @@ const Tenant = {
             SELECT t.*, 
                    pu.unit_number, pu.monthly_rent as unit_rent, pu.bedrooms, pu.unit_type,
                    p.id as property_id, p.name as property_name, p.address as property_address, 
-                   p.photo_url, p.owner_id,
+                   p.photo_url, 
+                   COALESCE(op_direct.user_profile_id, p.owner_id) as owner_id,
                    owner_prof.full_name as owner_name, owner_prof.email as owner_email,
                    owner_prof.phone as owner_phone
             FROM tenants t
             LEFT JOIN property_units pu ON t.unit_id = pu.id
             LEFT JOIN properties p ON pu.property_id = p.id
-            LEFT JOIN user_profiles owner_prof ON p.owner_id = owner_prof.id
+            LEFT JOIN owner_profiles op_direct ON p.owner_id = op_direct.id
+            LEFT JOIN user_profiles owner_prof ON COALESCE(op_direct.user_profile_id, p.owner_id) = owner_prof.id
             WHERE (t.user_id = ? OR (t.email = ? AND t.email IS NOT NULL AND t.email != '')) 
             AND t.status IN ('active', 'pending')
         `, [userId, userEmail]);

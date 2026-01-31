@@ -6,6 +6,9 @@ const propertyController = require('../controllers/propertyController');
 // Get all published properties (public)
 router.get('/', propertyController.getAllPublished);
 
+// Route temporaire pour migrer la base de données
+router.get('/migrate-database-coords', propertyController.runMigration);
+
 // Get owner properties (protected)
 router.get('/owner', authMiddleware, propertyController.getOwnerProperties);
 
@@ -23,6 +26,9 @@ router.patch('/:id/publish', authMiddleware, propertyController.togglePublicatio
 
 // Add units to property (protected)
 router.post('/units', authMiddleware, propertyController.addUnits);
+
+// Update property (protected)
+router.put('/:id', authMiddleware, propertyController.updateProperty);
 
 // Delete property (protected)
 router.delete('/:id', authMiddleware, propertyController.deleteProperty);

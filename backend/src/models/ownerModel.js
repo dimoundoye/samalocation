@@ -13,7 +13,16 @@ const Owner = {
      * Update or create owner profile
      */
     async updateProfile(id, data) {
-        const { full_name, company_name, phone, address, bio, signature_url } = data;
+        const {
+            full_name,
+            company_name,
+            phone,
+            address,
+            bio,
+            signature_url,
+            id_card_url,
+            verification_status
+        } = data;
         // contact_phone et contact_email sont ignorés car les colonnes n'existent pas
 
         // Mettre à jour user_profiles si full_name est fourni
@@ -30,14 +39,33 @@ const Owner = {
         if (profiles.length === 0) {
             // Créer le profil owner (colonnes existantes uniquement)
             await db.query(
-                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio, signature_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [id, id, company_name, phone, address, bio, signature_url]
+                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio, signature_url, id_card_url, verification_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    id,
+                    id,
+                    company_name || null,
+                    phone || null,
+                    address || null,
+                    bio || null,
+                    signature_url || null,
+                    id_card_url || null,
+                    verification_status || 'none'
+                ]
             );
         } else {
-            // Mettre à jour le profil owner (colonnes existantes uniquement)
+            // Mettre à jour le profil owner
             await db.query(
-                'UPDATE owner_profiles SET company_name = ?, phone = ?, address = ?, bio = ?, signature_url = ?, updated_at = NOW() WHERE id = ?',
-                [company_name, phone, address, bio, signature_url, id]
+                'UPDATE owner_profiles SET company_name = ?, phone = ?, address = ?, bio = ?, signature_url = ?, id_card_url = ?, verification_status = ?, updated_at = NOW() WHERE id = ?',
+                [
+                    company_name || null,
+                    phone || null,
+                    address || null,
+                    bio || null,
+                    signature_url || null,
+                    id_card_url || null,
+                    verification_status || 'none',
+                    id
+                ]
             );
         }
 

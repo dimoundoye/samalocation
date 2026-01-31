@@ -22,6 +22,12 @@ export interface Property {
     owner_name?: string;
     min_rent?: number;
     units_count?: number;
+    latitude?: number;
+    longitude?: number;
+    equipments?: string[];
+    bedrooms?: number;
+    bathrooms?: number;
+    area_sqm?: number;
     created_at: string;
     property_units?: PropertyUnit[];
     owner_profiles?: any; // To be refined if needed
@@ -33,6 +39,9 @@ export interface PropertyUnit {
     unit_number: string;
     unit_type: string;
     rent_amount: number;
+    area_sqm?: number;
+    bedrooms?: number;
+    bathrooms?: number;
     is_available: boolean;
     properties?: Property;
 }
@@ -122,4 +131,5 @@ export interface AdminStatistics {
     newUsersCount: number;
     newPropertiesCount: number;
     pendingReportsCount: number;
+    pendingVerificationsCount: number;
 }

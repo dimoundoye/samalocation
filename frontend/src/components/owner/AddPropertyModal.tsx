@@ -18,10 +18,13 @@ import {
   Store,
   Upload,
   Layers,
+  Sparkles,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { createProperty, createPropertyUnits, uploadPhotos } from "@/lib/api";
+import { createProperty, createPropertyUnits, uploadPhotos, generateAIDescription } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import LocationPicker from "./LocationPicker";
 
 interface AddPropertyModalProps {
   open: boolean;
@@ -37,12 +40,15 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     name: "",
     address: "",
     description: "",
+    latitude: "",
+    longitude: "",
   });
   const [propertyEquipments, setPropertyEquipments] = useState<string[]>([]);
   const [equipmentInput, setEquipmentInput] = useState("");
   const [propertyPhotos, setPropertyPhotos] = useState<File[]>([]);
   const [propertyPhotosPreviews, setPropertyPhotosPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
   const generalInfoRef = useRef<HTMLDivElement>(null);
 
   // Pour les biens simples, on utilise directement les champs
@@ -197,7 +203,9 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         photos: photoUrls,
         photo_url: photoUrls[0] || null,
         is_published: false,
-        equipments: propertyEquipments.length > 0 ? propertyEquipments : null
+        equipments: propertyEquipments.length > 0 ? propertyEquipments : null,
+        latitude: propertyData.latitude ? parseFloat(propertyData.latitude) : null,
+        longitude: propertyData.longitude ? parseFloat(propertyData.longitude) : null
       };
 
       const property = await createProperty(propertyInsert);
@@ -237,12 +245,52 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     }
   };
 
+  const handleGenerateAI = async () => {
+    if (!propertyData.name || !propertyType || !propertyData.address) {
+      toast({
+        title: "Informations manquantes",
+        description: "Veuillez remplir au moins le nom, le type et l'adresse pour que l'IA puisse générer une description.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setGeneratingAI(true);
+      const description = await generateAIDescription({
+        name: propertyData.name,
+        type: propertyType,
+        address: propertyData.address,
+        equipments: propertyEquipments,
+        bedrooms: simplePropertyData.bedrooms,
+        bathrooms: simplePropertyData.bathrooms,
+        area: simplePropertyData.area_sqm,
+      });
+
+      setPropertyData(prev => ({ ...prev, description }));
+      toast({
+        title: "Description générée",
+        description: "L'IA a généré une description personnalisée pour votre bien.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur de génération",
+        description: "Impossible de générer la description. Vérifiez votre connexion.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
   const resetForm = () => {
     setPropertyType("");
     setPropertyData({
       name: "",
       address: "",
       description: "",
+      latitude: "",
+      longitude: "",
     });
     setPropertyEquipments([]);
     setEquipmentInput("");
@@ -355,14 +403,72 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                     </div>
                   </div>
 
+                  <div className="space-y-4">
+                    <Label>Localisation sur la carte (Optionnel)</Label>
+                    <LocationPicker
+                      onChange={(lat, lng) => setPropertyData(prev => ({
+                        ...prev,
+                        latitude: lat.toString(),
+                        longitude: lng.toString()
+                      }))}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="latitude" className="text-xs">Latitude</Label>
+                        <Input
+                          id="latitude"
+                          type="number"
+                          step="any"
+                          value={propertyData.latitude}
+                          onChange={(e) => setPropertyData({ ...propertyData, latitude: e.target.value })}
+                          placeholder="Ex: 14.7167"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="longitude" className="text-xs">Longitude</Label>
+                        <Input
+                          id="longitude"
+                          type="number"
+                          step="any"
+                          value={propertyData.longitude}
+                          onChange={(e) => setPropertyData({ ...propertyData, longitude: e.target.value })}
+                          placeholder="Ex: -17.4677"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <span className="font-semibold text-primary">💡 Astuce :</span> Le marqueur sur la carte définit la position précise du bien sur la carte de recherche.
+                  </p>
+
                   <div>
-                    <Label htmlFor="description">Description</Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs flex items-center gap-1.5"
+                        onClick={handleGenerateAI}
+                        disabled={generatingAI}
+                      >
+                        {generatingAI ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3 w-3 text-primary" />
+                        )}
+                        Générer avec l'IA
+                      </Button>
+                    </div>
                     <Textarea
                       id="description"
                       value={propertyData.description}
                       onChange={(e) => setPropertyData({ ...propertyData, description: e.target.value })}
-                      placeholder="Décrivez votre propriété..."
-                      rows={3}
+                      placeholder="Décrivez votre propriété ou laissez l'IA le faire pour vous..."
+                      rows={4}
                     />
                   </div>
 

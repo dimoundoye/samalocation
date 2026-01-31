@@ -23,4 +23,9 @@ router.get('/properties/overview', adminController.getPropertiesOverview);
 // Toutes les propriétés
 router.get('/properties', adminController.getAllProperties);
 
+// Vérifications d'identité
+router.get('/verifications/pending', adminController.getPendingVerifications);
+router.get('/verifications', adminController.getVerifications);
+router.patch('/verifications/:ownerId/status', adminController.updateVerificationStatus);
+
 module.exports = router;

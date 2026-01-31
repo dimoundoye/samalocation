@@ -20,9 +20,14 @@ const reportRoutes = require('./routes/reportRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const aiRoutes = require('./routes/aiRoutes');
+const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const errorHandler = require('./middleware/errorHandler');
+const securityMiddleware = require('./middleware/security');
 
 const app = express();
+const server = require('http').createServer(app);
+const io = require('./utils/socket').init(server);
 const PORT = process.env.PORT || 5000;
 
 // Static Files - TOP PRIORITY to avoid security header conflicts
@@ -36,6 +41,18 @@ app.use('/uploads', (req, res, next) => {
 // Basic Middleware
 app.use(cors());
 app.use(express.json());
+
+// Security - Custom middleware
+app.use(securityMiddleware.preventHPP);
+app.use(securityMiddleware.sanitizeInput);
+
+// Force HTTPS in production
+app.use((req, res, next) => {
+    if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+        return res.redirect(`https://${req.get('host')}${req.url}`);
+    }
+    next();
+});
 
 // Security Middleware - Strict Configuration
 app.use(helmet({
@@ -54,7 +71,11 @@ app.use(helmet({
     },
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginEmbedderPolicy: false,
-    hsts: false, // 🛠️ Désactiver HSTS pour éviter les erreurs de protocole SSL en développement/déploiement précoce
+    hsts: {
+        maxAge: 31536000, // 1 year
+        includeSubDomains: true,
+        preload: true
+    },
     frameguard: { action: "deny" },
     xContentTypeOptions: true,
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
@@ -67,7 +88,17 @@ const limiter = rateLimit({
     max: 100,
     message: 'Too many requests'
 });
+
+// Strict Rate Limiting for Auth
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Max 10 attempts per 15 mins
+    message: 'Trop de tentatives de connexion, veuillez réessayer dans 15 minutes.'
+});
+
 app.use('/api/', limiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/signup', authLimiter);
 
 
 // Routes
@@ -82,31 +113,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
-// Test route
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Server is running' });
-});
-
-app.get('/api/debug-model', (req, res) => {
-    const fs = require('fs');
-    const modelPath = path.join(__dirname, 'models/receiptModel.js');
-    try {
-        const content = fs.readFileSync(modelPath, 'utf8');
-        res.send(`<pre>${content}</pre>`);
-    } catch (e) {
-        res.status(500).send(e.message);
-    }
-});
-
-// Database connection test
-app.get('/api/db-test', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT 1 + 1 AS solution');
-        res.json({ status: 'ok', message: 'Database connected!', solution: rows[0].solution });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: 'Database connection failed', error: error.message });
-    }
-});
+app.use('/api/ai', aiRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 
 // Use the separate property routes
 app.use('/api/properties', propertiesRoutes);
@@ -123,6 +131,6 @@ cron.schedule('0 0 * * *', async () => {
     }
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

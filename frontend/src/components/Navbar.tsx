@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Home, LogIn, UserPlus, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
+import { ThemeToggle } from "./ThemeToggle";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ const Navbar = () => {
             <div className="flex items-center gap-3">
               {user ? (
                 <div className="flex items-center gap-3">
+                  <ThemeToggle />
                   <NotificationBell />
                   <Button
                     variant="default"
@@ -46,6 +48,7 @@ const Navbar = () => {
                 </div>
               ) : (
                 <>
+                  <ThemeToggle />
                   <Button
                     variant="ghost"
                     onClick={() => navigate("/auth?mode=login")}

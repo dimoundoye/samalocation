@@ -118,7 +118,7 @@ const Index = () => {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-foreground selection:bg-primary/10">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/10 transition-colors duration-300">
       <Navbar />
 
       {/* Hero Section */}
@@ -165,17 +165,20 @@ const Index = () => {
               </div>
 
               {/* Quick Search */}
-              <div className="max-w-xl p-2 bg-white rounded-2xl shadow-strong flex items-center gap-2 border border-border/50">
-                <MapPin className="ml-4 h-5 w-5 text-muted-foreground" />
-                <Input
-                  placeholder="Quartier, ville (ex: Almadies, Thiès...)"
-                  className="border-0 focus-visible:ring-0 text-lg h-12"
-                  onKeyPress={(e) => e.key === 'Enter' && navigate("/search")}
-                />
+              <div className="max-w-xl p-2 bg-card dark:bg-card rounded-2xl shadow-strong flex flex-col sm:flex-row items-center gap-2 border border-border/50 transition-all">
+                <div className="flex items-center w-full gap-2 px-2">
+                  <MapPin className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <Input
+                    placeholder="Quartier, ville (ex: Almadies, Thiès...)"
+                    className="border-0 focus-visible:ring-0 text-lg h-12 w-full bg-transparent"
+                    onKeyPress={(e) => e.key === 'Enter' && navigate("/search")}
+                  />
+                </div>
                 <Button
                   onClick={() => navigate("/search")}
-                  className="h-12 w-12 rounded-xl gradient-accent shadow-medium hover:scale-110 transition-transform"
+                  className="h-12 w-full sm:w-12 rounded-xl gradient-accent shadow-medium hover:scale-105 sm:hover:scale-110 transition-transform"
                 >
+                  <span className="sm:hidden font-bold mr-2">Rechercher</span>
                   <ArrowRight className="h-6 w-6 text-white" />
                 </Button>
               </div>
@@ -201,7 +204,7 @@ const Index = () => {
       </section>
 
       {/* Value Proposition Grid */}
-      <section className="py-24 bg-white border-y border-border/50">
+      <section className="py-24 bg-background border-y border-border/50">
         <div className="container mx-auto px-6">
           <div className="text-center max-w-5xl mx-auto mb-20 space-y-4">
             <h2 className="text-5xl md:text-5xl font-bold text-primary"> Pourquoi choisir Samalocation ? </h2>
@@ -215,7 +218,7 @@ const Index = () => {
             {[
               {
                 icon: Shield,
-                title: "Sécurité Maximale",
+                title: "Sécurité",
                 description: "Vérification des profils et protection de vos documents et transactions.",
                 color: "bg-blue-500/10 text-blue-600"
               },
@@ -232,7 +235,7 @@ const Index = () => {
                 color: "bg-green-500/10 text-green-600"
               }
             ].map((prop, idx) => (
-              <div key={idx} className="p-8 rounded-3xl bg-[#FAFAFA] border border-transparent hover:border-primary/20 hover:bg-white hover:shadow-medium transition-all group">
+              <div key={idx} className="p-8 rounded-3xl bg-card border border-transparent hover:border-primary/20 hover:bg-secondary/50 dark:hover:bg-primary/5 hover:shadow-medium transition-all group">
                 <div className={`h-14 w-14 rounded-2xl ${prop.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                   <prop.icon className="h-7 w-7" />
                 </div>
@@ -277,7 +280,7 @@ const Index = () => {
             </div>
 
             {/* Tenants */}
-            <div className="relative group overflow-hidden rounded-[2.5rem] bg-white p-10 lg:p-16 text-primary shadow-strong border border-border/50">
+            <div className="relative group overflow-hidden rounded-[2.5rem] bg-card p-10 lg:p-16 text-primary dark:text-foreground shadow-strong border border-border/50">
               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
                 <Users size={200} />
               </div>
@@ -309,7 +312,7 @@ const Index = () => {
       </section>
 
       {/* Featured Properties */}
-      <section className="py-24 bg-[#FAFAFA]">
+      <section className="py-24 bg-secondary/30 dark:bg-background">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-4">
             <div className="space-y-4">
@@ -330,7 +333,7 @@ const Index = () => {
               {Array.from({ length: 3 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-[400px] bg-white border border-border/50 rounded-[2rem] animate-pulse"
+                  className="h-[400px] bg-card border border-border/50 rounded-[2rem] animate-pulse"
                 />
               ))}
             </div>
@@ -386,6 +389,7 @@ const Index = () => {
                         rentPeriod={property.primary_rent_period}
                         isApplied={property.id ? appliedPropertyIds.includes(property.id) : false}
                         ownerPhone={ownerPhone}
+                        isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
                       />
                     </CarouselItem>
                   );
@@ -396,10 +400,10 @@ const Index = () => {
                 <CarouselNext className="-right-12" />
               </div>
               <div className="md:hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 opacity-50">
-                <CarouselPrevious className="h-10 w-10 bg-white/80 shadow-strong border border-primary/10 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
+                <CarouselPrevious className="h-10 w-10 bg-background/80 dark:bg-card/80 shadow-strong border border-primary/10 text-primary hover:bg-background dark:hover:bg-card transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
               </div>
               <div className="md:hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-50">
-                <CarouselNext className="h-10 w-10 bg-white/80 shadow-strong border border-primary/10 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
+                <CarouselNext className="h-10 w-10 bg-background/80 dark:bg-card/80 shadow-strong border border-primary/10 text-primary hover:bg-background dark:hover:bg-card transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
               </div>
             </Carousel>
           )}
@@ -407,7 +411,7 @@ const Index = () => {
       </section>
 
       {/* Process / How it Works */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
             <h2 className="text-3xl md:text-5xl font-bold text-primary mb-6">Comment ça marche ?</h2>
@@ -425,7 +429,7 @@ const Index = () => {
                 { step: "03", title: "Installez-vous", desc: "Emménagez en toute sérénité." }
               ].map((item, i) => (
                 <div key={i} className="text-center group">
-                  <div className="h-20 w-20 rounded-3xl bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-8 border-[6px] border-[#FAFAFA] shadow-strong group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                  <div className="h-20 w-20 rounded-3xl bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-8 border-[6px] border-background shadow-strong group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                     {item.step}
                   </div>
                   <h3 className="text-2xl font-bold mb-4 text-primary">{item.title}</h3>
@@ -472,7 +476,7 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 bg-[#FAFAFA] border-t border-border/50">
+      <footer className="py-16 bg-secondary/30 dark:bg-background border-t border-border/50">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             <div className="col-span-1 md:col-span-1 space-y-6">

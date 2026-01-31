@@ -4,22 +4,43 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createReport } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 interface ReportOwnerDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    ownerId: string;
-    ownerName: string;
+    ownerId?: string;
+    ownerName?: string;
+    leases?: any[];
 }
 
-export const ReportOwnerDialog = ({ open, onOpenChange, ownerId, ownerName }: ReportOwnerDialogProps) => {
+export const ReportOwnerDialog = ({ open, onOpenChange, ownerId, ownerName, leases = [] }: ReportOwnerDialogProps) => {
     const { toast } = useToast();
     const [reason, setReason] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [selectedOwnerId, setSelectedOwnerId] = useState<string>(ownerId || "");
+
+    // If there's only one lease/owner or a pre-selected ownerId, use it
+    const defaultOwnerId = ownerId || (leases.length === 1 ? leases[0].owner_id : "");
+    const currentSelectedId = selectedOwnerId || defaultOwnerId;
+
+    const selectedLease = leases.find(l => l.owner_id === currentSelectedId);
+    const displayName = selectedLease
+        ? (selectedLease.owner_name || "le propriétaire")
+        : (ownerName || "le propriétaire");
 
     const handleSubmit = async () => {
+        if (!currentSelectedId) {
+            toast({
+                title: "Erreur",
+                description: "Veuillez sélectionner un propriétaire à signaler",
+                variant: "destructive",
+            });
+            return;
+        }
+
         if (reason.trim().length < 10) {
             toast({
                 title: "Erreur",
@@ -31,7 +52,7 @@ export const ReportOwnerDialog = ({ open, onOpenChange, ownerId, ownerName }: Re
 
         setSubmitting(true);
         try {
-            await createReport(ownerId, reason.trim());
+            await createReport(currentSelectedId, reason.trim());
 
             toast({
                 title: "Signalement envoyé",
@@ -60,13 +81,41 @@ export const ReportOwnerDialog = ({ open, onOpenChange, ownerId, ownerName }: Re
                         Signaler un propriétaire
                     </DialogTitle>
                     <DialogDescription>
-                        Vous êtes sur le point de signaler <strong>{ownerName}</strong> à l'administrateur.
+                        {leases.length > 1 ? (
+                            "Choisissez le propriétaire concerné par votre signalement."
+                        ) : (
+                            <>Vous êtes sur le point de signaler <strong>{displayName}</strong> à l'administrateur.</>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
+                    {leases.length > 1 && (
+                        <div className="space-y-2">
+                            <Label htmlFor="owner-select">Propriétaire à signaler *</Label>
+                            <Select
+                                value={currentSelectedId}
+                                onValueChange={setSelectedOwnerId}
+                            >
+                                <SelectTrigger id="owner-select">
+                                    <SelectValue placeholder="Sélectionnez un propriétaire" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {leases.map((lease) => (
+                                        <SelectItem key={lease.id} value={lease.owner_id || ""}>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{lease.owner_name}</span>
+                                                <span className="text-xs text-muted-foreground">{lease.property_name} - {lease.unit_number}</span>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
                     <div className="space-y-2">
-                        <Label htmlFor="reason">Motif du signalement *</Label>
+                        <Label htmlFor="reason">Motif du signalement {leases.length > 1 && `pour ${displayName}`} *</Label>
                         <Textarea
                             id="reason"
                             placeholder="Décrivez précisément la raison de votre signalement (minimum 10 caractères)..."

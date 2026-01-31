@@ -3,6 +3,7 @@ const Notification = require('../models/notificationModel');
 const Property = require('../models/propertyModel');
 const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
+const { getIO } = require('../utils/socket');
 
 const messageController = {
     /**
@@ -35,6 +36,15 @@ const messageController = {
                 property_id
             });
 
+            // Emit real-time message via Socket.io
+            try {
+                const io = getIO();
+                io.to(receiver_id).emit('new_message', newMessage);
+                console.log(`[SOCKET] Message emitted to user ${receiver_id}`);
+            } catch (socketError) {
+                console.warn('[SOCKET] Could not emit message:', socketError.message);
+            }
+
             // Automatically trigger a notification for the receiver
             try {
                 // If it's a property application, provide a link and specific title
@@ -59,7 +69,6 @@ const messageController = {
                 });
             } catch (notifError) {
                 console.error("Failed to create auto-notification:", notifError);
-                // Don't fail the whole request if only notification fails
             }
 
             return response.success(res, newMessage, 'Message sent', 201);

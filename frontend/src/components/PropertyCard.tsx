@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, BedDouble, Home, CheckCircle2, Phone, ArrowRight, Square, Bath } from "lucide-react";
+import { MapPin, BedDouble, Home, CheckCircle2, Phone, ArrowRight, Square, Bath, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,6 +19,7 @@ interface PropertyCardProps {
   isApplied?: boolean;
   rentPeriod?: "jour" | "semaine" | "mois";
   ownerPhone?: string;
+  isVerifiedOwner?: boolean;
 }
 
 const PropertyCard = ({
@@ -35,6 +36,7 @@ const PropertyCard = ({
   isApplied,
   rentPeriod = "mois",
   ownerPhone,
+  isVerifiedOwner,
 }: PropertyCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -89,9 +91,16 @@ const PropertyCard = ({
       <div className="flex flex-col flex-1 min-w-0">
         <CardContent className="p-2 sm:p-4 space-y-1 sm:space-y-2 flex-1 flex flex-col justify-between">
           <div>
-            <h3 className="font-bold text-sm sm:text-lg leading-tight text-primary mb-1">
-              {title}
-            </h3>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <h3 className="font-bold text-sm sm:text-lg leading-tight text-primary">
+                {title}
+              </h3>
+              {isVerifiedOwner && (
+                <div title="Propriétaire vérifié" className="flex items-center text-green-600 bg-green-50 px-1 py-0.5 rounded text-[10px] font-bold shrink-0">
+                  <Shield className="h-3 w-3 mr-0.5" /> Vérifié
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-1 text-muted-foreground text-[11px] sm:text-sm mb-1.5">
               <MapPin className="h-3 w-3 shrink-0" />

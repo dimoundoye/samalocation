@@ -11,6 +11,7 @@ import { login, signup } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { verifyEmail } from "@/api/emailverification";
 import Turnstile from "react-turnstile";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const Auth = () => {
   const userType = searchParams.get("type") || "tenant";
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [formData, setFormData] = useState({
     identifier: "", // Can be email or customId
@@ -80,6 +82,12 @@ const Auth = () => {
     const isDev = import.meta.env.DEV;
     if (!turnstileToken && !isDev) {
       toast.error("Veuillez confirmer que vous n'êtes pas un robot.");
+      setLoading(false);
+      return;
+    }
+
+    if (!acceptedTerms) {
+      toast.error("Veuillez accepter les conditions d'utilisation et la politique de confidentialité.");
       setLoading(false);
       return;
     }
@@ -296,6 +304,29 @@ const Auth = () => {
                   </div>
                 )}
 
+                <div className="flex items-start space-x-2 py-2">
+                  <Checkbox
+                    id="terms"
+                    checked={acceptedTerms}
+                    onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
+                    className="mt-1"
+                  />
+                  <Label
+                    htmlFor="terms"
+                    className="text-sm font-normal leading-relaxed text-muted-foreground cursor-pointer select-none"
+                  >
+                    J'ai lu et j'accepte les{" "}
+                    <Link to="/terms" className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                      conditions d'utilisation
+                    </Link>{" "}
+                    et la{" "}
+                    <Link to="/privacy" className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                      politique de confidentialité
+                    </Link>
+                    .
+                  </Label>
+                </div>
+
                 <Button type="submit" className="w-full gradient-accent text-white" disabled={loading}>
                   {loading ? (
                     <>
@@ -306,18 +337,6 @@ const Auth = () => {
                     "Créer mon compte"
                   )}
                 </Button>
-
-                <p className="text-xs text-center text-muted-foreground mt-4 px-2">
-                  En créant un compte, vous acceptez notre{" "}
-                  <Link to="/privacy" className="text-primary hover:underline">
-                    politique de confidentialité
-                  </Link>{" "}
-                  et nos{" "}
-                  <Link to="/terms" className="text-primary hover:underline">
-                    conditions d'utilisation
-                  </Link>
-                  .
-                </p>
               </form>
             </TabsContent>
           </Tabs>
