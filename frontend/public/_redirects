@@ -1,1 +1,4 @@
+http://samalocation.com/* https://samalocation.com/:splat 301!
+https://www.samalocation.com/* https://samalocation.com/:splat 301!
+
 /* /index.html 200

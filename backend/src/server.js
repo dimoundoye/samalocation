@@ -66,8 +66,8 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "*"], // Allow all images (vibrant design)
-            connectSrc: ["'self'", "https://res.cloudinary.com", "*"], // Allow connections to any (Cloudinary, backend, etc)
+            imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.tile.openstreetmap.org", "*"], // Allow all images (vibrant design)
+            connectSrc: ["'self'", "https://res.cloudinary.com", "https://nominatim.openstreetmap.org", "*"], // Allow connections to any (Cloudinary, backend, etc)
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
