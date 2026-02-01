@@ -1,5 +1,7 @@
 const fetch = require('node-fetch');
 
+const secretKey = process.env.TURNSTILE_SECRET_KEY;
+
 /**
  * Vérifier un jeton Cloudflare Turnstile
  * @param {string} token - Le jeton envoyé par le frontend

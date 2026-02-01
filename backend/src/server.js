@@ -39,7 +39,12 @@ app.use('/uploads', (req, res, next) => {
 }, express.static(path.resolve(process.cwd(), 'uploads')));
 
 // Basic Middleware
-app.use(cors());
+app.use(cors({
+    origin: true, // Dynamically allow the origin that made the request
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Security - Custom middleware

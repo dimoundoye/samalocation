@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logo-sl.png'],
+      includeAssets: [], // ⚠️ ne force pas favicon/logo en cache
       manifest: {
         name: 'Samalocation - Gestion Locative au Sénégal',
         short_name: 'Samalocation',
@@ -23,23 +23,15 @@ export default defineConfig(({ mode }) => ({
         background_color: '#ffffff',
         display: 'standalone',
         icons: [
-          {
-            src: 'logo-sl.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'logo-sl.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'logo-sl.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
+          { src: 'logo-sl.png', sizes: '192x192', type: 'image/png' },
+          { src: 'logo-sl.png', sizes: '512x512', type: 'image/png' },
+          { src: 'logo-sl.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true
       }
     }),
     mode === "development" && componentTagger()
