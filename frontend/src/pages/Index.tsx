@@ -515,7 +515,7 @@ const Index = () => {
               © 2026 Samalocation. Tous droits réservés au Sénégal
             </p>
             <div className="flex gap-6">
-              {/* Social icons placeholder */}
+              {/* Social icons placeholder  */}
             </div>
           </div>
         </div>
