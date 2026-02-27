@@ -18,18 +18,24 @@ import { UserProfile } from "@/components/UserProfile";
 import { AccountSettings } from "@/components/shared/AccountSettings";
 import { ReportOwnerDialog } from "@/components/tenant/ReportOwnerDialog";
 import { MaintenanceTab } from "@/components/tenant/MaintenanceTab";
+import { TenantContractsTab } from "@/components/tenant/TenantContractsTab";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { fr, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead } from "@/lib/api";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSocket } from "@/contexts/SocketContext";
+import { useTranslation } from "react-i18next";
 
 const DashboardLocataire = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  const dateLocale = i18n.language === 'en' ? enUS : fr;
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tenantProfile, setTenantProfile] = useState<any>(null);
   const [tenantData, setTenantData] = useState<any>(null);
@@ -72,8 +78,8 @@ const DashboardLocataire = () => {
       // Show toast if the message is from a different contact than the one currently selected
       if (!selectedChat || selectedChat.user_id !== msg.sender_id) {
         toast({
-          title: "Nouveau message",
-          description: `Vous avez reçu un message de ${msg.sender_name || 'votre propriétaire'}.`,
+          title: t('dashboard.common.new_message'),
+          description: `${t('dashboard.common.from')} ${msg.sender_name || t('tenant.owner')}.`,
         });
       }
     };
@@ -83,7 +89,7 @@ const DashboardLocataire = () => {
     return () => {
       socket.off("new_message", handleNewMessage);
     };
-  }, [socket, selectedChat, toast]);
+  }, [socket, selectedChat, toast, t]);
 
   useEffect(() => {
     if (activeTab === "messages") {
@@ -131,20 +137,20 @@ const DashboardLocataire = () => {
 
   // Marquer les notifications de reçus comme lues quand on va sur l'onglet documents
   useEffect(() => {
-    if (activeTab === "documents" && notifications.some(n => n.type === "receipt" && !n.is_read)) {
-      const clearReceiptNotifications = async () => {
+    if (activeTab === "contracts" && notifications.some(n => (n.type === "receipt" || n.type === "contract_created") && !n.is_read)) {
+      const clearContractNotifications = async () => {
         try {
-          const receiptNotifs = notifications.filter(n => n.type === "receipt" && !n.is_read);
-          for (const notif of receiptNotifs) {
+          const relevantNotifs = notifications.filter(n => (n.type === "receipt" || n.type === "contract_created") && !n.is_read);
+          for (const notif of relevantNotifs) {
             await markNotificationAsRead(notif.id);
           }
           // Recharger les notifications pour mettre à jour le badge
           loadNotifications();
         } catch (error) {
-          console.error("Error clearing receipt notifications:", error);
+          console.error("Error clearing contract notifications:", error);
         }
       };
-      clearReceiptNotifications();
+      clearContractNotifications();
     }
   }, [activeTab, notifications]);
 
@@ -171,8 +177,8 @@ const DashboardLocataire = () => {
     } catch (error) {
       console.error("Error loading tenant data:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger vos données",
+        title: t('common.error'),
+        description: t('common.error'),
         variant: "destructive",
       });
     }
@@ -201,11 +207,11 @@ const DashboardLocataire = () => {
   };
 
   const formatDate = (date: string) => {
-    return format(new Date(date), "dd MMM yyyy", { locale: fr });
+    return format(new Date(date), "dd MMM yyyy", { locale: dateLocale });
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce message ?")) {
+    if (!confirm(t('tenant.delete_confirm'))) {
       return;
     }
 
@@ -216,13 +222,11 @@ const DashboardLocataire = () => {
       loadMessages();
 
       toast({
-        title: "Message supprimé",
-        description: "Le message a été supprimé avec succès.",
+        title: t('tenant.delete_success'),
       });
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: "Le message n'a pas pu être supprimé.",
+        title: t('common.error'),
         variant: "destructive",
       });
     }
@@ -274,8 +278,7 @@ const DashboardLocataire = () => {
     } catch (error: any) {
       console.error("Error sending message from tenant:", error);
       toast({
-        title: "Erreur",
-        description: "L'envoi du message a échoué.",
+        title: t('common.error'),
         variant: "destructive",
       });
     }
@@ -286,14 +289,13 @@ const DashboardLocataire = () => {
       if (!receipt) throw new Error("Reçu non trouvé");
       await downloadReceipt(receipt.id, receipt.receipt_number, receipt.payment_date);
       toast({
-        title: "Téléchargement réussi",
-        description: "Le reçu PDF a été téléchargé",
+        title: t('common.success'),
+        description: "PDF downloaded",
       });
     } catch (error) {
       console.error("Error downloading receipt:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de télécharger le reçu",
+        title: t('common.error'),
         variant: "destructive",
       });
     }
@@ -313,18 +315,18 @@ const DashboardLocataire = () => {
 
       <nav className="space-y-2">
         {[
-          { id: "dashboard", label: "Tableau de bord", icon: TrendingUp },
-          { id: "search", label: "Rechercher", icon: Search },
-          { id: "messages", label: "Messages", icon: MessageSquare },
-          { id: "documents", label: "Mes documents", icon: FileText },
-          { id: "maintenance", label: "Maintenance", icon: Wrench },
-          { id: "settings", label: "Paramètres", icon: Settings },
+          { id: "dashboard", label: t('dashboard.sidebar.home'), icon: TrendingUp },
+          { id: "search", label: t('dashboard.sidebar.search'), icon: Search },
+          { id: "messages", label: t('dashboard.sidebar.messages'), icon: MessageSquare },
+          { id: "contracts", label: t('dashboard.sidebar.contracts'), icon: FileText },
+          { id: "maintenance", label: t('dashboard.sidebar.maintenance'), icon: Wrench },
+          { id: "settings", label: t('dashboard.sidebar.settings'), icon: Settings },
         ].map((item) => {
           // Calculer le nombre de messages non lus
           const unreadCount = item.id === "messages"
             ? messages.filter(msg => msg.receiver_id === user?.id && !msg.is_read).length
-            : item.id === "documents"
-              ? notifications.filter(n => n.type === "receipt" && !n.is_read).length
+            : item.id === "contracts"
+              ? notifications.filter(n => (n.type === "receipt" || n.type === "contract_created") && !n.is_read).length
               : 0;
 
           return (
@@ -366,7 +368,7 @@ const DashboardLocataire = () => {
         className="w-full mt-8 justify-start text-muted-foreground"
       >
         <LogOut className="mr-3 h-5 w-5" />
-        Déconnexion
+        {t('dashboard.sidebar.logout')}
       </Button>
     </>
   );
@@ -409,16 +411,16 @@ const DashboardLocataire = () => {
             {/* Dashboard Tab */}
             {activeTab === "dashboard" && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-3xl font-bold mb-2">Tableau de bord</h1>
-                    <div className="flex items-center gap-3">
-                      <p className="text-muted-foreground">
-                        Bienvenue, {tenantProfile?.full_name || tenantProfile?.email || "Locataire"}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                  <div className="space-y-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('dashboard.sidebar.home')}</h1>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-muted-foreground text-sm">
+                        {t('dashboard.common.welcome')}, <span className="font-semibold text-foreground">{tenantProfile?.full_name || tenantProfile?.email || "Locataire"}</span>
                       </p>
                       {user?.customId && (
-                        <Badge variant="outline" className="text-primary font-mono font-bold">
-                          ID: {user.customId}
+                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-mono text-[10px] px-2 py-0">
+                          {t('common.id')} : {user.customId}
                         </Badge>
                       )}
                     </div>
@@ -426,77 +428,85 @@ const DashboardLocataire = () => {
 
                   <Button
                     variant="outline"
-                    className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                    size="sm"
+                    className="w-full sm:w-auto text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700 transition-all text-xs"
                     onClick={() => {
-                      // Use owner from tenantData if available, otherwise use ownerProfile
                       const ownerId = tenantData?.owner_id || ownerProfile?.id;
                       if (ownerId) {
                         setCurrentOwnerId(ownerId);
                         setReportDialogOpen(true);
                       } else {
                         toast({
-                          title: "Aucun propriétaire",
-                          description: "Vous devez avoir une location active pour signaler un propriétaire.",
+                          title: t('tenant.no_owner_title'),
+                          description: t('tenant.no_owner_error'),
                           variant: "destructive",
                         });
                       }
                     }}
                   >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Signaler un problème
+                    <AlertTriangle className="h-3.5 w-3.5 mr-2" />
+                    {t('tenant.report_owner')}
                   </Button>
                 </div>
 
                 {/* Current Rental(s) */}
                 <div className="space-y-4">
-                  <h2 className="text-xl font-bold px-1">Mes locations</h2>
+                  <h2 className="text-xl font-bold px-1">{t('tenant.my_rentals')}</h2>
                   {leases.length > 0 ? (
                     leases.map((lease) => (
-                      <Card key={lease.id} className="shadow-soft hover:shadow-md transition-shadow transition-all duration-300 overflow-hidden border-l-4 border-l-primary">
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start">
-                            <CardTitle className="text-lg">Location: {lease.property_name}</CardTitle>
-                            <Badge variant={lease.status === "active" ? "default" : "secondary"}>
-                              {lease.status === "active" ? "Actif" : lease.status}
+                      <Card key={lease.id} className="group shadow-soft hover:shadow-lg transition-all duration-300 overflow-hidden border-l-4 border-l-primary relative">
+                        <CardHeader className="pb-3 pr-20 sm:pr-6">
+                          <div className="flex flex-col gap-1">
+                            <Badge
+                              variant={lease.status === "active" ? "default" : "secondary"}
+                              className="w-fit absolute top-4 right-4 sm:static mb-2"
+                            >
+                              {lease.status === "active" ? t('common.active') : lease.status}
                             </Badge>
+                            <CardTitle className="text-base sm:text-xl font-bold leading-tight line-clamp-2">
+                              {lease.property_name}
+                            </CardTitle>
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <div className="flex flex-col md:flex-row gap-6">
+                          <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
                             {lease.photo_url && (
-                              <img
-                                src={lease.photo_url}
-                                alt="Location"
-                                className="w-full md:w-32 h-24 object-cover rounded-lg"
-                              />
+                              <div className="relative shrink-0">
+                                <img
+                                  src={lease.photo_url}
+                                  alt="Location"
+                                  className="w-full md:w-40 h-32 md:h-28 object-cover rounded-xl shadow-sm"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl md:hidden" />
+                              </div>
                             )}
-                            <div className="flex-1">
-                              <p className="text-muted-foreground mb-3 text-sm flex items-center gap-1">
+                            <div className="flex-1 space-y-4">
+                              <p className="text-muted-foreground text-xs sm:text-sm flex items-center gap-2 bg-secondary/30 w-fit px-2 py-1 rounded-md">
                                 <Search className="h-3 w-3" /> {lease.property_address}
                               </p>
 
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Loyer</p>
-                                  <p className="font-bold text-primary">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+                                <div className="space-y-1">
+                                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.rent')}</p>
+                                  <p className="text-sm sm:text-base font-bold text-primary">
                                     {formatCurrency(lease.monthly_rent)}
                                   </p>
                                 </div>
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Unité</p>
-                                  <p className="font-semibold">
+                                <div className="space-y-1">
+                                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.unit')}</p>
+                                  <p className="text-sm sm:text-base font-semibold">
                                     {lease.unit_number || "N/A"}
                                   </p>
                                 </div>
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Arrivée</p>
-                                  <p className="text-sm">
-                                    {lease.move_in_date ? formatDate(lease.move_in_date) : "Non définie"}
+                                <div className="space-y-1">
+                                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.move_in')}</p>
+                                  <p className="text-xs sm:text-sm font-medium">
+                                    {lease.move_in_date ? formatDate(lease.move_in_date) : t('tenant.not_defined')}
                                   </p>
                                 </div>
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Propriétaire</p>
-                                  <p className="text-sm font-medium">
+                                <div className="space-y-1">
+                                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.owner')}</p>
+                                  <p className="text-xs sm:text-sm font-medium">
                                     {lease.owner_name || "N/A"}
                                   </p>
                                 </div>
@@ -512,9 +522,9 @@ const DashboardLocataire = () => {
                         <div className="flex items-start gap-4">
                           <Home className="h-12 w-12 text-blue-500 flex-shrink-0" />
                           <div className="flex-1">
-                            <h3 className="font-semibold text-lg mb-2">Aucune location active</h3>
+                            <h3 className="font-semibold text-lg mb-2">{t('dashboard.common.no_active_lease')}</h3>
                             <p className="text-muted-foreground mb-4">
-                              Vous n'avez pas encore de location assignée. Contactez le propriétaire ou l'administrateur pour plus d'informations.
+                              {t('tenant.no_lease_desc')}
                             </p>
                           </div>
                         </div>
@@ -527,7 +537,7 @@ const DashboardLocataire = () => {
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm">Documents</CardTitle>
+                      <CardTitle className="text-sm">{t('dashboard.sidebar.documents')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold">{receipts.length}</p>
@@ -537,16 +547,17 @@ const DashboardLocataire = () => {
               </div>
             )}
 
+
             {/* Messages Tab */}
             {activeTab === "messages" && (
               <div className="space-y-6 h-full">
-                <h2 className={`text-2xl font-bold ${selectedChat ? 'hidden lg:block' : ''}`}>Messages</h2>
+                <h2 className={`text-2xl font-bold ${selectedChat ? 'hidden lg:block' : ''}`}>{t('dashboard.sidebar.messages')}</h2>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)] lg:h-auto">
                   {/* Liste des Conversations */}
                   <Card className={`lg:col-span-1 h-full ${selectedChat ? 'hidden lg:block' : 'block'}`}>
                     <CardHeader>
-                      <CardTitle>Conversations</CardTitle>
+                      <CardTitle>{t('dashboard.common.conversations')}</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                       <ScrollArea className="h-[500px]">
@@ -585,9 +596,9 @@ const DashboardLocataire = () => {
                                 contacts.set(ownerUserId, {
                                   id: `owner_${ownerUserId}`,
                                   user_id: ownerUserId,
-                                  full_name: ownerName || "Propriétaire",
+                                  full_name: ownerName || t('tenant.owner'),
                                   email: ownerEmail || "",
-                                  subtitle: "Propriétaire",
+                                  subtitle: t('tenant.owner'),
                                   type: "owner",
                                   unreadCount: 0,
                                 });
@@ -601,9 +612,9 @@ const DashboardLocataire = () => {
                               contacts.set(lease.owner_id, {
                                 id: `owner_${lease.owner_id}`,
                                 user_id: lease.owner_id,
-                                full_name: lease.owner_name || "Mon propriétaire",
+                                full_name: lease.owner_name || t('tenant.owner'),
                                 email: lease.owner_email || "",
-                                subtitle: lease.property_name || "Propriétaire",
+                                subtitle: lease.property_name || t('tenant.owner'),
                                 type: "owner",
                                 unreadCount: 0,
                               });
@@ -623,7 +634,7 @@ const DashboardLocataire = () => {
                           });
 
                           return contactsList.length === 0 ? (
-                            <p className="text-center text-muted-foreground py-8 px-4">Aucune conversation</p>
+                            <p className="text-center text-muted-foreground py-8 px-4">{t('dashboard.common.no_conversations')}</p>
                           ) : (
                             contactsList.map((contact) => (
                               <div
@@ -724,7 +735,7 @@ const DashboardLocataire = () => {
                               if (filteredMessages.length === 0) {
                                 return (
                                   <p className="text-center text-muted-foreground py-8">
-                                    Aucun message dans cette conversation
+                                    {t('dashboard.common.no_messages')}
                                   </p>
                                 );
                               }
@@ -740,8 +751,7 @@ const DashboardLocataire = () => {
                                     onMouseEnter={async () => {
                                       // Marquer le message comme lu automatiquement quand il est visible
                                       if (isFromOwner && !message.is_read && user.id) {
-                                        // TODO: Implémenter PATCH /api/messages/:id/read au besoin
-                                        // Pour l'instant on met juste à jour localement
+                                        // Mises à jour locales effectuées lors du survol ou sélection
                                         setMessages((prev) =>
                                           prev.map((m) =>
                                             m.id === message.id ? { ...m, is_read: true } : m
@@ -759,7 +769,7 @@ const DashboardLocataire = () => {
                                       >
                                         <p className="text-sm">{message.message}</p>
                                         <p className="text-xs opacity-70 mt-1">
-                                          {new Date(message.created_at).toLocaleString('fr-FR')}
+                                          {new Date(message.created_at).toLocaleString(i18n.language === 'en' ? 'en-US' : 'fr-FR')}
                                         </p>
                                       </div>
                                       <Button
@@ -780,7 +790,7 @@ const DashboardLocataire = () => {
                           <div className="p-4 border-t">
                             <div className="flex gap-2">
                               <Input
-                                placeholder="Tapez votre message..."
+                                placeholder={t('dashboard.common.type_message')}
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
@@ -796,7 +806,7 @@ const DashboardLocataire = () => {
                       <CardContent className="flex items-center justify-center h-[500px]">
                         <div className="text-center text-muted-foreground">
                           <MessageSquare className="h-16 w-16 mx-auto mb-4" />
-                          <p>Sélectionnez une conversation pour commencer</p>
+                          <p>{t('dashboard.common.select_chat')}</p>
                         </div>
                       </CardContent>
                     )}
@@ -805,64 +815,79 @@ const DashboardLocataire = () => {
               </div>
             )}
 
-            {/* Documents Tab */}
-            {activeTab === "documents" && (
+            {/* Contracts Tab */}
+            {activeTab === "contracts" && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold">Mes documents</h2>
+                <h2 className="text-2xl font-bold">{t('dashboard.sidebar.contracts')}</h2>
 
-                <Card className="shadow-soft">
-                  <CardHeader>
-                    <CardTitle>Reçus de paiement</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {receipts.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">
-                        Aucun reçu disponible
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {receipts.map((receipt) => {
-                          const monthName = format(new Date(receipt.year, receipt.month - 1), 'MMMM yyyy', { locale: fr });
-                          return (
-                            <div
-                              key={receipt.id}
-                              className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors"
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                                  <FileText className="h-5 w-5 text-white" />
+                <Tabs defaultValue="leases" className="w-full">
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="leases">Contract</TabsTrigger>
+                    <TabsTrigger value="receipts">{t('dashboard.sidebar.documents')}</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="leases" className="space-y-6">
+                    <TenantContractsTab />
+                  </TabsContent>
+
+                  <TabsContent value="receipts" className="space-y-6">
+                    <Card className="shadow-soft">
+                      <CardHeader>
+                        <CardTitle>{t('dashboard.sidebar.documents')}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {receipts.length === 0 ? (
+                          <p className="text-center text-muted-foreground py-8">
+                            {t('tenant.no_receipts')}
+                          </p>
+                        ) : (
+                          <div className="space-y-3">
+                            {receipts.map((receipt) => {
+                              const monthName = format(new Date(receipt.year, receipt.month - 1), 'MMMM yyyy', { locale: dateLocale });
+                              return (
+                                <div
+                                  key={receipt.id}
+                                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors gap-4"
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
+                                      <FileText className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-sm sm:text-base">{t('tenant.receipt_n')} {receipt.receipt_number}</p>
+                                      <p className="text-xs sm:text-sm text-muted-foreground">
+                                        {monthName} - {Number(receipt.amount).toLocaleString(i18n.language === 'en' ? 'en-US' : 'fr-FR')} FCFA
+                                      </p>
+                                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
+                                        {receipt.property_name || t('hero.search_property')}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDownloadReceipt(receipt.id)}
+                                    className="w-full sm:w-auto"
+                                  >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    <span>{t('tenant.download_pdf')}</span>
+                                  </Button>
                                 </div>
-                                <div>
-                                  <p className="font-medium">Reçu N° {receipt.receipt_number}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {monthName} - {Number(receipt.amount).toLocaleString('fr-FR')} FCFA
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {receipt.property_name || 'Propriété'}
-                                  </p>
-                                </div>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDownloadReceipt(receipt.id)}
-                              >
-                                <Download className="h-4 w-4 mr-2" />
-                                Télécharger PDF
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
 
             {/* Maintenance Tab */}
             {activeTab === "maintenance" && (
               <div className="space-y-6">
+                <h2 className="text-2xl font-bold">{t('dashboard.sidebar.maintenance')}</h2>
                 <MaintenanceTab />
               </div>
             )}
@@ -870,83 +895,26 @@ const DashboardLocataire = () => {
             {/* Settings Tab */}
             {activeTab === "settings" && (
               <div className="space-y-6">
-                <div>
-                  <h2 className="text-2xl font-bold mb-2">Paramètres</h2>
-                  <p className="text-muted-foreground">Gérez votre profil et vos préférences</p>
-                </div>
+                <h2 className="text-2xl font-bold">{t('dashboard.sidebar.settings')}</h2>
 
                 <Tabs defaultValue="profile" className="w-full">
-                  <TabsList>
-                    <TabsTrigger value="profile">Profil</TabsTrigger>
-                    <TabsTrigger value="account">Compte</TabsTrigger>
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="profile">{t('dashboard.common.profile')}</TabsTrigger>
+                    <TabsTrigger value="account">{t('dashboard.common.account')}</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="profile" className="space-y-4">
+                  <TabsContent value="profile" className="space-y-6">
                     <Card className="shadow-soft">
                       <CardHeader>
-                        <CardTitle>Informations personnelles</CardTitle>
+                        <CardTitle>{t('dashboard.common.personal_info')}</CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div>
-                          <Label>Nom complet</Label>
-                          <Input
-                            value={tenantProfile?.full_name || ""}
-                            onChange={(e) => setTenantProfile({ ...tenantProfile, full_name: e.target.value })}
-                            placeholder="Votre nom complet"
-                          />
-                        </div>
-                        <div>
-                          <Label>Email</Label>
-                          <Input
-                            value={tenantProfile?.email || ""}
-                            onChange={(e) => setTenantProfile({ ...tenantProfile, email: e.target.value })}
-                            placeholder="Votre email"
-                            type="email"
-                          />
-                        </div>
-                        <div>
-                          <Label>Téléphone</Label>
-                          <Input
-                            value={tenantProfile?.phone || ""}
-                            onChange={(e) => setTenantProfile({ ...tenantProfile, phone: e.target.value })}
-                            placeholder="Votre numéro de téléphone"
-                            type="tel"
-                          />
-                        </div>
-                        <Button
-                          onClick={async () => {
-                            try {
-                              const updateData = {
-                                full_name: tenantProfile?.full_name,
-                                email: tenantProfile?.email,
-                                phone: tenantProfile?.phone
-                              };
-
-                              await updateTenantProfile(updateData);
-
-                              toast({
-                                title: "Profil mis à jour",
-                                description: "Vos informations ont été enregistrées avec succès."
-                              });
-
-                              // Recharger les données
-                              loadTenantData();
-                            } catch (error: any) {
-                              toast({
-                                title: "Erreur",
-                                description: error.message || "Impossible de mettre à jour le profil",
-                                variant: "destructive"
-                              });
-                            }
-                          }}
-                        >
-                          Enregistrer les modifications
-                        </Button>
+                      <CardContent>
+                        <UserProfile />
                       </CardContent>
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="account" className="space-y-4">
+                  <TabsContent value="account">
                     <AccountSettings />
                   </TabsContent>
                 </Tabs>
@@ -955,16 +923,14 @@ const DashboardLocataire = () => {
           </div>
         </div>
       </main>
-      {/* Report Owner Dialog */}
-      {currentOwnerId && (
-        <ReportOwnerDialog
-          open={reportDialogOpen}
-          onOpenChange={setReportDialogOpen}
-          ownerId={currentOwnerId}
-          ownerName={ownerProfile?.company_name || ownerProfile?.full_name || tenantData?.owner_name || "le propriétaire"}
-          leases={leases}
-        />
-      )}
+
+      <ReportOwnerDialog
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+        ownerId={currentOwnerId || ""}
+        ownerName={ownerProfile?.company_name || ownerProfile?.full_name || tenantData?.owner_name || t('tenant.owner')}
+        leases={leases}
+      />
     </div>
   );
 };

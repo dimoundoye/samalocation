@@ -60,7 +60,14 @@ const getSafeEquipmentsArray = (equipments: any) => {
 
 export const transformProperty = (property: RawProperty): FormattedProperty => {
   const units = property.property_units ? ([...property.property_units] as any[]) : [];
-  const availableUnits = units.filter((unit) => unit?.is_available !== false);
+  const availableUnits = units.filter((unit) => {
+    if (!unit) return false;
+    // Handle both boolean false and numeric 0/1/string false/string 0
+    return unit.is_available !== false &&
+      unit.is_available !== 0 &&
+      unit.is_available !== "0" &&
+      unit.is_available !== "false";
+  });
 
   const rentCandidates: number[] = [];
   let primaryRentPeriod: "jour" | "semaine" | "mois" = "mois";
@@ -153,8 +160,9 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
   const coverPhoto = formatImageUrl(property.photo_url || photosArray[0] || null);
 
   const parseCoord = (val: any) => {
-    if (val === null || val === undefined) return null;
-    const parsed = parseFloat(val.toString());
+    if (val === null || val === undefined || val === "") return null;
+    const sVal = val.toString().trim().replace(',', '.');
+    const parsed = parseFloat(sVal);
     return isNaN(parsed) ? null : parsed;
   };
 

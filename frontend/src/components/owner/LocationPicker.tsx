@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+// import "leaflet/dist/leaflet.css"; // Removed in favor of global import
 import { Search, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -71,9 +71,17 @@ const LocationPicker = ({ initialLat, initialLng, onChange }: LocationPickerProp
             });
 
             // Forcer le redimensionnement après un court délai pour gérer les problèmes d'affichage dans les modales
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 if (mapRef.current) mapRef.current.invalidateSize();
             }, 100);
+
+            return () => {
+                clearTimeout(timer);
+                if (mapRef.current) {
+                    mapRef.current.remove();
+                    mapRef.current = null;
+                }
+            };
         }
 
         return () => {

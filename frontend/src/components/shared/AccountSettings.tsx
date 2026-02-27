@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Lock } from "lucide-react";
 import { baseClient } from "@/api/baseClient";
+import { useTranslation } from "react-i18next";
 
 export const AccountSettings = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -19,8 +21,8 @@ export const AccountSettings = () => {
   const handleChangePassword = async () => {
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
       toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs.",
+        title: t('common.error'),
+        description: t('settings.fill_all_fields'),
         variant: "destructive",
       });
       return;
@@ -28,8 +30,8 @@ export const AccountSettings = () => {
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
-        title: "Erreur",
-        description: "Les mots de passe ne correspondent pas.",
+        title: t('common.error'),
+        description: t('settings.password_mismatch'),
         variant: "destructive",
       });
       return;
@@ -37,8 +39,8 @@ export const AccountSettings = () => {
 
     if (passwordData.newPassword.length < 6) {
       toast({
-        title: "Erreur",
-        description: "Le mot de passe doit contenir au moins 6 caractères.",
+        title: t('common.error'),
+        description: t('settings.password_length'),
         variant: "destructive",
       });
       return;
@@ -55,15 +57,15 @@ export const AccountSettings = () => {
       });
 
       toast({
-        title: "Mot de passe modifié",
-        description: "Votre mot de passe a été modifié avec succès.",
+        title: t('settings.password_changed'),
+        description: t('common.save_success'),
       });
 
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de changer le mot de passe",
+        title: t('common.error'),
+        description: error.message || t('common.save_error'),
         variant: "destructive",
       });
     } finally {
@@ -76,45 +78,45 @@ export const AccountSettings = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Lock className="h-5 w-5" />
-          Changer le mot de passe
+          {t('settings.change_password')}
         </CardTitle>
         <CardDescription>
-          Modifiez votre mot de passe de connexion
+          {t('settings.change_password_desc')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+          <Label htmlFor="currentPassword">{t('settings.current_password')}</Label>
           <Input
             id="currentPassword"
             type="password"
             value={passwordData.currentPassword}
             onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-            placeholder="Votre mot de passe actuel"
+            placeholder={t('settings.current_password')}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+          <Label htmlFor="newPassword">{t('settings.new_password')}</Label>
           <Input
             id="newPassword"
             type="password"
             value={passwordData.newPassword}
             onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-            placeholder="Minimum 6 caractères"
+            placeholder={t('settings.password_placeholder')}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+          <Label htmlFor="confirmPassword">{t('settings.confirm_password')}</Label>
           <Input
             id="confirmPassword"
             type="password"
             value={passwordData.confirmPassword}
             onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-            placeholder="Retapez le mot de passe"
+            placeholder={t('settings.confirm_placeholder')}
           />
         </div>
         <Button onClick={handleChangePassword} disabled={loading}>
-          {loading ? "Modification..." : "Changer le mot de passe"}
+          {loading ? t('common.loading') : t('settings.change_password')}
         </Button>
       </CardContent>
     </Card>

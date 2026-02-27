@@ -128,11 +128,11 @@ const maintenanceController = {
 
             // Check if user is the owner of the property
             // Handle both user_profile_id and owner_profile_id
-            const [rows] = await db.query(`
+            const { rows } = await db.query(`
                 SELECT p.owner_id, op.user_profile_id 
                 FROM properties p 
                 LEFT JOIN owner_profiles op ON p.owner_id = op.id 
-                WHERE p.id = ?
+                WHERE p.id = $1
             `, [request.property_id]);
 
             const prop = rows[0];
@@ -144,7 +144,7 @@ const maintenanceController = {
 
             // Notify Tenant
             try {
-                const [tenantUser] = await db.query('SELECT user_id FROM tenants WHERE id = ?', [request.tenant_id]);
+                const { rows: tenantUser } = await db.query('SELECT user_id FROM tenants WHERE id = $1', [request.tenant_id]);
                 if (tenantUser[0] && tenantUser[0].user_id) {
                     await Notification.create({
                         id: uuidv4(),

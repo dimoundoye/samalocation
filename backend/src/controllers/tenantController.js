@@ -60,6 +60,14 @@ const tenantController = {
                 return response.error(res, 'Forbidden: You do not own this unit', 403);
             }
 
+            // check if unit is already occupied and replace if necessary
+            const existingTenant = await Tenant.findActiveByUnitId(unit_id);
+            if (existingTenant) {
+                console.log(`Replacing existing tenant ${existingTenant.id} for unit ${unit_id}`);
+                // Instead of a hard delete, we could mark as inactive, but the user asked to "remove" (supprime)
+                await Tenant.delete(existingTenant.id);
+            }
+
             const tenantId = uuidv4();
             const newTenant = await Tenant.create({
                 id: tenantId,

@@ -38,11 +38,13 @@ export interface PropertyUnit {
     property_id: string;
     unit_number: string;
     unit_type: string;
-    rent_amount: number;
+    monthly_rent: number;
+    rent_amount?: number; // legacy field if used elsewhere
     area_sqm?: number;
     bedrooms?: number;
     bathrooms?: number;
     is_available: boolean;
+    rent_period?: string;
     properties?: Property;
 }
 
@@ -79,6 +81,7 @@ export interface Message {
 export interface CreateReceiptData {
     tenant_id: string;
     property_id: string;
+    unit_id?: string;
     month: number;
     year: number;
     amount: number;
@@ -91,6 +94,7 @@ export interface Receipt {
     id: string;
     tenant_id: string;
     property_id: string;
+    unit_id?: string;
     month: number;
     year: number;
     amount: number;
@@ -132,4 +136,55 @@ export interface AdminStatistics {
     newPropertiesCount: number;
     pendingReportsCount: number;
     pendingVerificationsCount: number;
+}
+
+export interface CreateContractData {
+    tenant_id: string;
+    property_id: string;
+    unit_id: string;
+    start_date: string;
+    duration_months: number;
+    rent_amount: number;
+    deposit_amount: number;
+    payment_day: number;
+    payment_method: string;
+    notes?: string;
+    contract_type?: 'standard' | 'premium';
+    owner_id_type?: string;
+    owner_id_number?: string;
+    owner_id_date?: string;
+    owner_dob?: string;
+    owner_birthplace?: string;
+    tenant_id_type?: string;
+    tenant_id_number?: string;
+    tenant_id_date?: string;
+    tenant_dob?: string;
+    tenant_birthplace?: string;
+    detailed_address?: string;
+    charges_info?: { description: string };
+    occupancy_limit?: number;
+    inventory?: Record<string, string>;
+}
+
+export interface RentalContract extends CreateContractData {
+    id: string;
+    owner_id: string;
+    status: 'draft' | 'active' | 'terminated' | 'pending_signature';
+    owner_signed: boolean;
+    tenant_signed: boolean;
+    owner_signed_at?: string;
+    tenant_signed_at?: string;
+    contract_number: string;
+    created_at: string;
+    // Joined fields
+    tenant_name?: string;
+    tenant_email?: string;
+    tenant_phone?: string;
+    property_name?: string;
+    unit_number?: string;
+    owner_name?: string;
+    owner_email?: string;
+    owner_phone?: string;
+    owner_address?: string;
+    owner_signature?: string;
 }

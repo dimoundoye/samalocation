@@ -204,8 +204,8 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         photo_url: photoUrls[0] || null,
         is_published: false,
         equipments: propertyEquipments.length > 0 ? propertyEquipments : null,
-        latitude: propertyData.latitude ? parseFloat(propertyData.latitude) : null,
-        longitude: propertyData.longitude ? parseFloat(propertyData.longitude) : null
+        latitude: propertyData.latitude ? parseFloat(propertyData.latitude) : 14.7167,
+        longitude: propertyData.longitude ? parseFloat(propertyData.longitude) : -17.4677
       };
 
       const property = await createProperty(propertyInsert);

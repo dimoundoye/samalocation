@@ -1,42 +1,37 @@
 const db = require('../config/db');
 
 const User = {
-    /**
-     * Find user by email
-     */
     async findByEmailOrId(identifier) {
         const normalizedIdentifier = identifier?.toLowerCase();
-        const [users] = await db.query(
-            'SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(custom_id) = ?',
+        const { rows } = await db.query(
+            'SELECT * FROM users WHERE LOWER(email) = $1 OR LOWER(custom_id) = $2',
             [normalizedIdentifier, normalizedIdentifier]
         );
-        return users[0] || null;
+        return rows[0] || null;
     },
 
     async findByEmail(email) {
         const normalizedEmail = email?.toLowerCase();
-        const [users] = await db.query('SELECT * FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
-        return users[0] || null;
+        const { rows } = await db.query('SELECT * FROM users WHERE LOWER(email) = $1', [normalizedEmail]);
+        return rows[0] || null;
     },
-
 
     async create(userData) {
         const { id, customId, email, passwordHash, name, phone, role, companyName, isSetupComplete = true } = userData;
 
-        // Transactional approach could be better, but let's stick to our pattern
         await db.query(
-            'INSERT INTO users (id, custom_id, email, password_hash, email_verified, is_setup_complete) VALUES (?, ?, ?, ?, 1, ?)',
+            'INSERT INTO users (id, custom_id, email, password_hash, email_verified, is_setup_complete) VALUES ($1, $2, $3, $4, true, $5)',
             [id, customId, email, passwordHash, isSetupComplete]
         );
 
         await db.query(
-            'INSERT INTO user_profiles (id, custom_id, email, full_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
+            'INSERT INTO user_profiles (id, custom_id, email, full_name, phone, role) VALUES ($1, $2, $3, $4, $5, $6)',
             [id, customId, email, name, phone, role]
         );
 
         if (role === 'owner') {
             await db.query(
-                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone) VALUES (?, ?, ?, ?)',
+                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone) VALUES ($1, $2, $3, $4)',
                 [id, id, companyName || name, phone]
             );
         }
@@ -44,77 +39,59 @@ const User = {
         return { id, customId, email, name, role };
     },
 
-    /**
-     * Get user profile by ID
-     */
     async findProfileById(id) {
-        const [profiles] = await db.query(`
+        const { rows } = await db.query(`
             SELECT up.*, u.is_setup_complete 
             FROM user_profiles up
             JOIN users u ON up.id = u.id
-            WHERE up.id = ?
+            WHERE up.id = $1
         `, [id]);
-        return profiles[0] || null;
+        return rows[0] || null;
     },
 
-    /**
-     * Search users by name or email with optional role filter
-     */
     async search(query, role = null) {
         let sql = `
             SELECT id, custom_id, full_name, email, role 
             FROM user_profiles 
-            WHERE full_name LIKE ? OR email LIKE ? OR custom_id LIKE ?
+            WHERE full_name ILIKE $1 OR email ILIKE $2 OR custom_id ILIKE $3
         `;
 
         const params = [`%${query}%`, `%${query}%`, `%${query}%`];
 
         if (role) {
-            sql += ' AND role = ?';
+            sql += ' AND role = $4';
             params.push(role);
         }
 
         sql += ' LIMIT 10';
 
-        const [profiles] = await db.query(sql, params);
-        return profiles;
+        const { rows } = await db.query(sql, params);
+        return rows;
     },
 
-    /**
-     * Bloquer un utilisateur
-     */
     async blockUser(userId, adminId, reason) {
         await db.query(
-            'UPDATE users SET is_blocked = TRUE, blocked_at = NOW(), blocked_by = ?, block_reason = ? WHERE id = ?',
+            'UPDATE users SET is_blocked = TRUE, blocked_at = NOW(), blocked_by = $1, block_reason = $2 WHERE id = $3',
             [adminId, reason, userId]
         );
         return true;
     },
 
-    /**
-     * Débloquer un utilisateur
-     */
     async unblockUser(userId) {
         await db.query(
-            'UPDATE users SET is_blocked = FALSE, blocked_at = NULL, blocked_by = NULL, block_reason = NULL WHERE id = ?',
+            'UPDATE users SET is_blocked = FALSE, blocked_at = NULL, blocked_by = NULL, block_reason = NULL WHERE id = $1',
             [userId]
         );
         return true;
     },
 
-    /**
-     * Vérifier si un utilisateur est bloqué
-     */
     async isBlocked(userId) {
-        const [users] = await db.query('SELECT is_blocked FROM users WHERE id = ?', [userId]);
-        return users[0]?.is_blocked || false;
+        const { rows } = await db.query('SELECT is_blocked FROM users WHERE id = $1', [userId]);
+        return rows[0]?.is_blocked || false;
     },
 
-    /**
-     * Obtenir tous les utilisateurs avec leurs informations de blocage
-     */
     async findAllWithBlockInfo() {
-        const [users] = await db.query(`
+        const { rows } = await db.query(`
             SELECT 
                 u.id,
                 u.custom_id,
@@ -132,54 +109,64 @@ const User = {
             LEFT JOIN user_profiles admin_profile ON u.blocked_by = admin_profile.id
             ORDER BY u.created_at DESC
         `);
-        return users;
+        return rows;
     },
 
-    /**
-     * Trouver un utilisateur par son token de vérification
-     */
     async findByVerificationToken(token) {
-        const [users] = await db.query(
-            'SELECT * FROM users WHERE verification_token = ? AND verification_token_expires > NOW()',
+        const { rows } = await db.query(
+            'SELECT * FROM users WHERE verification_token = $1 AND verification_token_expires > NOW()',
             [token]
         );
-        return users[0] || null;
+        return rows[0] || null;
     },
 
-    /**
-     * Marquer l'e-mail comme vérifié
-     */
     async verifyEmail(userId) {
         await db.query(
-            'UPDATE users SET email_verified = TRUE, verification_token = NULL, verification_token_expires = NULL WHERE id = ?',
+            'UPDATE users SET email_verified = TRUE, verification_token = NULL, verification_token_expires = NULL WHERE id = $1',
             [userId]
         );
         return true;
     },
-    /**
-     * Marquer la configuration comme terminée
-     */
+
     async updateSetupStatus(userId, isComplete) {
         await db.query(
-            'UPDATE users SET is_setup_complete = ? WHERE id = ?',
+            'UPDATE users SET is_setup_complete = $1 WHERE id = $2',
             [isComplete, userId]
         );
         return true;
     },
 
-    /**
-     * Mettre à jour les infos de base lors de la configuration
-     */
     async finalizeProfile(userId, { name, email, phone }) {
         await db.query(
-            'UPDATE user_profiles SET full_name = ?, email = ?, phone = ? WHERE id = ?',
+            'UPDATE user_profiles SET full_name = $1, email = $2, phone = $3 WHERE id = $4',
             [name, email, phone, userId]
         );
-        // Also update the email in the 'users' table if changed
         if (email) {
-            await db.query('UPDATE users SET email = ? WHERE id = ?', [email, userId]);
+            await db.query('UPDATE users SET email = $1 WHERE id = $2', [email, userId]);
         }
         return true;
+    },
+
+    async saveResetToken(userId, token, expires) {
+        await db.query(
+            'UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3',
+            [token, expires, userId]
+        );
+    },
+
+    async findByResetToken(token) {
+        const { rows } = await db.query(
+            'SELECT * FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW()',
+            [token]
+        );
+        return rows[0] || null;
+    },
+
+    async updatePassword(userId, passwordHash) {
+        await db.query(
+            'UPDATE users SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2',
+            [passwordHash, userId]
+        );
     }
 };
 

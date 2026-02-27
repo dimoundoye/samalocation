@@ -1,15 +1,11 @@
 const db = require('../config/db');
 
 const Tenant = {
-    /**
-     * Get all active lease info for a tenant user  
-     */
     async findActiveLeasesByUserId(userId) {
-        // Récupérer le user_profile du locataire pour avoir son email (fallback)
-        const [profiles] = await db.query('SELECT email FROM user_profiles WHERE id = ?', [userId]);
+        const { rows: profiles } = await db.query('SELECT email FROM user_profiles WHERE id = $1', [userId]);
         const userEmail = profiles[0]?.email;
 
-        const [tenants] = await db.query(`
+        const { rows: tenants } = await db.query(`
             SELECT t.*, 
                    pu.unit_number, pu.monthly_rent as unit_rent, pu.bedrooms, pu.unit_type,
                    p.id as property_id, p.name as property_name, p.address as property_address, 
@@ -22,27 +18,24 @@ const Tenant = {
             LEFT JOIN properties p ON pu.property_id = p.id
             LEFT JOIN owner_profiles op_direct ON p.owner_id = op_direct.id
             LEFT JOIN user_profiles owner_prof ON COALESCE(op_direct.user_profile_id, p.owner_id) = owner_prof.id
-            WHERE (t.user_id = ? OR (t.email = ? AND t.email IS NOT NULL AND t.email != '')) 
+            WHERE (t.user_id = $1 OR (t.email = $2 AND t.email IS NOT NULL AND t.email != '')) 
             AND t.status IN ('active', 'pending')
         `, [userId, userEmail]);
 
-        // Pour chaque lease, récupérer les profils
         const enrichedLeases = [];
         for (const tenant of tenants) {
-            // Récupérer le user_profile du locataire
-            const [userProfile] = await db.query(`
+            const { rows: userProfile } = await db.query(`
                 SELECT id, email, full_name, phone, role
                 FROM user_profiles
-                WHERE id = ?
+                WHERE id = $1
             `, [userId]);
 
-            // Récupérer le owner_profile complet
             if (tenant.owner_id) {
-                const [ownerProfiles] = await db.query(`
+                const { rows: ownerProfiles } = await db.query(`
                     SELECT op.*, up.full_name, up.email, up.phone
                     FROM owner_profiles op
                     LEFT JOIN user_profiles up ON op.user_profile_id = up.id
-                    WHERE up.id = ?
+                    WHERE up.id = $1
                 `, [tenant.owner_id]);
 
                 if (ownerProfiles[0]) {
@@ -57,132 +50,94 @@ const Tenant = {
         return enrichedLeases;
     },
 
-    /**
-     * Get all tenants for an owner
-     */
     async findByOwnerId(ownerId) {
-        const [tenants] = await db.query(`
+        const { rows: tenants } = await db.query(`
             SELECT t.*, 
                    pu.unit_number, pu.monthly_rent as unit_rent,
                    p.name as property_name, p.property_type, p.id as property_id
             FROM tenants t
             JOIN property_units pu ON t.unit_id = pu.id
             JOIN properties p ON pu.property_id = p.id
-            WHERE p.owner_id = ?
+            WHERE p.owner_id = $1
             ORDER BY t.created_at DESC
         `, [ownerId]);
         return tenants;
     },
 
-    /**
-     * Get tenant by ID with property/unit details
-     */
     async findById(id) {
-        const [tenants] = await db.query(`
+        const { rows: tenants } = await db.query(`
             SELECT t.*, 
                    pu.unit_number, pu.monthly_rent as unit_rent,
                    p.name as property_name, p.id as property_id, p.owner_id
             FROM tenants t
             JOIN property_units pu ON t.unit_id = pu.id
             JOIN properties p ON pu.property_id = p.id
-            WHERE t.id = ?
+            WHERE t.id = $1
         `, [id]);
         return tenants[0] || null;
     },
 
-    /**
-     * Update tenant
-     */
     async update(id, data) {
-        // Construire la requête dynamiquement pour ne mettre à jour que les champs fournis
         const updates = [];
         const values = [];
+        let idx = 1;
 
-        if (data.full_name !== undefined) {
-            updates.push('full_name = ?');
-            values.push(data.full_name);
-        }
-        if (data.email !== undefined) {
-            updates.push('email = ?');
-            values.push(data.email);
-        }
-        if (data.phone !== undefined) {
-            updates.push('phone = ?');
-            values.push(data.phone);
-        }
-        if (data.monthly_rent !== undefined) {
-            updates.push('monthly_rent = ?');
-            values.push(data.monthly_rent);
-        }
-        if (data.move_in_date !== undefined) {
-            updates.push('move_in_date = ?');
-            values.push(data.move_in_date);
-        }
-        if (data.status !== undefined) {
-            updates.push('status = ?');
-            values.push(data.status);
-        }
+        if (data.full_name !== undefined) { updates.push(`full_name = $${idx++}`); values.push(data.full_name); }
+        if (data.email !== undefined) { updates.push(`email = $${idx++}`); values.push(data.email); }
+        if (data.phone !== undefined) { updates.push(`phone = $${idx++}`); values.push(data.phone); }
+        if (data.monthly_rent !== undefined) { updates.push(`monthly_rent = $${idx++}`); values.push(data.monthly_rent); }
+        if (data.move_in_date !== undefined) { updates.push(`move_in_date = $${idx++}`); values.push(data.move_in_date); }
+        if (data.status !== undefined) { updates.push(`status = $${idx++}`); values.push(data.status); }
 
-        if (updates.length === 0) {
-            // Aucune mise à jour, retourner le tenant actuel
-            return await this.findById(id);
-        }
+        if (updates.length === 0) return await this.findById(id);
 
-        // Ajouter l'ID à la fin
         values.push(id);
-
-        const query = `UPDATE tenants SET ${updates.join(', ')} WHERE id = ?`;
+        const query = `UPDATE tenants SET ${updates.join(', ')} WHERE id = $${idx}`;
         await db.query(query, values);
 
-        // Return updated tenant
         return await this.findById(id);
     },
 
-    /**
-     * Delete tenant and free up unit
-     */
     async delete(id) {
-        // Get tenant to access unit_id
         const tenant = await this.findById(id);
 
-        if (!tenant) {
-            throw new Error('Tenant not found');
-        }
+        if (!tenant) throw new Error('Tenant not found');
 
-        // Delete tenant
-        await db.query('DELETE FROM tenants WHERE id = ?', [id]);
+        await db.query('DELETE FROM tenants WHERE id = $1', [id]);
 
-        // Mark unit as available
         if (tenant.unit_id) {
-            await db.query('UPDATE property_units SET is_available = true WHERE id = ?', [tenant.unit_id]);
+            await db.query('UPDATE property_units SET is_available = true WHERE id = $1', [tenant.unit_id]);
         }
 
         return tenant;
     },
 
-    /**
-     * Assign a tenant to a unit
-     */
     async create(data) {
         const { id, full_name, email, phone, unit_id, monthly_rent, move_in_date, status, user_id } = data;
 
         await db.query(
-            'INSERT INTO tenants (id, full_name, email, phone, unit_id, monthly_rent, move_in_date, status, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO tenants (id, full_name, email, phone, unit_id, monthly_rent, move_in_date, status, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
             [id, full_name, email, phone, unit_id, monthly_rent, move_in_date, status, user_id]
         );
 
-        // Mark unit as occupied
-        await db.query('UPDATE property_units SET is_available = false WHERE id = ?', [unit_id]);
+        await db.query('UPDATE property_units SET is_available = false WHERE id = $1', [unit_id]);
 
-        // Return the created tenant with joined info
-        const [rows] = await db.query(`
+        const { rows } = await db.query(`
             SELECT t.*, pu.unit_number, p.name as property_name
             FROM tenants t
             JOIN property_units pu ON t.unit_id = pu.id
             JOIN properties p ON pu.property_id = p.id
-            WHERE t.id = ?
+            WHERE t.id = $1
         `, [id]);
         return rows[0];
+    },
+
+    async findActiveByUnitId(unitId) {
+        const { rows } = await db.query(
+            "SELECT id FROM tenants WHERE unit_id = $1 AND status IN ('active', 'pending')",
+            [unitId]
+        );
+        return rows[0] || null;
     }
 };
 

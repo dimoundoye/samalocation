@@ -8,14 +8,14 @@ const adminController = {
     async getStatistics(req, res, next) {
         try {
             // Total utilisateurs par rôle
-            const [roleCounts] = await db.query(`
+            const { rows: roleCounts } = await db.query(`
                 SELECT role, COUNT(*) as count 
                 FROM user_profiles 
                 GROUP BY role
             `);
 
             // Total propriétés
-            const [propertiesCount] = await db.query(`
+            const { rows: propertiesCount } = await db.query(`
                 SELECT 
                     COUNT(*) as total,
                     SUM(CASE WHEN is_published = true THEN 1 ELSE 0 END) as published
@@ -26,46 +26,47 @@ const adminController = {
             const lastPropertiesCheck = req.query.lastPropertiesCheck || '1970-01-01';
 
             // Nouveaux utilisateurs depuis la dernière vérification (ou 7 derniers jours par défaut pour le calcul initial)
-            const [newUsers] = await db.query(`
+            const { rows: newUsers } = await db.query(`
                 SELECT COUNT(*) as count
-                FROM user_profiles
-                WHERE created_at >= ?
+                FROM user_profiles up
+                JOIN users u ON up.id = u.id
+                WHERE u.created_at >= $1
             `, [lastUsersCheck]);
 
             // Nouvelles propriétés depuis la dernière vérification
-            const [newProperties] = await db.query(`
+            const { rows: newProperties } = await db.query(`
                 SELECT COUNT(*) as count
                 FROM properties
-                WHERE created_at >= ?
+                WHERE created_at >= $1
             `, [lastPropertiesCheck]);
 
             // Signalements en attente (toujours basés sur le statut, pas la date)
-            const [pendingReports] = await db.query(`
+            const { rows: pendingReports } = await db.query(`
                 SELECT COUNT(*) as count
                 FROM reports
                 WHERE status = 'pending'
             `);
 
             // Vérifications en attente
-            const [pendingVerifications] = await db.query(`
+            const { rows: pendingVerifications } = await db.query(`
                 SELECT COUNT(*) as count
                 FROM owner_profiles
                 WHERE verification_status = 'pending'
             `);
 
-            const owners = roleCounts.find(r => r.role === 'owner')?.count || 0;
-            const tenants = roleCounts.find(r => r.role === 'tenant')?.count || 0;
+            const owners = parseInt(roleCounts.find(r => r.role === 'owner')?.count || 0);
+            const tenants = parseInt(roleCounts.find(r => r.role === 'tenant')?.count || 0);
 
             return response.success(res, {
                 totalUsers: owners + tenants,
                 owners,
                 tenants,
-                totalProperties: propertiesCount[0]?.total || 0,
-                publishedProperties: propertiesCount[0]?.published || 0,
-                newUsersCount: newUsers[0]?.count || 0,
-                newPropertiesCount: newProperties[0]?.count || 0,
-                pendingReportsCount: pendingReports[0]?.count || 0,
-                pendingVerificationsCount: pendingVerifications[0]?.count || 0
+                totalProperties: parseInt(propertiesCount[0]?.total || 0),
+                publishedProperties: parseInt(propertiesCount[0]?.published || 0),
+                newUsersCount: parseInt(newUsers[0]?.count || 0),
+                newPropertiesCount: parseInt(newProperties[0]?.count || 0),
+                pendingReportsCount: parseInt(pendingReports[0]?.count || 0),
+                pendingVerificationsCount: parseInt(pendingVerifications[0]?.count || 0)
             });
         } catch (error) {
             console.error('Error getting admin statistics:', error);
@@ -82,20 +83,21 @@ const adminController = {
             const since = req.query.since;
 
             let query = `
-                SELECT id, full_name, email, role, created_at, custom_id as customId
-                FROM user_profiles
+                SELECT up.id, up.full_name, up.email, up.role, u.created_at, up.custom_id as customId
+                FROM user_profiles up
+                JOIN users u ON up.id = u.id
             `;
             const params = [];
 
             if (since) {
-                query += ` WHERE created_at >= ?`;
+                query += ` WHERE u.created_at >= $1`;
                 params.push(since);
             }
 
-            query += ` ORDER BY created_at DESC LIMIT ?`;
+            query += ` ORDER BY u.created_at DESC LIMIT $${params.length + 1}`;
             params.push(limit);
 
-            const [users] = await db.query(query, params);
+            const { rows: users } = await db.query(query, params);
 
             return response.success(res, users);
         } catch (error) {
@@ -111,14 +113,15 @@ const adminController = {
         try {
             const days = parseInt(req.query.days) || 30;
 
-            const [growth] = await db.query(`
+            const { rows: growth } = await db.query(`
                 SELECT 
-                    DATE(created_at) as date,
-                    role,
+                    DATE(u.created_at) as date,
+                    up.role,
                     COUNT(*) as count
-                FROM user_profiles
-                WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                GROUP BY DATE(created_at), role
+                FROM user_profiles up
+                JOIN users u ON up.id = u.id
+                WHERE u.created_at >= NOW() - ($1::text || ' days')::INTERVAL
+                GROUP BY DATE(u.created_at), up.role
                 ORDER BY date ASC
             `, [days]);
 
@@ -135,7 +138,7 @@ const adminController = {
     async getPropertiesOverview(req, res, next) {
         try {
             // Statistiques globales
-            const [globalStats] = await db.query(`
+            const { rows: globalStats } = await db.query(`
                 SELECT 
                     COUNT(*) as total,
                     SUM(CASE WHEN is_published = true THEN 1 ELSE 0 END) as published,
@@ -144,7 +147,7 @@ const adminController = {
             `);
 
             // Par type
-            const [byType] = await db.query(`
+            const { rows: byType } = await db.query(`
                 SELECT 
                     property_type,
                     COUNT(*) as count
@@ -153,7 +156,7 @@ const adminController = {
             `);
 
             // Propriétés récentes
-            const [recent] = await db.query(`
+            const { rows: recent } = await db.query(`
                 SELECT 
                     p.id,
                     p.name,
@@ -183,7 +186,7 @@ const adminController = {
      */
     async getAllProperties(req, res, next) {
         try {
-            const [properties] = await db.query(`
+            const { rows: properties } = await db.query(`
                 SELECT 
                     p.id,
                     p.name,
@@ -212,7 +215,7 @@ const adminController = {
      */
     async getPendingVerifications(req, res, next) {
         try {
-            const [verifications] = await db.query(`
+            const { rows: verifications } = await db.query(`
                 SELECT 
                     op.id,
                     up.full_name,
@@ -220,11 +223,12 @@ const adminController = {
                     op.company_name,
                     op.id_card_url,
                     op.verification_status,
-                    op.updated_at
+                    u.updated_at
                 FROM owner_profiles op
                 JOIN user_profiles up ON op.id = up.id
+                JOIN users u ON op.id = u.id
                 WHERE op.verification_status = 'pending'
-                ORDER BY op.updated_at ASC
+                ORDER BY u.updated_at ASC
             `);
 
             return response.success(res, verifications);
@@ -251,20 +255,21 @@ const adminController = {
                     op.verification_status,
                     op.is_verified,
                     op.verified_at,
-                    op.updated_at
+                    u.updated_at
                 FROM owner_profiles op
                 JOIN user_profiles up ON op.id = up.id
+                JOIN users u ON op.id = u.id
             `;
 
             const params = [];
             if (status) {
-                query += ` WHERE op.verification_status = ?`;
+                query += ` WHERE op.verification_status = $1`;
                 params.push(status);
             }
 
-            query += ` ORDER BY op.updated_at DESC`;
+            query += ` ORDER BY u.updated_at DESC`;
 
-            const [verifications] = await db.query(query, params);
+            const { rows: verifications } = await db.query(query, params);
 
             return response.success(res, verifications);
         } catch (error) {
@@ -290,11 +295,11 @@ const adminController = {
             await db.query(`
                 UPDATE owner_profiles 
                 SET 
-                    verification_status = ?, 
-                    is_verified = ?, 
-                    verified_at = CASE WHEN ? = 'verified' THEN NOW() ELSE NULL END,
+                    verification_status = $1, 
+                    is_verified = $2, 
+                    verified_at = CASE WHEN $3 = 'verified' THEN NOW() ELSE NULL END,
                     updated_at = NOW()
-                WHERE id = ?
+                WHERE id = $4
             `, [status, isVerified, status, ownerId]);
 
             // Optionnel : Envoyer une notification au propriétaire ici

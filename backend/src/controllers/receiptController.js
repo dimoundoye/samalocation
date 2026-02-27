@@ -8,7 +8,7 @@ const receiptController = {
      */
     async createReceipt(req, res, next) {
         try {
-            const { tenant_id, property_id, month, year, amount, payment_date, payment_method, notes } = req.body;
+            const { tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, notes } = req.body;
             const ownerId = req.user.id;
 
             console.log('📋 Creating receipt with data:', {
@@ -34,8 +34,8 @@ const receiptController = {
 
             // Vérifier que la propriété appartient au propriétaire connecté
             const db = require('../config/db');
-            const [properties] = await db.query(
-                'SELECT id FROM properties WHERE id = ? AND owner_id = ?',
+            const { rows: properties } = await db.query(
+                'SELECT id FROM properties WHERE id = $1 AND owner_id = $2',
                 [property_id, ownerId]
             );
 
@@ -51,6 +51,7 @@ const receiptController = {
             const receipt = await Receipt.create({
                 tenant_id,
                 property_id,
+                unit_id,
                 month,
                 year,
                 amount,
@@ -65,7 +66,7 @@ const receiptController = {
             try {
                 await db.query(
                     `INSERT INTO notifications (id, user_id, type, title, message, created_at)
-                    VALUES (UUID(), ?, 'receipt', ?, ?, NOW())`,
+                    VALUES (uuid_generate_v4(), $1, 'receipt', $2, $3, NOW())`,
                     [
                         tenant_id,
                         'Nouveau reçu de loyer',
@@ -130,8 +131,8 @@ const receiptController = {
 
             // Vérifier les permissions (locataire ou propriétaire)
             const db = require('../config/db');
-            const [properties] = await db.query(
-                'SELECT owner_id FROM properties WHERE id = ?',
+            const { rows: properties } = await db.query(
+                'SELECT owner_id FROM properties WHERE id = $1',
                 [receipt.property_id]
             );
 
@@ -179,8 +180,8 @@ const receiptController = {
 
             // Vérifier que c'est le propriétaire qui supprime
             const db = require('../config/db');
-            const [properties] = await db.query(
-                'SELECT owner_id FROM properties WHERE id = ?',
+            const { rows: properties } = await db.query(
+                'SELECT owner_id FROM properties WHERE id = $1',
                 [receipt.property_id]
             );
 

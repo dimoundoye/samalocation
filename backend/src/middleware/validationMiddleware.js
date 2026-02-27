@@ -41,8 +41,27 @@ const changePasswordValidation = [
     validate
 ];
 
+/**
+ * Validations pour l'oubli de mot de passe
+ */
+const forgotPasswordValidation = [
+    body('email').isEmail().withMessage('Email invalide').normalizeEmail(),
+    validate
+];
+
+/**
+ * Validations pour la réinitialisation de mot de passe
+ */
+const resetPasswordValidation = [
+    body('token').notEmpty().withMessage('Token requis'),
+    body('password').isLength({ min: 8 }).withMessage('Le mot de passe doit contenir au moins 8 caractères'),
+    validate
+];
+
 module.exports = {
     signupValidation,
     loginValidation,
-    changePasswordValidation
+    changePasswordValidation,
+    forgotPasswordValidation,
+    resetPasswordValidation
 };

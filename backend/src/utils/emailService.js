@@ -43,7 +43,7 @@ const sendEmail = async (to, subject, html) => {
 };
 
 const sendVerificationEmail = async (email, token) => {
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/verify-email?token=${token}`;
 
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
@@ -63,7 +63,31 @@ const sendVerificationEmail = async (email, token) => {
     return await sendEmail(email, 'Vérifiez votre adresse e-mail - SamaLocation', html);
 };
 
+const sendResetPasswordEmail = async (email, token) => {
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+            <h2 style="color: #2D3FE2; text-align: center;">Réinitialisation de votre mot de passe</h2>
+            <p>Bonjour,</p>
+            <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte SamaLocation. Veuillez cliquer sur le bouton ci-dessous pour choisir un nouveau mot de passe :</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetUrl}" style="background-color: #2D3FE2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Réinitialiser mon mot de passe</a>
+            </div>
+            <p>Ce lien est valable pendant 1 heure.</p>
+            <p>Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet e-mail en toute sécurité.</p>
+            <p>Si le bouton ne fonctionne pas, vous pouvez copier et coller le lien suivant dans votre navigateur :</p>
+            <p style="word-break: break-all; color: #666;">${resetUrl}</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #999;">Cet e-mail a été envoyé automatiquement, merci de ne pas y répondre.</p>
+        </div>
+    `;
+
+    return await sendEmail(email, 'Réinitialisation de votre mot de passe - SamaLocation', html);
+};
+
 module.exports = {
     sendEmail,
-    sendVerificationEmail
+    sendVerificationEmail,
+    sendResetPasswordEmail
 };

@@ -555,7 +555,7 @@ const DetailPropriete = () => {
                   {property.display_status === "available" ? (
                     <>
                       <p className="text-sm text-muted-foreground">
-                        Envoyez votre candidature au propriétaire. Il vous répondra par message.
+                        Envoyez votre candidature au propriétaire. Il vous répondra par message. Après avoir postulé, consultez régulièrement votre messagerie dans votre tableau de bord.
                       </p>
                       <Button
                         onClick={handleApply}
@@ -599,6 +599,11 @@ const DetailPropriete = () => {
                           </Badge>
                         )}
                       </div>
+                      {ownerProfile?.bio && (
+                        <p className="text-xs text-muted-foreground italic leading-relaxed py-1">
+                          {ownerProfile.bio}
+                        </p>
+                      )}
                       {ownerContactPhone && (
                         <p className="flex items-center gap-2">
                           <Phone className="h-4 w-4 text-primary" />

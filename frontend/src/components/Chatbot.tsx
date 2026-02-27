@@ -56,7 +56,7 @@ const Chatbot = () => {
         return (
             <Button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 rounded-full h-14 w-14 shadow-lg hover:scale-110 transition-transform z-[60] bg-primary text-primary-foreground"
+                className="fixed bottom-6 right-6 rounded-full h-14 w-14 shadow-lg hover:scale-110 transition-transform z-[110] bg-primary text-primary-foreground"
             >
                 <MessageCircle className="h-6 w-6" />
             </Button>
@@ -66,7 +66,7 @@ const Chatbot = () => {
     if (isMinimized) {
         return (
             <div
-                className="fixed bottom-6 right-6 bg-primary text-white p-3 rounded-lg shadow-lg cursor-pointer flex items-center gap-2 z-[60] animate-in slide-in-from-bottom-4"
+                className="fixed bottom-6 right-6 bg-primary text-white p-3 rounded-lg shadow-lg cursor-pointer flex items-center gap-2 z-[110] animate-in slide-in-from-bottom-4"
                 onClick={() => setIsMinimized(false)}
             >
                 <Sparkles className="h-4 w-4" />
@@ -77,7 +77,7 @@ const Chatbot = () => {
     }
 
     return (
-        <Card className="fixed bottom-6 right-6 w-[90vw] sm:w-[380px] h-[500px] shadow-2xl z-[60] flex flex-col border-primary/20 animate-in slide-in-from-bottom-8">
+        <Card className="fixed bottom-6 right-6 w-[90vw] sm:w-[380px] h-[500px] shadow-2xl z-[110] flex flex-col border-primary/20 animate-in slide-in-from-bottom-8">
             <CardHeader className="bg-primary text-primary-foreground p-4 flex flex-row items-center justify-between rounded-t-xl">
                 <div className="flex items-center gap-2">
                     <div className="bg-white/20 p-1.5 rounded-lg">

@@ -1,4 +1,4 @@
-import { baseClient } from "./baseClient";
+import { baseClient, API_BASE_URL } from "./baseClient";
 import { Receipt, CreateReceiptData } from "@/types";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -35,7 +35,6 @@ export const getOwnerReceipts = async (): Promise<Receipt[]> => {
 export const downloadReceipt = async (id: string, receiptNumber?: string, paymentDate?: string) => {
     const token = localStorage.getItem("auth_token");
 
-    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
     const response = await fetch(`${API_BASE_URL}/receipts/${id}/download`, {
 
         method: "GET",

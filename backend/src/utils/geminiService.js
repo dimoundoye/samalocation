@@ -49,22 +49,24 @@ const parseSearchQuery = async (query) => {
         const model = getModel();
 
         const prompt = `
-            Analyse la phrase de recherche d'immobilier suivante et extrais les filtres structurés en JSON.
+            Tu es un expert en immobilier au Sénégal. Analyse la phrase de recherche d'un utilisateur et extrais les filtres structurés en JSON.
             Phrase : "${query}"
 
-            Format de sortie attendu (JSON uniquement) :
+            Format de sortie attendu (JSON uniquement, sans texte autour) :
             {
                 "type": "maison" | "villa" | "appartement" | "studio" | "chambre" | "garage" | "locale" | null,
                 "location": string | null,
                 "maxPrice": number | null,
                 "minBedrooms": number | null,
-                "isFurnished": boolean | null
+                "isFurnished": boolean | null,
+                "keywords": string | null
             }
 
-            Règles :
-            - Si le type n'est pas clair, mets null.
-            - Si le lieu est mentionné, extrais-le.
-            - Si un prix est mentionné, extrais le montant numérique.
+            Règles d'extraction :
+            - type : Déduis le type (ex: "appt" -> "appartement", "ch" -> "chambre").
+            - location : Extrais les villes ou quartiers du Sénégal (ex: "Dakar", "Mbour", "Guédiawaye", "Ouakam", "Almadies").
+            - maxPrice : Convertis les montants comme "150k" en 150000.
+            - keywords : Mots-clés restants qui ne sont pas des filtres (ex: "piscine", "moderne", "vue mer").
             - Réponds TOUJOURS uniquement en JSON valide.
         `;
 

@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Camera, Upload, Check, X, RotateCw, Contrast, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 interface SignatureScannerProps {
     open: boolean;
@@ -19,9 +20,9 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
     open,
     onOpenChange,
     onSave,
-    existingImageUrl
 }) => {
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [image, setImage] = useState<HTMLImageElement | null>(null);
     const [threshold, setThreshold] = useState(200);
     const [isGrayscale, setIsGrayscale] = useState(false);
@@ -89,7 +90,6 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
         }
 
         ctx.putImageData(imageData, 0, 0);
-        setProcessedUrl(canvas.toDataURL("image/png"));
     };
 
     const handleSave = () => {
@@ -100,8 +100,8 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
                     onSave(blob);
                     onOpenChange(false);
                     toast({
-                        title: "Signature traitée",
-                        description: "Votre signature a été optimisée et prête à être enregistrée.",
+                        title: t('signature_scanner.processed_title'),
+                        description: t('signature_scanner.processed_desc'),
                     });
                 }
             }, "image/png");
@@ -112,9 +112,9 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Scanner de Signature & Cachet</DialogTitle>
+                    <DialogTitle>{t('signature_scanner.title')}</DialogTitle>
                     <DialogDescription>
-                        Prenez une photo de votre signature sur papier blanc. Nous allons supprimer le fond automatiquement.
+                        {t('signature_scanner.description')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -128,8 +128,8 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
                                 <Upload className="h-8 w-8 text-primary" />
                             </div>
                             <div className="text-center">
-                                <p className="font-medium">Cliquez pour importer une photo</p>
-                                <p className="text-xs text-muted-foreground">PNG, JPG ou Capture mobile</p>
+                                <p className="font-medium">{t('signature_scanner.import_photo')}</p>
+                                <p className="text-xs text-muted-foreground">{t('signature_scanner.formats_mobile')}</p>
                             </div>
                             <input
                                 type="file"
@@ -157,7 +157,7 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
                                 <div className="space-y-3">
                                     <div className="flex justify-between items-center">
                                         <Label className="flex items-center gap-2">
-                                            <Contrast className="h-4 w-4" /> Seuil de scan
+                                            <Contrast className="h-4 w-4" /> {t('signature_scanner.scan_threshold')}
                                         </Label>
                                         <span className="text-xs font-mono bg-background px-2 py-0.5 rounded border">{threshold}</span>
                                     </div>
@@ -169,14 +169,14 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
                                         onValueChange={(val) => setThreshold(val[0])}
                                     />
                                     <p className="text-[10px] text-muted-foreground">
-                                        Ajustez pour supprimer le fond sans effacer la signature.
+                                        {t('signature_scanner.threshold_desc')}
                                     </p>
                                 </div>
 
                                 <div className="flex flex-col justify-center gap-4">
                                     <div className="flex items-center justify-between">
                                         <Label htmlFor="grayscale" className="flex items-center gap-2 cursor-pointer">
-                                            <ImageIcon className="h-4 w-4" /> Mode Noir & Blanc
+                                            <ImageIcon className="h-4 w-4" /> {t('signature_scanner.bw_mode')}
                                         </Label>
                                         <Switch
                                             id="grayscale"
@@ -185,7 +185,7 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
                                         />
                                     </div>
                                     <p className="text-[10px] text-muted-foreground">
-                                        Activez pour une signature purement noire (idéal pour les baux). Désactivez pour garder les couleurs des cachets.
+                                        {t('signature_scanner.bw_desc')}
                                     </p>
                                 </div>
                             </div>
@@ -194,9 +194,9 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
                 </div>
 
                 <DialogFooter className="gap-2 sm:gap-0">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Annuler</Button>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
                     <Button onClick={handleSave} disabled={!image} className="gap-2">
-                        <Check className="h-4 w-4" /> Utiliser cette signature
+                        <Check className="h-4 w-4" /> {t('signature_scanner.use_signature')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

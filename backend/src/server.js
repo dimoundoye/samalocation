@@ -22,6 +22,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
+const contractRoutes = require('./routes/contractRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const securityMiddleware = require('./middleware/security');
 
@@ -65,10 +66,10 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.tile.openstreetmap.org", "*"], // Allow all images (vibrant design)
-            connectSrc: ["'self'", "https://res.cloudinary.com", "https://nominatim.openstreetmap.org", "*"], // Allow connections to any (Cloudinary, backend, etc)
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://unpkg.com", "https://*.tile.openstreetmap.org"],
+            imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.tile.openstreetmap.org", "https://unpkg.com", "*"],
+            connectSrc: ["'self'", "https://res.cloudinary.com", "https://nominatim.openstreetmap.org", "*"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
             frameSrc: ["'self'", "https://challenges.cloudflare.com"],
@@ -97,7 +98,7 @@ const limiter = rateLimit({
 // Strict Rate Limiting for Auth
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // Max 10 attempts per 15 mins
+    max: 30, // Max 30 attempts per 15 mins (increased for testing)
     message: 'Trop de tentatives de connexion, veuillez réessayer dans 15 minutes.'
 });
 
@@ -120,22 +121,13 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/contracts', contractRoutes);
 
 // Use the separate property routes
 app.use('/api/properties', propertiesRoutes);
 
 // Error handler MUST be last
 app.use(errorHandler);
-
-// Schedule message cleanup every day at midnight
-cron.schedule('0 0 * * *', async () => {
-    try {
-        await Message.deleteOldMessages(5);
-    } catch (error) {
-        console.error('Error in message cleanup cron job:', error);
-    }
-});
-
 server.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });

@@ -18,9 +18,10 @@ interface CreateReceiptDialogProps {
     tenantId?: string; // Optional pre-selected tenant ID
     tenantName?: string; // Optional pre-selected tenant name
     monthlyRent?: number; // Optional pre-selected monthly rent
+    receipts?: any[]; // All receipts to help determine the next month
 }
 
-export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId, propertyName, tenantId, tenantName, monthlyRent }: CreateReceiptDialogProps) => {
+export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId, propertyName, tenantId, tenantName, monthlyRent, receipts = [] }: CreateReceiptDialogProps) => {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [tenants, setTenants] = useState<any[]>([]);
@@ -39,7 +40,8 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         if (open) {
             console.log('🔍 Dialog opened - tenantId:', tenantId, 'propertyId:', propertyId);
             loadTenants();
-            // Reset form with property ID and optional tenant ID and amount
+
+            // Set initial state
             setFormData(prev => ({
                 ...prev,
                 property_id: propertyId,
@@ -48,6 +50,55 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
             }));
         }
     }, [open, propertyId, tenantId, monthlyRent]);
+
+    // Effect to auto-fill month, year and amount when tenant changes
+    useEffect(() => {
+        if (!formData.tenant_id) return;
+
+        const selectedTenant = tenants.find(t => t.user_id === formData.tenant_id);
+
+        // Update amount if tenant has a defined rent
+        if (selectedTenant && selectedTenant.monthly_rent) {
+            setFormData(prev => ({
+                ...prev,
+                amount: String(selectedTenant.monthly_rent)
+            }));
+        }
+
+        // Suggest next month based on history
+        if (receipts && receipts.length > 0) {
+            const tenantReceipts = receipts.filter(r => r.tenant_id === formData.tenant_id);
+            if (tenantReceipts.length > 0) {
+                // Find most recent receipt
+                const latest = tenantReceipts.reduce((prev, curr) => {
+                    if (curr.year > prev.year) return curr;
+                    if (curr.year === prev.year && curr.month > prev.month) return curr;
+                    return prev;
+                }, tenantReceipts[0]);
+
+                // Calculate next month
+                let nextMonth = latest.month + 1;
+                let nextYear = latest.year;
+                if (nextMonth > 12) {
+                    nextMonth = 1;
+                    nextYear++;
+                }
+
+                setFormData(prev => ({
+                    ...prev,
+                    month: nextMonth,
+                    year: nextYear
+                }));
+            } else {
+                // If no receipt yet, suggest current month
+                setFormData(prev => ({
+                    ...prev,
+                    month: new Date().getMonth() + 1,
+                    year: new Date().getFullYear()
+                }));
+            }
+        }
+    }, [formData.tenant_id, tenants, receipts]);
 
     const loadTenants = async () => {
         try {
@@ -83,8 +134,14 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
 
         try {
             setLoading(true);
+
+            // Trouver le unit_id pour ce locataire
+            const selectedTenant = tenants.find(t => t.user_id === formData.tenant_id);
+            const unit_id = selectedTenant?.unit_id;
+
             await createReceipt({
                 ...formData,
+                unit_id,
                 amount: Number(formData.amount),
                 month: Number(formData.month),
                 year: Number(formData.year)
@@ -151,21 +208,30 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="tenant">Locataire *</Label>
-                        <Select
-                            value={formData.tenant_id}
-                            onValueChange={(value) => setFormData({ ...formData, tenant_id: value })}
-                        >
-                            <SelectTrigger id="tenant">
-                                <SelectValue placeholder="Sélectionner un locataire" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {tenants.map((tenant) => (
-                                    <SelectItem key={tenant.id} value={tenant.user_id}>
-                                        {tenant.full_name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        {tenantId ? (
+                            <Input
+                                id="tenant-display"
+                                value={tenantName || ""}
+                                readOnly
+                                className="bg-muted font-medium cursor-default focus-visible:ring-0"
+                            />
+                        ) : (
+                            <Select
+                                value={formData.tenant_id}
+                                onValueChange={(value) => setFormData({ ...formData, tenant_id: value })}
+                            >
+                                <SelectTrigger id="tenant">
+                                    <SelectValue placeholder="Sélectionner un locataire" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {tenants.map((tenant) => (
+                                        <SelectItem key={tenant.id} value={tenant.user_id}>
+                                            {tenant.full_name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

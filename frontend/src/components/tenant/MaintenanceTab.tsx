@@ -165,19 +165,19 @@ export const MaintenanceTab = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold">Maintenance</h2>
-                    <p className="text-muted-foreground">Signalez et suivez vos problèmes techniques</p>
+                    <p className="text-muted-foreground text-sm">Signalez et suivez vos problèmes techniques</p>
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button className="gap-2">
+                        <Button className="w-full sm:w-auto gap-2">
                             <Plus className="h-4 w-4" /> Nouveau signalement
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px]">
+                    <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Signaler un incident</DialogTitle>
                             <DialogDescription>
@@ -185,7 +185,7 @@ export const MaintenanceTab = () => {
                             </DialogDescription>
                         </DialogHeader>
 
-                        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                        <form onSubmit={handleSubmit} className="space-y-4 py-2">
                             <div className="space-y-2">
                                 <Label htmlFor="title">Titre de l'incident</Label>
                                 <Input
@@ -246,28 +246,28 @@ export const MaintenanceTab = () => {
                                 <Label>Photos (optionnel)</Label>
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     {previewUrls.map((url, index) => (
-                                        <div key={index} className="relative w-20 h-20 group">
+                                        <div key={index} className="relative w-16 h-16 sm:w-20 sm:h-20 group">
                                             <img src={url} alt="Aperçu" className="w-full h-full object-cover rounded-md border" />
                                             <button
                                                 type="button"
                                                 onClick={() => removePhoto(index)}
-                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                                             >
                                                 <Plus className="h-3 w-3 rotate-45" />
                                             </button>
                                         </div>
                                     ))}
-                                    <label className="w-20 h-20 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-muted transition-colors">
-                                        <Camera className="h-6 w-6 text-muted-foreground" />
-                                        <span className="text-[10px] mt-1 text-muted-foreground text-center">Ajouter</span>
+                                    <label className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-muted transition-colors">
+                                        <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                                        <span className="text-[9px] sm:text-[10px] mt-1 text-muted-foreground text-center">Ajouter</span>
                                         <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileChange} />
                                     </label>
                                 </div>
                             </div>
 
-                            <DialogFooter className="pt-4">
-                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-                                <Button type="submit" disabled={submitting}>
+                            <DialogFooter className="pt-4 flex flex-col-reverse sm:flex-row gap-2">
+                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">Annuler</Button>
+                                <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
                                     {submitting ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Envoi...

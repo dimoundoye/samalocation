@@ -8,9 +8,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock } from "lucide-react";
 import { baseClient } from "@/api/baseClient";
 import Turnstile from "react-turnstile";
+import { useTranslation } from "react-i18next";
 
 const Contact = () => {
     const { toast } = useToast();
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
     const [formData, setFormData] = useState({
@@ -25,8 +27,7 @@ const Contact = () => {
         const isDev = import.meta.env.DEV;
         if (!turnstileToken && !isDev) {
             toast({
-                title: "Vérification requise",
-                description: "Veuillez confirmer que vous n'êtes pas un robot.",
+                title: t('contact.form.robot_error'),
                 variant: "destructive",
             });
             return;
@@ -44,15 +45,15 @@ const Contact = () => {
             });
 
             toast({
-                title: "Message envoyé !",
-                description: "Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.",
+                title: t('contact.form.success_title'),
+                description: t('contact.form.success_desc'),
             });
             setFormData({ name: "", email: "", subject: "", message: "" });
             setTurnstileToken(null);
         } catch (error: any) {
             toast({
-                title: "Erreur",
-                description: error.message || "Impossible d'envoyer le message. Veuillez réessayer plus tard.",
+                title: t('common.error'),
+                description: error.message || t('common.error'),
                 variant: "destructive",
             });
         } finally {
@@ -74,10 +75,10 @@ const Contact = () => {
                     <div className="max-w-5xl mx-auto">
                         <div className="text-center mb-12 animate-slide-up">
                             <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent inline-block">
-                                Contactez-nous
+                                {t('contact.title')}
                             </h1>
                             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                                Vous avez une question, une suggestion ou besoin d'assistance ? Notre équipe est là pour vous aider.
+                                {t('contact.subtitle')}
                             </p>
                         </div>
 
@@ -87,29 +88,29 @@ const Contact = () => {
                                 {[
                                     {
                                         icon: MapPin,
-                                        title: "Notre Adresse",
-                                        content: "Ouakam, Cité Batrain, Dakar, Sénégal",
+                                        title: t('contact.info.address_title'),
+                                        content: t('contact.info.address_text'),
                                         color: "bg-blue-500/10 text-blue-600",
                                     },
                                     {
                                         icon: Phone,
-                                        title: "Téléphone",
+                                        title: t('contact.info.phone_title'),
                                         content: "+221 76 162 95 29",
-                                        subContent: "Lun-Ven, 9h-18h",
+                                        subContent: t('contact.info.phone_sub'),
                                         color: "bg-green-500/10 text-green-600",
                                     },
                                     {
                                         icon: Mail,
-                                        title: "Email",
+                                        title: t('contact.info.email_title'),
                                         content: "contact@samalocation.com",
-                                        subContent: "Réponse sous 24h",
+                                        subContent: t('contact.info.email_sub'),
                                         color: "bg-purple-500/10 text-purple-600",
                                     },
                                     {
                                         icon: Clock,
-                                        title: "Horaires",
-                                        content: "Lundi - Vendredi : 9h00 - 18h00",
-                                        subContent: "Samedi : 9h00 - 13h00",
+                                        title: t('contact.info.hours_title'),
+                                        content: t('contact.info.hours_sub1'),
+                                        subContent: t('contact.info.hours_sub2'),
                                         color: "bg-orange-500/10 text-orange-600",
                                     },
                                 ].map((item, index) => (
@@ -136,18 +137,18 @@ const Contact = () => {
                                     <CardHeader className="pb-4">
                                         <CardTitle className="text-2xl flex items-center gap-2">
                                             <MessageSquare className="h-6 w-6 text-primary" />
-                                            Envoyez-nous un message
+                                            {t('contact.form.title')}
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <form onSubmit={handleSubmit} className="space-y-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div className="space-y-2">
-                                                    <label htmlFor="name" className="text-sm font-medium">Nom complet</label>
+                                                    <label htmlFor="name" className="text-sm font-medium">{t('contact.form.name')}</label>
                                                     <Input
                                                         id="name"
                                                         name="name"
-                                                        placeholder="Votre nom"
+                                                        placeholder={t('contact.form.name_placeholder')}
                                                         required
                                                         value={formData.name}
                                                         onChange={handleChange}
@@ -155,12 +156,12 @@ const Contact = () => {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <label htmlFor="email" className="text-sm font-medium">Email valide</label>
+                                                    <label htmlFor="email" className="text-sm font-medium">{t('contact.form.email')}</label>
                                                     <Input
                                                         id="email"
                                                         name="email"
                                                         type="email"
-                                                        placeholder="votre@email.com"
+                                                        placeholder={t('contact.form.email_placeholder')}
                                                         required
                                                         value={formData.email}
                                                         onChange={handleChange}
@@ -170,11 +171,11 @@ const Contact = () => {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label htmlFor="subject" className="text-sm font-medium">Objet</label>
+                                                <label htmlFor="subject" className="text-sm font-medium">{t('contact.form.subject')}</label>
                                                 <Input
                                                     id="subject"
                                                     name="subject"
-                                                    placeholder="Sujet de votre message"
+                                                    placeholder={t('contact.form.subject_placeholder')}
                                                     required
                                                     value={formData.subject}
                                                     onChange={handleChange}
@@ -183,11 +184,11 @@ const Contact = () => {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label htmlFor="message" className="text-sm font-medium">Message</label>
+                                                <label htmlFor="message" className="text-sm font-medium">{t('contact.form.message')}</label>
                                                 <Textarea
                                                     id="message"
                                                     name="message"
-                                                    placeholder="Comment pouvons-nous vous aider ?"
+                                                    placeholder={t('contact.form.message_placeholder')}
                                                     required
                                                     rows={6}
                                                     value={formData.message}
@@ -216,12 +217,12 @@ const Contact = () => {
                                                     {loading ? (
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                            Envoi en cours...
+                                                            {t('contact.form.sending')}
                                                         </div>
                                                     ) : (
                                                         <>
                                                             <Send className="h-5 w-5 mr-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                                            Envoyer le message
+                                                            {t('contact.form.submit')}
                                                         </>
                                                     )}
                                                 </Button>
@@ -237,11 +238,11 @@ const Contact = () => {
 
             <footer className="py-8 px-4 border-t bg-secondary/20">
                 <div className="container mx-auto text-center text-muted-foreground">
-                    <p>© 2026 Samalocation. Tous droits réservés.</p>
+                    <p>{t('footer.copyright')}</p>
                     <div className="flex flex-wrap justify-center gap-6 mt-4">
-                        <a href="/privacy" className="hover:text-primary transition-colors">Politique de confidentialité</a>
-                        <a href="/terms" className="hover:text-primary transition-colors">Conditions d'utilisation</a>
-                        <a href="/contact" className="text-primary font-medium">Contact</a>
+                        <a href="/privacy" className="hover:text-primary transition-colors">{t('footer.legal.privacy')}</a>
+                        <a href="/terms" className="hover:text-primary transition-colors">{t('footer.legal.terms')}</a>
+                        <a href="/contact" className="text-primary font-medium">{t('nav.contact')}</a>
                     </div>
                 </div>
             </footer>

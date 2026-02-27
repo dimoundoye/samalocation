@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
     Table,
     TableBody,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X, ChevronDown, ChevronRight, Folder, FolderOpen, ArrowLeft, Home } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -30,26 +31,82 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Tenant, Receipt } from "@/types";
+import { useToast } from "@/hooks/use-toast";
+import { Tenant, Receipt, Property, PropertyUnit } from "@/types";
 
 interface ManagementTableProps {
     tenants: Tenant[];
     receipts: Receipt[];
+    properties: Property[];
+    onDeleteTenant?: (tenantId: string) => void;
+    selectedYear: string;
+    onYearChange: (year: string) => void;
+    navigationPath: string[];
+    onNavigationChange: (path: string[] | ((prev: string[]) => string[])) => void;
+    customGroups: { id: string; name: string; tenantIds: string[]; parentId?: string }[];
+    onGroupsChange: (groups: any[] | ((prev: any[]) => any[])) => void;
+    groupedData: any[];
 }
 
-export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => {
-    const currentYear = new Date().getFullYear();
-    const [selectedYear, setSelectedYear] = useState(currentYear.toString());
-    const [customGroups, setCustomGroups] = useState<{ id: string; name: string; tenantIds: string[] }[]>(() => {
-        const saved = localStorage.getItem("owner_tenant_groups");
-        return saved ? JSON.parse(saved) : [];
-    });
+export const ManagementTable = ({
+    tenants,
+    receipts,
+    properties,
+    onDeleteTenant,
+    selectedYear,
+    onYearChange,
+    navigationPath,
+    onNavigationChange,
+    customGroups,
+    onGroupsChange,
+    groupedData
+}: ManagementTableProps) => {
+    const { toast } = useToast();
+    const { user } = useAuth();
+    const userGroupsKey = useMemo(() => user?.id ? `owner_tenant_groups_v2_${user.id}` : "owner_tenant_groups_v2_guest", [user?.id]);
+
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
     const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
+    const [newGroupParentId, setNewGroupParentId] = useState<string>("root");
+
+    const enterGroup = (groupId: string) => {
+        onNavigationChange(prev => [...prev, groupId]);
+    };
+
+    const goBack = () => {
+        onNavigationChange(prev => prev.slice(0, -1));
+    };
+
+    const goToLevel = (index: number) => {
+        onNavigationChange(prev => prev.slice(0, index + 1));
+    };
+
+    const resetNavigation = () => {
+        onNavigationChange([]);
+    };
+
+    const toggleGroup = (groupId: string) => {
+        setExpandedGroups(prev => ({
+            ...prev,
+            [groupId]: !prev[groupId]
+        }));
+    };
+
+    useEffect(() => {
+        console.log(`[MANAGEMENT] Render debug:`, {
+            propertiesCount: properties?.length,
+            tenantsCount: tenants?.length,
+            receiptsCount: receipts?.length,
+            navigationPath,
+            groupedDataCount: groupedData?.length,
+            currentNodesCount: getCurrentNodes()?.length
+        });
+    });
 
     const saveGroups = (newGroups: any) => {
-        setCustomGroups(newGroups);
-        localStorage.setItem("owner_tenant_groups", JSON.stringify(newGroups));
+        onGroupsChange(newGroups);
+        localStorage.setItem(userGroupsKey, JSON.stringify(newGroups));
     };
 
     const handleCreateGroup = () => {
@@ -58,13 +115,49 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
             id: Date.now().toString(),
             name: newGroupName.trim(),
             tenantIds: [],
+            parentId: newGroupParentId === "root" ? undefined : newGroupParentId,
         };
         saveGroups([...customGroups, newGroup]);
         setNewGroupName("");
+        setNewGroupParentId("root");
     };
 
     const handleDeleteGroup = (groupId: string) => {
-        saveGroups(customGroups.filter(g => g.id !== groupId));
+        // When a group is deleted, its children should move to its parent or root
+        const groupToDelete = customGroups.find(g => g.id === groupId);
+        const newGroups = customGroups
+            .filter(g => g.id !== groupId)
+            .map(g => g.parentId === groupId ? { ...g, parentId: groupToDelete?.parentId } : g);
+        saveGroups(newGroups);
+    };
+
+    const findNodeRecursive = (nodes: any[], targetId: string): any => {
+        if (!nodes) return null;
+        for (const node of nodes) {
+            if (node.id === targetId) return node;
+            if (node.children) {
+                const found = findNodeRecursive(node.children, targetId);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+
+    const getCurrentNodes = () => {
+        if (!navigationPath || navigationPath.length === 0) return groupedData || [];
+        const targetGroup = findNodeRecursive(groupedData, navigationPath[navigationPath.length - 1]);
+        return targetGroup?.children || [];
+    };
+
+    const handleDeleteAllGroups = () => {
+        if (window.confirm("Êtes-vous sûr de vouloir supprimer TOUS les groupes ? Cette action est irréversible.")) {
+            saveGroups([]);
+            onNavigationChange([]);
+            toast({
+                title: "Dossiers supprimés",
+                description: "Tous les dossiers personnalisés ont été effacés.",
+            });
+        }
     };
 
     const toggleTenantInGroup = (groupId: string, tenantId: string) => {
@@ -79,6 +172,7 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
                 };
             }
             // Remove tenant from other groups to ensure unique assignment
+            // (Only if not in the same branch? No, keep it simple for now: one tenant per group)
             return {
                 ...g,
                 tenantIds: g.tenantIds.filter(id => id !== tenantId)
@@ -87,10 +181,14 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
     };
 
     const years = useMemo(() => {
+        const currentYear = new Date().getFullYear();
         const yearsSet = new Set<number>([currentYear]);
-        receipts.forEach((r) => yearsSet.add(r.year));
+        receipts.forEach((r) => {
+            const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
+            if (rYear) yearsSet.add(rYear);
+        });
         return Array.from(yearsSet).sort((a, b) => b - a);
-    }, [receipts, currentYear]);
+    }, [receipts]);
 
     const months = [
         { id: 1, label: "Jan" },
@@ -117,111 +215,76 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
             .replace("XOF", "F CFA");
     };
 
-    const paymentData = useMemo(() => {
+    const getReceiptForNode = (unitId: string, tenant: Tenant | null | undefined, monthId: number) => {
+        if (!receipts) return null;
         const year = parseInt(selectedYear);
-        const data: Record<string, Record<number, Receipt | undefined>> = {};
+        return receipts.find(r => {
+            const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
+            const rMonth = typeof r.month === 'string' ? parseInt(r.month) : r.month;
+            if (rYear !== year || rMonth !== monthId) return false;
 
-        tenants.forEach((tenant) => {
-            data[tenant.id] = {};
-            months.forEach((month) => {
-                const receipt = receipts.find(
-                    (r) =>
-                        (r.tenant_id === tenant.user_id || r.tenant_id === tenant.id) &&
-                        r.year === year &&
-                        r.month === month.id
-                );
-                data[tenant.id][month.id] = receipt;
-            });
+            const rUnitId = r.unit_id ? String(r.unit_id) : null;
+            const targetUnitId = unitId ? String(unitId) : null;
+            if (rUnitId && targetUnitId && rUnitId === targetUnitId) return true;
+
+            const rTenantId = (r as any).tenant_id ? String((r as any).tenant_id) : null;
+            const rUserId = (r as any).user_id ? String((r as any).user_id) : null;
+            const tId = tenant?.id ? String(tenant.id) : null;
+            const tUserId = tenant?.user_id ? String(tenant.user_id) : null;
+
+            if (tId && (rTenantId === tId || rUserId === tId)) return true;
+            if (tUserId && (rTenantId === tUserId || rUserId === tUserId)) return true;
+
+            return false;
         });
-
-        return data;
-    }, [tenants, receipts, selectedYear]);
-
-    const monthlyTotals = useMemo(() => {
-        const totals: Record<number, number> = {};
-        months.forEach((month) => {
-            let total = 0;
-            tenants.forEach((tenant) => {
-                const receipt = paymentData[tenant.id][month.id];
-                if (receipt && typeof receipt.amount === 'number') {
-                    total += receipt.amount;
-                } else if (receipt && typeof receipt.amount === 'string') {
-                    total += parseFloat(receipt.amount) || 0;
-                }
-            });
-            totals[month.id] = total || 0;
-        });
-        return totals;
-    }, [tenants, paymentData]);
-
-    const groupedTenants = useMemo(() => {
-        const groups: Record<string, { propertyName: string; tenants: Tenant[]; isCustom?: boolean }> = {};
-
-        // Unassigned group
-        groups["default"] = {
-            propertyName: "Locataires non classés",
-            tenants: [],
-        };
-
-        // Initialize custom groups
-        customGroups.forEach(cg => {
-            groups[cg.id] = {
-                propertyName: cg.name,
-                tenants: [],
-                isCustom: true,
-            };
-        });
-
-        // Assign tenants
-        tenants.forEach((tenant) => {
-            const customGroup = customGroups.find(cg => cg.tenantIds.includes(tenant.id));
-            if (customGroup) {
-                groups[customGroup.id].tenants.push(tenant);
-            } else {
-                groups["default"].tenants.push(tenant);
-            }
-        });
-
-        // Remove empty custom groups but keep default if it has tenants
-        const filteredGroups: typeof groups = {};
-        Object.keys(groups).forEach(key => {
-            if (groups[key].tenants.length > 0) {
-                filteredGroups[key] = groups[key];
-            }
-        });
-
-        return filteredGroups;
-    }, [tenants, customGroups]);
+    };
 
     const handleExport = () => {
         const headers = ["Locataire", "Bien", "Unité", ...months.map(m => m.label), "Total Annuel"];
-        const rows = tenants.map(tenant => {
-            let annualTotal = 0;
-            const monthlyAmounts = months.map(month => {
-                const receipt = paymentData[tenant.id][month.id];
-                const amount = receipt ? (typeof receipt.amount === 'number' ? receipt.amount : parseFloat(receipt.amount) || 0) : 0;
-                annualTotal += amount;
-                return amount > 0 ? amount.toString() : "0";
+        const rows: string[][] = [];
+
+        const collectRows = (nodes: any[], groupName = "") => {
+            if (!nodes) return;
+            nodes.forEach(node => {
+                const currentPath = groupName ? `${groupName} > ${node.name}` : node.name;
+
+                if (node.type === 'property') {
+                    (node.units || []).forEach(({ unit, tenant }: any) => {
+                        let annualTotal = 0;
+                        const monthlyAmounts = months.map(month => {
+                            const receipt = getReceiptForNode(unit?.id, tenant, month.id);
+                            const amount = receipt ? (typeof receipt.amount === 'number' ? receipt.amount : parseFloat(receipt.amount) || 0) : 0;
+                            annualTotal += amount;
+                            return amount.toString();
+                        });
+                        rows.push([
+                            tenant ? tenant.full_name : "VACANT",
+                            currentPath,
+                            unit?.unit_number || "N/A",
+                            ...monthlyAmounts,
+                            annualTotal.toString()
+                        ]);
+                    });
+                } else if (node.children) {
+                    collectRows(node.children, currentPath);
+                }
             });
-            return [
-                tenant.full_name,
-                tenant.property_name || "N/A",
-                tenant.unit_number || "N/A",
-                ...monthlyAmounts,
-                annualTotal.toString()
-            ];
-        });
+        };
+
+        collectRows(groupedData);
 
         const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(";")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `Gerance_${selectedYear}.csv`);
+        link.setAttribute("download", `Gerance_${selectedYear}_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
+
+
 
     return (
         <Card className="shadow-soft overflow-hidden">
@@ -248,26 +311,55 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
                                 <div className="flex-1 overflow-y-auto space-y-6 py-4">
                                     <div className="space-y-4">
                                         <Label>Nouveau Groupe</Label>
-                                        <div className="flex gap-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                             <Input
                                                 placeholder="ex: Immeuble A"
                                                 value={newGroupName}
                                                 onChange={(e) => setNewGroupName(e.target.value)}
                                                 onKeyPress={(e) => e.key === 'Enter' && handleCreateGroup()}
                                             />
-                                            <Button onClick={handleCreateGroup}>Créer</Button>
+                                            <Select value={newGroupParentId} onValueChange={setNewGroupParentId}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Groupe Parent" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="root">Aucun (Racine)</SelectItem>
+                                                    {customGroups.map(g => (
+                                                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
+                                        <Button className="w-full" onClick={handleCreateGroup}>Créer le groupe</Button>
                                     </div>
 
                                     <div className="space-y-4">
-                                        <Label>Groupes Existants</Label>
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="font-semibold text-sm">Hiérarchie des dossiers</h3>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+                                                onClick={handleDeleteAllGroups}
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                Tout supprimer
+                                            </Button>
+                                        </div>
                                         {customGroups.length === 0 ? (
                                             <p className="text-sm text-muted-foreground">Aucun groupe créé.</p>
                                         ) : (
                                             customGroups.map(group => (
                                                 <Card key={group.id} className="p-4 bg-muted/30">
                                                     <div className="flex items-center justify-between mb-4">
-                                                        <h3 className="font-bold">{group.name}</h3>
+                                                        <div>
+                                                            <h3 className="font-bold">{group.name}</h3>
+                                                            {group.parentId && (
+                                                                <p className="text-[10px] text-muted-foreground">
+                                                                    Parent: {customGroups.find(g => g.id === group.parentId)?.name || 'Inconnu'}
+                                                                </p>
+                                                            )}
+                                                        </div>
                                                         <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group.id)}>
                                                             <Trash2 className="h-4 w-4 text-destructive" />
                                                         </Button>
@@ -309,7 +401,7 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
                             Export
                         </Button>
                     </div>
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <Select value={selectedYear} onValueChange={onYearChange}>
                         <SelectTrigger className="w-full sm:w-[120px]">
                             <SelectValue placeholder="Année" />
                         </SelectTrigger>
@@ -324,154 +416,301 @@ export const ManagementTable = ({ tenants, receipts }: ManagementTableProps) => 
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                {/* Unified Full Table View with Horizontal Scroll */}
-                <ScrollArea className="w-full">
-                    <div className="min-w-[1000px]">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-muted/50">
-                                    <TableHead className="sticky left-0 bg-muted/50 z-20 w-[200px] border-r">
-                                        Locataire
-                                    </TableHead>
-                                    {months.map((month) => (
-                                        <TableHead key={month.id} className="text-center min-w-[80px]">
-                                            {month.label}
+                <div className="flex flex-col h-[600px]">
+                    {/* Navigation Bar / Breadcrumbs */}
+                    <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-8 gap-1.5 px-2 ${navigationPath.length === 0 ? 'text-primary font-bold bg-primary/10' : ''}`}
+                                onClick={resetNavigation}
+                            >
+                                <Home className="h-4 w-4" />
+                                <span className="text-xs">Ma Gérance</span>
+                            </Button>
+
+                            {navigationPath.map((groupId, index) => {
+                                const group = customGroups.find(g => g.id === groupId);
+                                return (
+                                    <div key={`nav-${groupId}-${index}`} className="flex items-center gap-1">
+                                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className={`h-8 gap-1.5 px-2 ${index === navigationPath.length - 1 ? 'text-primary font-bold bg-primary/10' : ''}`}
+                                            onClick={() => goToLevel(index)}
+                                        >
+                                            <Folder className="h-4 w-4" />
+                                            <span className="text-xs">{group?.name || 'Groupe'}</span>
+                                        </Button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {navigationPath.length > 0 && (
+                            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={goBack}>
+                                <ArrowLeft className="h-3.5 w-3.5" />
+                                Retour
+                            </Button>
+                        )}
+                    </div>
+
+                    <ScrollArea className="flex-1">
+                        <div className="min-w-max">
+                            <Table className="relative">
+                                <TableHeader className="bg-muted sticky top-0 z-20">
+                                    <TableRow>
+                                        <TableHead className="sticky left-0 bg-muted z-30 w-[200px] font-bold border-r">
+                                            {navigationPath.length === 0 ? "ÉLÉMENTS" : (customGroups.find(g => g.id === navigationPath[navigationPath.length - 1])?.name.toUpperCase())}
                                         </TableHead>
-                                    ))}
-                                    <TableHead className="text-right font-bold w-[120px]">
-                                        Total
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {Object.entries(groupedTenants).map(([propId, group]) => (
-                                    <>
-                                        {/* Property Group Header */}
-                                        <TableRow key={`prop-${propId}`} className="bg-primary/10 hover:bg-primary/15 transition-colors">
-                                            <TableCell colSpan={months.length + 2} className="py-2.5 px-4 font-bold text-primary border-b border-primary/20">
-                                                <div className="flex items-center gap-2">
-                                                    <Building2 className="h-4 w-4" />
-                                                    <span className="uppercase tracking-wider text-xs">{group.propertyName}</span>
-                                                    <Badge variant="outline" className="ml-2 font-normal bg-white/50">
-                                                        {group.tenants.length} Locataire{group.tenants.length > 1 ? 's' : ''}
-                                                    </Badge>
+                                        {months.map((month) => (
+                                            <TableHead key={month.id} className="text-center w-[60px] p-1">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-[10px] uppercase font-bold text-muted-foreground">{month.label}</span>
+                                                    <span className="text-[9px] text-muted-foreground/60">{selectedYear}</span>
                                                 </div>
-                                            </TableCell>
-                                        </TableRow>
-
-                                        {/* Property Tenants */}
-                                        {group.tenants.map((tenant) => {
-                                            let tenantYearTotal = 0;
+                                            </TableHead>
+                                        ))}
+                                        <TableHead className="text-right w-[100px] font-bold text-primary">TOTAL</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {(() => {
+                                        const currentNodes = getCurrentNodes();
+                                        if (currentNodes.length === 0) {
                                             return (
-                                                <TableRow key={tenant.id} className="hover:bg-muted/30">
-                                                    <TableCell className="sticky left-0 bg-white dark:bg-card z-10 font-medium border-r">
-                                                        <div className="truncate w-[180px]" title={tenant.full_name}>
-                                                            {tenant.full_name}
-                                                        </div>
-                                                        <div className="text-[10px] text-muted-foreground truncate">
-                                                            {tenant.unit_number || 'Unité'}
-                                                        </div>
-                                                    </TableCell>
-                                                    {months.map((month) => {
-                                                        const receipt = paymentData[tenant.id][month.id];
-                                                        if (receipt) {
-                                                            const amount = typeof receipt.amount === 'number' ? receipt.amount : parseFloat(receipt.amount) || 0;
-                                                            tenantYearTotal += amount;
-                                                        }
-
-                                                        return (
-                                                            <TableCell key={month.id} className="text-center p-2">
-                                                                {receipt ? (
-                                                                    <div className="flex flex-col items-center gap-1 group relative">
-                                                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                                                        <span className="text-[10px] font-semibold text-green-700">
-                                                                            {(receipt.amount / 1000).toFixed(1).replace(/\.0$/, '')}k
-                                                                        </span>
-                                                                        {/* Tooltip simple via title */}
-                                                                        <div className="hidden group-hover:block absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-30 shadow-lg border border-white/20">
-                                                                            {formatCurrency(receipt.amount)} le {new Date(receipt.payment_date).toLocaleDateString()}
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex flex-col items-center gap-1 opacity-40">
-                                                                        <XCircle className="h-4 w-4 text-muted-foreground" />
-                                                                        <span className="text-[10px]">---</span>
-                                                                    </div>
-                                                                )}
-                                                            </TableCell>
-                                                        );
-                                                    })}
-                                                    <TableCell className="text-right font-bold text-primary">
-                                                        {formatCurrency(tenantYearTotal)}
+                                                <TableRow>
+                                                    <TableCell colSpan={months.length + 2} className="h-24 text-center text-muted-foreground italic">
+                                                        Ce dossier est vide.
                                                     </TableCell>
                                                 </TableRow>
                                             );
-                                        })}
+                                        }
 
-                                        {/* Property Subtotal Row */}
-                                        <TableRow key={`subtotal-${propId}`} className="bg-primary/5 font-semibold">
-                                            <TableCell className="sticky left-0 bg-primary/5 z-10 border-r border-t border-primary/20 text-primary">
-                                                TOTAL {group.propertyName.toUpperCase()}
-                                            </TableCell>
-                                            {months.map((month) => {
-                                                let groupMonthlyTotal = 0;
-                                                group.tenants.forEach(t => {
-                                                    const receipt = paymentData[t.id][month.id];
-                                                    if (receipt) {
-                                                        groupMonthlyTotal += typeof receipt.amount === 'number' ? receipt.amount : parseFloat(receipt.amount) || 0;
+                                        const calculateNodeStats = (n: any): { total: number, monthly: Record<number, number> } => {
+                                            let total = 0;
+                                            const monthly: Record<number, number> = {};
+                                            months.forEach(m => monthly[m.id] = 0);
+
+                                            if (n.type === 'property') {
+                                                (n.units || []).forEach(({ unit, tenant }: any) => {
+                                                    months.forEach(m => {
+                                                        const r = getReceiptForNode(unit?.id, tenant, m.id);
+                                                        if (r) {
+                                                            const amount = typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0;
+                                                            total += amount;
+                                                            monthly[m.id] += amount;
+                                                        }
+                                                    });
+                                                });
+                                            } else {
+                                                (n.children || []).forEach((child: any) => {
+                                                    const sub = calculateNodeStats(child);
+                                                    total += sub.total;
+                                                    Object.keys(sub.monthly).forEach(mId => {
+                                                        monthly[parseInt(mId)] += sub.monthly[parseInt(mId)];
+                                                    });
+                                                });
+                                            }
+                                            return { total, monthly };
+                                        };
+
+                                        return currentNodes.map((node: any) => {
+                                            const stats = calculateNodeStats(node);
+                                            const isExpanded = expandedGroups[node.id] === true;
+
+                                            if (node.type === 'group') {
+                                                return (
+                                                    <TableRow
+                                                        key={`group-${node.id}`}
+                                                        className="hover:bg-primary/5 transition-colors cursor-pointer group"
+                                                        onClick={() => enterGroup(node.id)}
+                                                    >
+                                                        <TableCell colSpan={months.length + 2} className="py-4 border-b">
+                                                            <div className="flex items-center justify-between px-4">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                                                                        <Folder className="h-6 w-6 text-primary" />
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-sm font-bold text-primary uppercase tracking-wide">
+                                                                            {node.name}
+                                                                        </span>
+                                                                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                                            <Building2 className="h-3 w-3" />
+                                                                            {node.children?.length || 0} élément{(node.children?.length || 0) > 1 ? 's' : ''} à l'intérieur
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-6">
+                                                                    <div className="text-sm font-bold text-primary bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
+                                                                        {formatCurrency(stats.total)}
+                                                                    </div>
+                                                                    <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0" />
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            } else {
+                                                return (
+                                                    <React.Fragment key={`prop-wrapper-${node.id}`}>
+                                                        <TableRow
+                                                            className="bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                                                            onClick={() => toggleGroup(node.id)}
+                                                        >
+                                                            <TableCell colSpan={months.length + 2} className="py-2.5 px-4 font-bold border-b">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                                        <div className="p-1 bg-white rounded shadow-sm border border-primary/10">
+                                                                            <Building2 className="h-3.5 w-3.5 text-primary" />
+                                                                        </div>
+                                                                        <span className="text-xs uppercase tracking-tight">{node.name}</span>
+                                                                    </div>
+                                                                    <div className="text-[10px] font-bold text-muted-foreground">
+                                                                        {formatCurrency(stats.total)}
+                                                                    </div>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+
+                                                        {isExpanded && (node.units || []).map((u: any, unitIdx: number) => {
+                                                            let tenantYearTotal = 0;
+                                                            return (
+                                                                <TableRow key={`row-${node.id}-${u.unit?.id || unitIdx}`} className="hover:bg-muted/30">
+                                                                    <TableCell className="sticky left-0 bg-white dark:bg-card z-10 border-r pl-8">
+                                                                        <div className="flex items-center justify-between group/tenant">
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[10px] font-bold text-primary uppercase">Unité {u.unit?.unit_number || 'N/A'}</span>
+                                                                                <div className={`text-[10px] truncate ${u.tenant ? 'text-muted-foreground' : 'text-orange-500 italic'}`}>
+                                                                                    {u.tenant ? u.tenant.full_name : 'DISPONIBLE'}
+                                                                                </div>
+                                                                            </div>
+                                                                            {u.tenant && onDeleteTenant && (
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-7 w-7 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 opacity-0 group-hover/tenant:opacity-100 transition-all border border-red-200"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        if (confirm(`⚠️ ATTENTION : Voulez-vous vraiment supprimer le locataire ${u.tenant.full_name} ?\n\nCette action retirera le locataire de cette unité et supprimera ses accès.`)) {
+                                                                                            onDeleteTenant(u.tenant.id);
+                                                                                        }
+                                                                                    }}
+                                                                                    title="Supprimer le locataire"
+                                                                                >
+                                                                                    <Trash2 className="h-3 w-3" />
+                                                                                </Button>
+                                                                            )}
+                                                                        </div>
+                                                                    </TableCell>
+                                                                    {months.map((month) => {
+                                                                        const receipt = getReceiptForNode(u.unit?.id, u.tenant, month.id);
+                                                                        if (receipt) {
+                                                                            const amount = typeof receipt.amount === 'number' ? receipt.amount : parseFloat(receipt.amount) || 0;
+                                                                            tenantYearTotal += amount;
+                                                                        }
+
+                                                                        return (
+                                                                            <TableCell key={month.id} className="text-center p-2">
+                                                                                {receipt ? (
+                                                                                    <div className="flex flex-col items-center gap-0.5 group relative">
+                                                                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                                                                        <span className="text-[9px] font-semibold text-green-700">
+                                                                                            {(receipt.amount / 1000).toFixed(1).replace(/\.0$/, '')}k
+                                                                                        </span>
+                                                                                        <div className="hidden group-hover:block absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[9px] px-2 py-1 rounded whitespace-nowrap z-50 shadow-lg border border-white/20">
+                                                                                            {formatCurrency(receipt.amount)}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <div className="flex flex-col items-center gap-0.5 opacity-30">
+                                                                                        <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                                        <span className="text-[9px]">---</span>
+                                                                                    </div>
+                                                                                )}
+                                                                            </TableCell>
+                                                                        );
+                                                                    })}
+                                                                    <TableCell className="text-right font-bold text-primary/80 text-xs">
+                                                                        {formatCurrency(tenantYearTotal)}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            );
+                                                        })}
+                                                    </React.Fragment>
+                                                );
+                                            }
+                                        });
+                                    })()}
+                                </TableBody>
+                                <TableHeader className="bg-primary shadow-[0_-2px_10px_rgba(0,0,0,0.1)] sticky bottom-0 z-30">
+                                    <TableRow className="hover:bg-primary">
+                                        <TableHead className="sticky left-0 bg-primary z-40 font-bold text-white border-r border-white/10 py-3">
+                                            TOTAL DU DOSSIER
+                                        </TableHead>
+                                        {months.map((month) => {
+                                            const currentNodes = getCurrentNodes();
+                                            const calculateMonthlyTotal = (nodes: any[]): number => {
+                                                let total = 0;
+                                                nodes.forEach(n => {
+                                                    if (n.type === 'property') {
+                                                        (n.units || []).forEach(({ unit, tenant }: any) => {
+                                                            const r = getReceiptForNode(unit?.id, tenant, month.id);
+                                                            if (r) total += (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0);
+                                                        });
+                                                    } else {
+                                                        total += calculateMonthlyTotal(n.children || []);
                                                     }
                                                 });
-                                                return (
-                                                    <TableCell key={month.id} className="text-center text-primary text-xs">
-                                                        {groupMonthlyTotal > 0 ? `${(groupMonthlyTotal / 1000).toFixed(1).replace(/\.0$/, '')}k` : '0'}
-                                                    </TableCell>
-                                                );
-                                            })}
-                                            <TableCell className="text-right text-primary">
-                                                {formatCurrency(group.tenants.reduce((acc, t) => {
-                                                    let tenantTotal = 0;
-                                                    months.forEach(m => {
-                                                        const r = paymentData[t.id][m.id];
-                                                        if (r) tenantTotal += typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0;
-                                                    });
-                                                    return acc + tenantTotal;
-                                                }, 0))}
-                                            </TableCell>
-                                        </TableRow>
+                                                return total;
+                                            };
+                                            const folderMonthlyTotal = calculateMonthlyTotal(currentNodes);
 
-                                        {/* Spacer row for better separation between groups */}
-                                        <TableRow className="h-4 border-none bg-transparent hover:bg-transparent">
-                                            <TableCell colSpan={months.length + 2} className="border-none py-2" />
-                                        </TableRow>
-                                    </>
-                                ))}
-                            </TableBody>
-                            <TableHeader className="bg-primary/5">
-                                <TableRow>
-                                    <TableHead className="sticky left-0 bg-primary/5 z-20 font-bold border-r">
-                                        TOTAL MENSUEL
-                                    </TableHead>
-                                    {months.map((month) => (
-                                        <TableHead key={month.id} className="text-center font-bold text-xs">
-                                            {monthlyTotals[month.id] > 0 ? (
-                                                <div className="text-primary">
-                                                    {(monthlyTotals[month.id] / 1000).toFixed(1).replace(/\.0$/, '')}k
-                                                </div>
-                                            ) : (
-                                                "0"
-                                            )}
+                                            return (
+                                                <TableHead key={month.id} className="text-center font-bold text-xs text-white/90">
+                                                    {folderMonthlyTotal > 0 ? (
+                                                        <div>
+                                                            {(folderMonthlyTotal / 1000).toFixed(1).replace(/\.0$/, '')}k
+                                                        </div>
+                                                    ) : (
+                                                        "0"
+                                                    )}
+                                                </TableHead>
+                                            );
+                                        })}
+                                        <TableHead className="text-right font-black text-white py-3">
+                                            {(() => {
+                                                const currentNodes = getCurrentNodes();
+                                                const calculateGrandTotal = (nodes: any[]): number => {
+                                                    let total = 0;
+                                                    nodes.forEach(n => {
+                                                        if (n.type === 'property') {
+                                                            (n.units || []).forEach(({ unit, tenant }: any) => {
+                                                                months.forEach(m => {
+                                                                    const r = getReceiptForNode(unit?.id, tenant, m.id);
+                                                                    if (r) total += (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0);
+                                                                });
+                                                            });
+                                                        } else {
+                                                            total += calculateGrandTotal(n.children || []);
+                                                        }
+                                                    });
+                                                    return total;
+                                                };
+                                                return formatCurrency(calculateGrandTotal(currentNodes));
+                                            })()}
                                         </TableHead>
-                                    ))}
-                                    <TableHead className="text-right font-black text-primary">
-                                        {formatCurrency(Object.values(monthlyTotals).reduce((a, b) => (Number(a) || 0) + (Number(b) || 0), 0))}
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                        </Table>
-                    </div>
-                    <ScrollBar orientation="horizontal" />
-                </ScrollArea>
+                                    </TableRow>
+                                </TableHeader>
+                            </Table>
+                            <ScrollBar orientation="horizontal" />
+                        </div>
+                    </ScrollArea>
+                </div>
             </CardContent>
-        </Card >
+        </Card>
     );
 };

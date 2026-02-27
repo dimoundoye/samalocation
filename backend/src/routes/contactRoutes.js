@@ -18,7 +18,7 @@ router.post('/', antiBotMiddleware, async (req, res) => {
 
         const id = uuidv4();
         await db.query(
-            'INSERT INTO contact_messages (id, name, email, subject, message) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO contact_messages (id, name, email, subject, message) VALUES ($1, $2, $3, $4, $5)',
             [id, name, email, subject, message]
         );
 
@@ -34,7 +34,7 @@ router.post('/', antiBotMiddleware, async (req, res) => {
 // GET /api/contact - Admin route to list messages
 router.get('/', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM contact_messages ORDER BY created_at DESC');
+        const { rows } = await db.query('SELECT * FROM contact_messages ORDER BY created_at DESC');
         return response.success(res, rows);
     } catch (error) {
         console.error('Error getting contact messages:', error);
@@ -50,7 +50,7 @@ router.patch('/:id/status', authMiddleware, adminMiddleware, async (req, res) =>
             return response.error(res, 'Statut invalide', 400);
         }
 
-        await db.query('UPDATE contact_messages SET status = ? WHERE id = ?', [status, req.params.id]);
+        await db.query('UPDATE contact_messages SET status = $1 WHERE id = $2', [status, req.params.id]);
 
         return response.success(res, null, 'Statut mis à jour.');
     } catch (error) {

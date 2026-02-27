@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: [], // ⚠️ ne force pas favicon/logo en cache
       manifest: {
-        name: 'Samalocation - Gestion Locative au Sénégal',
+        name: 'Samalocation',
         short_name: 'Samalocation',
         description: 'Plateforme intelligente de gestion locative au Sénégal.',
         theme_color: '#2563eb',

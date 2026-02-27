@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+// import 'leaflet/dist/leaflet.css'; // Removed in favor of global import in index.css
 import { FormattedProperty } from '@/lib/property';
 import { useNavigate } from 'react-router-dom';
 
@@ -51,14 +51,28 @@ const MapComponent = ({ properties, center = [14.7167, -17.4677], zoom = 12 }: M
         }
 
         // Trigger resize to fix issues when map was initialized in a hidden container
-        setTimeout(() => {
-            if (mapRef.current) mapRef.current.invalidateSize();
-        }, 300);
+        const timer = setTimeout(() => {
+            if (mapRef.current) {
+                mapRef.current.invalidateSize();
+                // If we have properties, ensure bounds are correct after resize
+                if (properties.length > 0) {
+                    const markersWithCoords = properties.filter(p => p.latitude != null && p.longitude != null);
+                    if (markersWithCoords.length > 0) {
+                        const bounds = L.latLngBounds(markersWithCoords.map(p => [Number(p.latitude), Number(p.longitude)]));
+                        mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+                    }
+                }
+            }
+        }, 100);
 
         return () => {
-            // Cleanup on unmount handled by useRef/useEffect check
+            clearTimeout(timer);
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+            }
         };
-    }, [center, zoom]);
+    }, [center, zoom, properties]);
 
     useEffect(() => {
         if (!mapRef.current) return;
@@ -113,12 +127,23 @@ const MapComponent = ({ properties, center = [14.7167, -17.4677], zoom = 12 }: M
         // Auto-fit map to show all markers
         if (properties.length > 0 && mapRef.current) {
             const markersWithCoords = properties.filter(p => p.latitude != null && p.longitude != null);
+            console.log("MapComponent: Rendering", markersWithCoords.length, "markers from", properties.length, "total properties");
             if (markersWithCoords.length > 0) {
                 const bounds = L.latLngBounds(markersWithCoords.map(p => [Number(p.latitude), Number(p.longitude)]));
                 mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-                console.log("MapComponent: Auto-fitted map to", markersWithCoords.length, "markers");
             } else {
-                console.log("MapComponent: No properties with valid coordinates found.");
+                console.warn("MapComponent: No properties with valid coordinates found in the provided list.");
+                // Log the first few properties to see their coordinate state
+                if (properties.length > 0) {
+                    console.log("Sample property coord state:", properties.slice(0, 3).map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        lat: p.latitude,
+                        lng: p.longitude,
+                        rawLat: (p as any).latitude, // raw values if any
+                        rawLng: (p as any).longitude
+                    })));
+                }
             }
         }
     }, [properties, navigate]);

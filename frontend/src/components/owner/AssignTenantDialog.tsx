@@ -23,6 +23,7 @@ import { searchUsers, assignTenant, createNotification, createTenantAccount } fr
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Check, Copy, AlertCircle } from "lucide-react";
 
 interface AssignTenantDialogProps {
@@ -105,21 +106,9 @@ export const AssignTenantDialog = ({
       // Check availability (default to true if not specified)
       const isAvailable = unit.is_available !== false;
 
-      console.log('Unit filter check:', {
-        unitId: unit.id,
-        unitNumber: unit.unit_number,
-        property_id: unit.property_id,
-        selectedPropertyId,
-        propertyMatch,
-        is_available: unit.is_available,
-        isAvailable,
-        willInclude: propertyMatch && isAvailable
-      });
-
-      return propertyMatch && isAvailable;
+      return propertyMatch;
     });
 
-    console.log('Filtered units:', filtered);
     return filtered;
   }, [selectedPropertyId, units]);
 
@@ -200,6 +189,20 @@ export const AssignTenantDialog = ({
         variant: "destructive",
       });
       return;
+    }
+
+    const selectedUnit = availableUnits.find(u => u.id === selectedUnitId);
+    const isActuallyOccupied = selectedUnit && (
+      selectedUnit.is_available === false ||
+      selectedUnit.is_available === 0 ||
+      selectedUnit.is_available === "0" ||
+      selectedUnit.is_available === "false"
+    );
+
+    if (isActuallyOccupied) {
+      if (!confirm("⚠️ Cette unité contient déjà un locataire.\n\nEn enregistrant, vous remplacerez le locataire actuel.\nVoulez-vous vraiment continuer ?")) {
+        return;
+      }
     }
 
     if (!fullName.trim() && !createAccount) {
@@ -296,21 +299,6 @@ export const AssignTenantDialog = ({
         });
       }
 
-      // Si le locataire a un compte utilisateur, lui envoyer une notification
-      if (insertedTenant.user_id) {
-        try {
-          await createNotification({
-            user_id: insertedTenant.user_id,
-            type: "tenant",
-            title: "Nouveau bail",
-            message: `Vous avez été affecté(e) au bien ${insertedTenant.property_name || 'un nouveau bien'}`,
-            link: "/tenant-dashboard"
-          });
-        } catch (notifError) {
-          console.error("Error creating tenant notification:", notifError);
-        }
-      }
-
       toast({
         title: "Locataire ajouté",
         description: `${insertedTenant.full_name ?? "Le locataire"} a été associé au bien sélectionné.`,
@@ -319,6 +307,19 @@ export const AssignTenantDialog = ({
       onSuccess();
       if (!accountResult) {
         handleClose(false);
+      }
+
+      // Si le locataire a un compte utilisateur, lui envoyer une notification (non-bloquant)
+      if (userId) {
+        createNotification({
+          user_id: userId,
+          type: "tenant",
+          title: "Nouveau bail",
+          message: `Vous avez été affecté(e) au bien ${insertedTenant.property_name || 'un nouveau bien'}`,
+          link: "/tenant-dashboard"
+        }).catch(notifError => {
+          console.error("Error creating tenant notification (silently caught):", notifError);
+        });
       }
     } catch (error: any) {
       console.error("Error assigning tenant:", error);
@@ -579,9 +580,14 @@ export const AssignTenantDialog = ({
                       availableUnits.map((unit) => {
                         const period =
                           typeof unit?.rent_period === "string" ? unit.rent_period : "mois";
+                        const val = unit.is_available;
+                        const isOccupied = val === false || val === 0 || val === "0" || val === "false" || val === null;
                         return (
-                          <SelectItem key={unit.id} value={unit.id}>
-                            {unit.unit_number || "Sans numéro"} • {unit.monthly_rent?.toLocaleString() || "0"} F/{period}
+                          <SelectItem key={unit.id} value={unit.id} className={isOccupied ? "text-orange-600 font-medium" : ""}>
+                            <div className="flex items-center gap-2">
+                              <span>{unit.unit_number || "Sans numéro"} • {unit.monthly_rent?.toLocaleString() || "0"} F/{period}</span>
+                              {isOccupied && <Badge variant="outline" className="text-[9px] h-4 border-orange-200 bg-orange-50 text-orange-700">OCCUPÉ</Badge>}
+                            </div>
                           </SelectItem>
                         );
                       })
@@ -590,6 +596,26 @@ export const AssignTenantDialog = ({
                 </Select>
               </div>
             </div>
+
+            {(() => {
+              const selectedUnit = availableUnits.find(u => u.id === selectedUnitId);
+              const val = selectedUnit?.is_available;
+              const isOccupied = selectedUnit && (val === false || val === 0 || val === "0" || val === "false" || val === null);
+              if (isOccupied) {
+                return (
+                  <Alert className="bg-orange-50 border-orange-200 text-orange-800 py-3">
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                    <div className="ml-2">
+                      <AlertTitle className="text-sm font-bold">Attention : Unité Occupée</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        Cette unité est déjà occupée. En enregistrant, vous remplacerez le locataire actuel.
+                      </AlertDescription>
+                    </div>
+                  </Alert>
+                );
+              }
+              return null;
+            })()}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

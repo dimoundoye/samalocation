@@ -17,6 +17,8 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
 import SetupProfile from "./pages/SetupProfile";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyContract from "./pages/VerifyContract";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 import Chatbot from "./components/Chatbot";
@@ -75,6 +77,8 @@ const App = () => (
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify/contract/:id" element={<VerifyContract />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Chatbot />

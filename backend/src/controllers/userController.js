@@ -23,7 +23,7 @@ const userController = {
             // Dépublier tous les biens de l'utilisateur
             const db = require('../config/db');
             await db.query(
-                'UPDATE properties SET is_published = false WHERE owner_id = ?',
+                'UPDATE properties SET is_published = false WHERE owner_id = $1',
                 [id]
             );
 

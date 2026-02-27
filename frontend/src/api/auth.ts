@@ -69,3 +69,27 @@ export const completeSetup = async (setupData: any) => {
         throw error;
     }
 };
+
+export const forgotPassword = async (email: string) => {
+    try {
+        return await baseClient("/auth/forgot-password", {
+            method: "POST",
+            body: JSON.stringify({ email }),
+        });
+    } catch (error: any) {
+        console.error("ForgotPassword error:", error);
+        throw error;
+    }
+};
+
+export const resetPassword = async (data: any) => {
+    try {
+        return await baseClient("/auth/reset-password", {
+            method: "POST",
+            body: JSON.stringify(data),
+        });
+    } catch (error: any) {
+        console.error("ResetPassword error:", error);
+        throw error;
+    }
+};

@@ -12,8 +12,8 @@ const adminMiddleware = async (req, res, next) => {
 
         // Vérifier le rôle
         const db = require('../config/db');
-        const [users] = await db.query(
-            'SELECT role FROM user_profiles WHERE id = ?',
+        const { rows: users } = await db.query(
+            'SELECT role FROM user_profiles WHERE id = $1',
             [req.user.id]
         );
 

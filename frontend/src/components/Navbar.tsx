@@ -4,10 +4,13 @@ import { Home, LogIn, UserPlus, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
+import { LanguageToggle } from "./LanguageToggle";
+import { useTranslation } from "react-i18next";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { user, userRole } = useAuth();
+  const { t } = useTranslation();
 
   const getDashboardPath = () => {
     if (userRole === "admin") return "/admin-dashboard";
@@ -16,7 +19,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b shadow-soft">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-background/95 backdrop-blur-sm border-b shadow-soft">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
@@ -27,15 +30,16 @@ const Navbar = () => {
 
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6">
-              <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">Accueil</Link>
-              <Link to="/search" className="text-sm font-medium hover:text-primary transition-colors">Explorer</Link>
-              <Link to="/contact" className="text-sm font-medium hover:text-primary transition-colors">Contact</Link>
+              <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.home')}</Link>
+              <Link to="/search" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.explore')}</Link>
+              <Link to="/contact" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.contact')}</Link>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <LanguageToggle />
+              <ThemeToggle />
               {user ? (
                 <div className="flex items-center gap-3">
-                  <ThemeToggle />
                   <NotificationBell />
                   <Button
                     variant="default"
@@ -48,21 +52,20 @@ const Navbar = () => {
                 </div>
               ) : (
                 <>
-                  <ThemeToggle />
                   <Button
                     variant="ghost"
                     onClick={() => navigate("/auth?mode=login")}
                     className="hidden sm:flex items-center gap-2"
                   >
                     <LogIn className="h-4 w-4" />
-                    Connexion
+                    {t('nav.login')}
                   </Button>
                   <Button
                     onClick={() => navigate("/auth?mode=signup")}
                     className="gradient-accent text-white shadow-medium hover:shadow-strong transition-all"
                   >
                     <UserPlus className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Inscription</span>
+                    <span className="hidden sm:inline">{t('nav.signup')}</span>
                   </Button>
                 </>
               )}

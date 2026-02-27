@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Upload, Sparkles, Loader2 } from "lucide-react";
+import { X, Upload, Sparkles, Loader2, Home, Layers, Building2, BedDouble, Warehouse, Store } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { updateProperty, uploadPhotos, generateAIDescription } from "@/lib/api";
 import { Property } from "@/types";
@@ -21,6 +22,7 @@ interface EditPropertyModalProps {
 
 export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: EditPropertyModalProps) => {
     const { toast } = useToast();
+    const [propertyType, setPropertyType] = useState<string>("");
     const [propertyData, setPropertyData] = useState({
         name: "",
         address: "",
@@ -28,6 +30,17 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
         latitude: "",
         longitude: "",
     });
+
+    // For single property units (since current UI handles them as one)
+    const [unitData, setUnitData] = useState({
+        id: "",
+        monthly_rent: "",
+        area_sqm: "",
+        bedrooms: "",
+        bathrooms: "",
+        rent_period: "mois",
+    });
+
     const [propertyEquipments, setPropertyEquipments] = useState<string[]>([]);
     const [equipmentInput, setEquipmentInput] = useState("");
     const [propertyPhotos, setPropertyPhotos] = useState<File[]>([]);
@@ -38,6 +51,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
 
     useEffect(() => {
         if (property) {
+            setPropertyType(property.property_type || "");
             setPropertyData({
                 name: property.name || "",
                 address: property.address || "",
@@ -49,6 +63,31 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
             setExistingPhotos(property.photos || []);
             setPropertyPhotos([]);
             setPropertyPhotosPreviews([]);
+
+            // Load unit data (assuming one unit for now, as in AddPropertyModal)
+            const unit = property.property_units && property.property_units.length > 0
+                ? property.property_units[0]
+                : null;
+
+            if (unit) {
+                setUnitData({
+                    id: unit.id || "",
+                    monthly_rent: unit.monthly_rent?.toString() || "",
+                    area_sqm: unit.area_sqm?.toString() || "",
+                    bedrooms: unit.bedrooms?.toString() || "",
+                    bathrooms: unit.bathrooms?.toString() || "",
+                    rent_period: unit.rent_period || "mois",
+                });
+            } else {
+                setUnitData({
+                    id: "",
+                    monthly_rent: "",
+                    area_sqm: "",
+                    bedrooms: "",
+                    bathrooms: "",
+                    rent_period: "mois",
+                });
+            }
         }
     }, [property]);
 
@@ -89,14 +128,27 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
             const allPhotos = [...existingPhotos, ...newPhotoUrls];
 
             const propertyUpdate: any = {
+                property_type: propertyType,
                 name: propertyData.name.trim(),
                 address: propertyData.address.trim(),
                 description: propertyData.description.trim() || null,
                 photos: allPhotos,
                 photo_url: allPhotos[0] || null,
                 equipments: propertyEquipments.length > 0 ? propertyEquipments : null,
-                latitude: propertyData.latitude ? parseFloat(propertyData.latitude) : null,
-                longitude: propertyData.longitude ? parseFloat(propertyData.longitude) : null
+                latitude: propertyData.latitude ? parseFloat(propertyData.latitude) : 14.7167,
+                longitude: propertyData.longitude ? parseFloat(propertyData.longitude) : -17.4677,
+                units: [
+                    {
+                        id: unitData.id || undefined,
+                        unit_type: propertyType,
+                        monthly_rent: unitData.monthly_rent ? parseInt(unitData.monthly_rent) : 0,
+                        area_sqm: unitData.area_sqm ? parseFloat(unitData.area_sqm) : null,
+                        bedrooms: unitData.bedrooms ? parseInt(unitData.bedrooms) : 0,
+                        bathrooms: unitData.bathrooms ? parseInt(unitData.bathrooms) : 0,
+                        rent_period: unitData.rent_period,
+                        unit_number: propertyType.charAt(0).toUpperCase() + propertyType.slice(1)
+                    }
+                ]
             };
 
             await updateProperty(property.id, propertyUpdate);
@@ -138,12 +190,12 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
 
             const description = await generateAIDescription({
                 name: propertyData.name,
-                type: property.property_type,
+                type: propertyType,
                 address: propertyData.address,
                 equipments: propertyEquipments,
-                bedrooms: firstUnit?.unit_type !== 'commercial' ? firstUnit?.bedrooms : undefined,
-                bathrooms: firstUnit?.unit_type !== 'commercial' ? firstUnit?.bathrooms : undefined,
-                area: firstUnit?.area_sqm,
+                bedrooms: unitData.bedrooms || firstUnit?.bedrooms?.toString(),
+                bathrooms: unitData.bathrooms || firstUnit?.bathrooms?.toString(),
+                area: unitData.area_sqm || firstUnit?.area_sqm?.toString(),
             });
 
             setPropertyData(prev => ({ ...prev, description }));
@@ -162,6 +214,23 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
         }
     };
 
+    const propertyTypes = [
+        { value: "maison", label: "Maison", icon: Home },
+        { value: "villa", label: "Villa", icon: Layers },
+        { value: "appartement", label: "Appartement ou Studio", icon: Building2 },
+        { value: "chambre", label: "Chambre", icon: BedDouble },
+        { value: "garage", label: "Garage", icon: Warehouse },
+        { value: "locale", label: "Local", icon: Store },
+    ];
+
+    const needsDetailedFields = ["maison", "villa", "appartement", "chambre"].includes(propertyType);
+
+    const rentPeriodOptions = [
+        { value: "jour", label: "Jour" },
+        { value: "semaine", label: "Semaine" },
+        { value: "mois", label: "Mois" },
+    ];
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
@@ -179,6 +248,25 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                     }}
                     className="space-y-6"
                 >
+                    <div className="space-y-2">
+                        <Label>Type de propriété *</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                            {propertyTypes.map((type) => (
+                                <div
+                                    key={type.value}
+                                    className={`cursor-pointer p-2 rounded-lg border text-center transition-all ${propertyType === type.value
+                                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                        : "hover:border-primary/50"
+                                        }`}
+                                    onClick={() => setPropertyType(type.value)}
+                                >
+                                    <type.icon className={`h-5 w-5 mx-auto mb-1 ${propertyType === type.value ? "text-primary" : "text-muted-foreground"}`} />
+                                    <p className={`text-[10px] font-medium ${propertyType === type.value ? "text-primary" : ""}`}>{type.label}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     <Card className="shadow-soft">
                         <CardHeader>
                             <CardTitle>Informations générales</CardTitle>
@@ -367,6 +455,78 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                         </CardContent>
                     </Card>
 
+                    <Card className="shadow-soft">
+                        <CardHeader>
+                            <CardTitle>Informations de location</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label>Durée du loyer *</Label>
+                                    <Select
+                                        value={unitData.rent_period}
+                                        onValueChange={(value) => setUnitData({ ...unitData, rent_period: value })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Sélectionnez la durée" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {rentPeriodOptions.map((option) => (
+                                                <SelectItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="edit-rent">Montant du loyer (F CFA) *</Label>
+                                    <Input
+                                        id="edit-rent"
+                                        type="number"
+                                        value={unitData.monthly_rent}
+                                        onChange={(e) => setUnitData({ ...unitData, monthly_rent: e.target.value })}
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="edit-area">Surface (m²)</Label>
+                                    <Input
+                                        id="edit-area"
+                                        type="number"
+                                        value={unitData.area_sqm}
+                                        onChange={(e) => setUnitData({ ...unitData, area_sqm: e.target.value })}
+                                    />
+                                </div>
+
+                                {needsDetailedFields && (
+                                    <>
+                                        <div>
+                                            <Label htmlFor="edit-bedrooms">Nombre de chambres</Label>
+                                            <Input
+                                                id="edit-bedrooms"
+                                                type="number"
+                                                value={unitData.bedrooms}
+                                                onChange={(e) => setUnitData({ ...unitData, bedrooms: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="edit-bathrooms">Nombre de salles de bain</Label>
+                                            <Input
+                                                id="edit-bathrooms"
+                                                type="number"
+                                                value={unitData.bathrooms}
+                                                onChange={(e) => setUnitData({ ...unitData, bathrooms: e.target.value })}
+                                            />
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     <div className="flex justify-end gap-3">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                             Annuler
@@ -380,3 +540,5 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
         </Dialog>
     );
 };
+
+export default EditPropertyModal;

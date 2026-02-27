@@ -30,14 +30,16 @@ import property2 from "@/assets/property-2.jpg";
 import { transformProperty, FormattedProperty } from "@/lib/property";
 import { getProperties, getMessages } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [featuredProperties, setFeaturedProperties] = useState<FormattedProperty[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [appliedPropertyIds, setAppliedPropertyIds] = useState<string[]>([]);
-
+  // ... (lines 41-118 remain unchanged in logic)
   useEffect(() => {
     loadFeaturedProperties();
     loadAppliedProperties();
@@ -122,45 +124,44 @@ const Index = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-10 pb-20 lg:pt-20 lg:pb-20">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent hidden lg:block" />
+      <section className="relative overflow-hidden pt-10 pb-20 md:pt-20 md:pb-20">
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent hidden md:block" />
         <div className="container mx-auto px-6 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-10 animate-slide-up">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div className="space-y-8 animate-slide-up">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                <span>La révolution locative au Sénégal</span>
+                <span>{t('hero.badge')}</span>
               </div>
 
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
                 <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient">
-                  Gérez & Trouvez un bien
+                  {t('hero.title_part1')}
                 </span>
                 <br />
-                <span className="text-accent">en toute confiance.</span>
+                <span className="text-accent">{t('hero.title_part2')}</span>
               </h1>
 
               <p className="text-xl text-muted-foreground max-w-lg leading-relaxed">
-                Samalocation simplifie la vie des propriétaires et des locataires.
-                Une plateforme <span className="text-primary font-semibold">transparente, sécurisée et 100% digitale</span> au Sénégal.
+                {t('hero.description')}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <div className="flex flex-col sm:flex-row gap-4 pt-4 max-w-xl">
                 <Button
                   size="lg"
                   onClick={() => navigate("/auth?mode=signup&type=owner")}
-                  className="gradient-primary h-14 px-10 text-lg shadow-strong hover:scale-105 transition-transform"
+                  className="gradient-primary h-12 px-8 text-base shadow-strong hover:scale-105 transition-transform flex-1"
                 >
-                  <Home className="h-5 w-5 mr-3" />
-                  Mettre en location
+                  <Home className="h-4 w-4 mr-2" />
+                  {t('hero.list_property')}
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
                   onClick={() => navigate("/search")}
-                  className="h-14 px-10 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-medium"
+                  className="h-12 px-8 text-base border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-medium flex-1"
                 >
-                  <Search className="h-5 w-5 mr-3" />
-                  Chercher un bien
+                  <Search className="h-4 w-4 mr-2" />
+                  {t('hero.search_property')}
                 </Button>
               </div>
 
@@ -169,7 +170,7 @@ const Index = () => {
                 <div className="flex items-center w-full gap-2 px-2">
                   <MapPin className="h-5 w-5 text-muted-foreground shrink-0" />
                   <Input
-                    placeholder="Quartier, ville (ex: Almadies, Thiès...)"
+                    placeholder={t('hero.search_placeholder')}
                     className="border-0 focus-visible:ring-0 text-lg h-12 w-full bg-transparent"
                     onKeyPress={(e) => e.key === 'Enter' && navigate("/search")}
                   />
@@ -178,7 +179,7 @@ const Index = () => {
                   onClick={() => navigate("/search")}
                   className="h-12 w-full sm:w-12 rounded-xl gradient-accent shadow-medium hover:scale-105 sm:hover:scale-110 transition-transform"
                 >
-                  <span className="sm:hidden font-bold mr-2">Rechercher</span>
+                  <span className="sm:hidden font-bold mr-2">{t('hero.search_button')}</span>
                   <ArrowRight className="h-6 w-6 text-white" />
                 </Button>
               </div>
@@ -186,9 +187,9 @@ const Index = () => {
 
             </div>
 
-            <div className="relative animate-fade-in lg:block">
+            <div className="relative animate-fade-in md:block md:-mt-16 lg:-mt-20">
               <div className="absolute -inset-10 bg-accent/5 blur-3xl rounded-full" />
-              <div className="relative rounded-[2.5rem] border-[8px] border-white/50 backdrop-blur-sm shadow-strong overflow-hidden animate-float max-h-[550px] aspect-[4/5] lg:aspect-auto">
+              <div className="relative rounded-[2.5rem] border-[8px] border-white/50 backdrop-blur-sm shadow-strong overflow-hidden animate-float max-h-[550px] aspect-[4/5] md:aspect-auto">
                 <img
                   src={heroLuxuryImage}
                   alt="Modern Luxury Real Estate"
@@ -207,10 +208,9 @@ const Index = () => {
       <section className="py-24 bg-background border-y border-border/50">
         <div className="container mx-auto px-6">
           <div className="text-center max-w-5xl mx-auto mb-20 space-y-4">
-            <h2 className="text-5xl md:text-5xl font-bold text-primary"> Pourquoi choisir Samalocation ? </h2>
+            <h2 className="text-5xl md:text-5xl font-bold text-primary"> {t('features.title')} </h2>
             <p className="text-lg text-muted-foreground">
-              Nous avons construit la solution idéale pour le marché sénégalais,
-              en combinant technologie moderne et simplicité d'utilisation.
+              {t('features.subtitle')}
             </p>
           </div>
 
@@ -218,20 +218,20 @@ const Index = () => {
             {[
               {
                 icon: Shield,
-                title: "Sécurité",
-                description: "Vérification des profils et protection de vos documents et transactions.",
+                title: t('features.security.title'),
+                description: t('features.security.desc'),
                 color: "bg-blue-500/10 text-blue-600"
               },
               {
                 icon: Clock,
-                title: "Gain de Temps",
-                description: "Digitalisez vos visites et la gestion de vos biens en quelques clics.",
+                title: t('features.time.title'),
+                description: t('features.time.desc'),
                 color: "bg-accent/10 text-accent"
               },
               {
                 icon: CheckCircle2,
-                title: "Transparence Totale",
-                description: "Des échanges clairs, sans frais cachés, pour une confiance mutuelle.",
+                title: t('features.transparency.title'),
+                description: t('features.transparency.desc'),
                 color: "bg-green-500/10 text-green-600"
               }
             ].map((prop, idx) => (
@@ -257,12 +257,12 @@ const Index = () => {
                 <Building2 size={200} />
               </div>
               <div className="relative z-10 space-y-6">
-                <h3 className="text-3xl lg:text-4xl font-bold">Pour les Propriétaires</h3>
+                <h3 className="text-3xl lg:text-4xl font-bold">{t('roles.owners.title')}</h3>
                 <p className="text-white/80 text-lg leading-relaxed max-w-md">
-                  Gérez votre patrimoine avec sérénité. Trouvez des locataires vérifiés et suivez vos paiements sans stress.
+                  {t('roles.owners.desc')}
                 </p>
                 <ul className="space-y-4">
-                  {["Publication gratuite", "Trouvez des locataires ", "Suivez vos paiements", "Gestion des quittances"].map((item, i) => (
+                  {[t('roles.owners.item1'), t('roles.owners.item2'), t('roles.owners.item3'), t('roles.owners.item4')].map((item, i) => (
                     <li key={i} className="flex items-center gap-3">
                       <CheckCircle2 className="h-5 w-5 text-accent" />
                       <span>{item}</span>
@@ -274,7 +274,7 @@ const Index = () => {
                   onClick={() => navigate("/auth?mode=signup&type=owner")}
                   className="bg-white text-primary hover:bg-white/90 h-14 px-8 rounded-xl font-bold shadow-strong"
                 >
-                  Publier mon annonce
+                  {t('roles.owners.cta')}
                 </Button>
               </div>
             </div>
@@ -285,12 +285,12 @@ const Index = () => {
                 <Users size={200} />
               </div>
               <div className="relative z-10 space-y-6">
-                <h3 className="text-3xl lg:text-4xl font-bold">Pour les Locataires</h3>
+                <h3 className="text-3xl lg:text-4xl font-bold">{t('roles.tenants.title')}</h3>
                 <p className="text-muted-foreground text-lg leading-relaxed max-w-md">
-                  Le logement de vos rêves est à portée de clic. Visites facilitées et échange direct avec les propriétaires.
+                  {t('roles.tenants.desc')}
                 </p>
                 <ul className="space-y-4 text-primary/80">
-                  {["Annonces vérifiées au Sénégal", "Filtrage intelligent", "Candidature en un clic", "Discuter avec le propriétaire"].map((item, i) => (
+                  {[t('roles.tenants.item1'), t('roles.tenants.item2'), t('roles.tenants.item3'), t('roles.tenants.item4')].map((item, i) => (
                     <li key={i} className="flex items-center gap-3">
                       <CheckCircle2 className="h-5 w-5 text-accent" />
                       <span>{item}</span>
@@ -303,7 +303,7 @@ const Index = () => {
                   onClick={() => navigate("/search")}
                   className="border-2 border-primary text-primary hover:bg-primary hover:text-white h-14 px-8 rounded-xl font-bold"
                 >
-                  Trouver mon logement
+                  {t('roles.tenants.cta')}
                 </Button>
               </div>
             </div>
@@ -316,15 +316,15 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-4">
             <div className="space-y-4">
-              <h2 className="text-3xl md:text-5xl font-bold text-primary">Biens à la une</h2>
-              <p className="text-muted-foreground text-lg">Découvrez les meilleures opportunités du moment.</p>
+              <h2 className="text-3xl md:text-5xl font-bold text-primary">{t('featured.title')}</h2>
+              <p className="text-muted-foreground text-lg">{t('featured.desc')}</p>
             </div>
             <Button
               variant="ghost"
               onClick={() => navigate("/search")}
               className="text-primary hover:text-primary group text-lg font-semibold"
             >
-              Voir tout l'immobilier <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-2 transition-transform" />
+              {t('featured.view_all')} <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-2 transition-transform" />
             </Button>
           </div>
 
@@ -414,7 +414,7 @@ const Index = () => {
       <section className="py-24 bg-background">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-5xl font-bold text-primary mb-6">Comment ça marche ?</h2>
+            <h2 className="text-3xl md:text-5xl font-bold text-primary mb-6">{t('process.title')}</h2>
             <div className="w-20 h-1.5 bg-accent mx-auto rounded-full" />
           </div>
 
@@ -424,9 +424,9 @@ const Index = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
               {[
-                { step: "01", title: "Cherchez", desc: "Explorez nos annonces vérifiées partout au Sénégal." },
-                { step: "02", title: "Candidature", desc: "Discutez avec le propriétaire en toute sérénité." },
-                { step: "03", title: "Installez-vous", desc: "Emménagez en toute sérénité." }
+                { step: "01", title: t('process.step1.title'), desc: t('process.step1.desc') },
+                { step: "02", title: t('process.step2.title'), desc: t('process.step2.desc') },
+                { step: "03", title: t('process.step3.title'), desc: t('process.step3.desc') }
               ].map((item, i) => (
                 <div key={i} className="text-center group">
                   <div className="h-20 w-20 rounded-3xl bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-8 border-[6px] border-background shadow-strong group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
@@ -441,6 +441,7 @@ const Index = () => {
         </div>
       </section>
 
+
       {/* Final CTA */}
       <section className="py-24 px-6">
         <div className="container mx-auto">
@@ -448,10 +449,10 @@ const Index = () => {
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,hsl(var(--accent)/0.2),transparent_50%)]" />
             <div className="relative z-10 space-y-10">
               <h2 className="text-4xl md:text-6xl font-bold max-w-4xl mx-auto leading-tight">
-                Prêt à simplifier votre expérience locative ?
+                {t('cta.title')}
               </h2>
               <p className="text-xl text-white/80 max-w-2xl mx-auto">
-                Rejoignez des centaines de Sénégalais qui ont déjà choisi Samalocation pour une gestion transparente.
+                {t('cta.desc')}
               </p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center pt-8">
                 <Button
@@ -459,7 +460,7 @@ const Index = () => {
                   onClick={() => navigate("/auth?mode=signup")}
                   className="bg-white text-primary hover:bg-white/90 h-16 px-12 text-xl font-bold rounded-2xl shadow-strong transition-all hover:scale-105"
                 >
-                  S'inscrire gratuitement
+                  {t('cta.signup')}
                 </Button>
                 <Button
                   size="lg"
@@ -467,7 +468,7 @@ const Index = () => {
                   onClick={() => navigate("/contact")}
                   className="bg-white text-primary hover:bg-white/90 h-16 px-12 text-xl font-bold rounded-2xl shadow-strong transition-all hover:scale-105"
                 >
-                  Nous contacter
+                  {t('cta.contact')}
                 </Button>
               </div>
             </div>
@@ -484,35 +485,35 @@ const Index = () => {
                 Samalocation
               </span>
               <p className="text-muted-foreground leading-relaxed">
-                La plateforme de référence pour la location immobilière au Sénégal. Sécurité, simplicité, transparence.
+                {t('footer.desc')}
               </p>
             </div>
             <div>
-              <h4 className="font-bold mb-6 text-primary">Navigation</h4>
+              <h4 className="font-bold mb-6 text-primary">{t('footer.nav.title')}</h4>
               <ul className="space-y-4 text-muted-foreground">
-                <li><a href="/" className="hover:text-accent transition-colors">Accueil</a></li>
-                <li><a href="/search" className="hover:text-accent transition-colors">Rechercher</a></li>
-                <li><a href="/auth" className="hover:text-accent transition-colors">Se connecter</a></li>
+                <li><a href="/" className="hover:text-accent transition-colors">{t('footer.nav.home')}</a></li>
+                <li><a href="/search" className="hover:text-accent transition-colors">{t('footer.nav.search')}</a></li>
+                <li><a href="/auth" className="hover:text-accent transition-colors">{t('footer.nav.login')}</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold mb-6 text-primary">Légal</h4>
+              <h4 className="font-bold mb-6 text-primary">{t('footer.legal.title')}</h4>
               <ul className="space-y-4 text-muted-foreground">
-                <li><a href="/terms" className="hover:text-accent transition-colors">Conditions Générales</a></li>
-                <li><a href="/privacy" className="hover:text-accent transition-colors">Confidentialité</a></li>
+                <li><a href="/terms" className="hover:text-accent transition-colors">{t('footer.legal.terms')}</a></li>
+                <li><a href="/privacy" className="hover:text-accent transition-colors">{t('footer.legal.privacy')}</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold mb-6 text-primary">Support</h4>
+              <h4 className="font-bold mb-6 text-primary">{t('footer.support.title')}</h4>
               <ul className="space-y-4 text-muted-foreground">
-                <li><a href="/contact" className="hover:text-accent transition-colors">Contactez-nous</a></li>
+                <li><a href="/contact" className="hover:text-accent transition-colors">{t('footer.support.contact')}</a></li>
                 <li><a href="mailto:contact@samalocation.com" className="hover:text-accent transition-colors">contact@samalocation.com</a></li>
               </ul>
             </div>
           </div>
           <div className="pt-12 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="text-muted-foreground text-sm">
-              © 2026 Samalocation. Tous droits réservés au Sénégal
+              {t('footer.copyright')}
             </p>
             <div className="flex gap-6">
               {/* Social icons placeholder  */}

@@ -1,9 +1,10 @@
 const User = require('../models/userModel');
 const response = require('../utils/response');
 const { generateToken, verifyToken, generateVerificationToken } = require('../utils/auth');
-const { sendVerificationEmail } = require('../utils/emailService');
+const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const { verifyTurnstileToken } = require('../utils/cloudflare');
 
 /**
@@ -24,14 +25,12 @@ const generateCustomId = async () => {
             n += numbers.charAt(Math.floor(Math.random() * numbers.length));
         }
 
-        // Randomly shuffle positions? The user said "AA12345 la position peut changer"
-        // Let's stick to a consistent but semi-random format or just a simple AA00000
         customId = l1 + l2 + n;
 
         // Check uniqueness
         const db = require('../config/db');
-        const [existing] = await db.query('SELECT id FROM users WHERE custom_id = ?', [customId]);
-        if (existing.length === 0) {
+        const { rows } = await db.query('SELECT id FROM users WHERE custom_id = $1', [customId]);
+        if (rows.length === 0) {
             isUnique = true;
         }
     }
@@ -210,7 +209,7 @@ const authController = {
             }
 
             const db = require('../config/db');
-            const [users] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+            const { rows: users } = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
 
             if (!users || users.length === 0) {
                 return response.error(res, 'Utilisateur non trouvé', 404);
@@ -225,7 +224,7 @@ const authController = {
 
             const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-            await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, userId]);
+            await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, userId]);
 
             return response.success(res, null, 'Mot de passe modifié avec succès');
         } catch (error) {
@@ -295,12 +294,70 @@ const authController = {
             // Update password
             const hashedPassword = await bcrypt.hash(newPassword, 10);
             const db = require('../config/db');
-            await db.query('UPDATE users SET password_hash = ?, is_setup_complete = TRUE WHERE id = ?', [hashedPassword, userId]);
+            await db.query('UPDATE users SET password_hash = $1, is_setup_complete = TRUE WHERE id = $2', [hashedPassword, userId]);
 
             // Synchronize name and email in tenants table
-            await db.query('UPDATE tenants SET full_name = ?, email = ?, phone = ? WHERE user_id = ?', [name, email, phone, userId]);
+            await db.query('UPDATE tenants SET full_name = $1, email = $2, phone = $3 WHERE user_id = $4', [name, email, phone, userId]);
 
             return response.success(res, null, 'Configuration terminée avec succès');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Forgot Password
+     */
+    async forgotPassword(req, res, next) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                return response.error(res, 'Email est requis', 400);
+            }
+
+            const user = await User.findByEmail(email);
+            if (!user) {
+                // Pour des raisons de sécurité, on ne dit pas si l'email existe ou non
+                return response.success(res, null, 'Si votre adresse est dans notre système, vous recevrez un lien de réinitialisation.');
+            }
+
+            const resetToken = crypto.randomBytes(32).toString('hex');
+            const expires = new Date();
+            expires.setHours(expires.getHours() + 1); // Expire dans 1 heure
+
+            await User.saveResetToken(user.id, resetToken, expires);
+            await sendResetPasswordEmail(user.email, resetToken);
+
+            return response.success(res, null, 'Si votre adresse est dans notre système, vous recevrez un lien de réinitialisation.');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Reset Password
+     */
+    async resetPassword(req, res, next) {
+        try {
+            const { token, password } = req.body;
+
+            if (!token || !password) {
+                return response.error(res, 'Token et mot de passe sont requis', 400);
+            }
+
+            if (password.length < 8) {
+                return response.error(res, 'Le mot de passe doit contenir au moins 8 caractères', 400);
+            }
+
+            const user = await User.findByResetToken(token);
+            if (!user) {
+                return response.error(res, 'Token invalide ou expiré', 400);
+            }
+
+            const hash = await bcrypt.hash(password, 10);
+            await User.updatePassword(user.id, hash);
+
+            return response.success(res, null, 'Votre mot de passe a été réinitialisé avec succès.');
         } catch (error) {
             next(error);
         }

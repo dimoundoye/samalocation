@@ -1,17 +1,11 @@
 const db = require('../config/db');
 
 const Owner = {
-    /**
-     * Get owner profile by ID
-     */
     async findProfileById(id) {
-        const [profiles] = await db.query('SELECT * FROM owner_profiles WHERE id = ?', [id]);
-        return profiles[0] || null;
+        const { rows } = await db.query('SELECT * FROM owner_profiles WHERE id = $1', [id]);
+        return rows[0] || null;
     },
 
-    /**
-     * Update or create owner profile
-     */
     async updateProfile(id, data) {
         const {
             full_name,
@@ -21,25 +15,24 @@ const Owner = {
             bio,
             signature_url,
             id_card_url,
-            verification_status
+            ownership_proof_url,
+            liveness_selfie_url,
+            verification_status,
+            receipt_template
         } = data;
-        // contact_phone et contact_email sont ignorés car les colonnes n'existent pas
 
-        // Mettre à jour user_profiles si full_name est fourni
         if (full_name) {
             await db.query(
-                'UPDATE user_profiles SET full_name = ? WHERE id = ?',
+                'UPDATE user_profiles SET full_name = $1 WHERE id = $2',
                 [full_name, id]
             );
         }
 
-        // Vérifier si le profil owner existe
-        const [profiles] = await db.query('SELECT id FROM owner_profiles WHERE id = ?', [id]);
+        const { rows: profiles } = await db.query('SELECT id FROM owner_profiles WHERE id = $1', [id]);
 
         if (profiles.length === 0) {
-            // Créer le profil owner (colonnes existantes uniquement)
             await db.query(
-                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio, signature_url, id_card_url, verification_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio, signature_url, id_card_url, ownership_proof_url, liveness_selfie_url, verification_status, receipt_template) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
                 [
                     id,
                     id,
@@ -49,13 +42,15 @@ const Owner = {
                     bio || null,
                     signature_url || null,
                     id_card_url || null,
-                    verification_status || 'none'
+                    ownership_proof_url || null,
+                    liveness_selfie_url || null,
+                    verification_status || 'none',
+                    receipt_template || 'classic'
                 ]
             );
         } else {
-            // Mettre à jour le profil owner
             await db.query(
-                'UPDATE owner_profiles SET company_name = ?, phone = ?, address = ?, bio = ?, signature_url = ?, id_card_url = ?, verification_status = ?, updated_at = NOW() WHERE id = ?',
+                'UPDATE owner_profiles SET company_name = $1, phone = $2, address = $3, bio = $4, signature_url = $5, id_card_url = $6, ownership_proof_url = $7, liveness_selfie_url = $8, verification_status = $9, receipt_template = $10, updated_at = NOW() WHERE id = $11',
                 [
                     company_name || null,
                     phone || null,
@@ -63,14 +58,16 @@ const Owner = {
                     bio || null,
                     signature_url || null,
                     id_card_url || null,
+                    ownership_proof_url || null,
+                    liveness_selfie_url || null,
                     verification_status || 'none',
+                    receipt_template || 'classic',
                     id
                 ]
             );
         }
 
-        // Récupérer le profil mis à jour
-        const [updatedProfile] = await db.query('SELECT * FROM owner_profiles WHERE id = ?', [id]);
+        const { rows: updatedProfile } = await db.query('SELECT * FROM owner_profiles WHERE id = $1', [id]);
         return updatedProfile[0] || { id, ...data };
     }
 };

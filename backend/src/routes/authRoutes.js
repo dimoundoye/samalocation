@@ -3,7 +3,13 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 const antiBotMiddleware = require('../middleware/antiBotMiddleware');
-const { signupValidation, loginValidation, changePasswordValidation } = require('../middleware/validationMiddleware');
+const {
+    signupValidation,
+    loginValidation,
+    changePasswordValidation,
+    forgotPasswordValidation,
+    resetPasswordValidation
+} = require('../middleware/validationMiddleware');
 
 // Signup
 router.post('/signup', signupValidation, authController.signup);
@@ -27,5 +33,11 @@ router.post('/create-tenant-account', authMiddleware, authController.createTenan
 
 // Complete setup (for newly created tenants)
 router.post('/complete-setup', authMiddleware, authController.completeSetup);
+
+// Forgot password
+router.post('/forgot-password', forgotPasswordValidation, authController.forgotPassword);
+
+// Reset password
+router.post('/reset-password', resetPasswordValidation, authController.resetPassword);
 
 module.exports = router;

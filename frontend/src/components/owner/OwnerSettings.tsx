@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,9 +11,11 @@ import { AccountSettings } from "@/components/shared/AccountSettings";
 import { X, FileText, Scan, Shield, CheckCircle2, Clock } from "lucide-react";
 import { SignatureScanner } from "./SignatureScanner";
 import { uploadPhotos } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 export const OwnerSettings = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     fullName: "",
@@ -24,7 +27,10 @@ export const OwnerSettings = () => {
     address: "",
     signatureUrl: "",
     idCardUrl: "",
+    ownershipProofUrl: "",
+    livenessSelfieUrl: "",
     verificationStatus: "none" as "none" | "pending" | "verified" | "rejected",
+    receiptTemplate: "classic",
   });
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -48,27 +54,16 @@ export const OwnerSettings = () => {
           address: data.address || "",
           signatureUrl: data.signature_url || "",
           idCardUrl: data.id_card_url || "",
+          ownershipProofUrl: data.ownership_proof_url || "",
+          livenessSelfieUrl: data.liveness_selfie_url || "",
           verificationStatus: data.verification_status || "none",
-        });
-      } else {
-        // Reset profile if no data is found
-        setProfile({
-          fullName: "",
-          contactPhone: "",
-          phone: "",
-          bio: "",
-          companyName: "",
-          contactEmail: "",
-          address: "",
-          signatureUrl: "",
-          idCardUrl: "",
-          verificationStatus: "none",
+          receiptTemplate: data.receipt_template || "classic",
         });
       }
     } catch (error: any) {
       toast({
-        title: "Information",
-        description: "Impossible de charger les données du profil pour le moment.",
+        title: t('common.error'),
+        description: t('common.loading_error'),
         variant: "destructive",
       });
     } finally {
@@ -90,7 +85,10 @@ export const OwnerSettings = () => {
         address: profile.address,
         signature_url: profile.signatureUrl,
         id_card_url: profile.idCardUrl,
+        ownership_proof_url: profile.ownershipProofUrl,
+        liveness_selfie_url: profile.livenessSelfieUrl,
         verification_status: profile.verificationStatus,
+        receipt_template: profile.receiptTemplate,
       };
 
       const result = await updateOwnerProfile(profileData);
@@ -100,13 +98,13 @@ export const OwnerSettings = () => {
       }
 
       toast({
-        title: "Profil mis à jour",
-        description: "Vos informations ont été enregistrées avec succès.",
+        title: t('common.success'),
+        description: t('common.save_success'),
       });
     } catch (error: any) {
       toast({
-        title: "Action impossible",
-        description: "La mise à jour du profil a échoué. Veuillez réessayer.",
+        title: t('common.error'),
+        description: t('common.save_error'),
         variant: "destructive",
       });
     } finally {
@@ -114,195 +112,257 @@ export const OwnerSettings = () => {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'idCardUrl' | 'ownershipProofUrl' | 'livenessSelfieUrl') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      const urls = await uploadPhotos([file]);
+      if (urls && urls.length > 0) {
+        setProfile({
+          ...profile,
+          [field]: urls[0],
+        });
+        toast({
+          title: t('common.upload_success'),
+          description: t('common.save_success'),
+        });
+      }
+    } catch (error) {
+      toast({
+        title: t('common.error'),
+        description: t('common.upload_error'),
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Paramètres</h2>
-        <p className="text-muted-foreground">Gérez votre profil et vos préférences</p>
+        <h2 className="text-2xl font-bold mb-2">{t('settings.title')}</h2>
+        <p className="text-muted-foreground">{t('settings.subtitle')}</p>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList>
-          <TabsTrigger value="profile">Profil</TabsTrigger>
-          <TabsTrigger value="account">Compte</TabsTrigger>
+          <TabsTrigger value="profile">{t('settings.profile_tab')}</TabsTrigger>
+          <TabsTrigger value="account">{t('settings.account_tab')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Informations du profil</CardTitle>
+              <CardTitle>{t('settings.profile_info')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="fullName">Nom complet</Label>
-                <Input
-                  id="fullName"
-                  value={profile.fullName}
-                  onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
-                  placeholder="Votre nom complet"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="fullName">{t('settings.full_name')}</Label>
+                  <Input
+                    id="fullName"
+                    value={profile.fullName}
+                    onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+                    placeholder={t('settings.full_name_placeholder')}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="companyName">{t('settings.company_name')}</Label>
+                  <Input
+                    id="companyName"
+                    value={profile.companyName}
+                    onChange={(e) => setProfile({ ...profile, companyName: e.target.value })}
+                    placeholder={t('settings.company_placeholder')}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="contactPhone">{t('settings.contact_phone')}</Label>
+                  <Input
+                    id="contactPhone"
+                    type="tel"
+                    value={profile.contactPhone}
+                    onChange={(e) => setProfile({ ...profile, contactPhone: e.target.value })}
+                    placeholder={t('settings.phone_placeholder')}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="contactEmail">{t('settings.contact_email')}</Label>
+                  <Input
+                    id="contactEmail"
+                    type="email"
+                    value={profile.contactEmail}
+                    onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })}
+                    placeholder={t('settings.email_placeholder')}
+                  />
+                </div>
               </div>
 
               <div>
-                <Label htmlFor="companyName">Nom de l'entreprise</Label>
-                <Input
-                  id="companyName"
-                  value={profile.companyName}
-                  onChange={(e) => setProfile({ ...profile, companyName: e.target.value })}
-                  placeholder="Ex: Immobilier Dakar"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="contactPhone">Téléphone</Label>
-                <Input
-                  id="contactPhone"
-                  type="tel"
-                  value={profile.contactPhone}
-                  onChange={(e) => setProfile({ ...profile, contactPhone: e.target.value })}
-                  placeholder="Ex: +221 77 123 45 67"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="contactEmail">Email de contact</Label>
-                <Input
-                  id="contactEmail"
-                  type="email"
-                  value={profile.contactEmail}
-                  onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })}
-                  placeholder="Ex: contact@immobilierdakar.com"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="address">Adresse</Label>
+                <Label htmlFor="address">{t('common.address')}</Label>
                 <Input
                   id="address"
                   value={profile.address}
                   onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                  placeholder="Ex: Dakar, Sénégal"
+                  placeholder={t('settings.address_placeholder')}
                 />
               </div>
 
               <div>
-                <Label htmlFor="bio">Bio</Label>
+                <Label htmlFor="bio">{t('settings.bio')}</Label>
                 <Input
                   id="bio"
                   value={profile.bio}
                   onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                  placeholder="Quelques mots sur vous..."
+                  placeholder={t('settings.bio_placeholder')}
                 />
               </div>
 
-              <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-6 pt-6 border-t mt-6">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Vérification d'identité</Label>
-                  {profile.verificationStatus === 'verified' && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 text-green-600 text-xs font-bold">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Profil Vérifié
-                    </div>
-                  )}
-                  {profile.verificationStatus === 'pending' && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/10 text-amber-600 text-xs font-bold">
-                      <Clock className="h-3.5 w-3.5" /> Vérification en cours
-                    </div>
-                  )}
-                  {profile.verificationStatus === 'rejected' && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/10 text-red-600 text-xs font-bold">
-                      <X className="h-3.5 w-3.5" /> Vérification rejetée
-                    </div>
-                  )}
+                  <div className="space-y-0.5">
+                    <Label className="text-base font-bold">{t('settings.identity_verification')}</Label>
+                    <p className="text-xs text-muted-foreground">{t('settings.verification_desc')}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    {profile.verificationStatus === 'verified' && (
+                      <Badge className="bg-green-500 hover:bg-green-600 gap-1.5 px-3 py-1">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> {t('settings.profile_verified')}
+                      </Badge>
+                    )}
+                    {profile.verificationStatus === 'pending' && (
+                      <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 gap-1.5 px-3 py-1">
+                        <Clock className="h-3.5 w-3.5" /> {t('settings.verification_pending')}
+                      </Badge>
+                    )}
+                    {profile.verificationStatus === 'rejected' && (
+                      <Badge variant="destructive" className="gap-1.5 px-3 py-1">
+                        <X className="h-3.5 w-3.5" /> {t('settings.verification_rejected')}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
-                <p className="text-sm text-muted-foreground">
-                  Faites vérifier votre profil pour rassurer les futurs locataires. Téléchargez une copie lisible de votre CNI ou Passeport.
-                </p>
+                <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
+                  <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-primary" /> {t('settings.verification_docs_desc')}
+                  </p>
 
-                <div className="flex flex-col gap-4">
-                  {profile.idCardUrl ? (
-                    <div className="relative w-full max-w-sm aspect-video border rounded-lg overflow-hidden bg-muted/10 group">
-                      <img
-                        src={profile.idCardUrl}
-                        alt="Pièce d'identité"
-                        className="w-full h-full object-contain"
-                      />
-                      {profile.verificationStatus !== 'verified' && (
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => setProfile({ ...profile, idCardUrl: "", verificationStatus: 'none' })}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-full max-w-sm aspect-video border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground gap-3 bg-muted/20">
-                      <Shield className="h-10 w-10 opacity-20" />
-                      <div className="text-center px-4">
-                        <p className="text-sm font-medium">Aucun document soumis</p>
-                        <p className="text-xs opacity-70">Formats JPG, PNG ou PDF supportés</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* ID Card */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('settings.id_card')}</Label>
+                      <div className="relative aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center bg-background group overflow-hidden">
+                        {profile.idCardUrl ? (
+                          <>
+                            <img src={profile.idCardUrl} alt="ID" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <Button variant="destructive" size="icon" onClick={() => setProfile({ ...profile, idCardUrl: "" })}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center p-2">
+                            <FileText className="h-8 w-8 mx-auto mb-1 opacity-20" />
+                            <p className="text-[10px]">{t('settings.id_card_desc')}</p>
+                            <label className="mt-2 block">
+                              <Button variant="secondary" size="sm" className="h-7 text-[10px]" asChild>
+                                <span>{t('common.change')}</span>
+                              </Button>
+                              <Input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'idCardUrl')} />
+                            </label>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
+
+                    {/* Ownership Proof */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('settings.ownership_proof')}</Label>
+                      <div className="relative aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center bg-background group overflow-hidden">
+                        {profile.ownershipProofUrl ? (
+                          <>
+                            <img src={profile.ownershipProofUrl} alt="Proof" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <Button variant="destructive" size="icon" onClick={() => setProfile({ ...profile, ownershipProofUrl: "" })}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center p-2">
+                            <Shield className="h-8 w-8 mx-auto mb-1 opacity-20" />
+                            <p className="text-[10px]">{t('settings.proof_desc')}</p>
+                            <label className="mt-2 block">
+                              <Button variant="secondary" size="sm" className="h-7 text-[10px]" asChild>
+                                <span>{t('common.change')}</span>
+                              </Button>
+                              <Input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'ownershipProofUrl')} />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Selfie Liveness */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('settings.liveness_check')}</Label>
+                      <div className="relative aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center bg-background group overflow-hidden">
+                        {profile.livenessSelfieUrl ? (
+                          <>
+                            <img src={profile.livenessSelfieUrl} alt="Selfie" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <Button variant="destructive" size="icon" onClick={() => setProfile({ ...profile, livenessSelfieUrl: "" })}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center p-2">
+                            <Scan className="h-8 w-8 mx-auto mb-1 opacity-20" />
+                            <p className="text-[10px]">{t('settings.selfie_desc')}</p>
+                            <label className="mt-2 block">
+                              <Button variant="secondary" size="sm" className="h-7 text-[10px]" asChild>
+                                <span>{t('common.change')}</span>
+                              </Button>
+                              <Input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'livenessSelfieUrl')} />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
                   {profile.verificationStatus !== 'verified' && profile.verificationStatus !== 'pending' && (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        id="idCardUpload"
-                        className="hidden"
-                        accept="image/*,.pdf"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-
-                          try {
-                            setLoading(true);
-                            const urls = await uploadPhotos([file]);
-                            if (urls && urls.length > 0) {
-                              setProfile({
-                                ...profile,
-                                idCardUrl: urls[0],
-                                verificationStatus: 'pending'
-                              });
-                              toast({
-                                title: "Document téléchargé",
-                                description: "Votre document a été soumis pour vérification.",
-                              });
-                            }
-                          } catch (error) {
-                            toast({
-                              title: "Erreur",
-                              description: "Échec du téléchargement du document.",
-                              variant: "destructive",
-                            });
-                          } finally {
-                            setLoading(false);
-                          }
-                        }}
-                      />
-                      <Button
-                        variant="outline"
-                        asChild
-                        className="gap-2"
-                      >
-                        <label htmlFor="idCardUpload" className="cursor-pointer">
-                          <FileText className="h-4 w-4" /> Soumettre ma pièce d'identité
-                        </label>
-                      </Button>
-                    </div>
+                    <Button
+                      className="w-full mt-4"
+                      disabled={!profile.idCardUrl || !profile.ownershipProofUrl || !profile.livenessSelfieUrl || loading}
+                      onClick={() => {
+                        setProfile({ ...profile, verificationStatus: 'pending' });
+                        toast({
+                          title: t('common.success'),
+                          description: t('settings.verification_pending'),
+                        });
+                      }}
+                    >
+                      {t('settings.submit_id')}
+                    </Button>
                   )}
                 </div>
               </div>
 
               <div className="space-y-4 pt-4 border-t">
-                <Label className="text-base font-semibold">Signature ou Cachet</Label>
+                <Label className="text-base font-semibold">{t('settings.signature_stamp')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Cette signature ou cachet sera automatiquement apposé sur tous vos reçus de loyer.
+                  {t('settings.signature_desc')}
                 </p>
 
                 <div className="flex flex-col gap-4">
@@ -325,7 +385,7 @@ export const OwnerSettings = () => {
                   ) : (
                     <div className="w-48 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground gap-2 bg-muted/20">
                       <FileText className="h-8 w-8 opacity-20" />
-                      <span className="text-xs">Aucune signature</span>
+                      <span className="text-xs">{t('settings.no_signature')}</span>
                     </div>
                   )}
 
@@ -335,7 +395,7 @@ export const OwnerSettings = () => {
                       onClick={() => setScannerOpen(true)}
                       className="gap-2"
                     >
-                      <Scan className="h-4 w-4" /> Scanner une signature ou un cachet
+                      <Scan className="h-4 w-4" /> {t('settings.scan_signature_stamp')}
                     </Button>
 
                     <SignatureScanner
@@ -349,14 +409,14 @@ export const OwnerSettings = () => {
                           if (urls && urls.length > 0) {
                             setProfile({ ...profile, signatureUrl: urls[0] });
                             toast({
-                              title: "Signature enregistrée",
-                              description: "N'oubliez pas d'enregistrer toutes les modifications.",
+                              title: t('common.success'),
+                              description: t('common.save_success'),
                             });
                           }
                         } catch (error) {
                           toast({
-                            title: "Erreur",
-                            description: "Échec du téléchargement de la signature.",
+                            title: t('common.error'),
+                            description: t('common.upload_error'),
                             variant: "destructive",
                           });
                         } finally {
@@ -368,8 +428,57 @@ export const OwnerSettings = () => {
                 </div>
               </div>
 
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-base font-semibold">{t('settings.receipt_form')}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t('settings.receipt_form_desc')}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    { id: 'classic', name: t('settings.receipt_templates.classic'), img: '/src/assets/classic.png' },
+                    { id: 'modern', name: t('settings.receipt_templates.modern'), img: '/src/assets/modern.png' },
+                    { id: 'minimal', name: t('settings.receipt_templates.minimal'), img: '/src/assets/minimal.png' }
+                  ].map((template) => (
+                    <div
+                      key={template.id}
+                      onClick={() => setProfile({ ...profile, receiptTemplate: template.id })}
+                      className={`relative cursor-pointer group rounded-xl border-2 transition-all p-2 bg-card hover:shadow-md ${profile.receiptTemplate === template.id
+                        ? 'border-primary ring-2 ring-primary/20'
+                        : 'border-muted hover:border-muted-foreground/30'
+                        }`}
+                    >
+                      <div className="aspect-[3/4] rounded-lg overflow-hidden bg-muted mb-2 border shadow-sm">
+                        <img
+                          src={template.img}
+                          alt={template.name}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between px-1">
+                        <span className={`text-sm font-medium ${profile.receiptTemplate === template.id ? 'text-primary' : 'text-foreground'}`}>
+                          {template.name}
+                        </span>
+                        {profile.receiptTemplate === template.id && (
+                          <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                        )}
+                      </div>
+
+                      {profile.receiptTemplate === template.id && (
+                        <div className="absolute top-4 right-4 bg-primary text-primary-foreground rounded-full p-1 shadow-lg">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <Button onClick={handleUpdateProfile} disabled={loading} className="w-full sm:w-auto">
-                {loading ? "Enregistrement..." : "Enregistrer les modifications"}
+                {loading ? t('settings.saving') : t('settings.save_changes')}
               </Button>
             </CardContent>
           </Card>

@@ -1,13 +1,14 @@
 import { getProperties, getPropertyById, getSimilarProperties, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty, updateProperty } from "../api/properties";
 import { getMessages, sendMessage, markMessagesAsRead, deleteMessage } from "../api/messages";
 import { getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead } from "../api/notifications";
-import { login, signup, getMe, searchUsers, createTenantAccount, completeSetup } from "../api/auth";
+import { login, signup, getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword } from "../api/auth";
 import { getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile } from "../api/tenant";
 import { getOwnerProfile, updateOwnerProfile } from "../api/owner";
 import { getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt } from "../api/receipts";
 import { createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser } from "../api/reports";
 import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus } from "../api/admin";
 import { getContactMessages, updateContactMessageStatus } from "../api/contact";
+import { createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract } from "../api/contracts";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -16,13 +17,14 @@ export {
     getProperties, getPropertyById, getSimilarProperties, getOwnerProperties, createProperty, createPropertyUnits, togglePropertyPublication, deleteProperty, updateProperty,
     getMessages, sendMessage, markMessagesAsRead, deleteMessage,
     getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead,
-    getMe, searchUsers, createTenantAccount, completeSetup,
+    getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword,
     getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile,
     getOwnerProfile, updateOwnerProfile,
     getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt,
     createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser,
     getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus,
-    getContactMessages, updateContactMessageStatus
+    getContactMessages, updateContactMessageStatus,
+    createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract
 };
 
 
