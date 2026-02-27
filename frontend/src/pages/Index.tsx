@@ -50,9 +50,7 @@ const Index = () => {
       setLoadingProperties(true);
       const data = await getProperties({ limit: 6 });
 
-      // Handle both direct array (old) and paginated object (new)
       const propertiesList = Array.isArray(data) ? data : (data.properties || []);
-
       const formatted = propertiesList.map((property: any) => transformProperty(property));
       setFeaturedProperties(formatted);
     } catch (error) {

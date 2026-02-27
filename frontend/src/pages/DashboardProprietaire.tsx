@@ -1296,7 +1296,7 @@ const DashboardProprietaire = () => {
                     return (
                       <>
                         {/* Mobile Card View */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                        <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {filteredTenants.map((tenant) => (
                             <Card
                               key={`mobile-tenant-${tenant.id}`}
