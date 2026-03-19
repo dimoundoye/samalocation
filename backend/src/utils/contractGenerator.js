@@ -115,15 +115,14 @@ async function generateContractPDF(contractData) {
     doc.font('Helvetica-Bold').text('Nuisances :');
     doc.font('Helvetica').text(`La sonorité abusive et le tapage nocturne sont interdits et ne seront tolérés qu'en cas de fêtes occasionnelles.`);
 
-    // -- 6. CLAUSES RÉSOLUTOIRES (PREMIUM UNIQUEMENT) --
-    if (isPremium) {
-        sectionTitle('6. CLAUSES RÉSOLUTOIRES');
-        doc.text(`Le présent contrat sera résilié immédiatement et de plein droit, sans qu’il soit besoin de faire ordonner cette résiliation en justice, dans les cas suivants :`, { align: 'justify' });
-        doc.moveDown(0.5);
-        doc.text(`— Deux mois après un commandement demeuré infructueux à défaut de paiement aux termes convenus de tout ou partie du loyer et des charges ou en cas de non-versement du dépôt de garantie éventuellement prévu au contrat ;`, { indent: 20 });
-        doc.text(`— Un mois après un commandement demeuré infructueux à défaut d’abonnement aux services publics (eau, électricité). Une fois acquis au bailleur le bénéfice de la clause résolutoire, le locataire devra libérer immédiatement les lieux. Les frais, droits et honoraires des actes de procédure seront à la charge du LOCATAIRE. Il est précisé que le locataire sera tenu de toutes les obligations découlant du présent bail jusqu’à la libération effective des lieux sans préjudice, nonobstant l’expulsion.`, { indent: 20, align: 'justify' });
-        doc.text(`— Dès lors qu’une décision de justice sera passée en force de chose jugée qui constatera les troubles de voisinage et constituera le non-respect d’user paisiblement des locaux loués. En cas de congé ou de résiliation si le locataire se maintient après l’expiration du bail, il sera redevable d’une indemnité d’occupation au moins égale au montant du dernier loyer, charges, taxes et accessoires réclamés.`, { indent: 20, align: 'justify' });
-    }
+    // -- 6. CLAUSES RÉSOLUTOIRES --
+    sectionTitle('6. CLAUSES RÉSOLUTOIRES');
+    doc.text(`Le présent contrat sera résilié immédiatement et de plein droit, sans qu’il soit besoin de faire ordonner cette résiliation en justice, dans les cas suivants :`, { align: 'justify' });
+    doc.moveDown(0.5);
+    doc.text(`— Deux mois après un commandement demeuré infructueux à défaut de paiement aux termes convenus de tout ou partie du loyer et des charges ou en cas de non-versement du dépôt de garantie éventuellement prévu au contrat ;`, { indent: 20, align: 'justify' });
+    doc.text(`— Un mois après un commandement demeuré infructueux à défaut d’abonnement aux services publics (eau, électricité). Une fois acquis au bailleur le bénéfice de la clause résolutoire, le locataire devra libérer immédiatement les lieux. Les frais, droits et honoraires des actes de procédure seront à la charge du LOCATAIRE. Il est précisé que le locataire sera tenu de toutes les obligations découlant du présent bail jusqu’à la libération effective des lieux sans préjudice, nonobstant l’expulsion.`, { indent: 20, align: 'justify' });
+    doc.text(`— Dès lors qu’une décision de justice sera passée en force de chose jugée qui constatera les troubles de voisinage et constituera le non-respect d’user paisiblement des locaux loués. En cas de congé ou de résiliation si le locataire se maintient après l’expiration du bail, il sera redevable d’une indemnité d’occupation au moins égale au montant du dernier loyer, charges, taxes et accessoires réclamés.`, { indent: 20, align: 'justify' });
+
 
     // -- INVENTORY (IF PRESENT) --
     if (contractData.inventory && Object.keys(contractData.inventory).length > 0) {
@@ -200,7 +199,11 @@ async function generateContractPDF(contractData) {
     try {
         const qrId = contractData.contract_id || contractData.id;
         if (qrId) {
-            const baseUrl = process.env.FRONTEND_URL || 'https://samalocation.com';
+            let baseUrl = process.env.FRONTEND_URL || 'https://samalocation.com';
+            // Nettoyer l'URL : enlever le slash final s'il existe
+            if (baseUrl.endsWith('/')) {
+                baseUrl = baseUrl.slice(0, -1);
+            }
             const qrContent = `${baseUrl}/verify/contract/${qrId}`;
             const qrBuffer = await QRCode.toBuffer(qrContent);
             doc.image(qrBuffer, 247, doc.y + 10, { width: 100 });

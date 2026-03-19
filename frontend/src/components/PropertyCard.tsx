@@ -21,6 +21,8 @@ interface PropertyCardProps {
   rentPeriod?: "jour" | "semaine" | "mois";
   ownerPhone?: string;
   isVerifiedOwner?: boolean;
+  showStatus?: boolean;
+  isNew?: boolean;
 }
 
 const PropertyCard = ({
@@ -38,6 +40,8 @@ const PropertyCard = ({
   rentPeriod = "mois",
   ownerPhone,
   isVerifiedOwner,
+  showStatus = false,
+  isNew = false,
 }: PropertyCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -74,18 +78,25 @@ const PropertyCard = ({
           alt={title}
           className="w-full h-full object-cover bg-secondary/30 transition-transform duration-500 group-hover:scale-110"
         />
-        <Badge
-          className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-20 text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 ${status === "available"
-            ? "bg-green-500 hover:bg-green-600"
-            : "bg-muted hover:bg-muted"
-            }`}
-        >
-          {status === "available" ? t('property.available') : t('property.occupied')}
-        </Badge>
+        {showStatus && (
+          <Badge
+            className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-20 text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 ${status === "available"
+              ? "bg-green-500 hover:bg-green-600"
+              : "bg-muted hover:bg-muted"
+              }`}
+          >
+            {status === "available" ? t('property.available') : t('property.occupied')}
+          </Badge>
+        )}
         {isApplied && (
-          <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 bg-white/90 text-green-600 border border-green-200 text-[10px] px-1">
+          <Badge className={`absolute ${isNew ? 'top-8 sm:top-10' : 'top-2 sm:top-3'} left-2 sm:left-3 z-20 bg-white/90 text-green-600 border border-green-200 text-[10px] px-1 shadow-sm`}>
             <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
             {t('property.applied')}
+          </Badge>
+        )}
+        {isNew && (
+          <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 bg-orange-500 text-white border-none text-[10px] sm:text-xs px-2 py-0.5 shadow-md animate-pulse">
+            {t('property.new') || "Nouveau"}
           </Badge>
         )}
       </div>

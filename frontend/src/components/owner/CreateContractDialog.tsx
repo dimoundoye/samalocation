@@ -9,8 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { createContract, getOwnerTenants } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, User, MapPin, ClipboardList, Info, AlertTriangle, PlusCircle, X } from "lucide-react";
+import { Loader2, ShieldCheck, User, MapPin, ClipboardList, Info, AlertTriangle, PlusCircle, X, FileText, CheckCircle2, Crown, Zap, Lock } from "lucide-react";
+import { UpgradeModal } from "./UpgradeModal";
 import { Badge } from "@/components/ui/badge";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface CreateContractDialogProps {
     open: boolean;
@@ -33,11 +35,6 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [tenants, setTenants] = useState<any[]>([]);
-    const [activeTab, setActiveTab] = useState("general");
-    const [customItem, setCustomItem] = useState("");
-    const [customItems, setCustomItems] = useState<string[]>([]);
-    const [showLegalReminder, setShowLegalReminder] = useState(true);
-
     const [formData, setFormData] = useState<any>({
         tenant_id: "",
         property_id: propertyId,
@@ -68,6 +65,55 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
         // Inventory
         inventory: {} as Record<string, string>
     });
+
+    const [activeTab, setActiveTab] = useState("general");
+    const [customItem, setCustomItem] = useState("");
+    const [customItems, setCustomItems] = useState<string[]>([]);
+    const [showLegalReminder, setShowLegalReminder] = useState(true);
+    const { hasFeature } = useSubscription();
+    const canInventory = hasFeature('inventory_contract');
+    const [upgradeModal, setUpgradeModal] = useState({
+        open: false,
+        title: "",
+        description: ""
+    });
+
+    const tabs = ["general", "parties", "property"];
+    if (formData.contract_type === 'premium') tabs.push("premium");
+
+    const isLastTab = activeTab === tabs[tabs.length - 1];
+    const isFirstTab = activeTab === tabs[0];
+
+    const isTabValid = () => {
+        switch (activeTab) {
+            case "general":
+                return !!formData.tenant_id && !!formData.start_date && !!formData.rent_amount;
+            case "parties":
+                return !!formData.owner_id_number && !!formData.tenant_id_number;
+            case "property":
+                return !!formData.detailed_address;
+            case "premium":
+                return true;
+            default:
+                return true;
+        }
+    };
+
+    const handleNext = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const currentIndex = tabs.indexOf(activeTab);
+        if (currentIndex < tabs.length - 1) {
+            setActiveTab(tabs[currentIndex + 1]);
+        }
+    };
+
+    const handleBack = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const currentIndex = tabs.indexOf(activeTab);
+        if (currentIndex > 0) {
+            setActiveTab(tabs[currentIndex - 1]);
+        }
+    };
 
     useEffect(() => {
         if (open) {
@@ -158,9 +204,18 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.tenant_id || !formData.rent_amount) {
-            toast({ title: "Champs requis", description: "Veuillez remplir les informations de base", variant: "destructive" });
-            setActiveTab("general");
+        if (!isTabValid()) {
+            toast({
+                title: "Champs requis",
+                description: "Veuillez remplir tous les champs obligatoires de cette étape.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        if (!isLastTab) {
+            const currentIndex = tabs.indexOf(activeTab);
+            setActiveTab(tabs[currentIndex + 1]);
             return;
         }
 
@@ -201,21 +256,6 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                 <ShieldCheck className="h-6 w-6 text-primary" />
                                 Génération de Bail Sécurisé
                             </DialogTitle>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-muted-foreground">Version:</span>
-                                <Select
-                                    value={formData.contract_type}
-                                    onValueChange={(v) => setFormData({ ...formData, contract_type: v })}
-                                >
-                                    <SelectTrigger className="h-7 w-32 text-xs font-bold border-primary/20 bg-primary/5">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="standard">Standard</SelectItem>
-                                        <SelectItem value="premium">Premium 💎</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
                         </div>
                         <DialogDescription>
                             Établissez un contrat conforme à la législation sénégalaise pour <span className="font-semibold text-foreground">{propertyName}</span>.
@@ -226,17 +266,72 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                 <div className="flex-1 overflow-y-auto p-6 pt-2">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="grid grid-cols-2 sm:grid-cols-4 mb-6 h-auto">
-                            <TabsTrigger value="general" className="flex items-center gap-1.5 py-2"><Info className="h-3.5 w-3.5" /> Général</TabsTrigger>
-                            <TabsTrigger value="parties" className="flex items-center gap-1.5 py-2"><User className="h-3.5 w-3.5" /> Parties</TabsTrigger>
-                            <TabsTrigger value="property" className="flex items-center gap-1.5 py-2"><MapPin className="h-3.5 w-3.5" /> Lieu</TabsTrigger>
+                            <TabsTrigger value="general" className="flex items-center gap-1.5 py-2"><Info className="h-3.5 w-3.5" /> 1. Général</TabsTrigger>
+                            <TabsTrigger value="parties" className="flex items-center gap-1.5 py-2"><User className="h-3.5 w-3.5" /> 2. Parties</TabsTrigger>
+                            <TabsTrigger value="property" className="flex items-center gap-1.5 py-2"><MapPin className="h-3.5 w-3.5" /> 3. Lieu</TabsTrigger>
                             <TabsTrigger value="premium" className="flex items-center gap-1.5 py-2" disabled={formData.contract_type !== 'premium'}>
-                                <ClipboardList className="h-3.5 w-3.5" /> Premium
+                                <ClipboardList className="h-3.5 w-3.5" /> 4. Premium
                             </TabsTrigger>
                         </TabsList>
 
                         <form onSubmit={handleSubmit} id="contract-form">
                             {/* TAB 1: GENERAL */}
-                            <TabsContent value="general" className="space-y-4 focus-visible:outline-none">
+                            <TabsContent value="general" className="space-y-6 focus-visible:outline-none">
+                                <div className="space-y-3">
+                                    <Label className="text-sm font-bold flex items-center gap-2 mb-2">
+                                        <Zap className="h-4 w-4 text-accent fill-accent" />
+                                        Choisir le type de contrat
+                                    </Label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, contract_type: 'standard' })}
+                                            className={`p-4 rounded-xl border-2 text-left transition-all relative ${formData.contract_type === 'standard' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}
+                                        >
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="p-2 rounded-lg bg-secondary/50">
+                                                    <FileText className="h-5 w-5 text-muted-foreground" />
+                                                </div>
+                                                {formData.contract_type === 'standard' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                            </div>
+                                            <p className="font-bold text-sm">Version Standard</p>
+                                            <p className="text-[10px] text-muted-foreground leading-tight">Bail officiel conforme sans inventaire détaillé.</p>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (!canInventory) {
+                                                    setUpgradeModal({
+                                                        open: true,
+                                                        title: "État des Lieux non inclus",
+                                                        description: "La génération de bail avec état des lieux détaillé est réservée aux abonnés Premium et Professionnels."
+                                                    });
+                                                    return;
+                                                }
+                                                setFormData({ ...formData, contract_type: 'premium' });
+                                            }}
+                                            className={`p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden ${formData.contract_type === 'premium' ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-border hover:border-accent/30'} ${!canInventory ? 'opacity-70 group' : ''}`}
+                                        >
+                                            <div className="absolute -top-1 -right-5 bg-accent text-white text-[8px] font-bold px-5 py-1 rotate-12">PREMIUM</div>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="p-2 rounded-lg bg-accent/10">
+                                                    {canInventory ? <Crown className="h-5 w-5 text-accent" /> : <Lock className="h-5 w-5 text-slate-400" />}
+                                                </div>
+                                                {formData.contract_type === 'premium' && <CheckCircle2 className="h-4 w-4 text-accent" />}
+                                                {!canInventory && <Lock className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors" />}
+                                            </div>
+                                            <p className="font-bold text-sm">Version avec État des Lieux</p>
+                                            <p className="text-[10px] text-muted-foreground leading-tight">Inventaire complet et description détaillée du bien.</p>
+                                            {!canInventory && (
+                                                <div className="mt-2 text-[9px] font-bold text-primary flex items-center gap-1">
+                                                    <Crown className="h-3 w-3" /> Débloquer cette option
+                                                </div>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Locataire *</Label>
@@ -288,7 +383,7 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <div className="space-y-2"><Label>Numéro de pièce</Label><Input value={formData.owner_id_number} onChange={(e) => setFormData({ ...formData, owner_id_number: e.target.value })} placeholder="Numéro ID" /></div>
+                                        <div className="space-y-2"><Label>Numéro de pièce *</Label><Input value={formData.owner_id_number} onChange={(e) => setFormData({ ...formData, owner_id_number: e.target.value })} placeholder="Numéro ID" required /></div>
                                         <div className="space-y-2"><Label>Date de délivrance ID</Label><Input type="date" value={formData.owner_id_date} onChange={(e) => setFormData({ ...formData, owner_id_date: e.target.value })} /></div>
                                         <div className="space-y-2"><Label>Né(e) le</Label><Input type="date" value={formData.owner_dob} onChange={(e) => setFormData({ ...formData, owner_dob: e.target.value })} /></div>
                                         <div className="space-y-2"><Label>Lieu de naissance</Label><Input value={formData.owner_birthplace} onChange={(e) => setFormData({ ...formData, owner_birthplace: e.target.value })} placeholder="Ville" /></div>
@@ -300,7 +395,7 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                 <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
                                     <h4 className="font-semibold text-sm flex items-center gap-2 border-b pb-2"><User className="h-4 w-4 text-primary" /> Identité du Locataire</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2"><Label>Numéro de pièce ID</Label><Input value={formData.tenant_id_number} onChange={(e) => setFormData({ ...formData, tenant_id_number: e.target.value })} placeholder="Numéro ID" /></div>
+                                        <div className="space-y-2"><Label>Numéro de pièce ID *</Label><Input value={formData.tenant_id_number} onChange={(e) => setFormData({ ...formData, tenant_id_number: e.target.value })} placeholder="Numéro ID" required /></div>
                                         <div className="space-y-2"><Label>Date de délivrance ID</Label><Input type="date" value={formData.tenant_id_date} onChange={(e) => setFormData({ ...formData, tenant_id_date: e.target.value })} /></div>
                                         <div className="space-y-2"><Label>Né(e) le</Label><Input type="date" value={formData.tenant_dob} onChange={(e) => setFormData({ ...formData, tenant_dob: e.target.value })} /></div>
                                         <div className="space-y-2"><Label>Lieu de naissance</Label><Input value={formData.tenant_birthplace} onChange={(e) => setFormData({ ...formData, tenant_birthplace: e.target.value })} placeholder="Ville" /></div>
@@ -312,7 +407,7 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                             <TabsContent value="property" className="space-y-4 focus-visible:outline-none">
                                 <div className="space-y-2">
                                     <Label>Adresse complète du bien *</Label>
-                                    <Textarea value={formData.detailed_address} onChange={(e) => setFormData({ ...formData, detailed_address: e.target.value })} placeholder="Ex: Dakar Plateau, Rue Vincens, Immeuble X, Appartement 4B" rows={3} />
+                                    <Textarea value={formData.detailed_address} onChange={(e) => setFormData({ ...formData, detailed_address: e.target.value })} placeholder="Ex: Dakar Plateau, Rue Vincens, Immeuble X, Appartement 4B" rows={3} required />
                                     <p className="text-[10px] text-muted-foreground italic">Soyez le plus précis possible pour la solidité juridique.</p>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -404,13 +499,43 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                     )}
 
                     <DialogFooter className="gap-2 sm:gap-0">
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Annuler</Button>
-                        <Button type="submit" form="contract-form" disabled={loading} className="bg-primary shadow-lg shadow-primary/20">
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Générer le Bail Officiel {formData.contract_type === 'premium' ? 'Premium' : ''}
-                        </Button>
+                        <div className="flex justify-between w-full items-center">
+                            <Button type="button" variant="ghost" onClick={isFirstTab ? () => onOpenChange(false) : handleBack}>
+                                {isFirstTab ? "Annuler" : "Précédent"}
+                            </Button>
+
+                            <div className="flex gap-2">
+                                {!isLastTab ? (
+                                    <Button
+                                        type="button"
+                                        onClick={handleNext}
+                                        disabled={!isTabValid()}
+                                        className="bg-primary shadow-lg shadow-primary/20 min-w-[100px]"
+                                    >
+                                        Suivant
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="submit"
+                                        form="contract-form"
+                                        disabled={loading || !isTabValid()}
+                                        className="bg-primary shadow-lg shadow-primary/20"
+                                    >
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Générer le Bail Officiel {formData.contract_type === 'premium' ? 'Premium' : ''}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     </DialogFooter>
                 </div>
+
+                <UpgradeModal
+                    open={upgradeModal.open}
+                    onOpenChange={(open) => setUpgradeModal(prev => ({ ...prev, open }))}
+                    title={upgradeModal.title}
+                    description={upgradeModal.description}
+                />
             </DialogContent>
         </Dialog>
     );

@@ -103,6 +103,23 @@ const Tenant = {
 
         if (!tenant) throw new Error('Tenant not found');
 
+        // Supprimer toutes les données liées au locataire
+        // 1. Messages
+        await db.query('DELETE FROM messages WHERE receiver_id = $1 OR sender_id = $1', [tenant.user_id]);
+
+        // 2. Signalements de maintenance
+        await db.query('DELETE FROM maintenance_requests WHERE tenant_id = $1', [id]);
+
+        // 3. Contrats
+        await db.query('DELETE FROM rental_contracts WHERE tenant_id = $1', [id]);
+
+        // 4. Reçus
+        await db.query('DELETE FROM receipts WHERE tenant_id = $1', [id]);
+
+        // 5. Notifications (optionnel mais recommandé)
+        await db.query('DELETE FROM notifications WHERE user_id = $1', [tenant.user_id]);
+
+        // Enfin supprimer le locataire
         await db.query('DELETE FROM tenants WHERE id = $1', [id]);
 
         if (tenant.unit_id) {

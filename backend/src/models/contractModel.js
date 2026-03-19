@@ -33,22 +33,34 @@ const Contract = {
         // Helper to handle empty strings as null for date/number fields
         const nullIfEmpty = (val) => (val === "" || val === undefined) ? null : val;
 
+        // Fetch owner's current signature
+        let owner_signature = null;
+        try {
+            const { rows: ownerRows } = await db.query('SELECT signature_url FROM owner_profiles WHERE user_profile_id = $1', [owner_id]);
+            if (ownerRows[0]) {
+                owner_signature = ownerRows[0].signature_url;
+            }
+        } catch (error) {
+            console.error("Error fetching owner signature for contract creation:", error);
+        }
+
         const { rows } = await db.query(
             `INSERT INTO rental_contracts 
             (tenant_id, owner_id, property_id, unit_id, start_date, duration_months, rent_amount, deposit_amount, 
             payment_day, payment_method, notes, contract_number, status, contract_type,
             owner_id_type, owner_id_number, owner_id_date, owner_dob, owner_birthplace,
             tenant_id_type, tenant_id_number, tenant_id_date, tenant_dob, tenant_birthplace,
-            detailed_address, charges_info, occupancy_limit, inventory, document_hash, owner_signed, owner_signed_at) 
+            detailed_address, charges_info, occupancy_limit, inventory, document_hash, owner_signed, owner_signed_at, owner_signature) 
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending_signature', $13, 
-            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, TRUE, CURRENT_TIMESTAMP) 
+            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, TRUE, CURRENT_TIMESTAMP, $29) 
             RETURNING *`,
             [
                 tenant_id, owner_id, property_id, unit_id, start_date, duration_months || 12, rent_amount, deposit_amount,
                 payment_day || 5, payment_method, notes, contract_number, contract_type || 'standard',
                 owner_id_type, owner_id_number, nullIfEmpty(owner_id_date), nullIfEmpty(owner_dob), owner_birthplace,
                 tenant_id_type, tenant_id_number, nullIfEmpty(tenant_id_date), nullIfEmpty(tenant_dob), tenant_birthplace,
-                detailed_address, charges_info || {}, nullIfEmpty(occupancy_limit), inventory || {}, document_hash
+                detailed_address, charges_info || {}, nullIfEmpty(occupancy_limit), inventory || {}, document_hash,
+                owner_signature
             ]
         );
 
@@ -65,7 +77,7 @@ const Contract = {
                     type: 'contract_created',
                     title: 'Nouveau contrat',
                     message: `Un nouveau contrat de bail (${contract_number}) a été créé pour vous. Merci de le signer.`,
-                    link: '/dashboard-locataire'
+                    link: '/tenant-dashboard'
                 });
             }
         } catch (error) {
@@ -91,7 +103,9 @@ const Contract = {
                    c.id as contract_id,
                    t.full_name as tenant_name, t.email as tenant_email, t.phone as tenant_phone,
                    up_owner.full_name as owner_name, up_owner.email as owner_email, up_owner.phone as owner_phone,
-                   op.company_name as owner_company, op.address as owner_address, op.signature_url as owner_signature,
+                   op.company_name as owner_company, op.address as owner_address, 
+                   COALESCE(c.owner_signature, op.signature_url) as owner_signature,
+                   COALESCE(c.tenant_signature, null) as tenant_signature,
                    p.name as property_name, p.address as property_address, p.property_type,
                    pu.unit_number
             FROM rental_contracts c
@@ -150,9 +164,21 @@ const Contract = {
     async signByOwner(id) {
         const contract = await this.findById(id);
         const newStatus = contract.tenant_signed ? 'active' : 'pending_signature';
+
+        // Fetch current owner signature
+        let owner_signature = null;
+        try {
+            const { rows: ownerRows } = await db.query('SELECT signature_url FROM owner_profiles WHERE user_profile_id = $1', [contract.owner_id]);
+            if (ownerRows[0]) {
+                owner_signature = ownerRows[0].signature_url;
+            }
+        } catch (error) {
+            console.error("Error fetching signature for signByOwner:", error);
+        }
+
         const { rows } = await db.query(
-            "UPDATE rental_contracts SET owner_signed = TRUE, owner_signed_at = CURRENT_TIMESTAMP, status = $2 WHERE id = $1 RETURNING *",
-            [id, newStatus]
+            "UPDATE rental_contracts SET owner_signed = TRUE, owner_signed_at = CURRENT_TIMESTAMP, owner_signature = $3, status = $2 WHERE id = $1 RETURNING *",
+            [id, newStatus, owner_signature]
         );
         return rows[0];
     },
@@ -175,7 +201,7 @@ const Contract = {
                 type: 'contract_signed',
                 title: 'Contrat signé',
                 message: `Le locataire ${contract.tenant_name} a signé le contrat ${contract.contract_number}.`,
-                link: '/dashboard-proprietaire'
+                link: '/owner-dashboard'
             });
         } catch (notifError) {
             console.error("Error creating notification for signed contract:", notifError);

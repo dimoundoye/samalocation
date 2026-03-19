@@ -19,6 +19,8 @@ import Contact from "./pages/Contact";
 import SetupProfile from "./pages/SetupProfile";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyContract from "./pages/VerifyContract";
+import Pricing from "./pages/Pricing";
+import Maintenance from "./pages/Maintenance";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 import Chatbot from "./components/Chatbot";
@@ -41,6 +43,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/search" element={<Recherche />} />
+                <Route path="/search/:pageParam" element={<Recherche />} />
                 <Route path="/property/:id" element={<DetailPropriete />} />
                 <Route
                   path="/owner-dashboard"
@@ -79,6 +82,8 @@ const App = () => (
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/verify/contract/:id" element={<VerifyContract />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/maintenance" element={<Maintenance />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Chatbot />

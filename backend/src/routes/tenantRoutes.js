@@ -13,7 +13,8 @@ router.patch('/me/profile', authMiddleware, tenantController.updateMyProfile);
 router.get('/owner', authMiddleware, tenantController.getOwnerTenants);
 
 // Assign tenant to unit
-router.post('/', authMiddleware, tenantController.assignTenant);
+const { checkTenantLimit } = require('../middleware/subscriptionMiddleware');
+router.post('/', authMiddleware, checkTenantLimit, tenantController.assignTenant);
 
 // Update tenant
 router.put('/:id', authMiddleware, tenantController.updateTenant);

@@ -18,13 +18,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, UserPlus, CheckCircle } from "lucide-react";
+import { Search, UserPlus, CheckCircle, ArrowLeft, Users, ChevronRight } from "lucide-react";
 import { searchUsers, assignTenant, createNotification, createTenantAccount } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Check, Copy, AlertCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AssignTenantDialogProps {
   open: boolean;
@@ -59,6 +60,13 @@ export const AssignTenantDialog = ({
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [createAccount, setCreateAccount] = useState(false);
   const [tempCredentials, setTempCredentials] = useState<{ customId: string, tempPassword: string } | null>(null);
+  const [step, setStep] = useState<"choice" | "form" | "credentials">("choice");
+
+  useEffect(() => {
+    if (!open) {
+      setStep("choice");
+    }
+  }, [open]);
 
   // Log pour debug
   useEffect(() => {
@@ -129,6 +137,7 @@ export const AssignTenantDialog = ({
       setSelectedUser(null);
       setCreateAccount(false);
       setTempCredentials(null);
+      setStep("choice");
     }
     onOpenChange(nextOpen);
   };
@@ -297,6 +306,7 @@ export const AssignTenantDialog = ({
           customId: accountResult.customId,
           tempPassword: accountResult.tempPassword
         });
+        setStep("credentials");
       }
 
       toast({
@@ -361,338 +371,365 @@ export const AssignTenantDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
-        <DialogHeader>
-          <DialogTitle>Associer un locataire</DialogTitle>
-          <DialogDescription>
-            Recherchez un locataire existant ou créez un nouveau locataire et rattachez-le à l'une de vos unités.
-          </DialogDescription>
-        </DialogHeader>
-
-        <Tabs value={searchMode} onValueChange={(v) => setSearchMode(v as "new" | "existing")} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="existing">
-              <Search className="h-4 w-4 mr-2" />
-              Locataire existant
-            </TabsTrigger>
-            <TabsTrigger value="new">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Nouveau locataire
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="existing" className="space-y-4">
-            <div className="space-y-2">
-              <Label>Rechercher un locataire</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Rechercher par email ou nom..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setSelectedUser(null);
-                  }}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      searchUsersLocal();
-                    }
-                  }}
-                />
-                <Button type="button" onClick={() => searchUsersLocal()} disabled={searching || !searchQuery.trim()}>
-                  <Search className="h-4 w-4" />
-                </Button>
+      <DialogContent className="max-w-xl max-h-[95vh] overflow-y-auto w-[95vw] sm:w-full border-none shadow-2xl p-0 overflow-hidden bg-background">
+        <AnimatePresence mode="wait">
+          {step === "choice" ? (
+            <motion.div
+              key="choice"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="p-8 space-y-8"
+            >
+              <div className="text-center space-y-2">
+                <DialogTitle className="text-2xl font-bold tracking-tight">Ajouter un locataire</DialogTitle>
+                <DialogDescription className="text-base">
+                  Comment souhaitez-vous procéder pour ce nouveau locataire ?
+                </DialogDescription>
               </div>
-            </div>
 
-            {selectedUser && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <div>
-                    <p className="font-medium text-green-900">{selectedUser.full_name}</p>
-                    <p className="text-sm text-green-700">{selectedUser.email}</p>
-                    <Badge variant="outline" className="mt-1">
-                      Compte existant
-                    </Badge>
+              <div className="grid grid-cols-1 gap-4">
+                <button
+                  onClick={() => {
+                    setSearchMode("existing");
+                    setStep("form");
+                  }}
+                  className="group flex items-center gap-4 p-6 rounded-3xl bg-secondary/30 border-2 border-transparent hover:border-primary/20 hover:bg-secondary/50 transition-all text-left"
+                >
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Users className="h-7 w-7 text-primary" />
                   </div>
-                </div>
-              </div>
-            )}
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg">Locataire avec compte Samalocation</h3>
+                    <p className="text-sm text-muted-foreground">Recherchez un utilisateur qui possède déjà un compte sur la plateforme.</p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                </button>
 
-            {searchResults.length > 0 && !selectedUser && (
-              <ScrollArea className="h-48 border rounded-md p-2">
-                <div className="space-y-2">
-                  {searchResults.map((user) => (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => handleSelectUser(user)}
-                      className="w-full text-left p-3 hover:bg-secondary rounded-md transition-colors"
-                    >
-                      <p className="font-medium">{user.full_name}</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-
-            {searchQuery && searchResults.length === 0 && !searching && (
-              <p className="text-center text-muted-foreground py-4">
-                Aucun utilisateur trouvé
-              </p>
-            )}
-          </TabsContent>
-
-          <TabsContent value="new" className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Créez un nouveau locataire qui n'a pas encore de compte.
-            </p>
-            <div className="flex items-center space-x-2 p-2 border rounded-md bg-secondary/20">
-              <input
-                type="checkbox"
-                id="create-account"
-                checked={createAccount}
-                onChange={(e) => setCreateAccount(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <Label htmlFor="create-account" className="cursor-pointer">
-                Générer un compte de connexion (ID + Mot de passe)
-              </Label>
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {tempCredentials ? (
-          <div className="space-y-4 py-4 animate-in fade-in zoom-in duration-300">
-            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg text-center space-y-3">
-              <CheckCircle className="h-12 w-12 text-primary mx-auto" />
-              <h3 className="text-lg font-bold">Compte créé avec succès !</h3>
-              <p className="text-sm text-muted-foreground">
-                Veuillez copier ces informations et les transmettre au locataire. Elles ne seront plus affichées.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              <div className="p-3 border rounded-md flex items-center justify-between bg-white shadow-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-semibold">Identifiant (ID)</p>
-                  <p className="text-lg font-mono font-bold text-primary">{tempCredentials.customId}</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={() => {
-                    navigator.clipboard.writeText(tempCredentials.customId);
-                    toast({ title: "Copié !", description: "L'identifiant a été copié." });
+                    setSearchMode("new");
+                    setCreateAccount(true);
+                    setStep("form");
                   }}
+                  className="group flex items-center gap-4 p-6 rounded-3xl bg-primary/5 border-2 border-transparent hover:border-primary/20 hover:bg-primary/10 transition-all text-left"
                 >
-                  <Copy className="h-4 w-4" />
+                  <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">
+                    <UserPlus className="h-7 w-7 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg">Créer un compte pour un locataire</h3>
+                    <p className="text-sm text-muted-foreground">Inscrivez un nouveau locataire et générez ses accès de connexion.</p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                </button>
+              </div>
+
+              <div className="pt-2 text-center">
+                <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-full px-8">
+                  Annuler
                 </Button>
               </div>
-
-              <div className="p-3 border rounded-md flex items-center justify-between bg-white shadow-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-semibold">Mot de passe temporaire</p>
-                  <p className="text-lg font-mono font-bold text-primary">{tempCredentials.tempPassword}</p>
+            </motion.div>
+          ) : step === "form" ? (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col h-full"
+            >
+              <div className="p-6 pb-2 border-b bg-muted/10">
+                <button
+                  onClick={() => setStep("choice")}
+                  className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-4"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Retour au choix
+                </button>
+                <div className="space-y-1">
+                  <DialogTitle>
+                    {searchMode === "existing" ? "Rechercher un locataire" : "Nouveau compte locataire"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Remplissez les informations pour affecter le locataire à une unité.
+                  </DialogDescription>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    navigator.clipboard.writeText(tempCredentials.tempPassword);
-                    toast({ title: "Copié !", description: "Le mot de passe a été copié." });
-                  }}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-              <p className="text-xs text-blue-800">
-                Le locataire sera invité à configurer son profil et changer son mot de passe lors de sa première connexion.
-              </p>
-            </div>
-
-            <Button className="w-full" onClick={() => handleClose(false)}>
-              J'ai copié les informations
-            </Button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Bien</Label>
-                <Select
-                  value={selectedPropertyId}
-                  onValueChange={(value) => {
-                    setSelectedPropertyId(value);
-                    setSelectedUnitId("");
-                    setMonthlyRent("");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un bien" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {!properties || properties.length === 0 ? (
-                      <SelectItem value="no-properties" disabled>
-                        Aucun bien disponible
-                      </SelectItem>
-                    ) : (
-                      properties.map((property) => (
-                        <SelectItem key={property.id} value={property.id}>
-                          {property.name || "Sans nom"}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
               </div>
 
-              <div>
-                <Label>Unité</Label>
-                <Select
-                  value={selectedUnitId}
-                  onValueChange={(value) => {
-                    setSelectedUnitId(value);
-                    const unit = availableUnits.find((item) => item.id === value);
-                    if (unit && unit.monthly_rent != null) {
-                      setMonthlyRent(String(unit.monthly_rent));
-                    } else {
-                      setMonthlyRent("");
-                    }
-                  }}
-                  disabled={!selectedPropertyId || availableUnits.length === 0}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={selectedPropertyId ? "Sélectionnez une unité" : "Choisissez d'abord un bien"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {!availableUnits || availableUnits.length === 0 ? (
-                      <SelectItem value="no-units" disabled>
-                        {selectedPropertyId ? "Aucune unité disponible" : "Choisissez d'abord un bien"}
-                      </SelectItem>
-                    ) : (
-                      availableUnits.map((unit) => {
-                        const period =
-                          typeof unit?.rent_period === "string" ? unit.rent_period : "mois";
-                        const val = unit.is_available;
-                        const isOccupied = val === false || val === 0 || val === "0" || val === "false" || val === null;
-                        return (
-                          <SelectItem key={unit.id} value={unit.id} className={isOccupied ? "text-orange-600 font-medium" : ""}>
-                            <div className="flex items-center gap-2">
-                              <span>{unit.unit_number || "Sans numéro"} • {unit.monthly_rent?.toLocaleString() || "0"} F/{period}</span>
-                              {isOccupied && <Badge variant="outline" className="text-[9px] h-4 border-orange-200 bg-orange-50 text-orange-700">OCCUPÉ</Badge>}
-                            </div>
-                          </SelectItem>
-                        );
-                      })
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+              <div className="p-6 space-y-6">
+                <div className="space-y-4">
+                  {searchMode === "existing" ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Rechercher par nom ou email</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Ex: Moussa Diop..."
+                            value={searchQuery}
+                            onChange={(e) => {
+                              setSearchQuery(e.target.value);
+                              setSelectedUser(null);
+                            }}
+                            className="rounded-xl h-12"
+                            onKeyPress={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                searchUsersLocal();
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => searchUsersLocal()}
+                            disabled={searching || !searchQuery.trim()}
+                            className="h-12 w-12 rounded-xl"
+                          >
+                            <Search className="h-5 w-5" />
+                          </Button>
+                        </div>
+                      </div>
 
-            {(() => {
-              const selectedUnit = availableUnits.find(u => u.id === selectedUnitId);
-              const val = selectedUnit?.is_available;
-              const isOccupied = selectedUnit && (val === false || val === 0 || val === "0" || val === "false" || val === null);
-              if (isOccupied) {
-                return (
-                  <Alert className="bg-orange-50 border-orange-200 text-orange-800 py-3">
-                    <AlertCircle className="h-4 w-4 text-orange-600" />
-                    <div className="ml-2">
-                      <AlertTitle className="text-sm font-bold">Attention : Unité Occupée</AlertTitle>
-                      <AlertDescription className="text-xs">
-                        Cette unité est déjà occupée. En enregistrant, vous remplacerez le locataire actuel.
-                      </AlertDescription>
+                      {selectedUser && (
+                        <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {selectedUser.full_name?.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold truncate">{selectedUser.full_name}</p>
+                            <p className="text-sm text-muted-foreground truncate">{selectedUser.email}</p>
+                          </div>
+                          <CheckCircle className="h-5 w-5 text-primary shrink-0" />
+                        </div>
+                      )}
+
+                      {searchResults.length > 0 && !selectedUser && (
+                        <ScrollArea className="h-40 border rounded-2xl p-2 bg-muted/5">
+                          <div className="space-y-1">
+                            {searchResults.map((user) => (
+                              <button
+                                key={user.id}
+                                type="button"
+                                onClick={() => handleSelectUser(user)}
+                                className="w-full text-left p-3 hover:bg-secondary rounded-xl transition-colors flex items-center gap-3"
+                              >
+                                <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
+                                  {user.full_name?.charAt(0)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate text-sm">{user.full_name}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      )}
                     </div>
-                  </Alert>
-                );
-              }
-              return null;
-            })()}
+                  ) : (
+                    <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white">
+                          <UserPlus className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold">Nouveau Locataire</p>
+                          <p className="text-xs text-muted-foreground">Un compte sera automatiquement généré.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 pt-2 border-t border-primary/5">
+                        <input
+                          type="checkbox"
+                          id="create-account"
+                          checked={createAccount}
+                          onChange={(e) => setCreateAccount(e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <Label htmlFor="create-account" className="text-xs cursor-pointer text-muted-foreground">
+                          Générer un identifiant et mot de passe provisoire
+                        </Label>
+                      </div>
+                    </div>
+                  )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Nom complet *</Label>
-                <Input
-                  value={fullName}
-                  onChange={(e) => {
-                    setFullName(e.target.value);
-                    if (searchMode === "existing") setSelectedUser(null);
-                  }}
-                  placeholder="Nom et prénom"
-                  disabled={!!selectedUser}
-                />
-              </div>
-              <div>
-                <Label>Email (Optionnel)</Label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (searchMode === "existing") setSelectedUser(null);
-                  }}
-                  placeholder="email@exemple.com"
-                  disabled={!!selectedUser}
-                />
-              </div>
-              <div>
-                <Label>Téléphone (Optionnel)</Label>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Ex : +221 77 000 00 00"
-                />
-              </div>
-              <div>
-                <Label>Loyer mensuel (F CFA) *</Label>
-                <Input
-                  type="number"
-                  value={monthlyRent}
-                  onChange={(e) => setMonthlyRent(e.target.value)}
-                  placeholder="Ex : 150000"
-                />
-              </div>
-              <div>
-                <Label>Date d'entrée *</Label>
-                <Input
-                  type="date"
-                  value={moveInDate}
-                  onChange={(e) => setMoveInDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>Statut</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un statut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Actif</SelectItem>
-                    <SelectItem value="pending">En attente</SelectItem>
-                    <SelectItem value="terminated">Terminé</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bien Immobilier</Label>
+                          <Select
+                            value={selectedPropertyId}
+                            onValueChange={(value) => {
+                              setSelectedPropertyId(value);
+                              setSelectedUnitId("");
+                              setMonthlyRent("");
+                            }}
+                          >
+                            <SelectTrigger className="rounded-xl">
+                              <SelectValue placeholder="Choisir un bien" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {properties.map((property) => (
+                                <SelectItem key={property.id} value={property.id}>
+                                  {property.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={submitting}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Enregistrement..." : "Enregistrer"}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Unité / Porte</Label>
+                          <Select
+                            value={selectedUnitId}
+                            onValueChange={(value) => {
+                              setSelectedUnitId(value);
+                              const unit = availableUnits.find((item) => item.id === value);
+                              if (unit?.monthly_rent) setMonthlyRent(String(unit.monthly_rent));
+                            }}
+                            disabled={!selectedPropertyId}
+                          >
+                            <SelectTrigger className="rounded-xl">
+                              <SelectValue placeholder="Choisir l'unité" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {availableUnits.map((unit) => (
+                                <SelectItem key={unit.id} value={unit.id}>
+                                  {unit.unit_number} - {unit.monthly_rent?.toLocaleString()} F
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nom complet *</Label>
+                          <Input
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            placeholder="Prénom et Nom"
+                            className="rounded-xl"
+                            disabled={!!selectedUser}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Loyer Mensuel *</Label>
+                          <Input
+                            type="number"
+                            value={monthlyRent}
+                            onChange={(e) => setMonthlyRent(e.target.value)}
+                            className="rounded-xl"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</Label>
+                          <Input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="locataire@exemple.com"
+                            className="rounded-xl"
+                            disabled={!!selectedUser}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Date d'entrée *</Label>
+                          <Input
+                            type="date"
+                            value={moveInDate}
+                            onChange={(e) => setMoveInDate(e.target.value)}
+                            className="rounded-xl"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setStep("choice")}
+                        className="flex-1 rounded-xl h-12"
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={submitting}
+                        className="flex-1 rounded-xl h-12 bg-primary shadow-lg shadow-primary/20"
+                      >
+                        {submitting ? "Traitement..." : "Confirmer l'ajout"}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="credentials"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-8 space-y-6 text-center"
+            >
+              <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-10 w-10 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold">Compte créé !</h3>
+                <p className="text-muted-foreground">
+                  Transmettez ces codes au locataire. Pour sa sécurité, ils ne seront affichés qu'une seule fois.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 pt-4">
+                <div className="p-4 bg-muted/30 rounded-2xl flex items-center justify-between border-2 border-dashed border-muted">
+                  <div className="text-left">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Identifiant (ID)</p>
+                    <p className="text-xl font-mono font-black text-primary">{tempCredentials?.customId}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(tempCredentials?.customId || "");
+                      toast({ title: "Copié !" });
+                    }}
+                    className="h-10 w-10 rounded-xl"
+                  >
+                    <Copy className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                <div className="p-4 bg-muted/30 rounded-2xl flex items-center justify-between border-2 border-dashed border-muted">
+                  <div className="text-left">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Mot de passe temporaire</p>
+                    <p className="text-xl font-mono font-black text-primary">{tempCredentials?.tempPassword}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(tempCredentials?.tempPassword || "");
+                      toast({ title: "Copié !" });
+                    }}
+                    className="h-10 w-10 rounded-xl"
+                  >
+                    <Copy className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="pt-6">
+                <Button className="w-full h-12 rounded-xl bg-primary font-bold shadow-lg shadow-primary/20" onClick={() => handleClose(false)}>
+                  J'ai bien noté les accès
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </DialogContent>
     </Dialog>
   );

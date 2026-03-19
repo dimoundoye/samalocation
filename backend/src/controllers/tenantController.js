@@ -34,7 +34,7 @@ const tenantController = {
      */
     async getOwnerTenants(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const tenants = await Tenant.findByOwnerId(ownerId);
             return response.success(res, tenants);
         } catch (error) {
@@ -47,7 +47,7 @@ const tenantController = {
      */
     async assignTenant(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const { full_name, email, phone, unit_id, monthly_rent, move_in_date, status, user_id } = req.body;
 
             if (!unit_id) {
@@ -96,7 +96,7 @@ const tenantController = {
     async updateTenant(req, res, next) {
         try {
             const { id } = req.params;
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const data = req.body;
 
             // Verify tenant exists and ownership
@@ -123,7 +123,7 @@ const tenantController = {
     async deleteTenant(req, res, next) {
         try {
             const { id } = req.params;
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
 
             // Verify tenant exists and ownership
             const tenant = await Tenant.findById(id);

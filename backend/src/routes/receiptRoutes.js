@@ -4,7 +4,8 @@ const receiptController = require('../controllers/receiptController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // Créer un reçu (propriétaire seulement)
-router.post('/', authMiddleware, receiptController.createReceipt);
+const { checkReceiptLimit } = require('../middleware/subscriptionMiddleware');
+router.post('/', authMiddleware, checkReceiptLimit, receiptController.createReceipt);
 
 // Récupérer les reçus d'un locataire
 router.get('/tenant', authMiddleware, receiptController.getTenantReceipts);

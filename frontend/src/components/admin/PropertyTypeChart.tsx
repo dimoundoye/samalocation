@@ -22,8 +22,9 @@ export const PropertyTypeChart = () => {
                 name: item.property_type === 'apartment' ? 'Appartement' :
                     item.property_type === 'house' ? 'Maison' :
                         item.property_type === 'studio' ? 'Studio' :
-                            item.property_type === 'villa' ? 'Villa' : item.property_type,
-                value: item.count
+                            item.property_type === 'villa' ? 'Villa' :
+                                (item.property_type.charAt(0).toUpperCase() + item.property_type.slice(1)),
+                value: Number(item.count)
             }));
 
             setChartData(transformedData);

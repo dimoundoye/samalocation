@@ -70,6 +70,29 @@ const userController = {
         } catch (error) {
             next(error);
         }
+    },
+    /**
+     * Supprimer un utilisateur (admin seulement)
+     */
+    async deleteUser(req, res, next) {
+        try {
+            const { id } = req.params;
+
+            const success = await User.delete(id);
+            if (!success) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Utilisateur non trouvé'
+                });
+            }
+
+            res.json({
+                status: 'success',
+                message: 'Utilisateur et toutes ses données ont été supprimés'
+            });
+        } catch (error) {
+            next(error);
+        }
     }
 };
 

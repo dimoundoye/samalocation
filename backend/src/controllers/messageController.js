@@ -11,7 +11,7 @@ const messageController = {
      */
     async getUserMessages(req, res, next) {
         try {
-            const userId = req.user.id;
+            const userId = req.ownerId;
             const messages = await Message.findByUserId(userId);
             return response.success(res, messages);
         } catch (error) {
@@ -25,7 +25,7 @@ const messageController = {
     async sendMessage(req, res, next) {
         try {
             const { receiver_id, message, property_id } = req.body;
-            const sender_id = req.user.id;
+            const sender_id = req.ownerId || req.user.id;
             const messageId = uuidv4();
 
             const newMessage = await Message.create({
@@ -83,7 +83,7 @@ const messageController = {
     async markAsRead(req, res, next) {
         try {
             const { messageIds } = req.body;
-            const userId = req.user.id;
+            const userId = req.ownerId;
 
             if (!messageIds || !Array.isArray(messageIds)) {
                 return response.error(res, 'messageIds must be an array', 400);
@@ -110,7 +110,7 @@ const messageController = {
     async deleteMessage(req, res, next) {
         try {
             const { id } = req.params;
-            const userId = req.user.id;
+            const userId = req.ownerId;
 
             const deleted = await Message.delete(id, userId);
             if (!deleted) {

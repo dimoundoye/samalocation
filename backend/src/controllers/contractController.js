@@ -5,7 +5,7 @@ const path = require('path');
 const contractController = {
     async createContract(req, res, next) {
         try {
-            const owner_id = req.user.id;
+            const owner_id = req.ownerId;
             const contractData = {
                 ...req.body,
                 owner_id,
@@ -20,7 +20,7 @@ const contractController = {
 
     async getOwnerContracts(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const contracts = await Contract.findByOwnerId(ownerId);
             res.json(contracts);
         } catch (error) {
@@ -47,10 +47,9 @@ const contractController = {
                 return res.status(404).json({ message: 'Contrat non trouvé' });
             }
 
-            // Security check: only owner or tenant can see details
-            if (req.user.id !== contract.owner_id && req.user.id !== contract.tenant_user_id) {
-                // We need to double check how tenant_user_id is handled in findById. 
-                // Actually, findById joins with tenants table which has user_id. Let's check that.
+            // Security check: only owner (including collaborators) or tenant can see details
+            if (req.ownerId !== contract.owner_id && req.user.id !== contract.tenant_user_id) {
+                return res.status(403).json({ message: 'Non autorisé' });
             }
             // Simplified check for now
             res.json(contract);
@@ -67,7 +66,7 @@ const contractController = {
             if (!contract) return res.status(404).json({ message: 'Contrat non trouvé' });
 
             let result;
-            if (req.user.role === 'owner' && req.user.id === contract.owner_id) {
+            if (req.user.role === 'owner' && req.ownerId === contract.owner_id) {
                 result = await Contract.signByOwner(id);
             } else if (req.user.role === 'tenant') {
                 // Need to verify if this user is indeed the tenant for this contract

@@ -7,12 +7,15 @@ require('dotenv').config({ path: path.join(__dirname, '../../.env') });
  */
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.example.com',
-    port: process.env.SMTP_PORT || 587,
+    port: parseInt(process.env.SMTP_PORT || 587),
     secure: process.env.SMTP_SECURE === 'true',
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
+    tls: {
+        rejectUnauthorized: false
+    }
 });
 
 const sendEmail = async (to, subject, html) => {
@@ -23,21 +26,31 @@ const sendEmail = async (to, subject, html) => {
             console.log(`To: ${to}`);
             console.log(`Subject: ${subject}`);
             console.log(`Body: ${html}`);
+            console.log('--- SMTP_USER is missing, falling back to log mode ---');
             console.log('------------------------');
             return true;
         }
 
+        console.log(`Attempting to send email to ${to} with subject "${subject}"...`);
+
         const info = await transporter.sendMail({
-            from: `"SamaLocation" <${process.env.SMTP_FROM || 'noreply@samalocation.com'}>`,
+            from: `"Samalocation" <${process.env.SMTP_FROM || 'noreply@samalocation.com'}>`,
             to,
             subject,
             html,
         });
 
-        console.log('Email sent: %s', info.messageId);
+        console.log('✅ Email sent: %s', info.messageId);
         return true;
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('❌ Error sending email:', error);
+        console.error('Diagnostic - SMTP Config:', {
+            host: process.env.SMTP_HOST,
+            port: process.env.SMTP_PORT,
+            secure: process.env.SMTP_SECURE,
+            user: process.env.SMTP_USER ? 'Present (REDACTED)' : 'MISSING',
+            from: process.env.SMTP_FROM
+        });
         return false;
     }
 };
@@ -47,9 +60,9 @@ const sendVerificationEmail = async (email, token) => {
 
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-            <h2 style="color: #2D3FE2; text-align: center;">Bienvenue chez SamaLocation</h2>
+            <h2 style="color: #2D3FE2; text-align: center;">Bienvenue chez Samalocation</h2>
             <p>Bonjour,</p>
-            <p>Merci de vous être inscrit sur SamaLocation. Pour activer votre compte, veuillez confirmer votre adresse e-mail en cliquant sur le bouton ci-dessous :</p>
+            <p>Merci de vous être inscrit sur Samalocation. Pour activer votre compte, veuillez confirmer votre adresse e-mail en cliquant sur le bouton ci-dessous :</p>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${verificationUrl}" style="background-color: #2D3FE2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Confirmer mon compte</a>
             </div>
@@ -60,11 +73,11 @@ const sendVerificationEmail = async (email, token) => {
         </div>
     `;
 
-    return await sendEmail(email, 'Vérifiez votre adresse e-mail - SamaLocation', html);
+    return await sendEmail(email, 'Vérifiez votre adresse e-mail - Samalocation', html);
 };
 
 const sendResetPasswordEmail = async (email, token) => {
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/reset-password?token=${token}`;
 
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
@@ -83,11 +96,60 @@ const sendResetPasswordEmail = async (email, token) => {
         </div>
     `;
 
-    return await sendEmail(email, 'Réinitialisation de votre mot de passe - SamaLocation', html);
+    return await sendEmail(email, 'Réinitialisation de votre mot de passe - Samalocation', html);
+};
+
+const sendTeamInvitationEmail = async (email, ownerName, temporaryPassword) => {
+    const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/login`;
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+            <h2 style="color: #2D3FE2; text-align: center;">Invitation d'Équipe - Samalocation</h2>
+            <p>Bonjour,</p>
+            <p><strong>${ownerName}</strong> vous a invité à rejoindre son équipe de gestion immobilière sur Samalocation.</p>
+            <p>Un compte a été créé pour vous avec les identifiants suivants :</p>
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Email :</strong> ${email}</p>
+                <p style="margin: 5px 0;"><strong>Mot de passe temporaire :</strong> ${temporaryPassword}</p>
+            </div>
+            <p>Veuillez vous connecter pour commencer à collaborer :</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${dashboardUrl}" style="background-color: #2D3FE2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Se connecter au Dashboard</a>
+            </div>
+            <p>Il est fortement recommandé de changer votre mot de passe dès votre première connexion.</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #999;">Cet e-mail a été envoyé par Samalocation au nom de ${ownerName}.</p>
+        </div>
+    `;
+
+    return await sendEmail(email, `Invitation de ${ownerName} - Samalocation`, html);
+};
+
+const sendTeamAdditionEmail = async (email, ownerName) => {
+    const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/owner-dashboard`;
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+            <h2 style="color: #2D3FE2; text-align: center;">Nouvelle Équipe - Samalocation</h2>
+            <p>Bonjour,</p>
+            <p>Bonne nouvelle ! Votre compte existant a été ajouté à l'équipe de <strong>${ownerName}</strong> sur Samalocation.</p>
+            <p>Vous pouvez désormais basculer entre votre compte personnel et le compte de l'entreprise depuis votre tableau de bord.</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${dashboardUrl}" style="background-color: #2D3FE2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Accéder au Dashboard</a>
+            </div>
+            <p>Si vous ne reconnaissez pas cette action, veuillez contacter notre support.</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #999;">Cet e-mail a été envoyé automatiquement par Samalocation.</p>
+        </div>
+    `;
+
+    return await sendEmail(email, `Vous avez rejoint l'équipe de ${ownerName} - Samalocation`, html);
 };
 
 module.exports = {
     sendEmail,
     sendVerificationEmail,
-    sendResetPasswordEmail
+    sendResetPasswordEmail,
+    sendTeamInvitationEmail,
+    sendTeamAdditionEmail
 };

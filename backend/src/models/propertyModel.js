@@ -3,7 +3,15 @@ const { v4: uuidv4 } = require('uuid');
 
 const Property = {
     async countAllPublished(filters = {}) {
-        let query = 'SELECT COUNT(*) as count FROM properties WHERE is_published = true';
+        let query = `
+            SELECT COUNT(*) as count FROM properties p
+            WHERE p.is_published = true
+            AND (
+                NOT EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id)
+                OR
+                EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id AND pu.is_available = true)
+            )
+        `;
         const params = [];
         let idx = 1;
 
@@ -26,7 +34,15 @@ const Property = {
     },
 
     async findAllPublished(limit, offset = 0, filters = {}) {
-        let query = 'SELECT * FROM properties WHERE is_published = true';
+        let query = `
+            SELECT p.* FROM properties p
+            WHERE p.is_published = true
+            AND (
+                NOT EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id)
+                OR
+                EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id AND pu.is_available = true)
+            )
+        `;
         const params = [];
         let idx = 1;
 
@@ -188,10 +204,15 @@ const Property = {
         const neighborhood = addressParts.length > 1 ? addressParts[addressParts.length - 1].trim() : address;
 
         const query = `
-            SELECT * FROM properties 
-            WHERE id != $1 AND is_published = true
-            AND (property_type = $2 OR address ILIKE $3)
-            ORDER BY published_at DESC LIMIT $4
+            SELECT p.* FROM properties p
+            WHERE p.id != $1 AND p.is_published = true
+            AND (p.property_type = $2 OR p.address ILIKE $3)
+            AND (
+                NOT EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id)
+                OR
+                EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id AND pu.is_available = true)
+            )
+            ORDER BY p.published_at DESC LIMIT $4
         `;
         const params = [propertyId, type, `%${neighborhood}%`, parseInt(limit)];
 

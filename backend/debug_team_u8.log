@@ -1,0 +1,12 @@
+﻿[dotenv@17.2.3] injecting env (20) from .env -- tip: ­ƒöÉ prevent committing .env to code: https://dotenvx.com/precommit
+--- ALL USERS ---
+ID: d0fc4860-978b-4cb5-a30a-aabe7915bf11 | Email: test1771814959985@example.com | Role: tenant | Name: Test Supabase | Parent: null
+ID: 4cd1ae7f-4a64-4372-8a6d-24c469c6cb52 | Email: mbaye@gmail.com | Role: tenant | Name: babacar mbaye | Parent: null
+ID: b2a020df-eb65-4294-ae9c-77d6521d2516 | Email: khadim@gmail.com | Role: owner | Name: Khadim | Parent: null
+ID: 712fd871-8ef2-4896-8bd7-518ca3e334cf | Email: khady@gmail.com | Role: owner | Name: khady | Parent: null
+ID: admin-001 | Email: admin@samalocation.com | Role: admin | Name: Administrateur | Parent: null
+ID: 369041dc-0228-4918-9a94-28da2ebc7463 | Email: marie@gmail.com | Role: tenant | Name: Marie Pierre | Parent: null
+ID: 709ef75e-9690-4cb9-9697-09bdd97275ea | Email: paul@gmail.com | Role: owner | Name: Jean Paul | Parent: null
+ID: 8835fc21-6496-48a2-8743-802b25798320 | Email: papisc004@gmail.com | Role: tenant | Name: papi ndiaye | Parent: null
+ID: cb970031-5919-4bb9-908d-d3577a7a2b15 | Email: layendoye2014@gmail.com | Role: owner | Name: Ndoye | Parent: null
+ID: 421d4a2e-436d-4fe4-86c3-27d94403fd6e | Email: dimoundoye@gmail.com | Role: owner | Name: Khadim | Parent: 709ef75e-9690-4cb9-9697-09bdd97275ea

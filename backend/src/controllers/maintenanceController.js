@@ -103,7 +103,7 @@ const maintenanceController = {
      */
     async getOwnerRequests(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const requests = await MaintenanceRequest.findByOwnerId(ownerId);
             return response.success(res, requests, 'Signalements reçus.');
         } catch (error) {
@@ -118,7 +118,7 @@ const maintenanceController = {
         try {
             const { id } = req.params;
             const { status } = req.body;
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
 
             // Verify the request belongs to one of the owner's properties
             const request = await MaintenanceRequest.findById(id);

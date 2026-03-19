@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import PropertyCard from "@/components/PropertyCard";
 import { Input } from "@/components/ui/input";
@@ -28,9 +29,35 @@ const Recherche = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const { user } = useAuth();
+  const location = useLocation();
+  const { pageParam } = useParams();
+
+  // Handle URL pagination
+  useEffect(() => {
+    if (pageParam && pageParam.startsWith("page_")) {
+      const pageNum = parseInt(pageParam.split("_")[1]);
+      if (!isNaN(pageNum) && pageNum !== currentPage) {
+        setCurrentPage(pageNum);
+      }
+    } else if (!pageParam && currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [pageParam]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    const params = new URLSearchParams(location.search);
+    const query = params.get("q");
+    if (query) {
+      setSearchTerm(query);
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (currentPage !== 1 && !pageParam) {
+      // If filters change, we should reset to page 1 but only if we are not already on page 1
+      // and only if the URL hasn't been updated yet
+      // This is a bit tricky with path-based pagination
+    }
   }, [searchTerm, propertyType]);
 
   useEffect(() => {
@@ -188,7 +215,7 @@ const Recherche = () => {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
-                      onKeyDown={(e) => e.key === "Enter" && loadProperties(1)}
+                      onKeyDown={(e) => e.key === "Enter" && navigate(`/search/page_1${location.search}`)}
                     />
                   </div>
 
@@ -275,6 +302,7 @@ const Recherche = () => {
                           isApplied={currentUserId && property.id ? appliedPropertyIds.includes(property.id) : false}
                           ownerPhone={ownerPhone}
                           isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
+                          isNew={property.published_at ? (new Date().getTime() - new Date(property.published_at).getTime()) < 7 * 24 * 60 * 60 * 1000 : false}
                         />
                       );
                     })}
@@ -285,7 +313,7 @@ const Recherche = () => {
                       <Button
                         variant="outline"
                         disabled={currentPage <= 1}
-                        onClick={() => setCurrentPage((p) => p - 1)}
+                        onClick={() => navigate(`/search/page_${currentPage - 1}${location.search}`)}
                         className="flex items-center gap-2 px-6"
                       >
                         <ArrowLeft className="h-4 w-4" />
@@ -297,7 +325,7 @@ const Recherche = () => {
                       <Button
                         variant="outline"
                         disabled={currentPage >= totalPages}
-                        onClick={() => setCurrentPage((p) => p + 1)}
+                        onClick={() => navigate(`/search/page_${currentPage + 1}${location.search}`)}
                         className="flex items-center gap-2 px-6"
                       >
                         {t('search.pagination.next')}

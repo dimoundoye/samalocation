@@ -18,11 +18,30 @@ const Receipt = {
         const id = uuidv4();
         const receipt_number = await this.generateReceiptNumber();
 
+        // Fetch owner's current signature and template
+        let owner_signature = null;
+        let receipt_template = 'classic';
+        let owner_logo = null;
+        try {
+            // Find owner_id first from property
+            const { rows: propRows } = await db.query('SELECT owner_id FROM properties WHERE id = $1', [property_id]);
+            if (propRows[0]) {
+                const { rows: ownerRows } = await db.query('SELECT signature_url, receipt_template, logo_url FROM owner_profiles WHERE user_profile_id = $1', [propRows[0].owner_id]);
+                if (ownerRows[0]) {
+                    owner_signature = ownerRows[0].signature_url;
+                    receipt_template = ownerRows[0].receipt_template || 'classic';
+                    owner_logo = ownerRows[0].logo_url;
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching owner signature/logo for receipt creation:", error);
+        }
+
         await db.query(
             `INSERT INTO receipts 
-            (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-            [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes]
+            (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+            [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo]
         );
 
         return this.findById(id);
@@ -55,8 +74,9 @@ const Receipt = {
                 owner.full_name as owner_name,
                 owner.email as owner_email,
                 owner.phone as owner_phone,
-                owner_prof.signature_url,
-                owner_prof.receipt_template,
+                owner_prof.signature_url as current_owner_signature,
+                owner_prof.receipt_template as current_receipt_template,
+                owner_prof.logo_url as current_owner_logo,
                 p.name as property_name,
                 p.address as property_address,
                 pu.unit_number,
@@ -74,6 +94,14 @@ const Receipt = {
             WHERE r.id = $1`,
             [id]
         );
+
+        if (receipts[0]) {
+            // Prioritize the signature and template saved with the receipt (Immutability)
+            // Fallback to current profile values only if stored values are missing (e.g., legacy data)
+            receipts[0].signature_url = receipts[0].owner_signature || receipts[0].current_owner_signature;
+            receipts[0].receipt_template = receipts[0].receipt_template || receipts[0].current_receipt_template || 'classic';
+            receipts[0].logo_url = receipts[0].owner_logo || receipts[0].current_owner_logo;
+        }
 
         return receipts[0] || null;
     },
@@ -106,9 +134,9 @@ const Receipt = {
             FROM receipts r
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles tenant ON r.tenant_id = tenant.id
-            WHERE p.owner_id = $1
+            WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $2)
             ORDER BY r.created_at DESC`,
-            [ownerId]
+            [ownerId, ownerId]
         );
 
         return receipts;

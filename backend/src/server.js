@@ -23,8 +23,11 @@ const contactRoutes = require('./routes/contactRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const contractRoutes = require('./routes/contractRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const securityMiddleware = require('./middleware/security');
+const { trackVisit } = require('./middleware/analyticsMiddleware');
+const { maintenanceMiddleware } = require('./middleware/maintenanceMiddleware');
 
 const app = express();
 const server = require('http').createServer(app);
@@ -44,9 +47,15 @@ app.use(cors({
     origin: true, // Dynamically allow the origin that made the request
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-active-context']
 }));
 app.use(express.json());
+app.use((req, res, next) => {
+    console.log(`[${req.method}] ${req.url}`);
+    next();
+});
+app.use(trackVisit);
+app.use(maintenanceMiddleware);
 
 // Security - Custom middleware
 app.use(securityMiddleware.preventHPP);
@@ -89,17 +98,21 @@ app.use(helmet({
 
 
 // Rate Limiting
+const response = require('./utils/response');
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100,
-    message: 'Too many requests'
+    windowMs: 15 * 60 * 1000,
+    max: 1000, // Augmenté pour éviter les blocages lors des rafraîchissements/polling
+    handler: (req, res) => {
+        return response.error(res, "Trop de requêtes. Veuillez patienter 15 minutes.", 429);
+    }
 });
 
-// Strict Rate Limiting for Auth
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 30, // Max 30 attempts per 15 mins (increased for testing)
-    message: 'Trop de tentatives de connexion, veuillez réessayer dans 15 minutes.'
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    handler: (req, res) => {
+        return response.error(res, "Trop de tentatives. Veuillez réessayer dans 15 minutes.", 429);
+    }
 });
 
 app.use('/api/', limiter);
@@ -122,8 +135,7 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/contracts', contractRoutes);
-
-// Use the separate property routes
+app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/properties', propertiesRoutes);
 
 // Error handler MUST be last

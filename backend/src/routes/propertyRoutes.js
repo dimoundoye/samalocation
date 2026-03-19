@@ -19,13 +19,14 @@ router.get('/:id', propertyController.getPropertyById);
 router.get('/:id/similar', propertyController.getSimilarProperties);
 
 // Create property (protected)
-router.post('/', authMiddleware, propertyController.createProperty);
+const { checkPropertyLimit, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
+router.post('/', authMiddleware, checkPropertyLimit, propertyController.createProperty);
 
 // Toggle publication status (protected)
 router.patch('/:id/publish', authMiddleware, propertyController.togglePublication);
 
 // Add units to property (protected)
-router.post('/units', authMiddleware, propertyController.addUnits);
+router.post('/units', authMiddleware, checkFeatureAccess('unlimited_receipts'), propertyController.addUnits);
 
 // Update property (protected)
 router.put('/:id', authMiddleware, propertyController.updateProperty);

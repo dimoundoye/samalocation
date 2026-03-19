@@ -39,7 +39,7 @@ const propertyController = {
      */
     async getOwnerProperties(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const properties = await Property.findByOwnerId(ownerId);
             return response.success(res, properties);
         } catch (error) {
@@ -68,7 +68,7 @@ const propertyController = {
      */
     async createProperty(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const propertyData = {
                 id: uuidv4(),
                 owner_id: ownerId,
@@ -87,7 +87,7 @@ const propertyController = {
      */
     async togglePublication(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const propertyId = req.params.id;
 
             const result = await Property.updatePublication(propertyId, ownerId);
@@ -124,7 +124,7 @@ const propertyController = {
      */
     async deleteProperty(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const propertyId = req.params.id;
 
             const success = await Property.delete(propertyId, ownerId);
@@ -143,7 +143,7 @@ const propertyController = {
      */
     async updateProperty(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const propertyId = req.params.id;
             const updateData = req.body;
 

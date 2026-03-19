@@ -66,7 +66,8 @@ const resources = {
                 "login": "Connexion",
                 "signup": "Inscription",
                 "logout": "Déconnexion",
-                "my_space": "Mon espace"
+                "my_space": "Mon espace",
+                "pricing": "Tarifs"
             },
             "period": {
                 "jour": "jour",
@@ -83,7 +84,8 @@ const resources = {
                 "view_details": "Voir les détails",
                 "bedrooms_short": "ch.",
                 "bathrooms_short": "sdb",
-                "details_soon": "La page de détails sera bientôt disponible."
+                "details_soon": "La page de détails sera bientôt disponible.",
+                "new": "Nouveau"
             },
             "hero": {
                 "badge": "La révolution locative au Sénégal",
@@ -96,7 +98,7 @@ const resources = {
                 "search_button": "Rechercher"
             },
             "features": {
-                "title": "Pourquoi choisir Samalocation ?",
+                "title": "Pourquoi choisir Samalocation\u00A0?",
                 "subtitle": "Nous avons construit la solution idéale pour le marché sénégalais, en combinant technologie moderne et simplicité d'utilisation.",
                 "security": {
                     "title": "Sécurité",
@@ -137,7 +139,7 @@ const resources = {
                 "view_all": "Voir tout l'immobilier"
             },
             "process": {
-                "title": "Comment ça marche ?",
+                "title": "Comment ça marche\u00A0?",
                 "step1": {
                     "title": "Cherchez",
                     "desc": "Explorez nos annonces vérifiées partout au Sénégal."
@@ -152,7 +154,7 @@ const resources = {
                 }
             },
             "cta": {
-                "title": "Prêt à simplifier votre expérience locative ?",
+                "title": "Prêt à simplifier votre expérience locative\u00A0?",
                 "desc": "Rejoignez des centaines de Sénégalais qui ont déjà choisi Samalocation pour une gestion transparente.",
                 "signup": "S'inscrire",
                 "contact": "Nous contacter"
@@ -214,7 +216,7 @@ const resources = {
                     "card_desc": "Connectez-vous à votre compte",
                     "identifier": "Email ou ID",
                     "placeholder_id": "exemple@email.com ou AA12345",
-                    "forgot_password": "Mot de passe oublié ?",
+                    "forgot_password": "Mot de passe oublié\u00A0?",
                     "submit": "Se connecter",
                     "logging_in": "Connexion...",
                     "no_account": "Pas de compte ?",
@@ -224,7 +226,7 @@ const resources = {
                     "title": "Inscription",
                     "card_desc": "Créez votre compte",
                     "welcome": "Bienvenue sur Samalocation",
-                    "choice_type": "Quel type de compte souhaitez-vous créer ?",
+                    "choice_type": "Quel type de compte souhaitez-vous créer\u00A0?",
                     "owner_type": "Propriétaire",
                     "owner_desc": "Je souhaite mettre mes biens en location et gérer mes locataires.",
                     "tenant_type": "Locataire",
@@ -292,6 +294,7 @@ const resources = {
                     "maintenance": "Maintenance",
                     "messages": "Messages",
                     "contracts": "Document",
+                    "subscription": "Abonnement",
                     "documents": "Mes reçus",
                     "settings": "Paramètres",
                     "logout": "Déconnexion"
@@ -412,7 +415,8 @@ const resources = {
                 "receipt_templates": {
                     "classic": "Classique (Défaut)",
                     "modern": "Moderne & Épuré",
-                    "minimal": "Minimaliste (N&B)"
+                    "minimal": "Minimaliste (N&B)",
+                    "corporate": "Agence / Corporate"
                 },
                 "save_changes": "Enregistrer les modifications",
                 "saving": "Enregistrement...",
@@ -426,7 +430,11 @@ const resources = {
                 "password_mismatch": "Les mots de passe ne correspondent pas.",
                 "password_length": "Le mot de passe doit contenir au moins 6 caractères.",
                 "password_changed": "Votre mot de passe a été modifié avec succès.",
-                "fill_all_fields": "Veuillez remplir tous les champs."
+                "fill_all_fields": "Veuillez remplir tous les champs.",
+                "branding": "Branding & Logo",
+                "branding_desc": "Personnalisez vos quittances avec le logo de votre agence.",
+                "no_logo": "Aucun logo",
+                "upload_logo": "Importer un logo"
             },
             "signature_scanner": {
                 "title": "Scanner de Signature & Cachet",
@@ -506,7 +514,8 @@ const resources = {
                 "login": "Login",
                 "signup": "Sign Up",
                 "logout": "Logout",
-                "my_space": "My space"
+                "my_space": "My space",
+                "pricing": "Pricing"
             },
             "period": {
                 "jour": "day",
@@ -523,7 +532,8 @@ const resources = {
                 "view_details": "View details",
                 "bedrooms_short": "bd.",
                 "bathrooms_short": "bt",
-                "details_soon": "The details page will be available soon."
+                "details_soon": "The details page will be available soon.",
+                "new": "New"
             },
             "hero": {
                 "badge": "The rental revolution in Senegal",
@@ -732,6 +742,7 @@ const resources = {
                     "maintenance": "Maintenance",
                     "messages": "Messages",
                     "contracts": "Contracts",
+                    "subscription": "Subscription",
                     "settings": "Settings",
                     "logout": "Logout"
                 },
@@ -798,7 +809,8 @@ const resources = {
                     "receipt_templates": {
                         "classic": "Classic (Default)",
                         "modern": "Modern & Sleek",
-                        "minimal": "Minimalist (B&W)"
+                        "minimal": "Minimalist (B&W)",
+                        "corporate": "Agency / Corporate"
                     },
                     "save_changes": "Save Changes",
                     "saving": "Saving...",
@@ -812,7 +824,11 @@ const resources = {
                     "password_mismatch": "Passwords do not match.",
                     "password_length": "Password must be at least 6 characters.",
                     "password_changed": "Password changed successfully.",
-                    "fill_all_fields": "Please fill in all fields."
+                    "fill_all_fields": "Please fill in all fields.",
+                    "branding": "Branding & Logo",
+                    "branding_desc": "Personalize your receipts with your agency logo.",
+                    "no_logo": "No logo",
+                    "upload_logo": "Upload logo"
                 },
                 "signature_scanner": {
                     "title": "Signature & Stamp Scanner",

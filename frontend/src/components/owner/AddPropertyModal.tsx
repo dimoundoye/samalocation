@@ -22,9 +22,11 @@ import {
   Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { createProperty, createPropertyUnits, uploadPhotos, generateAIDescription } from "@/lib/api";
+import { createProperty, createPropertyUnits, uploadPhotos, generateAIDescription, getMySubscription } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import LocationPicker from "./LocationPicker";
+import { UpgradeModal } from "./UpgradeModal";
+import { useEffect } from "react";
 
 interface AddPropertyModalProps {
   open: boolean;
@@ -49,7 +51,29 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
   const [propertyPhotosPreviews, setPropertyPhotosPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [upgradeModal, setUpgradeModal] = useState({
+    open: false,
+    title: "",
+    description: "",
+    feature: ""
+  });
   const generalInfoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      loadSubscription();
+    }
+  }, [open]);
+
+  const loadSubscription = async () => {
+    try {
+      const sub = await getMySubscription();
+      setSubscription(sub);
+    } catch (error) {
+      console.error("Failed to load subscription check:", error);
+    }
+  };
 
   // Pour les biens simples, on utilise directement les champs
   const [simplePropertyData, setSimplePropertyData] = useState({
@@ -150,6 +174,19 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
 
     try {
+      // Check subscription limits
+      if (subscription) {
+        if (subscription.properties_count >= subscription.properties_limit) {
+          setUpgradeModal({
+            open: true,
+            title: "Limite de biens atteinte",
+            description: `Votre plan actuel (${subscription.plan_name}) est limité à ${subscription.properties_limit} biens. Passez au plan supérieur pour en ajouter plus.`,
+            feature: "properties"
+          });
+          return;
+        }
+      }
+
       setUploading(true);
       if (!user) throw new Error("Non authentifié");
 
@@ -256,6 +293,17 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     }
 
     try {
+      // Check IA feature access
+      if (subscription && subscription.limits && subscription.limits.ai_descriptions_per_month === 0) {
+        setUpgradeModal({
+          open: true,
+          title: "Assistant IA Gemini non inclus",
+          description: `La génération de descriptions par IA n'est pas incluse dans votre plan actuel. Passez au Plan Premium pour débloquer cette fonctionnalité.`,
+          feature: "ai"
+        });
+        return;
+      }
+
       setGeneratingAI(true);
       const description = await generateAIDescription({
         name: propertyData.name,
@@ -697,6 +745,14 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
           )}
         </form>
       </DialogContent>
+
+      <UpgradeModal
+        open={upgradeModal.open}
+        onOpenChange={(open) => setUpgradeModal(prev => ({ ...prev, open }))}
+        title={upgradeModal.title}
+        description={upgradeModal.description}
+        feature={upgradeModal.feature}
+      />
     </Dialog >
   );
 };

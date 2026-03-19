@@ -12,16 +12,21 @@ const User = {
 
     async findByEmail(email) {
         const normalizedEmail = email?.toLowerCase();
-        const { rows } = await db.query('SELECT * FROM users WHERE LOWER(email) = $1', [normalizedEmail]);
+        const { rows } = await db.query(`
+            SELECT u.*, up.role 
+            FROM users u
+            LEFT JOIN user_profiles up ON u.id = up.id
+            WHERE LOWER(u.email) = $1
+        `, [normalizedEmail]);
         return rows[0] || null;
     },
 
     async create(userData) {
-        const { id, customId, email, passwordHash, name, phone, role, companyName, isSetupComplete = true } = userData;
+        const { id, customId, email, passwordHash, name, phone, role, companyName, isSetupComplete = true, parentId = null, permissions = { can_view_revenue: false } } = userData;
 
         await db.query(
-            'INSERT INTO users (id, custom_id, email, password_hash, email_verified, is_setup_complete) VALUES ($1, $2, $3, $4, true, $5)',
-            [id, customId, email, passwordHash, isSetupComplete]
+            'INSERT INTO users (id, custom_id, email, password_hash, email_verified, is_setup_complete, parent_id, permissions) VALUES ($1, $2, $3, $4, true, $5, $6, $7)',
+            [id, customId, email, passwordHash, isSetupComplete, parentId, JSON.stringify(permissions)]
         );
 
         await db.query(
@@ -41,7 +46,7 @@ const User = {
 
     async findProfileById(id) {
         const { rows } = await db.query(`
-            SELECT up.*, u.is_setup_complete 
+            SELECT up.*, u.is_setup_complete, u.parent_id, u.permissions
             FROM user_profiles up
             JOIN users u ON up.id = u.id
             WHERE up.id = $1
@@ -94,13 +99,14 @@ const User = {
         const { rows } = await db.query(`
             SELECT 
                 u.id,
-                u.custom_id,
+                u.custom_id as "customId",
                 u.email,
                 u.is_setup_complete,
                 u.created_at,
                 u.is_blocked,
                 u.blocked_at,
                 u.block_reason,
+                u.parent_id,
                 up.full_name,
                 up.role,
                 admin_profile.full_name as blocked_by_name
@@ -114,7 +120,7 @@ const User = {
 
     async findByVerificationToken(token) {
         const { rows } = await db.query(
-            'SELECT * FROM users WHERE verification_token = $1 AND verification_token_expires > NOW()',
+            'SELECT * FROM public.users WHERE verification_token = $1 AND verification_token_expires > NOW()',
             [token]
         );
         return rows[0] || null;
@@ -122,7 +128,7 @@ const User = {
 
     async verifyEmail(userId) {
         await db.query(
-            'UPDATE users SET email_verified = TRUE, verification_token = NULL, verification_token_expires = NULL WHERE id = $1',
+            'UPDATE public.users SET email_verified = TRUE, verification_token = NULL, verification_token_expires = NULL WHERE id = $1',
             [userId]
         );
         return true;
@@ -149,14 +155,14 @@ const User = {
 
     async saveResetToken(userId, token, expires) {
         await db.query(
-            'UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3',
+            'UPDATE public.users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3',
             [token, expires, userId]
         );
     },
 
     async findByResetToken(token) {
         const { rows } = await db.query(
-            'SELECT * FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW()',
+            'SELECT * FROM public.users WHERE reset_password_token = $1 AND reset_password_expires > NOW()',
             [token]
         );
         return rows[0] || null;
@@ -164,9 +170,83 @@ const User = {
 
     async updatePassword(userId, passwordHash) {
         await db.query(
-            'UPDATE users SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2',
+            'UPDATE public.users SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2',
             [passwordHash, userId]
         );
+    },
+
+    async findCollaboratorsByParentId(parentId) {
+        const { rows } = await db.query(`
+            SELECT u.id, u.email, up.full_name, up.role, u.created_at, u.permissions
+            FROM users u
+            JOIN user_profiles up ON u.id = up.id
+            WHERE u.parent_id = $1
+        `, [parentId]);
+        return rows;
+    },
+
+    async updateParentId(userId, parentId) {
+        await db.query(`
+            UPDATE users 
+            SET parent_id = $1 
+            WHERE id = $2
+        `, [parentId, userId]);
+    },
+
+    async updatePermissions(userId, permissions) {
+        await db.query(`
+            UPDATE users 
+            SET permissions = $1 
+            WHERE id = $2
+        `, [JSON.stringify(permissions), userId]);
+    },
+
+    async removeCollaborator(userId, parentId) {
+        // We don't delete the user, just detach them from the team
+        await db.query(`
+            UPDATE users 
+            SET parent_id = NULL 
+            WHERE id = $1 AND parent_id = $2
+        `, [userId, parentId]);
+    },
+
+    async delete(userId) {
+        const profile = await this.findProfileById(userId);
+        if (!profile) return false;
+
+        // Si c'est un locataire, on utilise la logique de Tenant.delete s'il y a une liaison
+        if (profile.role === 'tenant') {
+            const { rows: tenants } = await db.query('SELECT id FROM tenants WHERE user_id = $1', [userId]);
+            const Tenant = require('./tenantModel');
+            for (const t of tenants) {
+                await Tenant.delete(t.id);
+            }
+        }
+
+        // Si c'est un propriétaire
+        if (profile.role === 'owner') {
+            // 1. Supprimer ses biens (cela devrait cascader ou être géré)
+            const { rows: properties } = await db.query('SELECT id FROM properties WHERE owner_id = $1', [userId]);
+            for (const p of properties) {
+                await db.query('DELETE FROM property_units WHERE property_id = $1', [p.id]);
+                await db.query('DELETE FROM properties WHERE id = $1', [p.id]);
+            }
+
+            // 2. Supprimer son profil propriétaire
+            await db.query('DELETE FROM owner_profiles WHERE user_profile_id = $1', [userId]);
+        }
+
+        // Communs
+        await db.query('DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1', [userId]);
+        await db.query('DELETE FROM notifications WHERE user_id = $1', [userId]);
+        await db.query('DELETE FROM subscriptions WHERE user_id = $1', [userId]);
+        await db.query('DELETE FROM ai_usage_logs WHERE user_id = $1', [userId]);
+
+        // Enfin l'utilisateur et son profil
+        await db.query('DELETE FROM user_profiles WHERE id = $1', [userId]);
+        await db.query('DELETE FROM users WHERE id = $1', [userId]);
+
+        return true;
     }
 };
 

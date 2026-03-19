@@ -20,3 +20,48 @@ export const updateOwnerProfile = async (data: any) => {
         return null;
     }
 };
+
+export const getCollaborators = async () => {
+    try {
+        const response = await baseClient("/owner/collaborators");
+        return response;
+    } catch (error) {
+        console.error("GetCollaborators error:", error);
+        return [];
+    }
+};
+
+export const addCollaborator = async (data) => {
+    try {
+        return await baseClient("/owner/collaborators", {
+            method: "POST",
+            body: JSON.stringify(data),
+        });
+    } catch (error) {
+        console.error("AddCollaborator error:", error);
+        throw error;
+    }
+};
+
+export const updateCollaboratorPermissions = async (id: string, permissions: any) => {
+    try {
+        return await baseClient(`/owner/collaborators/${id}/permissions`, {
+            method: "PATCH",
+            body: JSON.stringify({ permissions }),
+        });
+    } catch (error) {
+        console.error("UpdateCollaboratorPermissions error:", error);
+        throw error;
+    }
+};
+
+export const removeCollaborator = async (id: string) => {
+    try {
+        return await baseClient(`/owner/collaborators/${id}`, {
+            method: "DELETE",
+        });
+    } catch (error) {
+        console.error("RemoveCollaborator error:", error);
+        throw error;
+    }
+};

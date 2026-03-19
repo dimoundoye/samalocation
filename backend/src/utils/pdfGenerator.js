@@ -5,10 +5,24 @@ const path = require('path');
 const fetch = require('node-fetch');
 
 /**
- * Générer un PDF de reçu de paiement
- * @param {Object} receiptData - Données complètes du reçu
- * @returns {Promise<PDFDocument>} - Document PDF (Promise)
+ * Helper pour récupérer une source d'image (locale ou distance)
  */
+async function fetchImageSource(imageUrl) {
+    if (!imageUrl) return null;
+    try {
+        if (imageUrl.includes('/uploads/')) {
+            const parts = imageUrl.split('/uploads/');
+            if (parts[1]) return path.join(__dirname, '../../uploads/', parts[1]);
+        } else if (imageUrl.startsWith('http')) {
+            const response = await fetch(imageUrl);
+            if (response.ok) return await response.buffer();
+        }
+    } catch (e) {
+        console.error("Error fetching image source:", e);
+    }
+    return null;
+}
+
 /**
  * Générer un PDF de reçu de paiement
  * @param {Object} receiptData - Données complètes du reçu
@@ -22,6 +36,8 @@ async function generateReceiptPDF(receiptData) {
         await drawModernTemplate(doc, receiptData);
     } else if (template === 'minimal') {
         await drawMinimalTemplate(doc, receiptData);
+    } else if (template === 'corporate') {
+        await drawCorporateTemplate(doc, receiptData);
     } else {
         await drawClassicTemplate(doc, receiptData);
     }
@@ -37,11 +53,11 @@ async function drawClassicTemplate(doc, receiptData) {
     const textColor = '#1f2937';
     const grayColor = '#6b7280';
 
-    // Logo
-    try {
-        const logoPath = path.join(__dirname, '../../assets/favicon01.png');
-        doc.image(logoPath, 50, 40, { width: 60 });
-    } catch (e) { }
+    // Draw Owner Logo if available
+    const logoSource = await fetchImageSource(receiptData.logo_url);
+    if (logoSource) {
+        doc.image(logoSource, 50, 25, { fit: [80, 80] });
+    }
 
     doc.fontSize(24).fillColor(primaryColor).text('REÇU DE PAIEMENT', { align: 'right' }).moveDown(0.5);
     doc.fontSize(10).fillColor(grayColor)
@@ -80,7 +96,9 @@ async function drawClassicTemplate(doc, receiptData) {
 
     // Détails paiement
     doc.fontSize(12).fillColor(primaryColor).text('DÉTAILS DU PAIEMENT', { underline: true }).moveDown(0.5);
-    const monthName = format(new Date(receiptData.year, receiptData.month - 1), 'MMMM yyyy', { locale: fr });
+    const yearNum = parseInt(receiptData.year) || new Date().getFullYear();
+    const monthNum = parseInt(receiptData.month) || 1;
+    const monthName = format(new Date(yearNum, monthNum - 1, 1), 'MMMM yyyy', { locale: fr });
     doc.fontSize(10).fillColor(textColor)
         .text(`Période: ${monthName}`)
         .text(`Date de paiement: ${format(new Date(receiptData.payment_date), 'dd MMMM yyyy', { locale: fr })}`)
@@ -106,8 +124,17 @@ async function drawModernTemplate(doc, receiptData) {
 
     // Header Bar
     doc.rect(0, 0, 612, 100).fill(accentColor);
-    doc.fontSize(20).fillColor('#ffffff').text('QUITTANCE DE LOYER', 50, 40);
-    doc.fontSize(10).fillColor('#cbd5e1').text(`N° ${receiptData.receipt_number}`, 50, 65);
+
+    // Draw Owner Logo if available (smaller in modern)
+    const logoSource = await fetchImageSource(receiptData.logo_url);
+    if (logoSource) {
+        doc.image(logoSource, 50, 25, { fit: [50, 50] });
+        doc.fontSize(20).fillColor('#ffffff').text('QUITTANCE DE LOYER', 120, 35);
+        doc.fontSize(10).fillColor('#cbd5e1').text(`N° ${receiptData.receipt_number}`, 120, 60);
+    } else {
+        doc.fontSize(20).fillColor('#ffffff').text('QUITTANCE DE LOYER', 50, 40);
+        doc.fontSize(10).fillColor('#cbd5e1').text(`N° ${receiptData.receipt_number}`, 50, 65);
+    }
 
     doc.moveDown(6);
 
@@ -125,7 +152,9 @@ async function drawModernTemplate(doc, receiptData) {
     doc.text('DATE', col1, detailsY + 30);
     doc.text('MODE', col1, detailsY + 60);
 
-    const monthName = format(new Date(receiptData.year, receiptData.month - 1), 'MMMM yyyy', { locale: fr });
+    const yearNum = parseInt(receiptData.year) || new Date().getFullYear();
+    const monthNum = parseInt(receiptData.month) || 1;
+    const monthName = format(new Date(yearNum, monthNum - 1, 1), 'MMMM yyyy', { locale: fr });
     doc.fillColor(accentColor).fontSize(11);
     doc.text(monthName.toUpperCase(), col1 + 80, detailsY);
     doc.text(format(new Date(receiptData.payment_date), 'dd/MM/yyyy'), col1 + 80, detailsY + 30);
@@ -195,6 +224,12 @@ async function drawMinimalTemplate(doc, receiptData) {
     doc.fontSize(10).text(`Référence: ${receiptData.receipt_number}`, { align: 'left' });
     doc.text(`Date d'émission: ${format(new Date(receiptData.created_at), 'dd/MM/yyyy')}`, { align: 'left' });
 
+    // Logo in top right for minimal
+    const logoSource = await fetchImageSource(receiptData.logo_url);
+    if (logoSource) {
+        doc.image(logoSource, 460, 40, { fit: [100, 60] });
+    }
+
     doc.moveDown(1.5);
     doc.rect(50, doc.y, 512, 1.5).fill(textColor);
     doc.moveDown(1);
@@ -258,35 +293,99 @@ async function drawMinimalTemplate(doc, receiptData) {
 
 async function embedSignature(doc, receiptData) {
     if (receiptData.signature_url) {
-        try {
-            let imageSource = null;
-            if (receiptData.signature_url.includes('/uploads/')) {
-                const parts = receiptData.signature_url.split('/uploads/');
-                if (parts[1]) imageSource = path.join(__dirname, '../../uploads/', parts[1]);
-            } else if (receiptData.signature_url.startsWith('http')) {
-                const response = await fetch(receiptData.signature_url);
-                if (response.ok) imageSource = await response.buffer();
-            }
+        const imageSource = await fetchImageSource(receiptData.signature_url);
+        if (imageSource) {
+            doc.moveDown(2);
+            const currentY = doc.y;
+            if (currentY > 700) doc.addPage();
 
-            if (imageSource) {
-                doc.moveDown(2);
-                const currentY = doc.y;
-                if (currentY > 700) doc.addPage();
-
-                doc.fontSize(10).fillColor('#6b7280').text('Signature / Cachet :', 400, doc.y);
-                doc.image(imageSource, 400, doc.y + 5, { width: 100 });
-                doc.y += 80;
-            }
-        } catch (error) {
-            console.error('Error embedding signature:', error);
+            doc.fontSize(10).fillColor('#6b7280').text('Signature / Cachet :', 400, doc.y);
+            doc.image(imageSource, 400, doc.y + 5, { width: 100 });
+            doc.y += 80;
         }
     }
+}
+
+/**
+ * Template Corporate / Agence
+ */
+async function drawCorporateTemplate(doc, receiptData) {
+    const primaryColor = '#1e293b'; // Slate 800
+    const secondaryColor = '#475569';
+    const textColor = '#334155';
+
+    // Top Brand Section
+    const logoSource = await fetchImageSource(receiptData.logo_url);
+    if (logoSource) {
+        doc.image(logoSource, 50, 40, { fit: [120, 80] });
+    }
+
+    doc.fontSize(24).fillColor(primaryColor).text('QUITTANCE DE LOYER', 200, 45, { align: 'right', characterSpacing: 1 });
+    doc.fontSize(10).fillColor(secondaryColor).text(`RÉFÉRENCE : ${receiptData.receipt_number}`, 200, 75, { align: 'right' });
+
+    doc.moveDown(4);
+
+    // Corporate Header Grid
+    const headerY = doc.y;
+    doc.rect(50, headerY, 512, 100).fill('#f1f5f9');
+
+    doc.fillColor(primaryColor).fontSize(11).text('ÉMETTEUR (PROPRIÉTAIRE)', 70, headerY + 15, { bold: true });
+    doc.fillColor(textColor).fontSize(10)
+        .text(receiptData.owner_name, 70, headerY + 35)
+        .text(receiptData.owner_email || '')
+        .text(receiptData.owner_phone || '');
+
+    doc.fillColor(primaryColor).fontSize(11).text('LOCATAIRE', 320, headerY + 15, { bold: true });
+    doc.fillColor(textColor).fontSize(10)
+        .text(receiptData.tenant_name, 320, headerY + 35)
+        .text(receiptData.tenant_email || '')
+        .text(receiptData.tenant_phone || '');
+
+    doc.y = headerY + 120;
+
+    // Body content
+    doc.fontSize(12).fillColor(primaryColor).text('OBJET DU PAIEMENT', { underline: true }).moveDown(0.5);
+    const yearNum = parseInt(receiptData.year) || new Date().getFullYear();
+    const monthNum = parseInt(receiptData.month) || 1;
+    const monthName = format(new Date(yearNum, monthNum - 1, 1), 'MMMM yyyy', { locale: fr });
+
+    // Styled Table-like list
+    const itemsY = doc.y;
+    const drawItem = (label, value, y) => {
+        doc.fillColor(secondaryColor).fontSize(10).text(label, 60, y);
+        doc.fillColor(primaryColor).fontSize(10).text(value, 200, y, { bold: true });
+    };
+
+    drawItem('Période de location', monthName.toUpperCase(), itemsY + 10);
+    drawItem('Propriété louée', receiptData.property_name || 'N/A', itemsY + 30);
+    drawItem('Adresse du bien', receiptData.property_address || 'N/A', itemsY + 50);
+    drawItem('Date de règlement', format(new Date(receiptData.payment_date), 'dd/MM/yyyy'), itemsY + 70);
+    drawItem('Mode de paiement', (receiptData.payment_method || 'Virement').toUpperCase(), itemsY + 90);
+
+    doc.y = itemsY + 120;
+
+    // Total Amount Box
+    const amountY = doc.y;
+    doc.strokeColor(primaryColor).lineWidth(1.5).rect(50, amountY, 512, 45).stroke();
+    doc.fillColor('#f8fafc').rect(51, amountY + 1, 510, 43).fill();
+    doc.fillColor(primaryColor).fontSize(14).text(`MONTANT NET PERÇU :`, 70, amountY + 15, { bold: true });
+    doc.fontSize(16).text(`${Number(receiptData.amount).toLocaleString('fr-FR')} FCFA`, 300, amountY + 14, { bold: true, align: 'right', width: 240 });
+
+    doc.y = amountY + 70;
+
+    if (receiptData.notes) {
+        doc.fontSize(9).fillColor(secondaryColor).font('Helvetica-Oblique').text(`Remarques: ${receiptData.notes}`);
+        doc.font('Helvetica');
+    }
+
+    await embedSignature(doc, receiptData);
+    drawFooter(doc);
 }
 
 function drawFooter(doc) {
     const bottom = doc.page.height - 70;
     doc.fontSize(8).fillColor('#94a3b8').text(
-        'Ce reçu atteste du paiement du loyer pour la période mentionnée ci-dessus. Document généré automatiquement par Samalocation.',
+        'Ce reçu atteste du paiement du loyer pour la période mentionnée ci-dessus.',
         50, bottom, { align: 'center', width: 512 }
     );
 }

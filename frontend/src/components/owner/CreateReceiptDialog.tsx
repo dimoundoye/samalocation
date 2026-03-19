@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { createReceipt, getOwnerTenants } from "@/lib/api";
+import { createReceipt, getOwnerTenants, getMySubscription } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { UpgradeModal } from "./UpgradeModal";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface CreateReceiptDialogProps {
     open: boolean;
@@ -34,6 +36,12 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: "virement",
         notes: ""
+    });
+    const { subscription, loading: subLoading } = useSubscription();
+    const [upgradeModal, setUpgradeModal] = useState({
+        open: false,
+        title: "",
+        description: ""
     });
 
     useEffect(() => {
@@ -132,6 +140,15 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
             return;
         }
 
+        if (subscription && subscription.receipts_this_month >= subscription.receipts_limit && subscription.receipts_limit !== -1 && subscription.receipts_limit !== Infinity) {
+            setUpgradeModal({
+                open: true,
+                title: "Limite de reçus atteinte",
+                description: `Votre plan actuel est limité à ${subscription.receipts_limit} reçus par mois. Passez au plan supérieur pour en générer de façon illimitée.`
+            });
+            return;
+        }
+
         try {
             setLoading(true);
 
@@ -193,7 +210,7 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
     ];
 
     const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 3 }, (_, i) => currentYear - i);
+    const years = Array.from({ length: 5 }, (_, i) => currentYear + 1 - i); // [2027, 2026, 2025, 2024, 2023]
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -337,6 +354,13 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                     </DialogFooter>
                 </form>
             </DialogContent>
+
+            <UpgradeModal
+                open={upgradeModal.open}
+                onOpenChange={(open) => setUpgradeModal(prev => ({ ...prev, open }))}
+                title={upgradeModal.title}
+                description={upgradeModal.description}
+            />
         </Dialog>
     );
 };

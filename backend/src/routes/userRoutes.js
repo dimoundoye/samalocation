@@ -12,5 +12,6 @@ router.use(adminMiddleware);
 router.get('/', userController.getAllUsers);
 router.patch('/:id/block', userController.blockUser);
 router.patch('/:id/unblock', userController.unblockUser);
+router.delete('/:id', userController.deleteUser);
 
 module.exports = router;

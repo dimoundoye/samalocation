@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/Navbar";
 import PropertyCard from "@/components/PropertyCard";
+import Footer from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -39,6 +40,7 @@ const Index = () => {
   const [featuredProperties, setFeaturedProperties] = useState<FormattedProperty[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [appliedPropertyIds, setAppliedPropertyIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   // ... (lines 41-118 remain unchanged in logic)
   useEffect(() => {
     loadFeaturedProperties();
@@ -122,16 +124,12 @@ const Index = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-10 pb-20 md:pt-20 md:pb-20">
+      <section className="relative overflow-hidden pt-24 pb-20 md:pt-32 md:pb-24">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent hidden md:block" />
         <div className="container mx-auto px-6 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-center">
-            <div className="space-y-8 animate-slide-up">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                <span>{t('hero.badge')}</span>
-              </div>
-
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
+            <div className="space-y-6 md:space-y-8 animate-slide-up">
+              <h1 className="text-4xl xs:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] sm:leading-tight">
                 <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient">
                   {t('hero.title_part1')}
                 </span>
@@ -139,7 +137,7 @@ const Index = () => {
                 <span className="text-accent">{t('hero.title_part2')}</span>
               </h1>
 
-              <p className="text-xl text-muted-foreground max-w-lg leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground max-w-lg leading-relaxed">
                 {t('hero.description')}
               </p>
 
@@ -147,38 +145,40 @@ const Index = () => {
                 <Button
                   size="lg"
                   onClick={() => navigate("/auth?mode=signup&type=owner")}
-                  className="gradient-primary h-12 px-8 text-base shadow-strong hover:scale-105 transition-transform flex-1"
+                  className="gradient-primary h-16 px-8 text-lg shadow-strong hover:scale-105 transition-transform flex-1"
                 >
-                  <Home className="h-4 w-4 mr-2" />
+                  <Home className="h-10 w-10 mr-2" />
                   {t('hero.list_property')}
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
                   onClick={() => navigate("/search")}
-                  className="h-12 px-8 text-base border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-medium flex-1"
+                  className="h-16 px-8 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-medium flex-1"
                 >
-                  <Search className="h-4 w-4 mr-2" />
+                  <Search className="h-10 w-10 mr-2" />
                   {t('hero.search_property')}
                 </Button>
               </div>
 
               {/* Quick Search */}
-              <div className="max-w-xl p-2 bg-card dark:bg-card rounded-2xl shadow-strong flex flex-col sm:flex-row items-center gap-2 border border-border/50 transition-all">
+              <div className="max-w-xl p-3 bg-card dark:bg-card rounded-2xl shadow-strong flex flex-col sm:flex-row items-center gap-3 border border-border/50 transition-all">
                 <div className="flex items-center w-full gap-2 px-2">
-                  <MapPin className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <MapPin className="h-6 w-6 text-muted-foreground shrink-0" />
                   <Input
                     placeholder={t('hero.search_placeholder')}
-                    className="border-0 focus-visible:ring-0 text-lg h-12 w-full bg-transparent"
-                    onKeyPress={(e) => e.key === 'Enter' && navigate("/search")}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="border-0 focus-visible:ring-0 text-base md:text-lg h-14 w-full bg-transparent"
+                    onKeyPress={(e) => e.key === 'Enter' && navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
                   />
                 </div>
                 <Button
-                  onClick={() => navigate("/search")}
-                  className="h-12 w-full sm:w-12 rounded-xl gradient-accent shadow-medium hover:scale-105 sm:hover:scale-110 transition-transform"
+                  onClick={() => navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
+                  className="h-14 w-full sm:w-14 rounded-xl gradient-accent shadow-medium hover:scale-105 sm:hover:scale-110 transition-transform flex items-center justify-center"
                 >
-                  <span className="sm:hidden font-bold mr-2">{t('hero.search_button')}</span>
-                  <ArrowRight className="h-6 w-6 text-white" />
+                  <span className="sm:hidden font-bold mr-2 text-base">{t('hero.search_button')}</span>
+                  <ArrowRight className="h-10 w-10 text-white" />
                 </Button>
               </div>
 
@@ -202,115 +202,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Value Proposition Grid */}
-      <section className="py-24 bg-background border-y border-border/50">
-        <div className="container mx-auto px-6">
-          <div className="text-center max-w-5xl mx-auto mb-20 space-y-4">
-            <h2 className="text-5xl md:text-5xl font-bold text-primary"> {t('features.title')} </h2>
-            <p className="text-lg text-muted-foreground">
-              {t('features.subtitle')}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: Shield,
-                title: t('features.security.title'),
-                description: t('features.security.desc'),
-                color: "bg-blue-500/10 text-blue-600"
-              },
-              {
-                icon: Clock,
-                title: t('features.time.title'),
-                description: t('features.time.desc'),
-                color: "bg-accent/10 text-accent"
-              },
-              {
-                icon: CheckCircle2,
-                title: t('features.transparency.title'),
-                description: t('features.transparency.desc'),
-                color: "bg-green-500/10 text-green-600"
-              }
-            ].map((prop, idx) => (
-              <div key={idx} className="p-8 rounded-3xl bg-card border border-transparent hover:border-primary/20 hover:bg-secondary/50 dark:hover:bg-primary/5 hover:shadow-medium transition-all group">
-                <div className={`h-14 w-14 rounded-2xl ${prop.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                  <prop.icon className="h-7 w-7" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-primary">{prop.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{prop.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* For Owners vs For Tenants */}
-      <section className="py-24">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Owners */}
-            <div className="relative group overflow-hidden rounded-[2.5rem] bg-primary p-10 lg:p-16 text-white shadow-strong">
-              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-                <Building2 size={200} />
-              </div>
-              <div className="relative z-10 space-y-6">
-                <h3 className="text-3xl lg:text-4xl font-bold">{t('roles.owners.title')}</h3>
-                <p className="text-white/80 text-lg leading-relaxed max-w-md">
-                  {t('roles.owners.desc')}
-                </p>
-                <ul className="space-y-4">
-                  {[t('roles.owners.item1'), t('roles.owners.item2'), t('roles.owners.item3'), t('roles.owners.item4')].map((item, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-accent" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  size="lg"
-                  onClick={() => navigate("/auth?mode=signup&type=owner")}
-                  className="bg-white text-primary hover:bg-white/90 h-14 px-8 rounded-xl font-bold shadow-strong"
-                >
-                  {t('roles.owners.cta')}
-                </Button>
-              </div>
-            </div>
-
-            {/* Tenants */}
-            <div className="relative group overflow-hidden rounded-[2.5rem] bg-card p-10 lg:p-16 text-primary dark:text-foreground shadow-strong border border-border/50">
-              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
-                <Users size={200} />
-              </div>
-              <div className="relative z-10 space-y-6">
-                <h3 className="text-3xl lg:text-4xl font-bold">{t('roles.tenants.title')}</h3>
-                <p className="text-muted-foreground text-lg leading-relaxed max-w-md">
-                  {t('roles.tenants.desc')}
-                </p>
-                <ul className="space-y-4 text-primary/80">
-                  {[t('roles.tenants.item1'), t('roles.tenants.item2'), t('roles.tenants.item3'), t('roles.tenants.item4')].map((item, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-accent" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => navigate("/search")}
-                  className="border-2 border-primary text-primary hover:bg-primary hover:text-white h-14 px-8 rounded-xl font-bold"
-                >
-                  {t('roles.tenants.cta')}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Properties */}
-      <section className="py-24 bg-secondary/30 dark:bg-background">
+      {/* Featured Properties (Bien à la une) - Moved up for more visibility */}
+      <section className="py-24 bg-secondary/30 dark:bg-background border-y border-border/50">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-4">
             <div className="space-y-4">
@@ -388,6 +281,7 @@ const Index = () => {
                         isApplied={property.id ? appliedPropertyIds.includes(property.id) : false}
                         ownerPhone={ownerPhone}
                         isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
+                        isNew={property.published_at ? (new Date().getTime() - new Date(property.published_at).getTime()) < 7 * 24 * 60 * 60 * 1000 : false}
                       />
                     </CarouselItem>
                   );
@@ -407,6 +301,71 @@ const Index = () => {
           )}
         </div>
       </section>
+
+      {/* For Owners vs For Tenants */}
+      <section className="py-24">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Owners */}
+            <div className="relative group overflow-hidden rounded-[2.5rem] bg-primary p-10 lg:p-16 text-white shadow-strong">
+              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+                <Building2 size={200} />
+              </div>
+              <div className="relative z-10 space-y-6">
+                <h3 className="text-3xl lg:text-4xl font-bold">{t('roles.owners.title')}</h3>
+                <p className="text-white/80 text-lg leading-relaxed max-w-md">
+                  {t('roles.owners.desc')}
+                </p>
+                <ul className="space-y-4">
+                  {[t('roles.owners.item1'), t('roles.owners.item2'), t('roles.owners.item3'), t('roles.owners.item4')].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-accent" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  size="lg"
+                  onClick={() => navigate("/auth?mode=signup&type=owner")}
+                  className="bg-white text-primary hover:bg-white/90 h-14 px-8 rounded-xl font-bold shadow-strong"
+                >
+                  {t('roles.owners.cta')}
+                </Button>
+              </div>
+            </div>
+
+            {/* Tenants */}
+            <div className="relative group overflow-hidden rounded-[2.5rem] bg-card p-10 lg:p-16 text-primary dark:text-foreground shadow-strong border border-border/50">
+              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
+                <Users size={200} />
+              </div>
+              <div className="relative z-10 space-y-6">
+                <h3 className="text-3xl lg:text-4xl font-bold">{t('roles.tenants.title')}</h3>
+                <p className="text-muted-foreground text-lg leading-relaxed max-w-md">
+                  {t('roles.tenants.desc')}
+                </p>
+                <ul className="space-y-4 text-primary/80">
+                  {[t('roles.tenants.item1'), t('roles.tenants.item2'), t('roles.tenants.item3'), t('roles.tenants.item4')].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-accent" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate("/search")}
+                  className="border-2 border-primary text-primary hover:bg-primary hover:text-white h-14 px-8 rounded-xl font-bold"
+                >
+                  {t('roles.tenants.cta')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
 
       {/* Process / How it Works */}
       <section className="py-24 bg-background">
@@ -474,51 +433,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-16 bg-secondary/30 dark:bg-background border-t border-border/50">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-            <div className="col-span-1 md:col-span-1 space-y-6">
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Samalocation
-              </span>
-              <p className="text-muted-foreground leading-relaxed">
-                {t('footer.desc')}
-              </p>
-            </div>
-            <div>
-              <h4 className="font-bold mb-6 text-primary">{t('footer.nav.title')}</h4>
-              <ul className="space-y-4 text-muted-foreground">
-                <li><a href="/" className="hover:text-accent transition-colors">{t('footer.nav.home')}</a></li>
-                <li><a href="/search" className="hover:text-accent transition-colors">{t('footer.nav.search')}</a></li>
-                <li><a href="/auth" className="hover:text-accent transition-colors">{t('footer.nav.login')}</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-6 text-primary">{t('footer.legal.title')}</h4>
-              <ul className="space-y-4 text-muted-foreground">
-                <li><a href="/terms" className="hover:text-accent transition-colors">{t('footer.legal.terms')}</a></li>
-                <li><a href="/privacy" className="hover:text-accent transition-colors">{t('footer.legal.privacy')}</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-6 text-primary">{t('footer.support.title')}</h4>
-              <ul className="space-y-4 text-muted-foreground">
-                <li><a href="/contact" className="hover:text-accent transition-colors">{t('footer.support.contact')}</a></li>
-                <li><a href="mailto:contact@samalocation.com" className="hover:text-accent transition-colors">contact@samalocation.com</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="pt-12 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-muted-foreground text-sm">
-              {t('footer.copyright')}
-            </p>
-            <div className="flex gap-6">
-              {/* Social icons placeholder  */}
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

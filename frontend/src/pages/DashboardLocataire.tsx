@@ -62,7 +62,15 @@ const DashboardLocataire = () => {
     loadNotifications(); // Charger les notifications au montage
   }, []); // Charge une seule fois au montage
 
-  const { socket } = useSocket();
+  const { socket, connected } = useSocket();
+
+  useEffect(() => {
+    // Si on se reconnecte (ou première connexion) et qu'on est sur l'onglet messages, rafraîchir pour ne rien rater
+    if (connected && activeTab === "messages") {
+      console.log("[SOCKET] Reconnected! Refreshing messages...");
+      loadMessages();
+    }
+  }, [connected, activeTab, socket]);
 
   useEffect(() => {
     if (!socket) return;
@@ -269,9 +277,7 @@ const DashboardLocataire = () => {
       });
 
       if (sentMsg) {
-        // Recharger tous les messages au lieu d'essayer d'ajouter manuellement
-        loadMessages();
-        // Note: La notification est créée automatiquement par le backend
+        setMessages((prev) => [...prev, sentMsg]);
       }
 
       setNewMessage("");
@@ -374,23 +380,23 @@ const DashboardLocataire = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="w-64 bg-card border-r shadow-soft hidden md:block">
+      <aside className="w-64 bg-card border-r shadow-soft hidden md:block h-screen sticky top-0 overflow-y-auto overflow-x-hidden scrollbar-none">
         <div className="p-6">
           {sidebarContent}
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
-        <div className="sticky top-0 z-10 bg-background border-b">
+      <main className="flex-1 flex flex-col min-w-0">
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">
           <div className="flex items-center justify-between p-4">
             {/* Mobile Menu */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-6 w-6" />
+                <Button variant="ghost" size="icon" className="h-12 w-12">
+                  <Menu className="h-7 w-7" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-64 p-6">
@@ -419,7 +425,7 @@ const DashboardLocataire = () => {
                         {t('dashboard.common.welcome')}, <span className="font-semibold text-foreground">{tenantProfile?.full_name || tenantProfile?.email || "Locataire"}</span>
                       </p>
                       {user?.customId && (
-                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-mono text-[10px] px-2 py-0">
+                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-mono text-[11px] px-2 py-0">
                           {t('common.id')} : {user.customId}
                         </Badge>
                       )}
@@ -429,7 +435,7 @@ const DashboardLocataire = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full sm:w-auto text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700 transition-all text-xs"
+                    className="w-full sm:w-auto h-11 sm:h-9 text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700 transition-all text-xs"
                     onClick={() => {
                       const ownerId = tenantData?.owner_id || ownerProfile?.id;
                       if (ownerId) {
@@ -444,7 +450,7 @@ const DashboardLocataire = () => {
                       }
                     }}
                   >
-                    <AlertTriangle className="h-3.5 w-3.5 mr-2" />
+                    <AlertTriangle className="h-4 w-4 mr-2" />
                     {t('tenant.report_owner')}
                   </Button>
                 </div>
@@ -487,25 +493,25 @@ const DashboardLocataire = () => {
 
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                                 <div className="space-y-1">
-                                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.rent')}</p>
+                                  <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.rent')}</p>
                                   <p className="text-sm sm:text-base font-bold text-primary">
                                     {formatCurrency(lease.monthly_rent)}
                                   </p>
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.unit')}</p>
+                                  <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.unit')}</p>
                                   <p className="text-sm sm:text-base font-semibold">
                                     {lease.unit_number || "N/A"}
                                   </p>
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.move_in')}</p>
+                                  <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.move_in')}</p>
                                   <p className="text-xs sm:text-sm font-medium">
                                     {lease.move_in_date ? formatDate(lease.move_in_date) : t('tenant.not_defined')}
                                   </p>
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.owner')}</p>
+                                  <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.owner')}</p>
                                   <p className="text-xs sm:text-sm font-medium">
                                     {lease.owner_name || "N/A"}
                                   </p>

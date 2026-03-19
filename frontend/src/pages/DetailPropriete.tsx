@@ -356,15 +356,7 @@ const DetailPropriete = () => {
                         </div>
                       </>
                     )}
-                    <Badge
-                      className={`absolute top-4 right-4 z-10 ${property.display_status === "available"
-                        ? "bg-green-500 hover:bg-green-600"
-                        : "bg-muted hover:bg-muted"
-                        }`}
-                    >
-                      {property.display_status === "available" ? "Disponible" : "Non disponible"}
-                    </Badge>
-                  </Carousel>
+                    </Carousel>
                 </div>
 
                 {allPhotos.length > 1 && (
@@ -505,12 +497,6 @@ const DetailPropriete = () => {
                               </p>
                               <Badge variant="outline" className="text-xs uppercase tracking-wide">
                                 Paiement {rentPeriodLabels[unit.rent_period as string] ?? unit.rent_period ?? "mois"}
-                              </Badge>
-                              <Badge
-                                variant={unit.is_available ? "default" : "secondary"}
-                                className={`mt-2 ${unit.is_available ? "bg-green-500" : ""}`}
-                              >
-                                {unit.is_available ? "Disponible" : "Occupée"}
                               </Badge>
                             </div>
                           </div>
@@ -768,7 +754,7 @@ const DetailPropriete = () => {
 
       {/* Galerie d'images modale */}
       <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
-        <DialogContent className="max-w-6xl w-full h-[90vh] p-0 gap-0 bg-black/95">
+        <DialogContent className="max-w-5xl w-[95vw] md:w-full h-auto max-h-[85vh] p-0 gap-0 bg-black/95 border-none shadow-2xl rounded-2xl overflow-hidden">
           {allPhotos.length > 0 && selectedImageIndex < allPhotos.length && (
             <div className="relative w-full h-full flex items-center justify-center">
               {/* Bouton fermer */}
@@ -798,7 +784,7 @@ const DetailPropriete = () => {
                 <img
                   src={allPhotos[selectedImageIndex]}
                   alt={`Photo ${selectedImageIndex + 1}`}
-                  className="max-w-full max-h-[70vh] lg:max-h-[80vh] object-contain shadow-2xl transition-all duration-300"
+                  className="max-w-[95%] max-h-[50vh] md:max-h-[60vh] lg:max-h-[70vh] object-contain shadow-2xl transition-all duration-300 rounded-xl"
                 />
               </div>
 
@@ -823,7 +809,7 @@ const DetailPropriete = () => {
 
               {/* Miniatures en bas (optionnel) */}
               {allPhotos.length > 1 && allPhotos.length <= 10 && (
-                <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 flex gap-2 px-4">
+                <div className="hidden md:flex absolute bottom-8 left-1/2 transform -translate-x-1/2 gap-2 px-4 shadow-strong">
                   {allPhotos.map((photo, index) => (
                     <button
                       key={index}

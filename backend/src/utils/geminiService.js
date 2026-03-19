@@ -13,7 +13,7 @@ const getModel = (options = {}) => {
         ...options
     });
 };
-
+// permet de générer une description pour un bien
 const generatePropertyDescription = async (propertyData) => {
     try {
         const model = getModel();
@@ -86,15 +86,18 @@ const getChatResponse = async (message, history = []) => {
             Ton but est d'aider les utilisateurs (locataires et propriétaires) avec courtoisie et professionnalisme.
             
             Informations clés :
-            - Samalocation permet de louer des appartements, villas, studios et chambres au Sénégal (principalement Dakar).
+            - Samalocation permet de louer des appartements, villas, studios et chambres au Sénégal.
             - Les propriétaires peuvent gérer leurs biens, générer des reçus et trouver des locataires.
             - Les locataires peuvent chercher des biens sur la carte et postuler.
             
             Directives :
             - Sois chaleureux et utilise un ton sénégalais accueillant ("Teranga").
             - Si l'utilisateur cherche un bien, encourage-le à utiliser la barre de recherche "Magique" sur la page de recherche.
+            - Structure tes réponses avec des paragraphes et des sauts de ligne (\n) pour une lecture aérée.
+            - Utilise des listes à puces pour les énumérations.
             - Ne donne jamais d'informations confidentielles.
-            - Réponds de manière concise.
+            - Réponds de manière complète, concise et lisible.
+            - Si l'utilisateur demande de nous contacter, donne lui notre numéro de téléphone : +221 76 162 95 29 disponible sur whatsapp aussi et notre email : contact@samalocation.com
         `;
 
         const model = getModel({ systemInstruction });
@@ -114,7 +117,7 @@ const getChatResponse = async (message, history = []) => {
             }
         }
 
-        // Ensure starts with user
+        // permet de s'assurer que l'historique commence par un message de l'utilisateur
         const firstUserIndex = strictlyAlternated.findIndex(h => h.role === "user");
         if (firstUserIndex !== -1) {
             validHistory = strictlyAlternated.slice(firstUserIndex);
@@ -127,7 +130,7 @@ const getChatResponse = async (message, history = []) => {
         const chat = model.startChat({
             history: validHistory,
             generationConfig: {
-                maxOutputTokens: 500,
+                maxOutputTokens: 1024,
             },
         });
 

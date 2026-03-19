@@ -4,14 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountSettings } from "@/components/shared/AccountSettings";
-import { X, FileText, Scan, Shield, CheckCircle2, Clock } from "lucide-react";
+import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown } from "lucide-react";
 import { SignatureScanner } from "./SignatureScanner";
-import { uploadPhotos } from "@/lib/api";
+import { uploadPhotos, getMySubscription } from "@/lib/api";
 import { useTranslation } from "react-i18next";
+import { UpgradeModal } from "./UpgradeModal";
+import { useSubscription } from "@/hooks/useSubscription";
+import classicImg from "@/assets/classic.png";
+import modernImg from "@/assets/modern.png";
+import minimalImg from "@/assets/minimal.png";
+import agenceImg from "@/assets/agence.png";
 
 export const OwnerSettings = () => {
   const { toast } = useToast();
@@ -26,6 +33,7 @@ export const OwnerSettings = () => {
     contactEmail: "",
     address: "",
     signatureUrl: "",
+    logoUrl: "",
     idCardUrl: "",
     ownershipProofUrl: "",
     livenessSelfieUrl: "",
@@ -33,6 +41,12 @@ export const OwnerSettings = () => {
     receiptTemplate: "classic",
   });
   const [scannerOpen, setScannerOpen] = useState(false);
+  const { hasFeature } = useSubscription();
+  const [upgradeModal, setUpgradeModal] = useState({
+    open: false,
+    title: "",
+    description: ""
+  });
 
   useEffect(() => {
     loadProfile();
@@ -53,6 +67,7 @@ export const OwnerSettings = () => {
           contactEmail: data.contact_email || "",
           address: data.address || "",
           signatureUrl: data.signature_url || "",
+          logoUrl: data.logo_url || "",
           idCardUrl: data.id_card_url || "",
           ownershipProofUrl: data.ownership_proof_url || "",
           livenessSelfieUrl: data.liveness_selfie_url || "",
@@ -89,6 +104,7 @@ export const OwnerSettings = () => {
         liveness_selfie_url: profile.livenessSelfieUrl,
         verification_status: profile.verificationStatus,
         receipt_template: profile.receiptTemplate,
+        logo_url: profile.logoUrl,
       };
 
       const result = await updateOwnerProfile(profileData);
@@ -123,6 +139,43 @@ export const OwnerSettings = () => {
         setProfile({
           ...profile,
           [field]: urls[0],
+        });
+        toast({
+          title: t('common.upload_success'),
+          description: t('common.save_success'),
+        });
+      }
+    } catch (error) {
+      toast({
+        title: t('common.error'),
+        description: t('common.upload_error'),
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!hasFeature('branding')) {
+      setUpgradeModal({
+        open: true,
+        title: "Logo et Branding non inclus",
+        description: "L'ajout d'un logo personnalisé sur vos quittances est une fonctionnalité exclusive des plans supérieurs."
+      });
+      return;
+    }
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      const urls = await uploadPhotos([file]);
+      if (urls && urls.length > 0) {
+        setProfile({
+          ...profile,
+          logoUrl: urls[0],
         });
         toast({
           title: t('common.upload_success'),
@@ -430,6 +483,82 @@ export const OwnerSettings = () => {
 
               <div className="space-y-4 pt-4 border-t">
                 <div className="flex flex-col gap-1">
+                  <Label className="text-base font-semibold">{t('settings.branding')}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t('settings.branding_desc')}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  {!hasFeature('branding') ? (
+                    <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 flex flex-col items-center gap-4 text-center">
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Crown className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-bold">Branding Personnalisé</h4>
+                        <p className="text-sm text-muted-foreground max-w-sm">
+                          Pour faire afficher votre propre logo sur vos reçus, vous devez passer à un format <strong>Entreprise</strong> (Plan Professionnel).
+                        </p>
+                      </div>
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        className="gradient-primary text-white"
+                        onClick={() => window.location.href = '/pricing'}
+                      >
+                        Passer au plan Professionnel
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {profile.logoUrl ? (
+                        <div className="relative w-32 h-32 border rounded-lg overflow-hidden bg-white flex items-center justify-center p-2">
+                          <img
+                            src={profile.logoUrl}
+                            alt="Logo"
+                            className="max-w-full max-h-full object-contain"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6"
+                            onClick={() => setProfile({ ...profile, logoUrl: "" })}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground gap-2 bg-muted/20">
+                          <Shield className="h-8 w-8 opacity-20" />
+                          <span className="text-xs">{t('settings.no_logo')}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          asChild
+                        >
+                          <label className="cursor-pointer">
+                            <Scan className="h-4 w-4" /> {t('settings.upload_logo')}
+                            <Input
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={handleLogoUpload}
+                            />
+                          </label>
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex flex-col gap-1">
                   <Label className="text-base font-semibold">{t('settings.receipt_form')}</Label>
                   <p className="text-sm text-muted-foreground">
                     {t('settings.receipt_form_desc')}
@@ -438,13 +567,24 @@ export const OwnerSettings = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
-                    { id: 'classic', name: t('settings.receipt_templates.classic'), img: '/src/assets/classic.png' },
-                    { id: 'modern', name: t('settings.receipt_templates.modern'), img: '/src/assets/modern.png' },
-                    { id: 'minimal', name: t('settings.receipt_templates.minimal'), img: '/src/assets/minimal.png' }
+                    { id: 'classic', name: t('settings.receipt_templates.classic'), img: classicImg, premium: false },
+                    { id: 'modern', name: t('settings.receipt_templates.modern'), img: modernImg, premium: false },
+                    { id: 'minimal', name: t('settings.receipt_templates.minimal'), img: minimalImg, premium: false },
+                    { id: 'corporate', name: t('settings.receipt_templates.corporate'), img: agenceImg, premium: true }
                   ].map((template) => (
                     <div
                       key={template.id}
-                      onClick={() => setProfile({ ...profile, receiptTemplate: template.id })}
+                      onClick={() => {
+                        if (template.premium && !hasFeature('branding')) {
+                          setUpgradeModal({
+                            open: true,
+                            title: "Modèle Premium",
+                            description: "Le modèle d'agence est réservé aux utilisateurs disposant du plan Professionnel."
+                          });
+                          return;
+                        }
+                        setProfile({ ...profile, receiptTemplate: template.id });
+                      }}
                       className={`relative cursor-pointer group rounded-xl border-2 transition-all p-2 bg-card hover:shadow-md ${profile.receiptTemplate === template.id
                         ? 'border-primary ring-2 ring-primary/20'
                         : 'border-muted hover:border-muted-foreground/30'
@@ -488,6 +628,13 @@ export const OwnerSettings = () => {
           <AccountSettings />
         </TabsContent>
       </Tabs>
+
+      <UpgradeModal
+        open={upgradeModal.open}
+        onOpenChange={(open) => setUpgradeModal(prev => ({ ...prev, open }))}
+        title={upgradeModal.title}
+        description={upgradeModal.description}
+      />
     </div>
   );
 };

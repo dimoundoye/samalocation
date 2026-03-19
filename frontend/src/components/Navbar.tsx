@@ -31,6 +31,7 @@ const Navbar = () => {
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6">
               <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.home')}</Link>
+              <Link to="/pricing" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.pricing')}</Link>
               <Link to="/search" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.explore')}</Link>
               <Link to="/contact" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.contact')}</Link>
             </div>
@@ -44,9 +45,9 @@ const Navbar = () => {
                   <Button
                     variant="default"
                     onClick={() => navigate(getDashboardPath())}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 h-11 sm:h-10"
                   >
-                    <LayoutDashboard className="h-4 w-4" />
+                    <LayoutDashboard className="h-5 w-5 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Mon espace</span>
                   </Button>
                 </div>
@@ -62,9 +63,9 @@ const Navbar = () => {
                   </Button>
                   <Button
                     onClick={() => navigate("/auth?mode=signup")}
-                    className="gradient-accent text-white shadow-medium hover:shadow-strong transition-all"
+                    className="gradient-accent text-white shadow-medium hover:shadow-strong transition-all h-11 sm:h-10"
                   >
-                    <UserPlus className="h-4 w-4 sm:mr-2" />
+                    <UserPlus className="h-5 w-5 sm:h-4 sm:w-4 sm:mr-2" />
                     <span className="hidden sm:inline">{t('nav.signup')}</span>
                   </Button>
                 </>

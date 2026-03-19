@@ -9,7 +9,7 @@ const notificationController = {
      */
     async getUserNotifications(req, res, next) {
         try {
-            const userId = req.user.id;
+            const userId = req.ownerId;
             const notifications = await Notification.findByUserId(userId);
 
             return response.success(res, notifications);
@@ -43,7 +43,7 @@ const notificationController = {
      */
     async markAsRead(req, res, next) {
         try {
-            const userId = req.user.id;
+            const userId = req.ownerId;
             const notificationId = req.params.id;
             await Notification.markAsRead(notificationId, userId);
             return response.success(res, null);
@@ -57,7 +57,7 @@ const notificationController = {
      */
     async markAllAsRead(req, res, next) {
         try {
-            const userId = req.user.id;
+            const userId = req.ownerId;
             await Notification.markAllAsRead(userId);
             return response.success(res, null);
         } catch (error) {

@@ -3,12 +3,13 @@ import { getMessages, sendMessage, markMessagesAsRead, deleteMessage } from "../
 import { getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead } from "../api/notifications";
 import { login, signup, getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword } from "../api/auth";
 import { getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile } from "../api/tenant";
-import { getOwnerProfile, updateOwnerProfile } from "../api/owner";
+import { getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator } from "../api/owner";
 import { getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt } from "../api/receipts";
 import { createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser } from "../api/reports";
-import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus } from "../api/admin";
+import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting } from "../api/admin";
 import { getContactMessages, updateContactMessageStatus } from "../api/contact";
 import { createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract } from "../api/contracts";
+import { getMySubscription, notifyPayment } from "../api/subscription";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -19,12 +20,13 @@ export {
     getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead,
     getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword,
     getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile,
-    getOwnerProfile, updateOwnerProfile,
+    getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator,
     getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt,
     createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser,
-    getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus,
+    getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting,
     getContactMessages, updateContactMessageStatus,
-    createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract
+    createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract,
+    getMySubscription, notifyPayment
 };
 
 
@@ -109,11 +111,13 @@ export const parseSmartSearch = async (query: string) => {
 };
 
 export const getAIChatResponse = async (message: string, history: any[] = []) => {
+    const token = localStorage.getItem("auth_token");
     try {
         const response = await fetch(`${API_BASE_URL}/ai/chat`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...(token ? { "Authorization": `Bearer ${token}` } : {}),
             },
             body: JSON.stringify({ message, history }),
         });

@@ -18,7 +18,8 @@ const Owner = {
             ownership_proof_url,
             liveness_selfie_url,
             verification_status,
-            receipt_template
+            receipt_template,
+            logo_url
         } = data;
 
         if (full_name) {
@@ -32,7 +33,7 @@ const Owner = {
 
         if (profiles.length === 0) {
             await db.query(
-                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio, signature_url, id_card_url, ownership_proof_url, liveness_selfie_url, verification_status, receipt_template) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio, signature_url, id_card_url, ownership_proof_url, liveness_selfie_url, verification_status, receipt_template, logo_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)',
                 [
                     id,
                     id,
@@ -45,12 +46,13 @@ const Owner = {
                     ownership_proof_url || null,
                     liveness_selfie_url || null,
                     verification_status || 'none',
-                    receipt_template || 'classic'
+                    receipt_template || 'classic',
+                    logo_url || null
                 ]
             );
         } else {
             await db.query(
-                'UPDATE owner_profiles SET company_name = $1, phone = $2, address = $3, bio = $4, signature_url = $5, id_card_url = $6, ownership_proof_url = $7, liveness_selfie_url = $8, verification_status = $9, receipt_template = $10, updated_at = NOW() WHERE id = $11',
+                'UPDATE owner_profiles SET company_name = $1, phone = $2, address = $3, bio = $4, signature_url = $5, id_card_url = $6, ownership_proof_url = $7, liveness_selfie_url = $8, verification_status = $9, receipt_template = $10, logo_url = $11, updated_at = NOW() WHERE id = $12',
                 [
                     company_name || null,
                     phone || null,
@@ -62,6 +64,7 @@ const Owner = {
                     liveness_selfie_url || null,
                     verification_status || 'none',
                     receipt_template || 'classic',
+                    logo_url || null,
                     id
                 ]
             );

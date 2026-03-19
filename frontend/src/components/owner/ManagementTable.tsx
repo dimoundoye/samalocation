@@ -18,7 +18,12 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X, ChevronDown, ChevronRight, Folder, FolderOpen, ArrowLeft, Home } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X, ChevronDown, ChevronRight, Folder, FolderOpen, ArrowLeft, Home, Info, HelpCircle, Lightbulb, Lock } from "lucide-react";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import {
     Dialog,
     DialogContent,
@@ -32,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
 import { Tenant, Receipt, Property, PropertyUnit } from "@/types";
 
 interface ManagementTableProps {
@@ -46,6 +52,7 @@ interface ManagementTableProps {
     customGroups: { id: string; name: string; tenantIds: string[]; parentId?: string }[];
     onGroupsChange: (groups: any[] | ((prev: any[]) => any[])) => void;
     groupedData: any[];
+    years: number[];
 }
 
 export const ManagementTable = ({
@@ -59,10 +66,13 @@ export const ManagementTable = ({
     onNavigationChange,
     customGroups,
     onGroupsChange,
-    groupedData
+    groupedData,
+    years
 }: ManagementTableProps) => {
     const { toast } = useToast();
     const { user } = useAuth();
+    const { hasFeature, subscription } = useSubscription();
+    const canExport = hasFeature('excel');
     const userGroupsKey = useMemo(() => user?.id ? `owner_tenant_groups_v2_${user.id}` : "owner_tenant_groups_v2_guest", [user?.id]);
 
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -180,15 +190,7 @@ export const ManagementTable = ({
         }));
     };
 
-    const years = useMemo(() => {
-        const currentYear = new Date().getFullYear();
-        const yearsSet = new Set<number>([currentYear]);
-        receipts.forEach((r) => {
-            const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
-            if (rYear) yearsSet.add(rYear);
-        });
-        return Array.from(yearsSet).sort((a, b) => b - a);
-    }, [receipts]);
+
 
     const months = [
         { id: 1, label: "Jan" },
@@ -395,9 +397,11 @@ export const ManagementTable = ({
                             variant="outline"
                             size="sm"
                             onClick={handleExport}
-                            className="flex-1 sm:flex-none"
+                            disabled={!canExport}
+                            className={`flex-1 sm:flex-none ${!canExport ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+                            title={!canExport ? "L'export Excel est réservé aux comptes Entreprise (Professionnel)" : "Exporter les données en CSV"}
                         >
-                            <Download className="mr-2 h-4 w-4" />
+                            {canExport ? <Download className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
                             Export
                         </Button>
                     </div>
@@ -415,7 +419,37 @@ export const ManagementTable = ({
                     </Select>
                 </div>
             </CardHeader>
+
             <CardContent className="p-0">
+                {/* Guide d'utilisation visible directement */}
+                <div className="px-6 py-4 bg-primary/5 border-y border-primary/10 flex flex-col md:flex-row md:items-center gap-4 animate-in fade-in duration-500">
+                    <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
+                        <Lightbulb className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-bold text-slate-900">Astuce d'organisation :</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Regroupez vos locataires par bâtiment ou appartement pour une meilleure visibilité.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2 font-mono text-[10px] bg-white/50 px-3 py-2 rounded border border-primary/5 shrink-0">
+                        <div className="flex items-center gap-1">
+                            <Folder className="h-3 w-3 text-amber-500 fill-amber-100" />
+                            <span className="font-bold">Maison Dakar 2</span>
+                        </div>
+                        <ChevronRight className="h-3 w-3 text-slate-300" />
+                        <div className="flex items-center gap-1">
+                            <Folder className="h-3 w-3 text-amber-400 fill-amber-50" />
+                            <span className="font-bold">Appartement A</span>
+                        </div>
+                        <ChevronRight className="h-3 w-3 text-slate-300" />
+                        <div className="flex items-center gap-1 text-slate-500">
+                            <Users className="h-3 w-3" />
+                            <span>Locataires</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="flex flex-col h-[600px]">
                     {/* Navigation Bar / Breadcrumbs */}
                     <div className="bg-muted/50 p-2 border-b flex items-center justify-between">

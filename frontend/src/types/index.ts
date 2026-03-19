@@ -7,6 +7,11 @@ export interface User {
     setupRequired?: boolean;
     created_at?: string;
     is_blocked?: boolean;
+    parentId?: string;
+    permissions?: {
+        can_view_revenue: boolean;
+        [key: string]: any;
+    };
 }
 
 export interface Property {
@@ -136,6 +141,21 @@ export interface AdminStatistics {
     newPropertiesCount: number;
     pendingReportsCount: number;
     pendingVerificationsCount: number;
+    pendingPaymentsCount: number;
+    subscriptions?: {
+        premium: number;
+        professionnel: number;
+        free: number;
+    };
+    revenue?: {
+        active: number;
+        total: number;
+    };
+    aiUsage?: {
+        action: string;
+        count: number;
+        last_used: string;
+    }[];
 }
 
 export interface CreateContractData {

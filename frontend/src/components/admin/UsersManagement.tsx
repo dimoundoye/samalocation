@@ -7,23 +7,36 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertCircle, Ban, Search, UserCheck } from "lucide-react";
-import { getAllUsers, blockUser, unblockUser } from "@/lib/api";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertCircle, Ban, Search, UserCheck, CreditCard } from "lucide-react";
+import { getAllUsers, blockUser, unblockUser, updateUserSubscription } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 import { User } from "@/types";
 
-const UsersManagement = () => {
+interface UsersManagementProps {
+  initialSearchTerm?: string;
+}
+
+const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [blockReason, setBlockReason] = useState("");
   const [blocking, setBlocking] = useState(false);
+  const [subDialogOpen, setSubDialogOpen] = useState(false);
+  const [subConfig, setSubConfig] = useState({
+    planName: "PREMIUM",
+    durationDays: 30,
+    price: 5000,
+    status: "active"
+  });
+  const [updatingSub, setUpdatingSub] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -33,6 +46,12 @@ const UsersManagement = () => {
   useEffect(() => {
     filterUsers();
   }, [searchTerm, users]);
+
+  useEffect(() => {
+    if (initialSearchTerm) {
+      setSearchTerm(initialSearchTerm);
+    }
+  }, [initialSearchTerm]);
 
   const loadUsers = async () => {
     try {
@@ -69,7 +88,7 @@ const UsersManagement = () => {
     const filtered = users.filter((user) => {
       const email = user.email?.toLowerCase() || "";
       const fullName = user.full_name?.toLowerCase() || "";
-      const customId = user.custom_id?.toLowerCase() || "";
+      const customId = user.customId?.toLowerCase() || "";
       const search = searchTerm.toLowerCase();
 
       return email.includes(search) || fullName.includes(search) || customId.includes(search);
@@ -134,6 +153,37 @@ const UsersManagement = () => {
     }
   };
 
+  const handleOpenSubscription = (user: User) => {
+    setSelectedUser(user);
+    setSubDialogOpen(true);
+  };
+
+  const handleUpdateSubscription = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setUpdatingSub(true);
+      await updateUserSubscription(selectedUser.id, subConfig);
+
+      toast({
+        title: "Abonnement mis à jour",
+        description: `L'abonnement de ${selectedUser.full_name} a été actualisé.`,
+      });
+
+      setSubDialogOpen(false);
+      loadUsers();
+    } catch (error: any) {
+      console.error("Error updating subscription:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la mise à jour de l'abonnement",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingSub(false);
+    }
+  };
+
   const getUserTypeBadge = (role: string) => {
     if (role === "owner") {
       return <Badge variant="default">Propriétaire</Badge>;
@@ -182,7 +232,7 @@ const UsersManagement = () => {
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <p className="font-bold">{user.full_name}</p>
-                        <p className="text-xs font-semibold text-primary">{user.custom_id}</p>
+                        <p className="text-xs font-semibold text-primary">{user.customId}</p>
                         <p className="text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</p>
                       </div>
                       {getUserTypeBadge(user.role)}
@@ -227,6 +277,17 @@ const UsersManagement = () => {
                           Bloquer
                         </Button>
                       )}
+                      {user.role === 'owner' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-2 border-primary text-primary hover:bg-primary hover:text-white"
+                          onClick={() => handleOpenSubscription(user)}
+                        >
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Gérer Abonnement
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))
@@ -257,7 +318,7 @@ const UsersManagement = () => {
                   ) : (
                     filteredUsers.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-mono text-primary font-bold">{user.custom_id}</TableCell>
+                        <TableCell className="font-mono text-primary font-bold">{user.customId}</TableCell>
                         <TableCell className="font-medium">{user.full_name}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{getUserTypeBadge(user.role)}</TableCell>
@@ -289,6 +350,16 @@ const UsersManagement = () => {
                             >
                               <Ban className="h-4 w-4 mr-1" />
                               Bloquer
+                            </Button>
+                          )}
+                          {user.role === 'owner' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="ml-2 border-primary text-primary hover:bg-primary hover:text-white"
+                              onClick={() => handleOpenSubscription(user)}
+                            >
+                              <CreditCard className="h-4 w-4" />
                             </Button>
                           )}
                         </TableCell>
@@ -349,6 +420,103 @@ const UsersManagement = () => {
               disabled={blocking || blockReason.trim().length < 5}
             >
               {blocking ? "Blocage en cours..." : "Confirmer le blocage"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={subDialogOpen} onOpenChange={setSubDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Gérer l'abonnement
+            </DialogTitle>
+            <DialogDescription>
+              Modifiez manuellement l'abonnement de l'utilisateur.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedUser && (
+            <div className="space-y-6 py-4">
+              <div className="p-3 bg-secondary/30 rounded-lg flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{selectedUser.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{selectedUser.email}</p>
+                </div>
+                <Badge variant="outline">{selectedUser.role}</Badge>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Statut de l'abonnement</Label>
+                  <Select
+                    value={subConfig.status}
+                    onValueChange={(val) => setSubConfig(prev => ({ ...prev, status: val }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir un statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Activé (En cours)</SelectItem>
+                      <SelectItem value="expired">Désactivé (Expiré)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {subConfig.status === 'active' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Choisir un Plan</Label>
+                      <Select
+                        value={subConfig.planName}
+                        onValueChange={(val) => {
+                          const price = val === 'PROFESSIONNEL' ? 15000 : 5000;
+                          setSubConfig(prev => ({ ...prev, planName: val, price }));
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choisir un plan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PREMIUM">Premium (5 000 F)</SelectItem>
+                          <SelectItem value="PROFESSIONNEL">Professionnel (15 000 F)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Durée (jours)</Label>
+                      <Select
+                        value={subConfig.durationDays.toString()}
+                        onValueChange={(val) => setSubConfig(prev => ({ ...prev, durationDays: parseInt(val) }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choisir une durée" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30">30 jours (1 mois)</SelectItem>
+                          <SelectItem value="90">90 jours (3 mois)</SelectItem>
+                          <SelectItem value="365">365 jours (1 an)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubDialogOpen(false)} disabled={updatingSub}>
+              Annuler
+            </Button>
+            <Button
+              className="gradient-accent text-white"
+              onClick={handleUpdateSubscription}
+              disabled={updatingSub}
+            >
+              {updatingSub ? "Mise à jour..." : "Enregistrer les modifications"}
             </Button>
           </DialogFooter>
         </DialogContent>

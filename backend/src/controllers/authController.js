@@ -122,7 +122,7 @@ const authController = {
                 return response.error(res, 'Profil non trouvé', 404);
             }
 
-            const token = generateToken({ id: user.id, email: user.email, role: profile.role });
+            const token = generateToken({ id: user.id, email: user.email, role: profile.role, parentId: user.parent_id });
             return response.success(res, {
                 token,
                 user: {
@@ -131,7 +131,9 @@ const authController = {
                     email: user.email,
                     name: profile.full_name,
                     role: profile.role,
-                    setupRequired: !user.is_setup_complete
+                    parentId: user.parent_id,
+                    setupRequired: !user.is_setup_complete,
+                    permissions: profile.permissions
                 }
             });
         } catch (error) {
@@ -167,7 +169,9 @@ const authController = {
                     email: profile.email,
                     name: profile.full_name,
                     role: profile.role,
-                    setupRequired: !profile.is_setup_complete
+                    parentId: profile.parent_id,
+                    setupRequired: !profile.is_setup_complete,
+                    permissions: profile.permissions
                 }
             });
         } catch (error) {

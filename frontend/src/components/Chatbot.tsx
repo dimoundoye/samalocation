@@ -17,7 +17,7 @@ const Chatbot = () => {
     const [isMinimized, setIsMinimized] = useState(false);
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<Message[]>([
-        { role: "model", text: "Bonjour ! Je suis l'assistant Samalocation. Comment puis-je vous aider aujourd'hui ?" }
+        { role: "model", text: "Bonjour ! 👋 \n\nJe suis l'assistant Samalocation. Comment puis-je vous aider aujourd'hui ? \n\nQue vous cherchiez un logement ou que vous souhaitiez gérer vos biens, je suis là pour vous accompagner ! 🇸🇳" }
     ]);
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -107,7 +107,7 @@ const Chatbot = () => {
                                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
                             >
                                 <div
-                                    className={`max-w-[85%] p-3 rounded-2xl text-sm ${m.role === "user"
+                                    className={`max-w-[85%] p-3 rounded-2xl text-sm whitespace-pre-line ${m.role === "user"
                                         ? "bg-primary text-primary-foreground rounded-tr-none"
                                         : "bg-muted border border-border shadow-sm rounded-tl-none text-foreground"
                                         }`}

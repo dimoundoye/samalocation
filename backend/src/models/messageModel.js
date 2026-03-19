@@ -21,7 +21,19 @@ const Message = {
             'INSERT INTO messages (id, sender_id, receiver_id, message, property_id) VALUES ($1, $2, $3, $4, $5)',
             [id, sender_id, receiver_id, message, property_id]
         );
-        return { id, sender_id, receiver_id, message, property_id };
+        
+        // On récupère le message complet avec les noms pour le temps réel
+        const { rows } = await db.query(`
+            SELECT m.*, 
+                   up_sender.full_name as sender_name, up_sender.email as sender_email,
+                   up_receiver.full_name as receiver_name, up_receiver.email as receiver_email
+            FROM messages m
+            LEFT JOIN user_profiles up_sender ON m.sender_id = up_sender.id
+            LEFT JOIN user_profiles up_receiver ON m.receiver_id = up_receiver.id
+            WHERE m.id = $1
+        `, [id]);
+        
+        return rows[0];
     },
 
     async markAsRead(messageIds, userId) {

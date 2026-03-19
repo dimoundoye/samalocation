@@ -9,7 +9,7 @@ const receiptController = {
     async createReceipt(req, res, next) {
         try {
             const { tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, notes } = req.body;
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
 
             console.log('📋 Creating receipt with data:', {
                 tenant_id,
@@ -103,7 +103,7 @@ const receiptController = {
      */
     async getOwnerReceipts(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const receipts = await Receipt.findByOwnerId(ownerId);
             return response.success(res, receipts);
         } catch (error) {
@@ -146,6 +146,17 @@ const receiptController = {
                 });
             }
 
+            // --- Restriction Branding ---
+            // Vérifier si le propriétaire a droit au branding personnalisé
+            const Subscription = require('../models/subscriptionModel');
+            const ownerId = properties[0].owner_id;
+            const hasBranding = await Subscription.hasAccessToFeature(ownerId, 'custom_branding');
+            
+            if (!hasBranding) {
+                receipt.logo_url = null;
+            }
+            // ----------------------------
+
             // Générer le PDF
             const doc = await generateReceiptPDF(receipt);
 
@@ -167,10 +178,9 @@ const receiptController = {
     async deleteReceipt(req, res, next) {
         try {
             const { id } = req.params;
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
 
             const receipt = await Receipt.findById(id);
-
             if (!receipt) {
                 return res.status(404).json({
                     status: 'error',
@@ -178,7 +188,7 @@ const receiptController = {
                 });
             }
 
-            // Vérifier que c'est le propriétaire qui supprime
+            // Vérifier que la propriété appartient au propriétaire connecté
             const db = require('../config/db');
             const { rows: properties } = await db.query(
                 'SELECT owner_id FROM properties WHERE id = $1',

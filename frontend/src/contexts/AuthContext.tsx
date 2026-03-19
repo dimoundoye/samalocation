@@ -8,7 +8,12 @@ interface User {
   email: string;
   name: string;
   role: string;
+  parentId?: string;
   setupRequired?: boolean;
+  permissions?: {
+    can_view_revenue: boolean;
+    [key: string]: any;
+  };
 }
 
 interface AuthContextType {
@@ -46,17 +51,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem("auth_token");
-      if (token) {
-        try {
-          const data = await getMe();
-          if (data?.user) {
-            setUser(data.user);
-            setUserRole(data.user.role);
-          } else {
-            localStorage.removeItem("auth_token");
-          }
-        } catch (error) {
-          console.error("Auth init error:", error);
+      try {
+        const data = await getMe();
+        if (data?.user) {
+          setUser(data.user);
+          setUserRole(data.user.role);
+        }
+      } catch (error: any) {
+        if (error.status === 503) {
+          navigate("/maintenance");
+        } else if (token) {
           localStorage.removeItem("auth_token");
         }
       }

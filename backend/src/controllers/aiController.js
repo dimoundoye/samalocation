@@ -1,5 +1,6 @@
 const response = require('../utils/response');
 const geminiService = require('../utils/geminiService');
+const AIUsage = require('../models/aiUsageModel');
 
 const aiController = {
     async generateDescription(req, res, next) {
@@ -20,6 +21,12 @@ const aiController = {
                 area
             });
 
+            // Log usage
+            await AIUsage.log({
+                user_id: req.user?.id,
+                action: 'description_generation'
+            });
+
             return response.success(res, { description }, "Description générée avec succès !");
         } catch (error) {
             next(error);
@@ -34,6 +41,13 @@ const aiController = {
             }
 
             const filters = await geminiService.parseSearchQuery(q);
+
+            // Log usage (user_id might be null for public search)
+            await AIUsage.log({
+                user_id: req.user?.id,
+                action: 'smart_search'
+            });
+
             return response.success(res, { filters }, "Requête analysée avec succès !");
         } catch (error) {
             next(error);
@@ -48,6 +62,13 @@ const aiController = {
             }
 
             const aiResponse = await geminiService.getChatResponse(message, history || []);
+
+            // Log usage
+            await AIUsage.log({
+                user_id: req.user?.id,
+                action: 'chat'
+            });
+
             return response.success(res, { response: aiResponse }, "Réponse générée !");
         } catch (error) {
             next(error);

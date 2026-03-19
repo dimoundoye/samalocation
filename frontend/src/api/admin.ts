@@ -38,3 +38,36 @@ export const updateVerificationStatus = async (ownerId: string, status: 'verifie
         body: JSON.stringify({ status })
     });
 };
+
+export const getAdminTransactions = async (limit = 20) => {
+    return await baseClient(`/admin/transactions?limit=${limit}`);
+};
+
+export const getRevenueStats = async () => {
+    return await baseClient("/admin/revenue-stats");
+};
+
+export const getAdminEvents = async (limit = 20) => {
+    return await baseClient(`/admin/events?limit=${limit}`);
+};
+
+export const updateUserSubscription = async (userId: string, data: { planName: string, status: string, durationDays?: number, price?: number, subscriptionId?: string }) => {
+    return await baseClient(`/admin/users/${userId}/subscription`, {
+        method: "PATCH",
+        body: JSON.stringify(data)
+    });
+};
+export const getLiveAnalytics = async () => {
+    return await baseClient("/admin/analytics/live");
+};
+
+export const getPlatformSettings = async () => {
+    return await baseClient("/admin/platform/settings");
+};
+
+export const updatePlatformSetting = async (key: string, value: any) => {
+    return await baseClient("/admin/platform/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ key, value })
+    });
+};

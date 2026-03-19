@@ -54,8 +54,50 @@ const adminController = {
                 WHERE verification_status = 'pending'
             `);
 
+            // Paiements en attente
+            const { rows: pendingPayments } = await db.query(`
+                SELECT COUNT(*) as count
+                FROM subscriptions
+                WHERE status = 'pending'
+            `);
+
+            // Statistiques d'abonnements (par plan)
+            const { rows: subStats } = await db.query(`
+                SELECT 
+                    plan_name, 
+                    COUNT(*) as count, 
+                    SUM(price) as revenue
+                FROM subscriptions
+                WHERE status = 'active'
+                GROUP BY plan_name
+            `);
+
+            // Revenu total (historique des paiements validés)
+            const { rows: totalRevenue } = await db.query(`
+                SELECT SUM(price) as total FROM subscriptions WHERE status IN ('active', 'expired')
+            `);
+
+            // Revenu du mois en cours (paiements effectués ce mois-ci)
+            const { rows: currentMonthRevenue } = await db.query(`
+                SELECT SUM(price) as total FROM subscriptions 
+                WHERE status IN ('active', 'expired')
+                AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())
+                AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())
+            `);
+
+            // Statistiques IA
+            const AIUsage = require('../models/aiUsageModel');
+            const aiStats = await AIUsage.getStats();
+
             const owners = parseInt(roleCounts.find(r => r.role === 'owner')?.count || 0);
             const tenants = parseInt(roleCounts.find(r => r.role === 'tenant')?.count || 0);
+
+            // Mapper les stats par plan (Premium, Professionnel)
+            const subscriptions = {
+                premium: subStats.find(s => s.plan_name.toLowerCase() === 'premium')?.count || 0,
+                professionnel: subStats.find(s => s.plan_name.toLowerCase() === 'professionnel')?.count || 0,
+                free: owners - (subStats.reduce((acc, s) => acc + parseInt(s.count), 0))
+            };
 
             return response.success(res, {
                 totalUsers: owners + tenants,
@@ -66,7 +108,18 @@ const adminController = {
                 newUsersCount: parseInt(newUsers[0]?.count || 0),
                 newPropertiesCount: parseInt(newProperties[0]?.count || 0),
                 pendingReportsCount: parseInt(pendingReports[0]?.count || 0),
-                pendingVerificationsCount: parseInt(pendingVerifications[0]?.count || 0)
+                pendingVerificationsCount: parseInt(pendingVerifications[0]?.count || 0),
+                pendingPaymentsCount: parseInt(pendingPayments[0]?.count || 0),
+                subscriptions,
+                revenue: {
+                    active: parseFloat(currentMonthRevenue[0]?.total || 0),
+                    total: parseFloat(totalRevenue[0]?.total || 0)
+                },
+                aiUsage: aiStats.map(s => ({
+                    action: s.action,
+                    count: parseInt(s.count),
+                    last_used: s.last_used
+                }))
             });
         } catch (error) {
             console.error('Error getting admin statistics:', error);
@@ -191,11 +244,20 @@ const adminController = {
                     p.id,
                     p.name,
                     p.address,
+                    p.description,
                     p.property_type,
                     p.is_published,
+                    p.photo_url,
+                    p.photos,
+                    p.latitude,
+                    p.longitude,
+                    p.equipments,
                     p.created_at,
                     up.full_name as owner_name,
                     up.id as owner_id,
+                    (SELECT SUM(bedrooms) FROM property_units WHERE property_id = p.id) as bedrooms,
+                    (SELECT SUM(bathrooms) FROM property_units WHERE property_id = p.id) as bathrooms,
+                    (SELECT SUM(area_sqm) FROM property_units WHERE property_id = p.id) as area_sqm,
                     (SELECT MIN(monthly_rent) FROM property_units WHERE property_id = p.id) as min_rent,
                     (SELECT COUNT(*) FROM property_units WHERE property_id = p.id) as units_count
                 FROM properties p
@@ -303,10 +365,232 @@ const adminController = {
             `, [status, isVerified, status, ownerId]);
 
             // Optionnel : Envoyer une notification au propriétaire ici
-
             return response.success(res, null, `Profil propriétaire ${isVerified ? 'vérifié' : 'rejeté'} avec succès`);
         } catch (error) {
             console.error('Error updating verification status:', error);
+            next(error);
+        }
+    },
+
+    /**
+     * Obtenir les statistiques de revenus basées sur les reçus
+     */
+    async getRevenueStats(req, res, next) {
+        try {
+            // --- VOLUME DES REÇUS (Mouvements de loyers sur la plateforme) ---
+            
+            // Statistiques par jour (30 derniers jours)
+            const { rows: daily } = await db.query(`
+                SELECT 
+                    DATE(created_at) as date,
+                    SUM(amount) as total
+                FROM receipts
+                WHERE created_at >= NOW() - INTERVAL '30 days'
+                GROUP BY DATE(created_at)
+                ORDER BY date ASC
+            `);
+
+            // Statistiques par mois (12 derniers mois)
+            const { rows: monthly } = await db.query(`
+                SELECT 
+                    DATE_TRUNC('month', created_at) as date,
+                    SUM(amount) as total
+                FROM receipts
+                WHERE created_at >= NOW() - INTERVAL '12 months'
+                GROUP BY DATE_TRUNC('month', created_at)
+                ORDER BY date ASC
+            `);
+
+            // Statistiques par année
+            const { rows: yearly } = await db.query(`
+                SELECT 
+                    EXTRACT(YEAR FROM created_at)::text as date,
+                    SUM(amount) as total
+                FROM receipts
+                GROUP BY EXTRACT(YEAR FROM created_at)
+                ORDER BY date ASC
+            `);
+
+            // --- REVENUS ADMIN (Abonnements payés) ---
+
+            // Revenu admin mensuel (12 derniers mois)
+            const { rows: adminMonthly } = await db.query(`
+                SELECT 
+                    DATE_TRUNC('month', created_at) as date,
+                    SUM(price) as total
+                FROM subscriptions
+                WHERE status IN ('active', 'expired') AND price > 0
+                AND created_at >= NOW() - INTERVAL '12 months'
+                GROUP BY DATE_TRUNC('month', created_at)
+                ORDER BY date ASC
+            `);
+
+            // Revenu admin annuel
+            const { rows: adminYearly } = await db.query(`
+                SELECT 
+                    EXTRACT(YEAR FROM created_at)::text as date,
+                    SUM(price) as total
+                FROM subscriptions
+                WHERE status IN ('active', 'expired') AND price > 0
+                GROUP BY EXTRACT(YEAR FROM created_at)
+                ORDER BY date ASC
+            `);
+
+            return response.success(res, {
+                daily,
+                monthly,
+                yearly,
+                adminMonthly,
+                adminYearly
+            });
+        } catch (error) {
+            console.error('Error getting revenue stats:', error);
+            next(error);
+        }
+    },
+
+    /**
+     * Mettre à jour manuelle de l'abonnement d'un utilisateur
+     */
+    async updateUserSubscription(req, res, next) {
+        try {
+            const { userId } = req.params;
+            const { planName, status, durationDays, price, subscriptionId } = req.body;
+            const Subscription = require('../models/subscriptionModel');
+            const Notification = require('../models/notificationModel');
+
+            const result = await Subscription.manualUpdate(userId, {
+                planName,
+                status,
+                durationDays,
+                price,
+                subscriptionId
+            });
+
+            // Envoyer une notification à l'utilisateur
+            const title = status === 'active'
+                ? 'Abonnement activé'
+                : 'Abonnement mis à jour';
+
+            const message = status === 'active'
+                ? `L'administrateur a activé votre abonnement ${planName} pour ${durationDays || 30} jours.`
+                : `Votre abonnement a été mis à jour par l'administrateur.`;
+
+            await Notification.create({
+                id: require('uuid').v4(),
+                user_id: userId,
+                type: 'system',
+                title: title,
+                message: message,
+                link: '/owner-dashboard?tab=subscription'
+            });
+
+            return response.success(res, result, 'Abonnement mis à jour avec succès');
+        } catch (error) {
+            console.error('Error updating user subscription:', error);
+            next(error);
+        }
+    },
+
+    /**
+     * Obtenir les dernières transactions (abonnements)
+     */
+    async getRecentTransactions(req, res, next) {
+        try {
+            const Subscription = require('../models/subscriptionModel');
+            const limit = parseInt(req.query.limit) || 20;
+            const transactions = await Subscription.findRecentTransactions(limit);
+            return response.success(res, transactions);
+        } catch (error) {
+            console.error('Error getting recent transactions:', error);
+            next(error);
+        }
+    },
+    /**
+     * Obtenir les événements récents (activités)
+     */
+    async getEvents(req, res, next) {
+        try {
+            const limit = parseInt(req.query.limit) || 20;
+
+            // On récupère plusieurs types d'événements et on les fusionne
+            const [users, properties, reports, transactions] = await Promise.all([
+                db.query(`
+                    SELECT 'user' as type, full_name as title, role as detail, u.created_at
+                    FROM user_profiles up 
+                    JOIN users u ON up.id = u.id 
+                    ORDER BY u.created_at DESC LIMIT 10
+                `),
+                db.query(`
+                    SELECT 'property' as type, name as title, property_type as detail, created_at
+                    FROM properties 
+                    ORDER BY created_at DESC LIMIT 10
+                `),
+                db.query(`
+                    SELECT 'report' as type, reason as title, status as detail, created_at
+                    FROM reports 
+                    ORDER BY created_at DESC LIMIT 10
+                `),
+                db.query(`
+                    SELECT 'payment' as type, plan_name as title, price as detail, created_at
+                    FROM subscriptions 
+                    ORDER BY created_at DESC LIMIT 10
+                `)
+            ]);
+
+            const events = [
+                ...users.rows.map(r => ({ ...r, title: `Nouvel utilisateur: ${r.title}`, detail: r.detail === 'owner' ? 'Propriétaire' : 'Locataire' })),
+                ...properties.rows.map(r => ({ ...r, title: `Nouveau bien: ${r.title}`, detail: r.detail })),
+                ...reports.rows.map(r => ({ ...r, title: `Signalement: ${r.title}`, detail: r.detail === 'pending' ? 'En attente' : 'Traité' })),
+                ...transactions.rows.map(r => ({ ...r, title: `Nouveau paiement: ${r.title}`, detail: `${r.detail} F CFA` }))
+            ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, limit);
+
+            return response.success(res, events);
+        } catch (error) {
+            console.error('Error getting admin events:', error);
+            next(error);
+        }
+    },
+    /**
+     * Obtenir les statistiques de fréquentation en direct
+     */
+    async getLiveAnalytics(req, res, next) {
+        try {
+            const Analytics = require('../models/analyticsModel');
+            const stats = await Analytics.getVisitStats();
+            return response.success(res, stats);
+        } catch (error) {
+            console.error('Error getting live analytics:', error);
+            next(error);
+        }
+    },
+    /**
+     * Obtenir tous les paramètres de la plateforme
+     */
+    async getPlatformSettings(req, res, next) {
+        try {
+            const PlatformSettings = require('../models/settingsModel');
+            const settings = await PlatformSettings.getAll();
+            return response.success(res, settings);
+        } catch (error) {
+            console.error('Error getting platform settings:', error);
+            next(error);
+        }
+    },
+    /**
+     * Mettre à jour un paramètre spécifique
+     */
+    async updatePlatformSettings(req, res, next) {
+        try {
+            const { key, value } = req.body;
+            if (!key) return response.error(res, "La clé du paramètre est requise.", 400);
+
+            const PlatformSettings = require('../models/settingsModel');
+            const result = await PlatformSettings.update(key, value);
+            return response.success(res, result, 'Paramètre mis à jour avec succès');
+        } catch (error) {
+            console.error('Error updating platform setting:', error);
             next(error);
         }
     }

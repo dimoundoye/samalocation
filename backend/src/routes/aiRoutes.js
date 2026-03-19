@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const aiController = require('../controllers/aiController');
 const authMiddleware = require('../middleware/authMiddleware');
+const { checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 
 // Route for generating property descriptions
-router.post('/generate-description', authMiddleware, aiController.generateDescription);
+router.post('/generate-description', authMiddleware, checkFeatureAccess('ai_description'), aiController.generateDescription);
 
 // Route for parsing natural language search queries
 router.post('/parse-search', aiController.parseSearch);

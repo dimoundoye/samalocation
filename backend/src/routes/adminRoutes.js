@@ -27,5 +27,20 @@ router.get('/properties', adminController.getAllProperties);
 router.get('/verifications/pending', adminController.getPendingVerifications);
 router.get('/verifications', adminController.getVerifications);
 router.patch('/verifications/:ownerId/status', adminController.updateVerificationStatus);
+router.patch('/users/:userId/subscription', adminController.updateUserSubscription);
+
+// Transactions et revenus
+router.get('/revenue-stats', adminController.getRevenueStats);
+router.get('/transactions', adminController.getRecentTransactions);
+
+// Activité en temps réel (flux d'événements)
+router.get('/events', adminController.getEvents);
+
+// Analytics en direct
+router.get('/analytics/live', adminController.getLiveAnalytics);
+
+// Paramètres de la plateforme
+router.get('/platform/settings', adminController.getPlatformSettings);
+router.patch('/platform/settings', adminController.updatePlatformSettings);
 
 module.exports = router;
