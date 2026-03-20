@@ -10,7 +10,7 @@ module.exports = {
             },
             pingInterval: 10000,
             pingTimeout: 5000,
-            transports: ['websocket', 'polling']
+            transports: ['websocket']
         });
 
         io.on('connection', (socket) => {

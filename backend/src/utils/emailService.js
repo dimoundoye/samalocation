@@ -1,6 +1,9 @@
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 /**
  * Service pour l'envoi d'e-mails
@@ -15,17 +18,40 @@ const transporter = nodemailer.createTransport({
     },
     tls: {
         rejectUnauthorized: false
-    }
+    },
+    connectionTimeout: 15000, 
+    greetingTimeout: 15000,
+    socketTimeout: 30000
 });
 
 const sendEmail = async (to, subject, html) => {
     try {
-        // En mode développement, si SMTP n'est pas configuré, on logue l'e-mail
+        console.log(`Attempting to send email to ${to} with subject "${subject}"...`);
+
+        // PRIORITÉ 1: Utiliser Resend si la clé API est configurée
+        if (resend) {
+            console.log('Using Resend API for email delivery...');
+            const { data, error } = await resend.emails.send({
+                from: process.env.RESEND_FROM || process.env.SMTP_FROM || 'onboarding@resend.dev',
+                to,
+                subject,
+                html,
+            });
+
+            if (error) {
+                console.error('❌ Resend Error:', error);
+                throw error;
+            }
+
+            console.log('✅ Email sent via Resend:', data.id);
+            return true;
+        }
+
+        // PRIORITÉ 2: Utiliser Nodemailer (fallback)
         if (!process.env.SMTP_USER) {
             console.log('--- EMAIL SENT (LOG) ---');
             console.log(`To: ${to}`);
             console.log(`Subject: ${subject}`);
-            console.log(`Body: ${html}`);
             console.log('--- SMTP_USER is missing, falling back to log mode ---');
             console.log('------------------------');
             return true;
@@ -43,13 +69,20 @@ const sendEmail = async (to, subject, html) => {
         console.log('✅ Email sent: %s', info.messageId);
         return true;
     } catch (error) {
-        console.error('❌ Error sending email:', error);
+        console.error('❌ Error sending email:', {
+            message: error.message,
+            code: error.code,
+            command: error.command,
+            response: error.response,
+            stack: error.stack
+        });
         console.error('Diagnostic - SMTP Config:', {
             host: process.env.SMTP_HOST,
             port: process.env.SMTP_PORT,
             secure: process.env.SMTP_SECURE,
             user: process.env.SMTP_USER ? 'Present (REDACTED)' : 'MISSING',
-            from: process.env.SMTP_FROM
+            from: process.env.SMTP_FROM,
+            env: process.env.NODE_ENV
         });
         return false;
     }

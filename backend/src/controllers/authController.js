@@ -330,7 +330,11 @@ const authController = {
             expires.setHours(expires.getHours() + 1); // Expire dans 1 heure
 
             await User.saveResetToken(user.id, resetToken, expires);
-            await sendResetPasswordEmail(user.email, resetToken);
+            
+            // On envoie l'e-mail en arrière-plan pour ne pas bloquer l'utilisateur
+            sendResetPasswordEmail(user.email, resetToken).catch(err => {
+                console.error('❌ Erreur d\'envoi d\'e-mail en arrière-plan:', err);
+            });
 
             return response.success(res, null, 'Si votre adresse est dans notre système, vous recevrez un lien de réinitialisation.');
         } catch (error) {

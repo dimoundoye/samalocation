@@ -29,7 +29,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 reconnectionAttempts: 50, // Essayer beaucoup plus longtemps (environ 2-3 minutes au total)
                 reconnectionDelay: 1000,
                 reconnectionDelayMax: 5000, // Limiter le délai max de reconnexion
-                transports: ['websocket', 'polling'],
+                transports: ['websocket'],
                 timeout: 20000, // Augmenter le timeout pour les réseaux lents
             });
 
