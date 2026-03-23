@@ -2,6 +2,15 @@ const Property = require('../models/propertyModel');
 const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
 
+// Simple in-memory cache for public properties
+const propertyCache = new Map();
+const CACHE_DURATION = 1 * 60 * 1000; // 1 minute pour un ressenti plus "direct"
+
+const clearPropertyCache = () => {
+    propertyCache.clear();
+    console.log('[Cache] Property cache cleared');
+};
+
 const propertyController = {
     /**
      * Get all published properties
@@ -17,10 +26,19 @@ const propertyController = {
                 type: req.query.type || 'all'
             };
 
+            // Check cache
+            const cacheKey = `published_${limit}_${page}_${filters.search}_${filters.type}`;
+            const cachedData = propertyCache.get(cacheKey);
+            
+            if (cachedData && (Date.now() - cachedData.timestamp < CACHE_DURATION)) {
+                console.log(`[Cache] Returning cached data for ${cacheKey}`);
+                return response.success(res, cachedData.data);
+            }
+
             const total = await Property.countAllPublished(filters);
             const properties = await Property.findAllPublished(limit, offset, filters);
 
-            return response.success(res, {
+            const result = {
                 properties,
                 pagination: {
                     total,
@@ -28,7 +46,15 @@ const propertyController = {
                     current_page: page,
                     limit
                 }
+            };
+
+            // Save to cache
+            propertyCache.set(cacheKey, {
+                data: result,
+                timestamp: Date.now()
             });
+
+            return response.success(res, result);
         } catch (error) {
             next(error);
         }
@@ -76,6 +102,7 @@ const propertyController = {
             };
 
             const newProperty = await Property.create(propertyData);
+            clearPropertyCache();
             return response.success(res, newProperty, 'Property created successfully', 201);
         } catch (error) {
             next(error);
@@ -95,6 +122,7 @@ const propertyController = {
                 return response.error(res, 'Property not found or not owned by you', 404);
             }
 
+            clearPropertyCache();
             return response.success(res, result, 'Publication status updated');
         } catch (error) {
             next(error);
@@ -114,6 +142,7 @@ const propertyController = {
                 return response.error(res, 'Forbidden or property not found', 403);
             }
 
+            clearPropertyCache();
             return response.success(res, null, 'Units added successfully', 201);
         } catch (error) {
             next(error);
@@ -132,6 +161,7 @@ const propertyController = {
                 return response.error(res, 'Property not found or not owned by you', 404);
             }
 
+            clearPropertyCache();
             return response.success(res, null, 'Property deleted successfully');
         } catch (error) {
             next(error);
@@ -152,6 +182,7 @@ const propertyController = {
                 return response.error(res, 'Property not found or not owned by you', 404);
             }
 
+            clearPropertyCache();
             return response.success(res, updatedProperty, 'Property updated successfully');
         } catch (error) {
             next(error);

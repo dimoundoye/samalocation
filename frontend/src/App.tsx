@@ -27,7 +27,16 @@ import Chatbot from "./components/Chatbot";
 
 import { SocketProvider } from "@/contexts/SocketContext";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30 secondes (pour un ressenti direct)
+      gcTime: 5 * 60 * 1000, // 5 minutes (en mémoire)
+      retry: 1,
+      refetchOnWindowFocus: true, // Se rafraîchit quand on revient sur l'onglet
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

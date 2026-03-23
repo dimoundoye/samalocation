@@ -77,7 +77,7 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://unpkg.com", "https://*.tile.openstreetmap.org"],
             imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.tile.openstreetmap.org", "https://unpkg.com", "*"],
-            connectSrc: ["'self'", "https://res.cloudinary.com", "https://nominatim.openstreetmap.org", "*"],
+            connectSrc: ["'self'", "https://res.cloudinary.com", "https://nominatim.openstreetmap.org", "wss://samalocation.onrender.com", "ws://localhost:*", "*"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
@@ -120,6 +120,15 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 
 
+// Health check & Keep-alive endpoint
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date(), environment: process.env.NODE_ENV });
+});
+
+app.get('/api/ping', (req, res) => {
+    res.status(200).send('pong');
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
@@ -137,6 +146,18 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/contracts', contractRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/properties', propertiesRoutes);
+
+// Keep-alive Cron Job (Runs every 15 minutes)
+// This pings the database to keep the connection warm and prevent Supabase from pausing
+cron.schedule('*/15 * * * *', async () => {
+    try {
+        const start = Date.now();
+        await db.query('SELECT 1');
+        console.log(`[Keep-Alive] DB Ping successful (${Date.now() - start}ms)`);
+    } catch (err) {
+        console.error('[Keep-Alive] DB Ping failed:', err.message);
+    }
+});
 
 // Error handler MUST be last
 app.use(errorHandler);

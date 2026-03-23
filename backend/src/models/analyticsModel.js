@@ -16,8 +16,9 @@ const Analytics = {
         `);
 
         // Utilisateurs actuellement en ligne (actifs les 5 dernières minutes)
+        // Utilisation de ip_address ET user_agent pour distinguer les appareils sur un même réseau
         const { rows: online } = await db.query(`
-            SELECT COUNT(DISTINCT ip_address) as count
+            SELECT COUNT(DISTINCT (ip_address, user_agent)) as count
             FROM site_visits
             WHERE created_at >= NOW() - INTERVAL '5 minutes'
             AND is_bot = false

@@ -89,7 +89,7 @@ samalocation/
 
 ### Prérequis
 - Node.js (v18+)
-- MySQL
+- PostgreSQL
 - Comptes : Cloudinary, Google AI Studio (Gemini), Cloudflare (Turnstile)
 
 ### Backend
@@ -128,6 +128,6 @@ Distribué sous la licence ISC. Voir `LICENSE` pour plus d'informations.
 
 ## 🤝 Contact
 
-Développé par **Ndoye** - [Votre Portfolio/LinkedIn ou Email](mailto:contact@samalocation.com)
+Développé par **Ndoye** - [https://www.linkedin.com/in/khadimou-rassoul-ndoye-3951222a1/  ] [rassoulndoye25@gmail.com]
 
 *Samalocation - La gestion locative en toute confiance.*
