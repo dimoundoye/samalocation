@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X, Building2 } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -572,24 +572,31 @@ const DetailPropriete = () => {
 
                   <div className="pt-4 border-t">
                     <h4 className="font-semibold mb-3">Propriétaire</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <p>
-                          <span className="text-muted-foreground">Nom: </span>
-                          <span className="font-medium">{ownerCompanyName}</span>
-                        </p>
-                        {(ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified') && (
-                          <Badge variant="secondary" className="bg-green-50 text-green-600 border-green-200 text-[10px] h-5 px-1.5 flex items-center gap-1">
-                            <Shield className="h-3 w-3" />
-                            Vérifié
-                          </Badge>
-                        )}
+                    <div className="space-y-4 text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          {ownerProfile?.logo_url ? (
+                            <img src={ownerProfile.logo_url} alt="Logo" className="w-full h-full object-contain rounded-full" />
+                          ) : (
+                            <Building2 className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <Link 
+                            to={`/proprio/${ownerProfile?.id || property.owner_id}`} 
+                            className="font-bold text-base hover:text-primary transition-colors flex items-center gap-1 group"
+                          >
+                            {ownerCompanyName}
+                            <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all" />
+                          </Link>
+                          {(ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified') && (
+                            <div className="flex items-center gap-1 text-green-600 text-[10px] font-bold uppercase">
+                              <Shield className="h-3 w-3" />
+                              Agence Vérifiée
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      {ownerProfile?.bio && (
-                        <p className="text-xs text-muted-foreground italic leading-relaxed py-1">
-                          {ownerProfile.bio}
-                        </p>
-                      )}
                       {ownerContactPhone && (
                         <p className="flex items-center gap-2">
                           <Phone className="h-4 w-4 text-primary" />

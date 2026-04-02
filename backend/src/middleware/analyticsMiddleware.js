@@ -9,8 +9,8 @@ const trackVisit = async (req, res, next) => {
         return next();
     }
 
-    // On ne loggue pas les requêtes pour les assets statiques (images, uploads)
-    if (req.url.startsWith('/uploads') || req.url.includes('.')) {
+    // On ne loggue pas les requêtes pour les assets statiques (images, uploads) ou les health checks
+    if (req.url.startsWith('/uploads') || req.url.includes('.') || req.url.includes('/api/ping') || req.url.includes('/api/health')) {
         return next();
     }
 

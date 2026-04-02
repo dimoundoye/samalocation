@@ -1,9 +1,11 @@
 const Owner = require('../models/ownerModel');
 const User = require('../models/userModel');
 const response = require('../utils/response');
-const { sendTeamInvitationEmail, sendTeamAdditionEmail } = require('../utils/emailService');
+const { sendTeamInvitationLink } = require('../utils/emailService');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const Property = require('../models/propertyModel');
+const TeamInvitation = require('../models/teamInvitationModel');
 
 const ownerController = {
     /**
@@ -33,6 +35,31 @@ const ownerController = {
     },
 
     /**
+     * Get public owner profile
+     */
+    async getPublicProfile(req, res, next) {
+        try {
+            const { id } = req.params;
+            const profile = await Owner.findProfileById(id);
+            
+            if (!profile) {
+                return response.error(res, 'Propriétaire non trouvé', 404);
+            }
+
+            // Fetch published properties
+            const properties = await Property.findByOwnerId(id);
+            const publishedProperties = properties.filter(p => p.is_published);
+
+            return response.success(res, {
+                profile,
+                properties: publishedProperties
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
      * Get collaborators
      */
     async getCollaborators(req, res, next) {
@@ -48,11 +75,11 @@ const ownerController = {
     },
 
     /**
-     * Add a collaborator
+     * Add a collaborator (sends invitation)
      */
     async addCollaborator(req, res, next) {
         try {
-            const { email, password, name, phone, permissions } = req.body;
+            const { email, permissions } = req.body;
             const parentId = req.ownerId;
 
             // Récupérer le nom du propriétaire pour l'e-mail
@@ -72,39 +99,72 @@ const ownerController = {
                 if (existingUser.parent_id) {
                     return response.error(res, "Cet utilisateur appartient déjà à une équipe.", 400);
                 }
-
-                // Lier le compte existant (et mettre à jour les permissions)
-                await User.updateParentId(existingUser.id, parentId);
-                await User.updatePermissions(existingUser.id, permissions || { can_view_revenue: false });
-
-                // Envoyer un e-mail de notification
-                await sendTeamAdditionEmail(email, ownerName);
-
-                return response.success(res, existingUser, 'Utilisateur existant lié à votre équipe avec succès.', 200);
             }
 
-            // Création d'un nouveau compte
-            const id = uuidv4();
-            const passwordHash = await bcrypt.hash(password, 10);
-            const customId = `COL-${Math.floor(1000 + Math.random() * 9000)}`;
+            // Vérifier si une invitation est déjà en cours
+            const existingInvite = await TeamInvitation.findByEmailAndInviter(email, parentId);
+            if (existingInvite) {
+                return response.error(res, "Une invitation est déjà en cours pour cet email.", 400);
+            }
 
-            const newUser = await User.create({
-                id,
-                customId,
-                email,
-                passwordHash,
-                name,
-                phone: phone || '',
-                role: 'owner', // Collaborateur a le rôle owner pour accéder au dashboard propriétaire
-                parentId,
-                permissions: permissions || { can_view_revenue: false },
-                isSetupComplete: true
-            });
+            // Créer l'invitation
+            const invitation = await TeamInvitation.create(parentId, email, permissions || { can_view_revenue: false });
 
-            // Envoyer l'e-mail d'invitation avec le mot de passe temporaire
-            await sendTeamInvitationEmail(email, ownerName, password);
+            // Envoyer l'e-mail d'invitation avec le lien d'acceptation
+            await sendTeamInvitationLink(email, ownerName, invitation.token, !!existingUser);
 
-            return response.success(res, newUser, 'Collaborateur invité avec succès', 201);
+            return response.success(res, null, 'Invitation envoyée avec succès', 201);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Get invitation details
+     */
+    async getInvitationDetails(req, res, next) {
+        try {
+            const { token } = req.params;
+            const invitation = await TeamInvitation.findByToken(token);
+
+            if (!invitation) {
+                return response.error(res, "Invitation invalide ou expirée.", 404);
+            }
+
+            return response.success(res, invitation);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Accept invitation
+     */
+    async acceptInvitation(req, res, next) {
+        try {
+            const { token } = req.params;
+            const invitation = await TeamInvitation.findByToken(token);
+
+            if (!invitation) {
+                return response.error(res, "Invitation invalide ou expirée.", 404);
+            }
+
+            // Vérifier si l'utilisateur est connecté et si son email correspond
+            // (Note: on peut aussi permettre à un nouvel utilisateur de s'inscrire via ce token)
+            const user = await User.findByEmail(invitation.invitee_email);
+            
+            if (!user) {
+                return response.error(res, "Vous devez d'abord créer un compte avec l'adresse e-mail invitée.", 403);
+            }
+
+            // Mettre à jour l'utilisateur
+            await User.updateParentId(user.id, invitation.inviter_id);
+            await User.updatePermissions(user.id, invitation.permissions);
+            
+            // Marquer l'invitation comme acceptée
+            await TeamInvitation.updateStatus(invitation.id, 'accepted');
+
+            return response.success(res, null, 'Félicitations ! Vous avez rejoint l\'équipe.');
         } catch (error) {
             next(error);
         }

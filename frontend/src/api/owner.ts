@@ -9,6 +9,15 @@ export const getOwnerProfile = async () => {
     }
 };
 
+export const getPublicOwnerProfile = async (id: string) => {
+    try {
+        return await baseClient(`/owner/${id}/public-profile`);
+    } catch (error) {
+        console.error("GetPublicOwnerProfile error:", error);
+        return null;
+    }
+};
+
 export const updateOwnerProfile = async (data: any) => {
     try {
         return await baseClient("/owner/profile", {
@@ -62,6 +71,26 @@ export const removeCollaborator = async (id: string) => {
         });
     } catch (error) {
         console.error("RemoveCollaborator error:", error);
+        throw error;
+    }
+};
+
+export const getInvitationDetails = async (token: string) => {
+    try {
+        return await baseClient(`/owner/invitations/${token}`);
+    } catch (error) {
+        console.error("GetInvitationDetails error:", error);
+        throw error;
+    }
+};
+
+export const acceptInvitation = async (token: string) => {
+    try {
+        return await baseClient(`/owner/invitations/${token}/accept`, {
+            method: "POST",
+        });
+    } catch (error) {
+        console.error("AcceptInvitation error:", error);
         throw error;
     }
 };

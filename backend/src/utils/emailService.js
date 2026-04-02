@@ -36,6 +36,7 @@ const sendEmail = async (to, subject, html) => {
                 to,
                 subject,
                 html,
+                text: html.replace(/<[^>]*>?/gm, ''), // Basic HTML strip for fallback
             });
 
             if (error) {
@@ -64,6 +65,7 @@ const sendEmail = async (to, subject, html) => {
             to,
             subject,
             html,
+            text: html.replace(/<[^>]*>?/gm, ''), // Basic HTML strip for fallback
         });
 
         console.log('✅ Email sent: %s', info.messageId);
@@ -132,57 +134,51 @@ const sendResetPasswordEmail = async (email, token) => {
     return await sendEmail(email, 'Réinitialisation de votre mot de passe - Samalocation', html);
 };
 
-const sendTeamInvitationEmail = async (email, ownerName, temporaryPassword) => {
-    const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/login`;
+const sendTeamInvitationLink = async (email, ownerName, token, isExistingUser = false) => {
+    const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/accept-invitation?token=${token}`;
 
     const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-            <h2 style="color: #2D3FE2; text-align: center;">Invitation d'Équipe - Samalocation</h2>
-            <p>Bonjour,</p>
-            <p><strong>${ownerName}</strong> vous a invité à rejoindre son équipe de gestion immobilière sur Samalocation.</p>
-            <p>Un compte a été créé pour vous avec les identifiants suivants :</p>
-            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <p style="margin: 5px 0;"><strong>Email :</strong> ${email}</p>
-                <p style="margin: 5px 0;"><strong>Mot de passe temporaire :</strong> ${temporaryPassword}</p>
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; border: 1px solid #f0f0f0; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+            <div style="background-color: #2D3FE2; padding: 30px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">Invitation d'Équipe</h1>
             </div>
-            <p>Veuillez vous connecter pour commencer à collaborer :</p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="${dashboardUrl}" style="background-color: #2D3FE2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Se connecter au Dashboard</a>
+            <div style="padding: 30px; color: #333333; line-height: 1.6;">
+                <p style="font-size: 16px;">Bonjour,</p>
+                <p style="font-size: 16px;"><strong>${ownerName}</strong> vous invite à rejoindre son équipe de gestion immobilière sur <strong>Samalocation</strong> en tant qu'agent.</p>
+                
+                <div style="background-color: #fff8f1; border-left: 4px solid #ff9800; padding: 20px; margin: 25px 0; border-radius: 8px;">
+                    <p style="margin: 0 0 10px 0; color: #855d00; font-weight: bold; font-size: 14px;">⚠️ Information importante sur l'abonnement :</p>
+                    <p style="margin: 0; color: #855d00; font-size: 14px;">
+                        En acceptant ce rôle, votre compte sera rattaché à l'agence de ${ownerName}. 
+                        Vous ne pourrez plus souscrire au plan <strong>Entreprise</strong>, mais vous pourrez toujours bénéficier du plan <strong>Premium</strong> pour vos activités personnelles.
+                    </p>
+                </div>
+
+                <p style="font-size: 15px; color: #555555;">
+                    ${isExistingUser 
+                        ? "Puisque vous possédez déjà un compte Samalocation, cliquez simplement sur le bouton ci-dessous pour confirmer votre accès." 
+                        : "Vous n'avez pas encore de compte ? Pas de souci ! Cliquez sur le bouton ci-dessous pour créer votre compte propriétaire et rejoindre l'équipe."}
+                </p>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="${inviteUrl}" style="background-color: #2D3FE2; color: #ffffff; padding: 15px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(45, 63, 226, 0.2);">Voir l'invitation</a>
+                </div>
+                
+                <p style="font-size: 13px; color: #888888; font-style: italic;">Note : Si vous ne vous attendiez pas à cette invitation, vous pouvez l'ignorer sans risque.</p>
             </div>
-            <p>Il est fortement recommandé de changer votre mot de passe dès votre première connexion.</p>
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="font-size: 12px; color: #999;">Cet e-mail a été envoyé par Samalocation au nom de ${ownerName}.</p>
+            <div style="background-color: #f9f9f9; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+                <p style="font-size: 12px; color: #999999; margin: 0;">&copy; 2024 Samalocation. Tout droit réservés.</p>
+                <p style="font-size: 11px; color: #bbbbbb; margin: 5px 0 0 0;">Cet e-mail automatique a été envoyé pour le compte de ${ownerName}.</p>
+            </div>
         </div>
     `;
 
     return await sendEmail(email, `Invitation de ${ownerName} - Samalocation`, html);
 };
 
-const sendTeamAdditionEmail = async (email, ownerName) => {
-    const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/owner-dashboard`;
-
-    const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-            <h2 style="color: #2D3FE2; text-align: center;">Nouvelle Équipe - Samalocation</h2>
-            <p>Bonjour,</p>
-            <p>Bonne nouvelle ! Votre compte existant a été ajouté à l'équipe de <strong>${ownerName}</strong> sur Samalocation.</p>
-            <p>Vous pouvez désormais basculer entre votre compte personnel et le compte de l'entreprise depuis votre tableau de bord.</p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="${dashboardUrl}" style="background-color: #2D3FE2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Accéder au Dashboard</a>
-            </div>
-            <p>Si vous ne reconnaissez pas cette action, veuillez contacter notre support.</p>
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="font-size: 12px; color: #999;">Cet e-mail a été envoyé automatiquement par Samalocation.</p>
-        </div>
-    `;
-
-    return await sendEmail(email, `Vous avez rejoint l'équipe de ${ownerName} - Samalocation`, html);
-};
-
 module.exports = {
     sendEmail,
     sendVerificationEmail,
     sendResetPasswordEmail,
-    sendTeamInvitationEmail,
-    sendTeamAdditionEmail
+    sendTeamInvitationLink
 };

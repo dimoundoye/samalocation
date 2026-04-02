@@ -24,6 +24,8 @@ import Maintenance from "./pages/Maintenance";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 import Chatbot from "./components/Chatbot";
+import OwnerPublicProfile from "./pages/OwnerPublicProfile";
+import AcceptInvitation from "./pages/AcceptInvitation";
 
 import { SocketProvider } from "@/contexts/SocketContext";
 
@@ -54,6 +56,7 @@ const App = () => (
                 <Route path="/search" element={<Recherche />} />
                 <Route path="/search/:pageParam" element={<Recherche />} />
                 <Route path="/property/:id" element={<DetailPropriete />} />
+                <Route path="/proprio/:id" element={<OwnerPublicProfile />} />
                 <Route
                   path="/owner-dashboard"
                   element={
@@ -92,6 +95,7 @@ const App = () => (
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/verify/contract/:id" element={<VerifyContract />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/accept-invitation" element={<AcceptInvitation />} />
                 <Route path="/maintenance" element={<Maintenance />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

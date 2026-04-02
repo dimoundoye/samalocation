@@ -28,19 +28,26 @@ const authMiddleware = async (req, res, next) => {
         });
     }
 
-    req.user = { ...decoded, ...userProfile };
-    console.log(`[authMiddleware] User authenticated: ${decoded.id}, role: ${decoded.role}`);
+    // Normaliser parentId pour qu'il soit accessible de façon consistante
+    const effectiveParentId = userProfile.parent_id || decoded.parentId;
+    
+    req.user = { 
+        ...decoded, 
+        ...userProfile,
+        parentId: effectiveParentId, // Standardiser en camelCase
+        parent_id: effectiveParentId // Garder snake_case pour compatibilité
+    };
+    
+    console.log(`[authMiddleware] User authenticated: ${decoded.id}, role: ${decoded.role}, parentId: ${effectiveParentId}`);
 
     // Resolve effective owner ID for data access
-    // Default to self
-    req.ownerId = decoded.id;
-    console.log(`[authMiddleware] Initial ownerId set to: ${req.ownerId}`);
-
+    req.ownerId = decoded.id; // Par défaut, l'utilisateur voit son propre espace
+    
     const activeContext = req.headers['x-active-context'];
     if (activeContext) {
         console.log(`[authMiddleware] x-active-context header found: ${activeContext}`);
         // If user is a collaborator, they can switch to their parent's context
-        if (decoded.parentId === activeContext) {
+        if (effectiveParentId === activeContext) {
             // CRITICAL: Check if the owner still has a subscription allowing multi-user
             const Subscription = require('../models/subscriptionModel');
             const hasMultiUserAccess = await Subscription.hasAccessToFeature(activeContext, 'multi_user');
@@ -50,12 +57,12 @@ const authMiddleware = async (req, res, next) => {
                 console.log(`[authMiddleware] User is collaborator, switching ownerId to parent: ${req.ownerId}`);
             } else {
                 console.log(`[authMiddleware] Collaborator blocked: Parent account (${activeContext}) does not have multi_user feature enabled.`);
-                // We keep req.ownerId = decoded.id (personal space) but maybe we should throw 403 or just let it fail naturally
             }
         }
-    } else if (decoded.parentId) {
-        // Default to personal space
-        console.log(`[authMiddleware] No active context, but user has parentId: ${decoded.parentId}. Defaulting to personal space.`);
+    } else if (effectiveParentId) {
+        // Optionnel: On peut choisir de basculer automatiquement sur le contexte du propriétaire 
+        // si l'agent n'a rien à lui. Pour l'instant on reste sur l'espace perso par défaut.
+        console.log(`[authMiddleware] No active context, but user has parentId: ${effectiveParentId}. Defaulting to personal space.`);
     }
 
     console.log(`[AUTH] Resolved ownerId context: ${req.ownerId} (User: ${decoded.id})`);

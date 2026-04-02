@@ -11,13 +11,13 @@ import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 import { useToast } from "@/hooks/use-toast";
 
 const Pricing = () => {
-    const { t } = useTranslation();
     const { user } = useAuth();
     const navigate = useNavigate();
     const [isAnnual, setIsAnnual] = useState(false);
     const [selectedPlanDetails, setSelectedPlanDetails] = useState<any>(null);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const { toast } = useToast();
+    const isAgent = user?.parentId != null;
 
     const handlePlanSelect = (plan: any) => {
         if (plan.id === 'free') {
@@ -26,6 +26,15 @@ const Pricing = () => {
             } else {
                 navigate("/auth?mode=signup");
             }
+            return;
+        }
+
+        if (plan.id === 'professional' && isAgent) {
+            toast({
+                title: "Accès restraint",
+                description: "Les comptes 'Agent/Collaborateur' ne peuvent pas souscrire à une offre Entreprise.",
+                variant: "destructive"
+            });
             return;
         }
 
@@ -155,17 +164,26 @@ const Pricing = () => {
 
                 {/* Pricing Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-                    {plans.map((plan, index) => (
-                        <motion.div
-                            key={plan.id}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.1 * index }}
-                            className={`relative p-8 rounded-[2.5rem] border transition-all duration-300 ${plan.highlight
-                                ? "bg-card border-primary shadow-strong scale-105 z-10"
-                                : "bg-card/50 border-border/50 hover:border-primary/20"
-                                }`}
-                        >
+                    {plans.map((plan, index) => {
+                        const isDisabled = plan.id === 'professional' && isAgent;
+
+                        return (
+                            <motion.div
+                                key={plan.id}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.1 * index }}
+                                className={`relative p-8 rounded-[2.5rem] border transition-all duration-300 ${plan.highlight
+                                    ? "bg-card border-primary shadow-strong scale-105 z-10"
+                                    : "bg-card/50 border-border/50 hover:border-primary/20"
+                                    } ${isDisabled ? "opacity-60 grayscale-[0.5]" : ""}`}
+                            >
+                                {isDisabled && (
+                                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/40 backdrop-blur-[2px] rounded-[2.5rem] text-center p-6">
+                                        <Building2 className="w-12 h-12 text-muted-foreground mb-4 opacity-50" />
+                                        <p className="text-sm font-bold text-muted-foreground">Non disponible pour les agents</p>
+                                    </div>
+                                )}
                             {plan.highlight && (
                                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium">
                                     PLUS POPULAIRE
@@ -200,7 +218,6 @@ const Pricing = () => {
                             </Button>
 
                             <hr className="my-8 border-border/50" />
-
                             <ul className="space-y-4">
                                 {plan.features.map((feature, i) => (
                                     <li key={i} className="flex items-start gap-3">
@@ -216,7 +233,8 @@ const Pricing = () => {
                                 ))}
                             </ul>
                         </motion.div>
-                    ))}
+                    );
+                })}
                 </div>
 
                 {/* Trust Section */}

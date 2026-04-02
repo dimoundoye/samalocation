@@ -13,22 +13,44 @@ const { verifyTurnstileToken } = require('../utils/cloudflare');
 const generateCustomId = async () => {
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const numbers = '0123456789';
+    const db = require('../config/db');
 
     let isUnique = false;
     let customId = '';
+    let digitCount = 5; // On commence à 5 chiffres
+    let attemptsForCurrentCount = 0;
+    const MAX_LENGTH = 10; // Limite de la colonne VARCHAR(10)
 
     while (!isUnique) {
+        attemptsForCurrentCount++;
+        
+        // Si on échoue trop souvent avec le nombre actuel de chiffres, on passe au cran au-dessus
+        // On augmente le nombre de chiffres tous les 10 échecs
+        if (attemptsForCurrentCount > 10) {
+            digitCount++;
+            attemptsForCurrentCount = 0; // On reset les tentatives pour le nouveau palier
+            console.log(`[ID-GEN] Trop de collisions, passage à ${digitCount} chiffres...`);
+            
+            // Sécurité pour ne pas dépasser la taille de la colonne en base (2 lettres + 8 chiffres = 10)
+            if (digitCount > 8) {
+                console.error('[ID-GEN] Alerte ! Le nombre de chiffres dépasse les capacités de la base.');
+                // En dernier recours, on utilise un timestamp pour forcer l'unicité
+                customId = 'XX' + Date.now().toString().slice(-8);
+                isUnique = true;
+                break;
+            }
+        }
+
         let l1 = letters.charAt(Math.floor(Math.random() * letters.length));
         let l2 = letters.charAt(Math.floor(Math.random() * letters.length));
         let n = '';
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < digitCount; i++) {
             n += numbers.charAt(Math.floor(Math.random() * numbers.length));
         }
 
         customId = l1 + l2 + n;
 
-        // Check uniqueness
-        const db = require('../config/db');
+        // Vérification de l'unicité en base
         const { rows } = await db.query('SELECT id FROM users WHERE custom_id = $1', [customId]);
         if (rows.length === 0) {
             isUnique = true;

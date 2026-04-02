@@ -3,7 +3,7 @@ import { getMessages, sendMessage, markMessagesAsRead, deleteMessage } from "../
 import { getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead } from "../api/notifications";
 import { login, signup, getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword } from "../api/auth";
 import { getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile } from "../api/tenant";
-import { getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator } from "../api/owner";
+import { getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator, getPublicOwnerProfile } from "../api/owner";
 import { getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt } from "../api/receipts";
 import { createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser } from "../api/reports";
 import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting } from "../api/admin";
@@ -20,7 +20,7 @@ export {
     getNotifications, createNotification, markNotificationAsRead, markAllNotificationsAsRead,
     getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword,
     getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile,
-    getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator,
+    getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator, getPublicOwnerProfile,
     getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt,
     createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser,
     getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting,
@@ -43,10 +43,68 @@ export const getHealth = async () => {
 export { login, signup } from "../api/auth";
 
 
+const compressImage = async (file: File): Promise<Blob | File> => {
+    // Only compress if the file is an image and larger than 1MB
+    if (!file.type.startsWith('image/') || file.size < 1024 * 1024) {
+        return file;
+    }
+
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Max dimensions 1200px
+                const MAX_SIZE = 1200;
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                        } else {
+                            resolve(file);
+                        }
+                    },
+                    'image/jpeg',
+                    0.8 // 80% quality
+                );
+            };
+        };
+    });
+};
+
 export const uploadPhotos = async (files: File[]) => {
     const token = localStorage.getItem("auth_token");
     const formData = new FormData();
-    files.forEach(file => {
+    
+    // Compress each file before adding to FormData
+    const compressedFiles = await Promise.all(
+        files.map(file => compressImage(file))
+    );
+
+    compressedFiles.forEach(file => {
         formData.append("photos", file);
     });
 

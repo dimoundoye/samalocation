@@ -52,10 +52,7 @@ export const OwnerTeamTab = () => {
 
     // Form state
     const [formData, setFormData] = useState({
-        name: "",
         email: "",
-        password: "",
-        phone: "",
         can_view_revenue: false
     });
 
@@ -85,17 +82,17 @@ export const OwnerTeamTab = () => {
         try {
             setIsSubmitting(true);
             await addCollaborator({
-                ...formData,
+                email: formData.email,
                 permissions: {
                     can_view_revenue: formData.can_view_revenue
                 }
             });
             toast({
-                title: "Succès",
-                description: "Le collaborateur a été ajouté avec succès."
+                title: "Invitation envoyée",
+                description: `Une invitation a été envoyée à ${formData.email}.`
             });
             setIsAddDialogOpen(false);
-            setFormData({ name: "", email: "", password: "", phone: "", can_view_revenue: false });
+            setFormData({ email: "", can_view_revenue: false });
             fetchCollaborators();
         } catch (error: any) {
             toast({
@@ -186,17 +183,7 @@ export const OwnerTeamTab = () => {
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="name">Nom complet</Label>
-                                    <Input
-                                        id="name"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="Ex: Moussa Diop"
-                                        required
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="email">Email</Label>
+                                    <Label htmlFor="email">Email du collaborateur</Label>
                                     <Input
                                         id="email"
                                         type="email"
@@ -204,27 +191,6 @@ export const OwnerTeamTab = () => {
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                         placeholder="moussa@exemple.com"
                                         required
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="phone">Téléphone</Label>
-                                    <Input
-                                        id="phone"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        placeholder="77 123 45 67"
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="password">Mot de passe provisoire</Label>
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        placeholder="Min. 8 caractères"
-                                        required
-                                        min={8}
                                     />
                                 </div>
                                 <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50 border border-primary/10">
@@ -247,7 +213,7 @@ export const OwnerTeamTab = () => {
                             <DialogFooter>
                                 <Button type="submit" className="w-full gradient-primary text-white" disabled={isSubmitting}>
                                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                    Créer le compte
+                                    Envoyer l'invitation
                                 </Button>
                             </DialogFooter>
                         </form>

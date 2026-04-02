@@ -20,10 +20,12 @@ const maintenanceMiddleware = async (req, res, next) => {
             } catch (e) {}
         }
 
-        const isCriticalRoute = req.originalUrl.startsWith('/api/admin') || 
-                                req.originalUrl.includes('/api/auth/login');
+        const isExemptedRoute = req.originalUrl.startsWith('/api/admin') || 
+                                req.originalUrl.includes('/api/auth/login') ||
+                                req.originalUrl.includes('/api/ping') ||
+                                req.originalUrl.includes('/api/health');
 
-        if (isAdmin || isCriticalRoute) {
+        if (isAdmin || isExemptedRoute) {
             return next();
         }
 

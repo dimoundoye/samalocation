@@ -31,13 +31,13 @@ const Auth = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [formData, setFormData] = useState({
-    identifier: "", // Can be email or customId
-    email: "",
+    identifier: searchParams.get("email") || "", // Pre-fill from URL
+    email: searchParams.get("email") || "", // Pre-fill from URL
     password: "",
-    name: "",
+    name: searchParams.get("name") || "", // Pre-fill from URL
     phone: "",
     companyName: "",
-    userType: userType,
+    userType: searchParams.get("type") || userType, // Pre-fill from URL
   });
 
   const { setUser, setUserRole } = useAuth();
@@ -66,6 +66,13 @@ const Auth = () => {
         setUserRole(data.user.role || null);
 
         toast.success("Connexion réussie!");
+
+        const redirect = localStorage.getItem("redirectAfterLogin");
+        if (redirect) {
+          localStorage.removeItem("redirectAfterLogin");
+          navigate(redirect);
+          return;
+        }
 
         if (data.user.setupRequired) {
           navigate("/setup-profile");
@@ -126,6 +133,13 @@ const Auth = () => {
         toast.success(`Compte créé avec succès ! Votre ID de connexion est : ${data.user.customId}`, {
           duration: 10000,
         });
+
+        const redirect = localStorage.getItem("redirectAfterLogin");
+        if (redirect) {
+          localStorage.removeItem("redirectAfterLogin");
+          navigate(redirect);
+          return;
+        }
 
         if (data.user.role === "owner") {
           navigate("/owner-dashboard");

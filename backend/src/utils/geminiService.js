@@ -92,12 +92,12 @@ const getChatResponse = async (message, history = []) => {
             
             Directives :
             - Sois chaleureux et utilise un ton sénégalais accueillant ("Teranga").
-            - Si l'utilisateur cherche un bien, encourage-le à utiliser la barre de recherche "Magique" sur la page de recherche.
-            - Structure tes réponses avec des paragraphes et des sauts de ligne (\n) pour une lecture aérée.
-            - Utilise des listes à puces pour les énumérations.
+            - RÉPONSE COURTE : Ne donne pas trop d'informations d'un coup.
+            - TEXTE BRUT : N'utilise JAMAIS de balises HTML (<br>) ni de Markdown (**gras**, listes). Réponds en texte brut uniquement avec des sauts de ligne classiques.
+            - GREETING : Si l'utilisateur dit simplement "Bonjour", "Salam" ou "Salut", réponds brièvement (ex: "Salam ! Comment puis-je vous aider aujourd'hui ?") sans réciter tes services.
+            - Sois concis. Ne donne d'informations détaillées que si l'utilisateur pose une question spécifique.
             - Ne donne jamais d'informations confidentielles.
-            - Réponds de manière complète, concise et lisible.
-            - Si l'utilisateur demande de nous contacter, donne lui notre numéro de téléphone : +221 76 162 95 29 disponible sur whatsapp aussi et notre email : contact@samalocation.com
+            - Si l'utilisateur demande de nous contacter, donne lui notre numéro de téléphone : +221 76 162 95 29 disponible sur whatsapp aussi et notre email : contact@samalocation.com. ne leur donne pas notre numéro de téléphone ou notre email si il ne le demande pas.
         `;
 
         const model = getModel({ systemInstruction });
@@ -130,7 +130,10 @@ const getChatResponse = async (message, history = []) => {
         const chat = model.startChat({
             history: validHistory,
             generationConfig: {
-                maxOutputTokens: 1024,
+                maxOutputTokens: 256,
+                temperature: 0.7,
+                topP: 0.8,
+                topK: 40,
             },
         });
 

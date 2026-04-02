@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountSettings } from "@/components/shared/AccountSettings";
-import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown } from "lucide-react";
+import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown, Facebook, Instagram, Linkedin } from "lucide-react";
 import { SignatureScanner } from "./SignatureScanner";
 import { uploadPhotos, getMySubscription } from "@/lib/api";
 import { useTranslation } from "react-i18next";
@@ -28,7 +29,6 @@ export const OwnerSettings = () => {
     fullName: "",
     contactPhone: "",
     phone: "",
-    bio: "",
     companyName: "",
     contactEmail: "",
     address: "",
@@ -62,7 +62,6 @@ export const OwnerSettings = () => {
           fullName: data.full_name || "",
           contactPhone: data.contact_phone || "",
           phone: data.phone || "",
-          bio: data.bio || "",
           companyName: data.company_name || "",
           contactEmail: data.contact_email || "",
           address: data.address || "",
@@ -94,7 +93,6 @@ export const OwnerSettings = () => {
         full_name: profile.fullName,
         contact_phone: profile.contactPhone,
         phone: profile.phone,
-        bio: profile.bio,
         company_name: profile.companyName,
         contact_email: profile.contactEmail,
         address: profile.address,
@@ -265,16 +263,6 @@ export const OwnerSettings = () => {
                   value={profile.address}
                   onChange={(e) => setProfile({ ...profile, address: e.target.value })}
                   placeholder={t('settings.address_placeholder')}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="bio">{t('settings.bio')}</Label>
-                <Input
-                  id="bio"
-                  value={profile.bio}
-                  onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                  placeholder={t('settings.bio_placeholder')}
                 />
               </div>
 

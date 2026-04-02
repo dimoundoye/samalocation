@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X } from "lucide-react";
+import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +57,7 @@ import { useSocket } from "@/contexts/SocketContext";
 import { useTranslation } from "react-i18next";
 import { OnboardingChecklist } from "@/components/owner/OnboardingChecklist";
 import { useSubscription } from "@/hooks/useSubscription";
+import { OwnerPublicProfileEditor } from "@/components/owner/OwnerPublicProfileEditor";
 
 const DashboardProprietaire = () => {
   const navigate = useNavigate();
@@ -728,6 +729,7 @@ const DashboardProprietaire = () => {
             { id: "management", label: t('dashboard.sidebar.management'), icon: PieChart },
             { id: "maintenance", label: t('dashboard.sidebar.maintenance'), icon: Wrench },
             { id: "messages", label: t('dashboard.sidebar.messages'), icon: MessageSquare },
+            { id: "public-profile", label: "Profil Public", icon: Globe },
             { id: "contracts", label: t('dashboard.sidebar.contracts'), icon: FileText },
             { id: "subscription", label: t('dashboard.sidebar.subscription'), icon: CreditCard },
             { id: "team", label: "Équipe", icon: Users2 },
@@ -1968,6 +1970,9 @@ const DashboardProprietaire = () => {
 
             {/* Settings Tab */}
             {activeTab === "settings" && <OwnerSettings />}
+
+            {/* Public Profile Tab */}
+            {activeTab === "public-profile" && <OwnerPublicProfileEditor />}
           </div>
         </div>
       </main>

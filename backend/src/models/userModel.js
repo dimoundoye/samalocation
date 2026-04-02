@@ -198,7 +198,7 @@ const User = {
             UPDATE users 
             SET permissions = $1 
             WHERE id = $2
-        `, [JSON.stringify(permissions), userId]);
+        `, [permissions, userId]);
     },
 
     async removeCollaborator(userId, parentId) {
