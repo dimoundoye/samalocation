@@ -14,6 +14,12 @@ const {
 // Signup
 router.post('/signup', signupValidation, authController.signup);
 
+// Verify email
+router.get('/verify-email', authController.verifyEmail);
+
+// Resend verification
+router.post('/resend-verification', authController.resendVerification);
+
 // Login
 router.post('/login', loginValidation, authController.login);
 

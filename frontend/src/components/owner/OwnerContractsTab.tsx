@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Plus, Search, Loader2, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import { FileText, Download, Plus, Search, Loader2, AlertCircle, Info, AlertTriangle, Send, Share2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { getOwnerContracts, downloadContract } from "@/lib/api";
@@ -23,6 +23,21 @@ export const OwnerContractsTab = () => {
     useEffect(() => {
         loadContracts();
     }, []);
+
+    const shareOnWhatsApp = (contract: RentalContract) => {
+        const verifyUrl = `https://samalocation.com/verify/contract/${contract.id}`;
+
+        let message = `Bonjour ${contract.tenant_name}, voici votre contrat de location pour ${contract.property_name} (Unité ${contract.unit_number}). `;
+
+        if (contract.status === 'pending_signature') {
+            message += `Il est en attente de votre signature numérique.Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com dans la section mes contrats.`;
+        } else {
+            message += `Vous pouvez consulter et vérifier sa validité ici : ${verifyUrl} . Merci d'utiliser Samalocation.com !`;
+        }
+
+        const encodedMessage = encodeURIComponent(message);
+        window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    };
 
     const loadContracts = async () => {
         try {
@@ -142,14 +157,24 @@ export const OwnerContractsTab = () => {
                                             <div className="text-xs text-muted-foreground">
                                                 Début : {format(new Date(contract.start_date), 'dd/MM/yyyy', { locale: fr })}
                                             </div>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => downloadContract(contract.id, contract.contract_number)}
-                                                className="gap-2 h-8"
-                                            >
-                                                <Download className="h-3.5 w-3.5" /> PDF
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => shareOnWhatsApp(contract)}
+                                                    className="gap-2 h-8 text-green-600 border-green-200 hover:bg-green-50"
+                                                >
+                                                    <Send className="h-3.5 w-3.5" /> Partager
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => downloadContract(contract.id, contract.contract_number)}
+                                                    className="gap-2 h-8"
+                                                >
+                                                    <Download className="h-3.5 w-3.5" /> PDF
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -201,6 +226,15 @@ export const OwnerContractsTab = () => {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => shareOnWhatsApp(contract)}
+                                                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        title="Partager sur WhatsApp"
+                                                    >
+                                                        <Send className="h-4 w-4" />
+                                                    </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"

@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe } from "lucide-react";
+import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -681,11 +681,15 @@ const DashboardProprietaire = () => {
             navigate("/");
             if (isMobile) setMobileMenuOpen(false);
           }}
-          className={`flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity overflow-hidden ${isMobile ? 'justify-start' : (isSidebarCollapsed ? 'justify-center' : 'justify-start')}`}
+          className={`flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity overflow-hidden ${isMobile ? 'justify-start' : (isSidebarCollapsed ? 'justify-center px-2' : 'justify-start')}`}
         >
-          <Home className="h-6 w-6 shrink-0 text-primary" />
+          <img 
+            src="/logo-sl.png" 
+            alt="Logo" 
+            className={`${isSidebarCollapsed ? 'h-8 w-8 object-contain' : 'h-12 w-auto object-contain'}`} 
+          />
           {showLabels && (
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate hidden lg:block">
               Samalocation
             </span>
           )}
@@ -864,7 +868,7 @@ const DashboardProprietaire = () => {
                 {activeTab === "dashboard"
                   ? "Dashboard"
                   : activeTab === "properties"
-                    ? "Mes biens"
+                    ? "Mes logements"
                     : activeTab === "tenants"
                       ? "Locataires"
                       : activeTab === "management"
@@ -913,31 +917,78 @@ const DashboardProprietaire = () => {
                 {/* Subscription Status Messages */}
                 {subscription && subscription.plan_name !== 'gratuit' && subscription.plan_name !== 'FREE' && (
                   <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-                    {subscription.status === 'active' ? (
-                      <Alert className="bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400 flex items-center gap-4 py-4 rounded-2xl shadow-sm">
-                        <div className="h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                          <CheckCircle2 className="h-6 w-6 text-green-600" />
-                        </div>
-                        <div className="flex-1">
-                          <AlertTitle className="font-bold text-base">Paiement validé avec succès !</AlertTitle>
-                          <AlertDescription className="text-sm opacity-90">
-                            Votre abonnement <strong>{subscription.plan_name}</strong> est actif.
-                            {subscription.expires_at && (
-                              <span> Date de fin : <strong>{format(new Date(subscription.expires_at), 'dd MMMM yyyy', { locale: fr })}</strong>.</span>
-                            )}
-                          </AlertDescription>
-                        </div>
-                      </Alert>
-                    ) : subscription.status === 'pending' ? (
-                      <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center gap-4 py-4 rounded-2xl shadow-sm">
+                    {subscription.status === 'active' ? (() => {
+                      const now = new Date().getTime();
+                      const expiry = subscription.expires_at ? new Date(subscription.expires_at).getTime() : 0;
+                      const diffInDays = expiry - now;
+                      const isExpiringSoon = expiry > 0 && diffInDays < (7 * 24 * 60 * 60 * 1000) && diffInDays > 0;
+                      const isGracePeriod = expiry > 0 && diffInDays < 0 && diffInDays > -(3 * 24 * 60 * 60 * 1000);
+
+                      return (
+                        <Alert className={isGracePeriod
+                          ? "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400 flex items-center gap-4 py-5 rounded-2xl shadow-md border-2 animate-pulse"
+                          : isExpiringSoon 
+                            ? "bg-orange-500/10 border-orange-500/20 text-orange-700 dark:text-orange-400 flex items-center gap-4 py-4 rounded-2xl shadow-sm"
+                            : "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400 flex items-center gap-4 py-4 rounded-2xl shadow-sm"
+                        }>
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${isGracePeriod ? 'bg-red-500/20' : isExpiringSoon ? 'bg-orange-500/20' : 'bg-green-500/20'}`}>
+                            {isGracePeriod 
+                              ? <History className="h-6 w-6 text-red-600" />
+                              : isExpiringSoon 
+                                ? <AlertTriangle className="h-6 w-6 text-orange-600" />
+                                : <CheckCircle2 className="h-6 w-6 text-green-600" />
+                            }
+                          </div>
+                          <div className="flex-1">
+                            <AlertTitle className="font-bold text-base">
+                              {isGracePeriod 
+                                ? "Action requise : Abonnement expiré !" 
+                                : isExpiringSoon 
+                                  ? "Votre abonnement expire bientôt !" 
+                                  : (subscription.price === 0 ? "Récompense de parrainage activée !" : "Paiement validé avec succès !")
+                              }
+                            </AlertTitle>
+                            <AlertDescription className="text-sm opacity-90">
+                              {isGracePeriod 
+                                ? `Votre plan ${subscription.plan_name} est terminé, mais Samalocation vous offre 3 jours de sursis pour régulariser. Profitez-en pour renouveler dès maintenant.`
+                                : isExpiringSoon 
+                                  ? `Attention, votre accès ${subscription.plan_name} se termine dans quelques jours.`
+                                  : (subscription.price === 0 
+                                      ? `Félicitations ! Vous profitez de ${subscription.referral_count} mois de plan ${subscription.plan_name} offerts grâce à vos parrainages.`
+                                      : `Votre abonnement ${subscription.plan_name} est actif.`)
+                              }
+                              {subscription.expires_at && (
+                                <span> {isGracePeriod ? "Était valide jusqu'au" : "Fin de l'offre"} : <strong>{format(new Date(subscription.expires_at), 'dd MMMM yyyy', { locale: fr })}</strong>.</span>
+                              )}
+                            </AlertDescription>
+                          </div>
+                          {(isExpiringSoon || isGracePeriod) && (
+                            <Button 
+                              size="sm" 
+                              variant={isGracePeriod ? "default" : "outline"}
+                              className={isGracePeriod 
+                                ? "bg-red-600 hover:bg-red-700 text-white font-black px-6 shadow-lg h-12" 
+                                : "border-orange-500/30 hover:bg-orange-500/10 text-orange-700 dark:text-orange-400 font-bold"}
+                              onClick={() => setActiveTab('subscription')}
+                            >
+                              {isGracePeriod ? "RENOUVELER MAINTENANT" : "Renouveler"}
+                            </Button>
+                          )}
+                        </Alert>
+                      );
+                    })() : subscription.status === 'pending' ? (
+                      <Alert className="bg-amber-500/10 border-amber-500/10 text-amber-700 dark:text-amber-400 flex items-center gap-4 py-4 rounded-2xl shadow-sm">
                         <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
                           <Clock className="h-6 w-6 text-amber-600" />
                         </div>
                         <div className="flex-1">
-                          <AlertTitle className="font-bold text-base">Paiement en cours de validation</AlertTitle>
-                          <AlertDescription className="text-sm opacity-90">
-                            Votre paiement pour le plan <strong>{subscription.plan_name}</strong> a été enregistré.
-                            Il sera validé par l'administrateur dans un délai maximum de 24h.
+                          <div className="flex items-center gap-2 mb-1">
+                            <AlertTitle className="font-bold text-base mb-0 leading-none">Paiement en vérification</AlertTitle>
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-600/30 text-[10px] h-5">Validé (Provisoire)</Badge>
+                          </div>
+                          <AlertDescription className="text-sm opacity-90 leading-tight">
+                            Votre demande pour le plan <strong>{subscription.plan_name}</strong> est enregistrée.
+                            Il sera validé officiellement sous 24h, mais <strong>vous profitez déjà de toutes les fonctionnalités</strong> du plan !
                           </AlertDescription>
                         </div>
                       </Alert>
@@ -947,10 +998,16 @@ const DashboardProprietaire = () => {
                           <X className="h-6 w-6 text-red-600" />
                         </div>
                         <div className="flex-1">
-                          <AlertTitle className="font-bold text-base">Paiement refusé</AlertTitle>
+                          <AlertTitle className="font-bold text-base">Demande refusée</AlertTitle>
                           <AlertDescription className="text-sm opacity-90">
-                            Votre demande d'abonnement au plan <strong>{subscription.plan_name}</strong> n'a pas pu être validée.
-                            Veuillez vérifier vos informations de transfert ou contacter le support.
+                            Votre demande pour le plan <strong>{subscription.plan_name}</strong> n'a pas pu être validée.
+                            {subscription.admin_notes ? (
+                              <div className="mt-2 p-2 bg-red-500/10 rounded border border-red-500/20 italic">
+                                <strong>Raison :</strong> {subscription.admin_notes}
+                              </div>
+                            ) : (
+                              " Veuillez vérifier vos informations ou contacter le support."
+                            )}
                           </AlertDescription>
                         </div>
                       </Alert>
@@ -997,7 +1054,7 @@ const DashboardProprietaire = () => {
                     >
                       <Plus className="mr-1 sm:mr-2 h-5 w-5" />
                       <span className="hidden xs:inline">{t('owner.add_property')}</span>
-                      <span className="xs:hidden">Ajouter un bien</span>
+                      <span className="xs:hidden">Ajouter un logement</span>
                     </Button>
                   </div>
                 </div>

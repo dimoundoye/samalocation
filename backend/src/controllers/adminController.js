@@ -455,7 +455,7 @@ const adminController = {
     async updateUserSubscription(req, res, next) {
         try {
             const { userId } = req.params;
-            const { planName, status, durationDays, price, subscriptionId } = req.body;
+            const { planName, status, durationDays, price, subscriptionId, reason } = req.body;
             const Subscription = require('../models/subscriptionModel');
             const Notification = require('../models/notificationModel');
 
@@ -464,17 +464,23 @@ const adminController = {
                 status,
                 durationDays,
                 price,
-                subscriptionId
+                subscriptionId,
+                reason
             });
 
             // Envoyer une notification à l'utilisateur
-            const title = status === 'active'
-                ? 'Abonnement activé'
-                : 'Abonnement mis à jour';
+            let title = 'Abonnement mis à jour';
+            let message = `Votre abonnement a été mis à jour par l'administrateur.`;
 
-            const message = status === 'active'
-                ? `L'administrateur a activé votre abonnement ${planName} pour ${durationDays || 30} jours.`
-                : `Votre abonnement a été mis à jour par l'administrateur.`;
+            if (status === 'active') {
+                title = 'Abonnement activé !';
+                message = `L'administrateur a validé votre paiement. Vous profitez désormais du plan ${planName || 'Premium'} pour ${durationDays || 30} jours.`;
+            } else if (status === 'rejected') {
+                title = 'Demande d\'abonnement refusée';
+                message = reason 
+                    ? `Votre demande pour le plan ${planName || 'Premium'} a été refusée pour la raison suivante : ${reason}`
+                    : `Votre demande pour le plan ${planName || 'Premium'} n'a pas pu être validée. Veuillez vérifier vos informations de paiement ou contacter le support.`;
+            }
 
             await Notification.create({
                 id: require('uuid').v4(),

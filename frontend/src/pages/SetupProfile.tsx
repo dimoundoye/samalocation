@@ -26,7 +26,7 @@ const SetupProfile = () => {
             setFormData(prev => ({
                 ...prev,
                 name: user.name || "",
-                email: user.email && !user.email.endsWith("@samalocation.sn") ? user.email : "",
+                email: user.email && !user.email.endsWith("@samalocation.com") ? user.email : "",
             }));
         }
     }, [user]);
@@ -79,10 +79,8 @@ const SetupProfile = () => {
             <div className="w-full max-w-md space-y-4">
                 <div className="text-center space-y-2">
                     <div className="flex items-center justify-center gap-2 mb-6">
-                        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                            <User className="text-white h-6 w-6" />
-                        </div>
-                        <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic">
+                        <img src="/logo-sl.png" alt="Samalocation" className="h-12 w-auto object-contain" />
+                        <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic hidden md:inline">
                             Samalocation
                         </span>
                     </div>

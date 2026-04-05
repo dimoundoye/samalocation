@@ -14,7 +14,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Calendar } from "lucide-react";
+import { Download, FileText, Calendar, Send } from "lucide-react";
 import { Receipt, Tenant } from "@/types";
 import { downloadReceipt } from "@/lib/api";
 import { format } from "date-fns";
@@ -62,6 +62,19 @@ export const TenantHistoryDialog = ({
         }
     };
 
+    const shareOnWhatsApp = (receipt: Receipt) => {
+        if (!tenant) return;
+        
+        const phone = tenant.phone?.replace(/[\s\(\)\-\+]/g, '') || '';
+        const monthLabel = getMonthName(receipt.month);
+        const amount = formatCurrency(receipt.amount);
+        
+        const text = `Bonjour ${tenant.full_name}, votre quittance de loyer pour le mois de ${monthLabel} ${receipt.year} (${amount}) est maintenant disponible sur votre compte Samalocation. Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com. Merci pour votre confiance !`;
+        
+        const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+        window.open(waUrl, '_blank');
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -107,14 +120,25 @@ export const TenantHistoryDialog = ({
                                                 {formatCurrency(receipt.amount)}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDownload(receipt.id, receipt.receipt_number, receipt.payment_date)}
-                                                >
-                                                    <Download className="h-4 w-4 mr-2" />
-                                                    Télécharger
-                                                </Button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-[#25D366] hover:text-[#128C7E] hover:bg-[#25D366]/10"
+                                                        onClick={() => shareOnWhatsApp(receipt)}
+                                                        title="Partager via WhatsApp"
+                                                    >
+                                                        <Send className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleDownload(receipt.id, receipt.receipt_number, receipt.payment_date)}
+                                                    >
+                                                        <Download className="h-4 w-4 mr-2" />
+                                                        Télécharger
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}

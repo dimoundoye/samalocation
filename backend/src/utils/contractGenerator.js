@@ -105,7 +105,7 @@ async function generateContractPDF(contractData) {
     sectionTitle('5. ÉTAT DES LIEUX ET ENTRETIEN');
     doc.text(`Un état des lieux d’entrée contradictoire sera établi et signé par les parties. Un état des lieux de sortie sera effectué à la fin du bail.`);
     doc.text(`Le locataire devra tenir les lieux en état de propreté et ne pourra faire aucune transformation sans l’autorisation préalable écrite du bailleur.`);
-    doc.text(`Le nombre de personnes pouvant occuper le bien est strictement limité à ${contractData.occupancy_limit || 4} individus.`);
+    doc.text(`Le nombre de personnes pouvant occuper le bien est strictement limité à ${contractData.occupancy_limit} individus.`);
 
     doc.moveDown(0.5);
     doc.font('Helvetica-Bold').text('Interdiction de sous-location :');

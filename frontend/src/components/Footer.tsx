@@ -8,9 +8,12 @@ const Footer = () => {
             <div className="container mx-auto px-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
                     <div className="col-span-1 md:col-span-1 space-y-6">
-                        <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                            Samalocation
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <img src="/logo-sl.png" alt="Samalocation" className="h-12 w-auto object-contain" />
+                            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden md:inline">
+                                Samalocation
+                            </span>
+                        </div>
                         <p className="text-muted-foreground leading-relaxed">
                             {t('footer.desc')}
                         </p>

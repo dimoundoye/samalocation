@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const { verifyTurnstileToken } = require('../utils/cloudflare');
+const db = require('../config/db');
 
 /**
  * Generate a custom ID: 2 uppercase letters + 5 digits
@@ -13,7 +14,6 @@ const { verifyTurnstileToken } = require('../utils/cloudflare');
 const generateCustomId = async () => {
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const numbers = '0123456789';
-    const db = require('../config/db');
 
     let isUnique = false;
     let customId = '';
@@ -66,7 +66,7 @@ const authController = {
      */
     async signup(req, res, next) {
         try {
-            let { email, password, name, phone, role, companyName, turnstileToken } = req.body;
+            let { email, password, name, phone, role, companyName, turnstileToken, referralCode } = req.body;
             email = email?.toLowerCase();
 
             // Vérification Turnstile
@@ -88,6 +88,24 @@ const authController = {
             const customId = await generateCustomId();
             const passwordHash = await bcrypt.hash(password, 10);
 
+            // Génération d'un token de vérification e-mail
+            const verificationToken = crypto.randomBytes(32).toString('hex');
+            const verificationTokenExpires = new Date();
+            verificationTokenExpires.setHours(verificationTokenExpires.getHours() + 24); // Valide 24h
+
+            // Gestion du parrainage (Referral)
+            let referredBy = null;
+            let parrain = null;
+            if (referralCode) {
+                parrain = await User.findByEmailOrId(referralCode);
+                
+                if (!parrain) {
+                    return response.error(res, 'Code de parrainage invalide.', 400);
+                }
+                
+                referredBy = parrain.custom_id;
+            }
+
             await User.create({
                 id,
                 customId,
@@ -96,14 +114,71 @@ const authController = {
                 name,
                 phone,
                 role,
-                companyName
+                companyName,
+                emailVerified: false,
+                verificationToken,
+                verificationTokenExpires,
+                referredBy
             });
 
-            const token = generateToken({ id, email, role });
+            // Si parrainage fourni, on offre au moins 1 mois au Filleul (Nouveau user)
+            if (parrain && referredBy) {
+                const Subscription = require('../models/subscriptionModel');
+                const Notification = require('../models/notificationModel');
+                
+                // 1. Offrir 1 mois au Parrain (Max 5)
+                const parrainReferralCount = parseInt(parrain.referral_count || 0);
+
+                if (parrainReferralCount < 5) {
+                    await db.query('UPDATE users SET referral_count = referral_count + 1 WHERE id = $1', [parrain.id]);
+                    await Subscription.manualUpdate(parrain.id, {
+                        planName: 'PREMIUM',
+                        status: 'active',
+                        durationDays: 30,
+                        price: 0
+                    });
+
+                    // Notification de succès pour le parrain
+                    await Notification.create({
+                        id: require('uuid').v4(),
+                        user_id: parrain.id,
+                        type: 'system',
+                        title: 'Nouveau parrainage réussi !',
+                        message: `Félicitations ! Un ami s'est inscrit avec votre code. Vous profitez d'un mois de plan Premium supplémentaire.`,
+                        link: '/owner-dashboard?tab=subscription'
+                    });
+                } else {
+                    // Notification "Limite atteinte" pour le parrain
+                    await Notification.create({
+                        id: require('uuid').v4(),
+                        user_id: parrain.id,
+                        type: 'system',
+                        title: 'Parrainage réussi (Limite atteinte)',
+                        message: `Un ami vient de s'inscrire avec votre code. Merci ! Votre quota de bonus est de 5 mois maximum, mais votre ami profite bien de son mois offert.`,
+                        link: '/owner-dashboard?tab=subscription'
+                    });
+                }
+
+                // 2. Offrir 1 mois au Filleul quoi qu'il arrive (Cadeau de bienvenue)
+                await Subscription.manualUpdate(id, {
+                    planName: 'PREMIUM',
+                    status: 'active',
+                    durationDays: 30,
+                    price: 0
+                });
+
+                console.log(`🎁 Parrainage activé : ${parrain.custom_id} -> ${customId}`);
+            }
+
+            // Envoi de l'e-mail de vérification (asynchrone)
+            sendVerificationEmail(email, verificationToken).catch(err => {
+                console.error('❌ Erreur d\'envoi de l\'e-mail de bienvenue/vérification :', err);
+            });
+
+            // On ne retourne plus le token pour empêcher la connexion automatique tant que le compte n'est pas vérifié
             return response.success(res, {
-                token,
-                user: { id, customId, email, name, role }
-            }, 'Compte créé avec succès !', 201);
+                user: { id, customId, email, name, role, emailVerified: false, referral_count: 0, referred_by: referredBy }
+            }, 'Compte créé avec succès ! Un e-mail de confirmation vous a été envoyé.', 201);
         } catch (error) {
             next(error);
         }
@@ -126,6 +201,11 @@ const authController = {
             const user = await User.findByEmailOrId(email);
             if (!user) {
                 return response.error(res, 'Identifiants invalides', 401);
+            }
+
+            // Vérifier si l'e-mail est vérifié
+            if (!user.email_verified) {
+                return response.error(res, 'Veuillez confirmer votre adresse e-mail avant de vous connecter. Un e-mail de confirmation vous a été envoyé lors de votre inscription.', 403);
             }
 
             // Vérifier si l'utilisateur est bloqué
@@ -155,7 +235,9 @@ const authController = {
                     role: profile.role,
                     parentId: user.parent_id,
                     setupRequired: !user.is_setup_complete,
-                    permissions: profile.permissions
+                    permissions: profile.permissions,
+                    referral_count: user.referral_count,
+                    referred_by: user.referred_by
                 }
             });
         } catch (error) {
@@ -388,6 +470,71 @@ const authController = {
             await User.updatePassword(user.id, hash);
 
             return response.success(res, null, 'Votre mot de passe a été réinitialisé avec succès.');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Verify e-mail
+     */
+    async verifyEmail(req, res, next) {
+        try {
+            const { token } = req.query;
+            if (!token) {
+                return response.error(res, 'Le token de vérification est requis.', 400);
+            }
+
+            const user = await User.findByVerificationToken(token);
+            if (!user) {
+                return response.error(res, 'Le lien est invalide ou a expiré.', 400);
+            }
+
+            await User.verifyEmail(user.id);
+
+            return response.success(res, null, 'E-mail vérifié avec succès ! Votre compte est maintenant activé.');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Resend verification e-mail
+     */
+    async resendVerification(req, res, next) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                return response.error(res, 'Email est requis', 400);
+            }
+
+            const user = await User.findByEmail(email);
+            if (!user) {
+                // Pour des raisons de sécurité, on renvoie un succès même si l'utilisateur n'existe pas
+                return response.success(res, null, 'Si votre adresse est dans notre système, un nouvel e-mail de confirmation vous a été envoyé.');
+            }
+
+            if (user.email_verified) {
+                return response.error(res, 'Cet e-mail est déjà vérifié.', 400);
+            }
+
+            // Génération d'un nouveau token
+            const verificationToken = crypto.randomBytes(32).toString('hex');
+            const verificationTokenExpires = new Date();
+            verificationTokenExpires.setHours(verificationTokenExpires.getHours() + 24);
+
+            const db = require('../config/db');
+            await db.query(
+                'UPDATE public.users SET verification_token = $1, verification_token_expires = $2 WHERE id = $3',
+                [verificationToken, verificationTokenExpires, user.id]
+            );
+
+            // Envoi de l'e-mail en arrière-plan
+            sendVerificationEmail(user.email, verificationToken).catch(err => {
+                console.error('❌ Erreur d\'envoi de l\'e-mail de vérification (renvoi) :', err);
+            });
+
+            return response.success(res, null, 'Un nouvel e-mail de confirmation vous a été envoyé.');
         } catch (error) {
             next(error);
         }

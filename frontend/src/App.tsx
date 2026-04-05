@@ -26,6 +26,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import Chatbot from "./components/Chatbot";
 import OwnerPublicProfile from "./pages/OwnerPublicProfile";
 import AcceptInvitation from "./pages/AcceptInvitation";
+import VerifyEmail from "./pages/VerifyEmail";
 
 import { SocketProvider } from "@/contexts/SocketContext";
 
@@ -53,6 +54,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/search" element={<Recherche />} />
                 <Route path="/search/:pageParam" element={<Recherche />} />
                 <Route path="/property/:id" element={<DetailPropriete />} />

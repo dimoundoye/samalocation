@@ -22,11 +22,19 @@ const User = {
     },
 
     async create(userData) {
-        const { id, customId, email, passwordHash, name, phone, role, companyName, isSetupComplete = true, parentId = null, permissions = { can_view_revenue: false } } = userData;
+        const { 
+            id, customId, email, passwordHash, name, phone, role, 
+            companyName, isSetupComplete = true, parentId = null, 
+            permissions = { can_view_revenue: false },
+            emailVerified = false,
+            verificationToken = null,
+            verificationTokenExpires = null,
+            referredBy = null
+        } = userData;
 
         await db.query(
-            'INSERT INTO users (id, custom_id, email, password_hash, email_verified, is_setup_complete, parent_id, permissions) VALUES ($1, $2, $3, $4, true, $5, $6, $7)',
-            [id, customId, email, passwordHash, isSetupComplete, parentId, JSON.stringify(permissions)]
+            'INSERT INTO users (id, custom_id, email, password_hash, email_verified, is_setup_complete, parent_id, permissions, verification_token, verification_token_expires, referred_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+            [id, customId, email, passwordHash, emailVerified, isSetupComplete, parentId, JSON.stringify(permissions), verificationToken, verificationTokenExpires, referredBy]
         );
 
         await db.query(

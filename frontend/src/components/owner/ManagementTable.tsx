@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X, ChevronDown, ChevronRight, Folder, FolderOpen, ArrowLeft, Home, Info, HelpCircle, Lightbulb, Lock } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X, ChevronDown, ChevronRight, Folder, FolderOpen, ArrowLeft, Home, Info, HelpCircle, Lightbulb, Lock, Send } from "lucide-react";
 import {
     Popover,
     PopoverContent,
@@ -207,6 +207,30 @@ export const ManagementTable = ({
         { id: 12, label: "Déc" },
     ];
 
+    const shareOnWhatsApp = (tenant: Tenant, receipt: Receipt) => {
+        if (!tenant.phone) {
+            toast({
+                title: "Numéro manquant",
+                description: "Le locataire n'a pas de numéro de téléphone renseigné.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        const cleanPhone = tenant.phone.replace(/\D/g, '');
+        // Si le numéro ne commence pas par un indicatif pays, on ajoute 221 par défaut (Sénégal)
+        const finalPhone = cleanPhone.length === 9 ? `221${cleanPhone}` : cleanPhone;
+        
+        const monthLabel = months.find(m => m.id === Number(receipt.month))?.label || receipt.month;
+        const amount = formatCurrency(Number(receipt.amount));
+        
+        // Texte du message
+        const text = `Bonjour ${tenant.full_name}, votre quittance de loyer pour le mois de ${monthLabel} ${receipt.year} (${amount}) est maintenant disponible sur votre compte Samalocation. Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com. Merci pour votre confiance !`;
+        
+        const waUrl = `https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`;
+        window.open(waUrl, '_blank');
+    };
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat("fr-FR", {
             style: "currency",
@@ -242,7 +266,7 @@ export const ManagementTable = ({
     };
 
     const handleExport = () => {
-        const headers = ["Locataire", "Bien", "Unité", ...months.map(m => m.label), "Total Annuel"];
+        const headers = ["Locataire", "Logement", "Unité", ...months.map(m => m.label), "Total Annuel"];
         const rows: string[][] = [];
 
         const collectRows = (nodes: any[], groupName = "") => {
@@ -655,8 +679,21 @@ export const ManagementTable = ({
                                                                                         <span className="text-[9px] font-semibold text-green-700">
                                                                                             {(receipt.amount / 1000).toFixed(1).replace(/\.0$/, '')}k
                                                                                         </span>
-                                                                                        <div className="hidden group-hover:block absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[9px] px-2 py-1 rounded whitespace-nowrap z-50 shadow-lg border border-white/20">
-                                                                                            {formatCurrency(receipt.amount)}
+                                                                                        
+                                                                                        {/* Action Buttons */}
+                                                                                        <div className="hidden group-hover:flex absolute -top-10 left-1/2 -translate-x-1/2 bg-white border border-border shadow-strong rounded-lg p-1.5 z-50 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+                                                                                            <button 
+                                                                                                onClick={() => shareOnWhatsApp(u.tenant, receipt)}
+                                                                                                className="p-1 px-1.5 hover:bg-green-50 text-green-600 rounded flex items-center gap-1 transition-colors border border-green-100"
+                                                                                                title="Partager sur WhatsApp"
+                                                                                            >
+                                                                                                <Send className="h-3 w-3" />
+                                                                                                <span className="text-[10px] font-bold">WhatsApp</span>
+                                                                                            </button>
+                                                                                            <div className="w-[1px] h-3 bg-border mx-1"></div>
+                                                                                            <span className="text-[10px] font-medium text-muted-foreground px-1">
+                                                                                                {formatCurrency(receipt.amount)}
+                                                                                            </span>
                                                                                         </div>
                                                                                     </div>
                                                                                 ) : (

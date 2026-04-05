@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Zap, Crown, CheckCircle2, AlertCircle, ArrowRight, CreditCard } from "lucide-react";
+import { Shield, Zap, Crown, CheckCircle2, AlertCircle, ArrowRight, CreditCard, Share2, Copy, Users, PenTool } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { getMySubscription } from "@/lib/api";
@@ -15,7 +17,22 @@ import { useSubscription } from "@/hooks/useSubscription";
 export const OwnerSubscription = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const { toast } = useToast();
     const { subscription, loading } = useSubscription();
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast({
+            title: "Copié !",
+            description: "Le code de parrainage est dans votre presse-papier.",
+        });
+    };
+
+    const shareReferralWA = () => {
+        const text = `Inscris-toi sur Samalocation.com avec mon code ${user?.customId} pour gérer tes biens immobiliers et profite d'un mois Premium offert !`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    };
 
     const getPlanIcon = (plan: string) => {
         switch (plan.toLowerCase()) {
@@ -72,8 +89,8 @@ export const OwnerSubscription = () => {
                             </h3>
                             <div className="flex items-center gap-2 mt-1">
                                 {subscription?.status === 'pending' ? (
-                                    <Badge className="bg-orange-500 hover:bg-orange-600 animate-pulse">
-                                        <Clock className="h-3 w-3 mr-1" /> Activation en attente
+                                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border border-amber-300 animate-pulse font-bold">
+                                        <Clock className="h-3 w-3 mr-1" /> Actif (Provisoire)
                                     </Badge>
                                 ) : (
                                     <Badge className="bg-green-500 hover:bg-green-600">
@@ -89,24 +106,14 @@ export const OwnerSubscription = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 pt-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6 pt-4">
                         <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-background/50 border border-border/50">
-                            <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Nombre de biens</p>
+                            <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Nombre de logements</p>
                             <div className="flex items-end gap-1.5 sm:gap-2">
                                 <span className="text-xl sm:text-2xl font-bold">{subscription?.properties_count || 0}</span>
                                 <span className="text-xs sm:text-base text-muted-foreground pb-0.5">/ {formatLimit(subscription?.properties_limit)}</span>
                             </div>
-                            <div className="w-full h-1.5 sm:h-2 bg-secondary rounded-full mt-2 sm:mt-3 overflow-hidden">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ 
-                                        width: (subscription?.properties_limit === -1 || subscription?.properties_limit === null) 
-                                            ? "100%" 
-                                            : `${Math.min(100, ((subscription?.properties_count || 0) / (subscription?.properties_limit || 1)) * 100)}%` 
-                                    }}
-                                    className="h-full bg-primary"
-                                />
-                            </div>
+                            <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-2">Villas, appartements, studios, etc.</p>
                         </div>
 
                         <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-background/50 border border-border/50">
@@ -125,21 +132,97 @@ export const OwnerSubscription = () => {
                             <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-2">Génération auto de descriptions par IA.</p>
                         </div>
 
-                        <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-background/50 border border-border/50 col-span-2 sm:col-span-1">
-                            <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Logo et Branding</p>
-                            {subscription?.limits?.custom_branding ? (
-                                <div className="flex items-center gap-1.5 sm:gap-2 text-green-600 font-bold">
-                                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
-                                    <span className="text-xs sm:text-base">Inclus</span>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-1.5 sm:gap-2 text-red-500 font-bold">
-                                    <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                                    <span className="text-xs sm:text-base">Non inclus</span>
-                                </div>
-                            )}
-                            <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-2">Votre logo sur toutes vos quittances PDF.</p>
+                        <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-background/50 border border-border/50">
+                            <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Signature numérique</p>
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-green-600 font-bold">
+                                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                                <span className="text-xs sm:text-base">Inclus</span>
+                            </div>
+                            <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-2">Signez vos contrats et quittances électroniquement.</p>
                         </div>
+
+                        <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-background/50 border border-border/50">
+                            <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Quittances ce mois</p>
+                            <div className="flex items-end gap-1.5 sm:gap-2">
+                                <span className={subscription?.receipts_this_month >= subscription?.receipts_limit ? "text-xl sm:text-2xl font-bold text-red-500" : "text-xl sm:text-2xl font-bold"}>
+                                    {subscription?.receipts_this_month || 0}
+                                </span>
+                                <span className="text-xs sm:text-base text-muted-foreground pb-0.5">/ {formatLimit(subscription?.receipts_limit)}</span>
+                            </div>
+                            <div className="w-full h-1.5 sm:h-2 bg-secondary rounded-full mt-2 sm:mt-3 overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ 
+                                        width: (subscription?.receipts_limit === -1 || subscription?.receipts_limit === null) 
+                                            ? "100%" 
+                                            : `${Math.min(100, ((subscription?.receipts_this_month || 0) / (subscription?.receipts_limit || 1)) * 100)}%` 
+                                    }}
+                                    className={subscription?.receipts_this_month >= subscription?.receipts_limit ? "h-full bg-red-500" : "h-full bg-accent"}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Referral System Card */}
+            <Card className="border-accent/20 border-dashed bg-accent/5 overflow-hidden">
+                <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Users className="h-5 w-5 text-accent" />
+                            <CardTitle className="text-lg font-bold">Parrainage</CardTitle>
+                        </div>
+                        <Badge variant="outline" className={subscription?.referral_count >= 5 ? "border-red-500 text-red-500 bg-red-50" : "border-accent text-accent"}>
+                            {subscription?.referral_count >= 5 ? "Limite atteinte" : `${subscription?.referral_count || 0} / 5 validés`}
+                        </Badge>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <p className="text-sm text-muted-foreground">
+                        Offrez 1 mois Premium à vos amis bailleurs. Pour chaque parrainage réussi, **vous recevez aussi 1 mois Premium offert** (limité à 5 amis).
+                    </p>
+                    
+                    <div className={`flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl border ${subscription?.referral_count >= 5 ? 'bg-slate-50 border-slate-200' : 'bg-white/50 border-accent/10'}`}>
+                        <div className="flex-1 w-full">
+                            <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Votre code personnel</p>
+                            <div className="flex items-center gap-2">
+                                <code className={`bg-card px-4 py-2 rounded-xl border-2 text-xl font-black flex-1 text-center ${subscription?.referral_count >= 5 ? 'border-slate-300 text-slate-400 line-through' : 'border-accent text-accent'}`}>
+                                    {user?.customId}
+                                </code>
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-11 w-11 rounded-xl text-accent hover:bg-accent/10 disabled:opacity-30" 
+                                    onClick={() => copyToClipboard(user?.customId || "")}
+                                    disabled={subscription?.referral_count >= 5}
+                                >
+                                    <Copy className="h-5 w-5" />
+                                </Button>
+                            </div>
+                        </div>
+                        <Button 
+                            onClick={shareReferralWA}
+                            disabled={subscription?.referral_count >= 5}
+                            className={`w-full sm:w-auto font-bold h-11 px-6 rounded-xl flex items-center gap-2 shadow-sm ${subscription?.referral_count >= 5 ? 'bg-slate-300 text-white' : 'bg-[#25D366] hover:bg-[#20bd5a] text-white'}`}
+                        >
+                            <Share2 className="h-4 w-4" /> {subscription?.referral_count >= 5 ? "Code expiré" : "Partager l'invitation"}
+                        </Button>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <div className="w-full h-2.5 bg-secondary rounded-full overflow-hidden">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${Math.min(100, ((subscription?.referral_count || 0) / 5) * 100)}%` }}
+                                className="h-full bg-accent"
+                            />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground text-center italic">
+                            {subscription?.referral_count && subscription.referral_count >= 5 
+                                ? "Félicitations ! Vous avez atteint le plafond de parrainage." 
+                                : `Encore ${5 - (subscription?.referral_count || 0)} amis pour débloquer votre cadeau maximum !`}
+                        </p>
                     </div>
                 </CardContent>
             </Card>

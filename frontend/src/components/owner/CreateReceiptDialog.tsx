@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { createReceipt, getOwnerTenants, getMySubscription } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2, Send, X } from "lucide-react";
 import { UpgradeModal } from "./UpgradeModal";
 import { useSubscription } from "@/hooks/useSubscription";
 
@@ -43,6 +43,8 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         title: "",
         description: ""
     });
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [createdReceipt, setCreatedReceipt] = useState<any>(null);
 
     useEffect(() => {
         if (open) {
@@ -169,7 +171,13 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                 description: "Le reçu de paiement a été créé avec succès"
             });
 
-            onOpenChange(false);
+            const tenantForSuccess = tenants.find(t => t.user_id === formData.tenant_id);
+            setCreatedReceipt({
+                ...formData,
+                tenant_name: tenantForSuccess?.full_name || tenantName,
+                tenant_phone: tenantForSuccess?.phone
+            });
+            setIsSuccess(true);
             onSuccess();
 
             // Reset form
@@ -194,6 +202,35 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         }
     };
 
+    const shareOnWhatsApp = () => {
+        if (!createdReceipt) return;
+        
+        const phone = createdReceipt.tenant_phone?.replace(/[\s\(\)\-\+]/g, '') || '';
+        const monthLabel = months.find(m => m.value === createdReceipt.month)?.label;
+        const amount = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(createdReceipt.amount).replace('XOF', 'F CFA');
+        
+        const text = `Bonjour ${createdReceipt.tenant_name}, votre quittance de loyer pour le mois de ${monthLabel} ${createdReceipt.year} (${amount}) est maintenant disponible sur votre compte Samalocation. Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com. Merci pour votre confiance !`;
+        
+        const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+        window.open(waUrl, '_blank');
+    };
+
+    const handleClose = () => {
+        setIsSuccess(false);
+        setCreatedReceipt(null);
+        setFormData({
+            tenant_id: "",
+            property_id: propertyId,
+            month: new Date().getMonth() + 1,
+            year: new Date().getFullYear(),
+            amount: "",
+            payment_date: new Date().toISOString().split('T')[0],
+            payment_method: "virement",
+            notes: ""
+        });
+        onOpenChange(false);
+    };
+
     const months = [
         { value: 1, label: "Janvier" },
         { value: 2, label: "Février" },
@@ -213,146 +250,184 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
     const years = Array.from({ length: 5 }, (_, i) => currentYear + 1 - i); // [2027, 2026, 2025, 2024, 2023]
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={(val) => {
+            if (!val) handleClose();
+            else onOpenChange(val);
+        }}>
             <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
-                <DialogHeader>
-                    <DialogTitle>Créer un reçu de paiement</DialogTitle>
-                    <DialogDescription>
-                        Générer un reçu PDF pour le locataire de {propertyName}
-                    </DialogDescription>
-                </DialogHeader>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="tenant">Locataire *</Label>
-                        {tenantId ? (
-                            <Input
-                                id="tenant-display"
-                                value={tenantName || ""}
-                                readOnly
-                                className="bg-muted font-medium cursor-default focus-visible:ring-0"
-                            />
-                        ) : (
-                            <Select
-                                value={formData.tenant_id}
-                                onValueChange={(value) => setFormData({ ...formData, tenant_id: value })}
-                            >
-                                <SelectTrigger id="tenant">
-                                    <SelectValue placeholder="Sélectionner un locataire" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {tenants.map((tenant) => (
-                                        <SelectItem key={tenant.id} value={tenant.user_id}>
-                                            {tenant.full_name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="month">Mois</Label>
-                            <Select
-                                value={formData.month.toString()}
-                                onValueChange={(value) => setFormData({ ...formData, month: Number(value) })}
-                            >
-                                <SelectTrigger id="month">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {months.map((month) => (
-                                        <SelectItem key={month.value} value={month.value.toString()}>
-                                            {month.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                {isSuccess ? (
+                    <div className="py-6 flex flex-col items-center text-center space-y-4 animate-in zoom-in-95 duration-300">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                            <CheckCircle2 className="h-10 w-10 text-green-600" />
                         </div>
-
                         <div className="space-y-2">
-                            <Label htmlFor="year">Année</Label>
-                            <Select
-                                value={formData.year.toString()}
-                                onValueChange={(value) => setFormData({ ...formData, year: Number(value) })}
+                            <h2 className="text-2xl font-bold">Quittance générée !</h2>
+                            <p className="text-muted-foreground">
+                                Le reçu pour {createdReceipt?.tenant_name} a été créé avec succès.
+                            </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full pt-4">
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                className="w-full h-12"
+                                onClick={handleClose}
                             >
-                                <SelectTrigger id="year">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {years.map((year) => (
-                                        <SelectItem key={year} value={year.toString()}>
-                                            {year}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                Fermer
+                            </Button>
+                            <Button 
+                                type="button" 
+                                className="w-full h-12 bg-[#25D366] hover:bg-[#128C7E] text-white border-none"
+                                onClick={shareOnWhatsApp}
+                            >
+                                <Send className="h-4 w-4 mr-2" />
+                                Partager via WhatsApp
+                            </Button>
                         </div>
                     </div>
+                ) : (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>Créer un reçu de paiement</DialogTitle>
+                            <DialogDescription>
+                                Générer un reçu PDF pour le locataire de {propertyName}
+                            </DialogDescription>
+                        </DialogHeader>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="amount">Montant (FCFA) *</Label>
-                        <Input
-                            id="amount"
-                            type="number"
-                            placeholder="500000"
-                            value={formData.amount}
-                            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                            required
-                        />
-                    </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="tenant">Locataire *</Label>
+                                {tenantId ? (
+                                    <Input
+                                        id="tenant-display"
+                                        value={tenantName || ""}
+                                        readOnly
+                                        className="bg-muted font-medium cursor-default focus-visible:ring-0"
+                                    />
+                                ) : (
+                                    <Select
+                                        value={formData.tenant_id}
+                                        onValueChange={(value) => setFormData({ ...formData, tenant_id: value })}
+                                    >
+                                        <SelectTrigger id="tenant">
+                                            <SelectValue placeholder="Sélectionner un locataire" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {tenants.map((tenant) => (
+                                                <SelectItem key={tenant.id} value={tenant.user_id}>
+                                                    {tenant.full_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="payment_date">Date de paiement *</Label>
-                        <Input
-                            id="payment_date"
-                            type="date"
-                            value={formData.payment_date}
-                            onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                            required
-                        />
-                    </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="month">Mois</Label>
+                                    <Select
+                                        value={formData.month.toString()}
+                                        onValueChange={(value) => setFormData({ ...formData, month: Number(value) })}
+                                    >
+                                        <SelectTrigger id="month">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {months.map((month) => (
+                                                <SelectItem key={month.value} value={month.value.toString()}>
+                                                    {month.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="payment_method">Mode de paiement</Label>
-                        <Select
-                            value={formData.payment_method}
-                            onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
-                        >
-                            <SelectTrigger id="payment_method">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="virement">Virement bancaire</SelectItem>
-                                <SelectItem value="especes">Espèces</SelectItem>
-                                <SelectItem value="cheque">Chèque</SelectItem>
-                                <SelectItem value="mobile">Paiement mobile</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="year">Année</Label>
+                                    <Select
+                                        value={formData.year.toString()}
+                                        onValueChange={(value) => setFormData({ ...formData, year: Number(value) })}
+                                    >
+                                        <SelectTrigger id="year">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {years.map((year) => (
+                                                <SelectItem key={year} value={year.toString()}>
+                                                    {year}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="notes">Notes (optionnel)</Label>
-                        <Textarea
-                            id="notes"
-                            placeholder="Informations complémentaires..."
-                            value={formData.notes}
-                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            rows={3}
-                        />
-                    </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="amount">Montant (FCFA) *</Label>
+                                <Input
+                                    id="amount"
+                                    type="number"
+                                    placeholder="500000"
+                                    value={formData.amount}
+                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                    required
+                                />
+                            </div>
 
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-                            Annuler
-                        </Button>
-                        <Button type="submit" disabled={loading}>
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Créer le reçu
-                        </Button>
-                    </DialogFooter>
-                </form>
+                            <div className="space-y-2">
+                                <Label htmlFor="payment_date">Date de paiement *</Label>
+                                <Input
+                                    id="payment_date"
+                                    type="date"
+                                    value={formData.payment_date}
+                                    onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="payment_method">Mode de paiement</Label>
+                                <Select
+                                    value={formData.payment_method}
+                                    onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
+                                >
+                                    <SelectTrigger id="payment_method">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="virement">Virement bancaire</SelectItem>
+                                        <SelectItem value="especes">Espèces</SelectItem>
+                                        <SelectItem value="cheque">Chèque</SelectItem>
+                                        <SelectItem value="mobile">Paiement mobile</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="notes">Notes (optionnel)</Label>
+                                <Textarea
+                                    id="notes"
+                                    placeholder="Informations complémentaires..."
+                                    value={formData.notes}
+                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                    rows={3}
+                                />
+                            </div>
+
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
+                                    Annuler
+                                </Button>
+                                <Button type="submit" disabled={loading}>
+                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Créer le reçu
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </>
+                )}
             </DialogContent>
 
             <UpgradeModal

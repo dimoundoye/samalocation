@@ -13,13 +13,21 @@ const subscriptionController = {
             const activeSub = await Subscription.findActiveByUserId(userId);
             const latestSub = await Subscription.findLatestByUserId(userId);
             
-            // Get actual properties count
-            const db = require('../config/db');
-            const { rows: countRows } = await db.query(
-                'SELECT COUNT(*) FROM properties WHERE owner_id = $1 OR owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1)',
-                [userId]
-            );
-            const propertiesCount = parseInt(countRows[0].count);
+            // Compter le nombre total de LOGEMENTS (unités) au lieu des bâtiments
+            const { rows: countRows } = await db.query(`
+                SELECT (
+                    -- Compter toutes les unités dans property_units
+                    (SELECT COUNT(*) FROM property_units pu 
+                     JOIN properties p ON pu.property_id = p.id 
+                     WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
+                    +
+                    -- PLUS les propriétés qui n'ont AUCUNE unité enregistrée (elles comptent pour 1 logement)
+                    (SELECT COUNT(*) FROM properties p 
+                     WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
+                     AND NOT EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id))
+                ) as total_units
+            `, [userId]);
+            const unitsCount = parseInt(countRows[0].total_units);
 
             // Get monthly receipts count
             const { rows: receiptRows } = await db.query(`
@@ -31,9 +39,19 @@ const subscriptionController = {
             `, [userId]);
             const receiptsThisMonth = parseInt(receiptRows[0].count);
 
-            // Get plan limits based on ACTUAL ACTIVE subscription
+            // Get referral count
+            const { rows: userRows } = await db.query('SELECT referral_count FROM users WHERE id = $1', [userId]);
+            const referralCount = userRows[0]?.referral_count || 0;
+
+            // Get plan limits
             const PLANS = require('../config/plans');
-            let planKey = activeSub ? (activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE') : 'FREE';
+            // Si on a un abonnement actif, on l'utilise. Sinon, si on a un en attente, on donne un accès provisoire.
+            let planKey = 'FREE';
+            if (activeSub) {
+                planKey = activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE';
+            } else if (latestSub && latestSub.status === 'pending') {
+                planKey = latestSub.plan_name ? latestSub.plan_name.toUpperCase() : 'FREE';
+            }
             
             // Normalisation pour Professionnel -> PROFESSIONAL
             if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
@@ -45,10 +63,11 @@ const subscriptionController = {
             const subscriptionData = {
                 // Show latest sub info (even if pending) for status tracking
                 ...(latestSub || { plan_name: 'gratuit', status: 'active' }),
-                properties_count: propertiesCount,
+                properties_count: unitsCount, // On garde le nom de clé pour la compatibilité frontend temporaire
                 properties_limit: sanitize(planConfig.limits.max_properties),
                 receipts_this_month: receiptsThisMonth,
                 receipts_limit: sanitize(planConfig.limits.max_receipts_per_month),
+                referral_count: referralCount,
                 limits: {
                     ...planConfig.limits,
                     max_properties: sanitize(planConfig.limits.max_properties),

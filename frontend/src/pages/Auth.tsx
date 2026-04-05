@@ -6,9 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, User, ArrowLeft, Loader2 } from "lucide-react";
+import { Home, User, ArrowLeft, Loader2, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { login, signup, forgotPassword } from "@/api/auth";
+import { login, signup, forgotPassword, resendVerificationEmail } from "@/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { verifyEmail } from "@/api/emailverification";
 import Turnstile from "react-turnstile";
@@ -29,6 +29,9 @@ const Auth = () => {
   const [resetLoading, setResetLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showVerificationSent, setShowVerificationSent] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     identifier: searchParams.get("email") || "", // Pre-fill from URL
@@ -38,6 +41,7 @@ const Auth = () => {
     phone: "",
     companyName: "",
     userType: searchParams.get("type") || userType, // Pre-fill from URL
+    referralCode: searchParams.get("referralCode") || "",
   });
 
   const { setUser, setUserRole } = useAuth();
@@ -122,6 +126,7 @@ const Auth = () => {
         phone: formData.phone,
         role: formData.userType,
         companyName: formData.userType === "owner" ? formData.companyName : null,
+        referralCode: formData.referralCode || null,
         turnstileToken: turnstileToken || "",
       });
 
@@ -146,6 +151,11 @@ const Auth = () => {
         } else {
           navigate("/tenant-dashboard");
         }
+      } else {
+        // Mode vérification d'e-mail activé
+        setRegisteredEmail(formData.email);
+        setShowVerificationSent(true);
+        toast.success("Compte créé ! Veuillez vérifier votre e-mail.");
       }
     } catch (error: any) {
       toast.error(error.message || "La création du compte a échoué. Veuillez réessayer.");
@@ -170,6 +180,21 @@ const Auth = () => {
     }
   };
 
+  const handleResendEmail = async () => {
+    const emailToResend = registeredEmail || formData.email;
+    if (!emailToResend) return;
+    
+    try {
+      setResendLoading(true);
+      await resendVerificationEmail(emailToResend);
+      toast.success("Un nouvel e-mail de confirmation a été envoyé !");
+    } catch (error: any) {
+      toast.error(error.message || "Erreur lors de l'envoi de l'e-mail.");
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
       <Button
@@ -181,12 +206,41 @@ const Auth = () => {
         {t('common.back')}
       </Button>
 
-      <Card className="w-full max-w-md shadow-strong animate-scale-in">
+      {showVerificationSent ? (
+        <Card className="w-full max-w-md shadow-strong animate-scale-in">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-6">
+               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <Mail className="h-10 w-10 text-primary animate-bounce-slow" />
+               </div>
+               <img src="/logo-sl.png" alt="Samalocation" className="h-12 w-auto mx-auto object-contain opacity-50" />
+            </div>
+            <CardTitle className="text-2xl">Vérifiez votre e-mail</CardTitle>
+            <CardDescription className="text-base pt-2">
+              Nous avons envoyé un lien de confirmation à <span className="font-bold text-foreground">{registeredEmail}</span>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Veuillez cliquer sur le lien dans l'e-mail pour activer votre compte. Si vous ne le voyez pas, vérifiez votre dossier de courriers indésirables (spams).
+            </p>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4">
+            <Button className="w-full gradient-primary text-white" onClick={() => setShowVerificationSent(false)}>
+              Retour à la connexion
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Vous n'avez rien reçu ? <button type="button" className="text-primary hover:underline font-medium disabled:opacity-50" onClick={handleResendEmail} disabled={resendLoading}>{resendLoading ? "Envoi..." : "Renvoyer l'e-mail"}</button>
+            </p>
+          </CardFooter>
+        </Card>
+      ) : (
+        <Card className="w-full max-w-md shadow-strong animate-scale-in">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-full gradient-primary flex items-center justify-center mb-4">
-            <Home className="h-6 w-6 text-white" />
+          <div className="mx-auto mb-4">
+            <img src="/logo-sl.png" alt="Samalocation" className="h-20 w-auto mx-auto object-contain" />
           </div>
-          <CardTitle className="text-2xl">Samalocation</CardTitle>
+          <CardTitle className="text-2xl hidden md:block">Samalocation</CardTitle>
           <CardDescription>
             {mode === "login" ? t('auth.login.card_desc') : t('auth.signup.card_desc')}
           </CardDescription>
@@ -407,6 +461,26 @@ const Auth = () => {
                       required
                     />
                   </div>
+
+                  {formData.userType === "owner" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="referralCode" className="flex items-center gap-2 cursor-pointer">
+                        <span>Code de parrainage</span>
+                        <Badge variant="outline" className="text-[9px] h-4 border-accent text-accent uppercase font-bold">Cadeau</Badge>
+                      </Label>
+                      <Input
+                        id="referralCode"
+                        type="text"
+                        placeholder="Ex: SL-XXXX"
+                        value={formData.referralCode}
+                        onChange={(e) => setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })}
+                        className="border-dashed border-accent/40 focus-visible:border-accent"
+                      />
+                      <p className="text-[10px] text-muted-foreground italic">
+                        Optionnel: Recevez 1 mois Premium offert avec un code valide.
+                      </p>
+                    </div>
+                  )}
                   {import.meta.env.PROD && (
                     <div className="flex justify-center py-2">
                       <Turnstile
@@ -454,7 +528,8 @@ const Auth = () => {
             </TabsContent>
           </Tabs>
         </CardContent>
-      </Card>
+        </Card>
+      )}
 
       <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
         <DialogContent className="sm:max-w-[425px]">

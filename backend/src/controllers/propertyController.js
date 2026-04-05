@@ -95,6 +95,42 @@ const propertyController = {
     async createProperty(req, res, next) {
         try {
             const ownerId = req.ownerId;
+
+            // --- Vérification du quota de LOGEMENTS (unités) ---
+            const Subscription = require('../models/subscriptionModel');
+            const PLANS = require('../config/plans');
+            const activeSub = await Subscription.findActiveByUserId(ownerId);
+            let planKey = activeSub ? (activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE') : 'FREE';
+            if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
+            const planConfig = PLANS[planKey] || PLANS.FREE;
+
+            const maxUnits = planConfig.limits.max_properties; // On réutilise le champ max_properties pour les logements
+
+            if (maxUnits !== Infinity && maxUnits !== -1) {
+                const db = require('../config/db');
+                const { rows: countRows } = await db.query(`
+                    SELECT (
+                        (SELECT COUNT(*) FROM property_units pu 
+                         JOIN properties p ON pu.property_id = p.id 
+                         WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
+                        +
+                        (SELECT COUNT(*) FROM properties p 
+                         WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
+                         AND NOT EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id))
+                    ) as total_units
+                `, [ownerId]);
+                
+                const currentUnits = parseInt(countRows[0].total_units);
+                
+                if (currentUnits >= maxUnits) {
+                    return res.status(403).json({
+                        status: 'error',
+                        message: `Vous avez atteint votre limite de ${maxUnits} logements pour le plan ${planConfig.name}. Veuillez passer au plan supérieur pour ajouter de nouveaux biens.`
+                    });
+                }
+            }
+            // ----------------------------------------------------
+
             const propertyData = {
                 id: uuidv4(),
                 owner_id: ownerId,
@@ -136,6 +172,42 @@ const propertyController = {
         try {
             const ownerId = req.user.id;
             const { property_id, units } = req.body;
+
+            // --- Vérification du quota de LOGEMENTS (unités) ---
+            const Subscription = require('../models/subscriptionModel');
+            const PLANS = require('../config/plans');
+            const activeSub = await Subscription.findActiveByUserId(ownerId);
+            let planKey = activeSub ? (activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE') : 'FREE';
+            if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
+            const planConfig = PLANS[planKey] || PLANS.FREE;
+
+            const maxUnits = planConfig.limits.max_properties;
+
+            if (maxUnits !== Infinity && maxUnits !== -1) {
+                const db = require('../config/db');
+                const { rows: countRows } = await db.query(`
+                    SELECT (
+                        (SELECT COUNT(*) FROM property_units pu 
+                         JOIN properties p ON pu.property_id = p.id 
+                         WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
+                        +
+                        (SELECT COUNT(*) FROM properties p 
+                         WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
+                         AND NOT EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id))
+                    ) as total_units
+                `, [ownerId]);
+                
+                const currentUnits = parseInt(countRows[0].total_units);
+                const unitsToAdd = Array.isArray(units) ? units.length : 0;
+                
+                if (currentUnits + unitsToAdd > maxUnits) {
+                    return res.status(403).json({
+                        status: 'error',
+                        message: `L'ajout de ces ${unitsToAdd} logements dépasserait votre limite de ${maxUnits} pour le plan ${planConfig.name}.`
+                    });
+                }
+            }
+            // ----------------------------------------------------
 
             const success = await Property.addUnits(property_id, ownerId, units);
             if (!success) {

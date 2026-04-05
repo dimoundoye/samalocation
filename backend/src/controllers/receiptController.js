@@ -47,7 +47,40 @@ const receiptController = {
                 });
             }
 
-            console.log('✅ Property verified, creating receipt...');
+            // --- Vérification du quota mensuel de quittances ---
+            const Subscription = require('../models/subscriptionModel');
+            const PLANS = require('../config/plans');
+            
+            // On récupère les stats de consommation actuelles
+            const activeSub = await Subscription.findActiveByUserId(ownerId);
+            let planKey = activeSub ? (activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE') : 'FREE';
+            if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
+            const planConfig = PLANS[planKey] || PLANS.FREE;
+
+            const maxReceipts = planConfig.limits.max_receipts_per_month;
+
+            if (maxReceipts !== Infinity && maxReceipts !== -1) {
+                // Compter les quittances générées ce mois-ci
+                const { rows: countRows } = await db.query(`
+                    SELECT COUNT(*) FROM receipts r
+                    JOIN properties p ON r.property_id = p.id
+                    WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
+                    AND EXTRACT(MONTH FROM r.created_at) = EXTRACT(MONTH FROM NOW())
+                    AND EXTRACT(YEAR FROM r.created_at) = EXTRACT(YEAR FROM NOW())
+                `, [ownerId]);
+                
+                const currentMonthCount = parseInt(countRows[0].count);
+                
+                if (currentMonthCount >= maxReceipts) {
+                    return res.status(403).json({
+                        status: 'error',
+                        message: `Vous avez atteint votre limite mensuelle de ${maxReceipts} quittances pour le plan ${planConfig.name}. Veuillez passer au plan supérieur pour continuer.`
+                    });
+                }
+            }
+            // --------------------------------------------------
+
+            console.log('✅ Property verified and limits checked, creating receipt...');
             const receipt = await Receipt.create({
                 tenant_id,
                 property_id,

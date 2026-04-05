@@ -89,11 +89,11 @@ const resources = {
             },
             "hero": {
                 "badge": "La révolution locative au Sénégal",
-                "title_part1": "Gérez & Trouvez un bien",
+                "title_part1": "Gérez & Trouvez un logement",
                 "title_part2": "en toute confiance.",
                 "description": "Samalocation simplifie la vie des propriétaires et des locataires. Une plateforme transparente, sécurisée et 100% digitale au Sénégal.",
                 "list_property": "Mettre en location",
-                "search_property": "Chercher un bien",
+                "search_property": "Chercher un logement",
                 "search_placeholder": "Quartier, ville (ex: Almadies, Thiès...)",
                 "search_button": "Rechercher"
             },
@@ -106,7 +106,7 @@ const resources = {
                 },
                 "time": {
                     "title": "Gain de Temps",
-                    "desc": "Digitalisez vos visites et la gestion de vos biens en quelques clics."
+                    "desc": "Digitalisez vos visites et la gestion de vos logements en quelques clics."
                 },
                 "transparency": {
                     "title": "Transparence Totale",
@@ -117,7 +117,7 @@ const resources = {
                 "owners": {
                     "title": "Pour les Propriétaires",
                     "desc": "Gérez votre patrimoine avec sérénité. Trouvez des locataires vérifiés et suivez vos paiements sans stress.",
-                    "item1": "Publication de vos biens",
+                    "item1": "Publication de vos logements",
                     "item2": "Trouvez des locataires",
                     "item3": "Suivez vos paiements",
                     "item4": "Gestion des quittances",
@@ -134,7 +134,7 @@ const resources = {
                 }
             },
             "featured": {
-                "title": "Biens à la une",
+                "title": "Logements à la une",
                 "desc": "Découvrez les meilleures opportunités du moment.",
                 "view_all": "Voir tout l'immobilier"
             },
@@ -228,7 +228,7 @@ const resources = {
                     "welcome": "Bienvenue sur Samalocation",
                     "choice_type": "Quel type de compte souhaitez-vous créer\u00A0?",
                     "owner_type": "Propriétaire",
-                    "owner_desc": "Je souhaite mettre mes biens en location et gérer mes locataires.",
+                    "owner_desc": "Je souhaite mettre mes logements en location et gérer mes locataires.",
                     "tenant_type": "Locataire",
                     "tenant_desc": "Je recherche un logement ou je souhaite gérer mes quittances.",
                     "owner_badge": "Compte Propriétaire",
@@ -248,12 +248,12 @@ const resources = {
             "search": {
                 "title": "Trouvez votre logement idéal",
                 "placeholder": "Rechercher par ville, quartier... (ex: Villa à Dakar)",
-                "results_count_one": "{{count}} bien disponible",
-                "results_count_other": "{{count}} biens disponibles",
+                "results_count_one": "{{count}} logement disponible",
+                "results_count_other": "{{count}} logements disponibles",
                 "filters": "Filtres",
                 "more_filters": "Plus de filtres",
                 "price_range": "Gamme de prix",
-                "property_type": "Type de bien",
+                "property_type": "Type de logement",
                 "types": {
                     "all": "Tous les types",
                     "house": "Maison",
@@ -271,9 +271,9 @@ const resources = {
                     "200k_400k": "200 000 - 400 000 F",
                     "over_440k": "400 000 F+"
                 },
-                "no_results": "Aucun bien disponible pour le moment.",
+                "no_results": "Aucun logement disponible pour le moment.",
                 "no_results_desc": "Revenez plus tard pour voir les nouvelles offres.",
-                "loading": "Chargement des biens...",
+                "loading": "Chargement des logements...",
                 "pagination": {
                     "prev": "Précédent",
                     "next": "Suivant",
@@ -282,13 +282,13 @@ const resources = {
                 "view_map": "Voir la carte",
                 "view_list": "Voir la liste",
                 "map_title": "Localisation",
-                "map_desc": "Seuls les biens avec des coordonnées renseignées apparaissent sur la carte."
+                "map_desc": "Seuls les logements avec des coordonnées renseignées apparaissent sur la carte."
             },
             "dashboard": {
                 "sidebar": {
                     "home": "Tableau de bord",
                     "search": "Rechercher",
-                    "properties": "Mes biens",
+                    "properties": "Mes logements",
                     "tenants": "Locataires",
                     "management": "Gérance",
                     "maintenance": "Maintenance",
@@ -338,12 +338,12 @@ const resources = {
                 "incomplete_config": "Configuration incomplète",
                 "incomplete_desc": "Terminez la configuration de votre compte en intégrant une signature électronique pour vos reçus.",
                 "scan_signature": "Scanner ma signature",
-                "add_property": "Ajouter un bien",
-                "add_first_property": "Ajouter mon premier bien",
-                "property_registered": "bien enregistré",
-                "properties_registered": "biens enregistrés",
-                "no_properties": "Aucun bien enregistré",
-                "no_properties_desc": "Commencez par ajouter votre premier bien immobilier (maison, garage, appartement, studio, chambre ou locale)",
+                "add_property": "Ajouter un logement",
+                "add_first_property": "Ajouter mon premier logement",
+                "property_registered": "logement enregistré",
+                "properties_registered": "logements enregistrés",
+                "no_properties": "Aucun logement enregistré",
+                "no_properties_desc": "Commencez par ajouter votre premier logement (maison, villa, appartement, studio, chambre ou locale)",
                 "total_units": "Unités totales",
                 "available_units": "Disponibles",
                 "unit_types": "Types d'unités",
@@ -351,10 +351,10 @@ const resources = {
                 "draft": "Brouillon",
                 "publish": "Publier",
                 "unpublish": "Dépublier",
-                "property_published": "Bien publié",
-                "property_published_desc": "Le bien est maintenant visible par les locataires",
-                "property_unpublished": "Bien dépublié",
-                "property_unpublished_desc": "Le bien n'est plus visible publiquement",
+                "property_published": "Logement publié",
+                "property_published_desc": "Le logement est maintenant visible par les locataires",
+                "property_unpublished": "Logement dépublié",
+                "property_unpublished_desc": "Le logement n'est plus visible publiquement",
                 "search_tenant": "Rechercher un locataire...",
                 "assign_tenant": "Affecter un locataire",
                 "tenant_registered": "locataire enregistré",
@@ -365,7 +365,7 @@ const resources = {
                 "tenant": "Locataire",
                 "conversations": "Conversations",
                 "stats": {
-                    "total_properties": "Total des propriétés",
+                    "total_properties": "Total des logements",
                     "occupied_units": "Unités occupées",
                     "occupancy_rate": "Taux d'occupation",
                     "active_tenants": "Locataires actifs",

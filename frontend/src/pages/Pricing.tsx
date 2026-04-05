@@ -51,24 +51,25 @@ const Pricing = () => {
             name: "Gratuit",
             id: "free",
             price: 0,
-            description: "Idéal pour débuter et tester la plateforme.",
+            description: "Offre de lancement : 5 logements pour les 500 premiers inscrits !",
             icon: <Shield className="w-8 h-8 text-blue-500" />,
             features: [
-                "Jusqu'à 2 logements",
+                "Jusqu'à 5 logements (Offre Limitée)",
                 "Messagerie locataires",
                 "Gestion des maintenances (Basique)",
-                "Génération de reçus (3 / mois)",
+                "Génération de reçus (5/mois)",
+                "Génération de baux (Standard)",
+                "Signature électronique",
                 "Support communautaire"
             ],
             notIncluded: [
-                "Génération de contrats",
-                "Signature électronique",
                 "Assistant IA Gemini",
                 "Import Excel & Multi-compteurs",
                 "Logo sur les quittances"
             ],
-            cta: "Commencer gratuitement",
-            highlight: false
+            cta: "Saisir l'offre gratuite",
+            highlight: false,
+            badge: "LANCEMENT"
         },
         {
             name: "Premium",
@@ -185,8 +186,13 @@ const Pricing = () => {
                                     </div>
                                 )}
                             {plan.highlight && (
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium">
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium whitespace-nowrap">
                                     PLUS POPULAIRE
+                                </div>
+                            )}
+                            {plan.badge && (
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium whitespace-nowrap">
+                                    {plan.badge}
                                 </div>
                             )}
 
@@ -246,7 +252,7 @@ const Pricing = () => {
                             </div>
                             <h4 className="font-bold">Pour les Professionnels</h4>
                             <p className="text-sm text-muted-foreground leading-relaxed">
-                                Personnalisez vos documents avec votre identité visuelle et gérez des centaines de biens sans effort.
+                                Personnalisez vos documents avec votre identité visuelle et gérez des centaines de logements sans effort.
                             </p>
                         </div>
                         <div className="space-y-3">

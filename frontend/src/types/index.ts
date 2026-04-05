@@ -12,6 +12,8 @@ export interface User {
         can_view_revenue: boolean;
         [key: string]: any;
     };
+    referral_count?: number;
+    referred_by?: string;
 }
 
 export interface Property {

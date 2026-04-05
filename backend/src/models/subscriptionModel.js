@@ -9,7 +9,7 @@ const Subscription = {
             SELECT * FROM subscriptions 
             WHERE user_id = $1 
             AND status = 'active'
-            AND (expires_at > NOW() OR expires_at IS NULL)
+            AND (expires_at > (NOW() - INTERVAL '3 days') OR expires_at IS NULL)
             ORDER BY created_at DESC 
             LIMIT 1
         `, [userId]);
@@ -140,18 +140,28 @@ const Subscription = {
      * Mise à jour manuelle d'un abonnement par l'administrateur
      */
     async manualUpdate(userId, data) {
-        const { planName, status, durationDays, price, subscriptionId } = data;
+        const { planName, status, durationDays, price, subscriptionId, reason } = data;
+        const PLANS = require('../config/plans');
 
-        // 1. On prépare le cumul AVANT d'expirer le précédent
+        // 1. Déterminer la date de début (Upgrade = Immédiat, Downgrade/Renouvellement = Cumulé)
         const activeSub = await this.findActiveByUserId(userId);
         let startDate = new Date();
         
-        // Si on active un nouvel abonnement et qu'il y en a un déjà actif et non expiré
         if (status === 'active' && activeSub && activeSub.expires_at && new Date(activeSub.expires_at) > new Date()) {
-            startDate = new Date(activeSub.expires_at);
+            const oldPlanKey = activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE';
+            const newPlanKey = planName ? planName.toUpperCase() : 'FREE';
+            
+            const oldPlan = PLANS[oldPlanKey === 'PROFESSIONNEL' || oldPlanKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : oldPlanKey] || PLANS.FREE;
+            const newPlan = PLANS[newPlanKey === 'PROFESSIONNEL' || newPlanKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : newPlanKey] || PLANS.FREE;
+
+            // Si c'est un upgrade (nouveau plan plus cher), on commence AUJOURD'HUI
+            // Si c'est le même plan ou un downgrade (moins cher), on CUMULE à la fin
+            if (newPlan.price_monthly <= oldPlan.price_monthly) {
+                startDate = new Date(activeSub.expires_at);
+            }
         }
 
-        // On expire l'ancien abonnement ACTIF s'il y en a un (seulement si on active un nouveau)
+        // On expire l'ancien abonnement ACTIF s'il y en a un (indispensable si upgrade immédiat)
         if (status === 'active') {
             await db.query(`
                 UPDATE subscriptions 
@@ -167,16 +177,16 @@ const Subscription = {
             // Si un ID spécifique est fourni, on ne met à jour que celui-là
             if (subscriptionId) {
                 await db.query(`
-                    UPDATE subscriptions SET status = $1, updated_at = NOW() 
-                    WHERE id = $2 AND user_id = $3
-                `, [targetStatus, subscriptionId, userId]);
+                    UPDATE subscriptions SET status = $1, admin_notes = $2, updated_at = NOW() 
+                    WHERE id = $3 AND user_id = $4
+                `, [targetStatus, reason || null, subscriptionId, userId]);
             } else {
                 // Sinon on rejette toutes les demandes en attente
                 await db.query(`
                     UPDATE subscriptions 
-                    SET status = $1, updated_at = NOW() 
-                    WHERE user_id = $2 AND status = 'pending'
-                `, [targetStatus, userId]);
+                    SET status = $1, admin_notes = $2, updated_at = NOW() 
+                    WHERE user_id = $3 AND status = 'pending'
+                `, [targetStatus, reason || null, userId]);
             }
             return { status: targetStatus };
         }
@@ -209,6 +219,7 @@ const Subscription = {
                     status = 'active',
                     price = $2,
                     expires_at = $3,
+                    admin_notes = NULL,
                     updated_at = NOW()
                 WHERE id = $4 AND user_id = $5
                 RETURNING *
@@ -221,7 +232,6 @@ const Subscription = {
             ]);
             
             if (rows.length > 0) return rows[0];
-            // Si row count est 0, l'ID fourni n'existe pas pour cet user, on continue vers la création
         }
 
         // 3. Si aucun abonnement en attente n'est trouvé, on crée un nouvel abonnement 'manuel'
@@ -291,6 +301,15 @@ const Subscription = {
                 return planConfig.limits.inventory_contract;
             default:
                 return true;
+        }
+    },
+
+    async migrate() {
+        try {
+            await db.query("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS admin_notes TEXT NULL");
+            console.log('✅ Migration: admin_notes column added to subscriptions table');
+        } catch (err) {
+            console.error('Migration error (subscriptions):', err.message);
         }
     }
 };

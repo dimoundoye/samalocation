@@ -93,3 +93,24 @@ export const resetPassword = async (data: any) => {
         throw error;
     }
 };
+
+export const verifyEmailAccount = async (token: string) => {
+    try {
+        return await baseClient(`/auth/verify-email?token=${token}`);
+    } catch (error: any) {
+        console.error("VerifyEmailAccount error:", error);
+        throw error;
+    }
+};
+
+export const resendVerificationEmail = async (email: string) => {
+    try {
+        return await baseClient("/auth/resend-verification", {
+            method: "POST",
+            body: JSON.stringify({ email }),
+        });
+    } catch (error: any) {
+        console.error("ResendVerificationEmail error:", error);
+        throw error;
+    }
+};

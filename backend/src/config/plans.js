@@ -8,12 +8,12 @@ const PLANS = {
         price_monthly: 0,
         price_annual: 0,
         limits: {
-            max_properties: 2,
-            max_receipts_per_month: 3,
+            max_properties: 5,
+            max_receipts_per_month: 5,
             ai_descriptions_per_month: 0,
             custom_branding: false,
             excel_reports: false,
-            inventory_contract: false
+            inventory_contract: true // Indiqué comme disponible pour tous
         }
     },
     PREMIUM: {

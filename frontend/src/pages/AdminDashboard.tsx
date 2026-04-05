@@ -180,10 +180,10 @@ const AdminDashboard = () => {
     <>
       <button
         onClick={() => navigate("/")}
-        className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity"
+        className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity overflow-hidden"
       >
-        <Shield className="h-6 w-6 text-primary" />
-        <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+        <img src="/logo-sl.png" alt="Logo" className="h-12 w-auto object-contain shrink-0" />
+        <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate hidden lg:block">
           Samalocation Admin
         </span>
       </button>
