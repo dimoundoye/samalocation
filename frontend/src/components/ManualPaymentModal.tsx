@@ -45,11 +45,18 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                 period: period as 'monthly' | 'annual'
             });
 
+            console.log("PayTech Response received by frontend:", res);
+
             // baseClient returns data.data directly if status is success
-            if (res && res.redirect_url) {
-                window.location.href = res.redirect_url;
+            // But sometimes it returns the whole object. Let's handle both.
+            const url = res?.redirect_url || res?.data?.redirect_url;
+            
+            if (url) {
+                console.log("Redirecting to:", url);
+                window.location.assign(url); // Plus robuste que .href
             } else {
-                throw new Error("Lien de paiement non reçu");
+                console.error("No URL found in response", res);
+                throw new Error("Lien de paiement non trouvé dans la réponse du serveur");
             }
         } catch (error: any) {
             console.error("PayTech error:", error);
