@@ -19,6 +19,11 @@ const paymentController = {
             const planKey = planId.toUpperCase();
             const plan = PLANS[planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : planKey];
 
+            console.log('--- Init Payment Request ---');
+            console.log('Plan:', planId, 'Period:', period);
+            console.log('API Key present:', !!process.env.PAYTECH_API_KEY);
+            console.log('BACKEND_URL:', process.env.BACKEND_URL);
+
             if (!plan || planId.toLowerCase() === 'free') {
                 return response.error(res, 'Plan invalide', 400);
             }
@@ -26,11 +31,10 @@ const paymentController = {
             const price = period === 'annual' ? plan.price_annual : plan.price_monthly;
             const durationDays = period === 'annual' ? 365 : 30;
             
-            // 2. Générer une référence unique pour la commande en base (en attente)
-            // On crée une entrée "pending" pour suivre la transaction
+            // 2. Générer une référence unique
             const refCommand = `SUB-${Date.now()}-${userId}`;
 
-            // 3. Préparer les données pour PayTech
+            // 3. Préparer les données
             const payload = {
                 item_name: `Abonnement ${plan.name} (${period === 'annual' ? 'Annuel' : 'Mensuel'})`,
                 item_price: price,
@@ -38,8 +42,8 @@ const paymentController = {
                 ref_command: refCommand,
                 command_name: `Paiement abonnement ${plan.name} SamaLocation`,
                 env: process.env.NODE_ENV === 'production' ? 'prod' : 'test',
-                success_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard?payment=success`,
-                cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/pricing?payment=cancel`,
+                success_url: `${process.env.FRONTEND_URL}/dashboard?payment=success`,
+                cancel_url: `${process.env.FRONTEND_URL}/pricing?payment=cancel`,
                 ipn_url: `${process.env.BACKEND_URL}/api/payment/ipn`,
                 custom_field: JSON.stringify({
                     userId: userId,
@@ -48,6 +52,8 @@ const paymentController = {
                     price: price
                 })
             };
+
+            console.log('Payload to PayTech:', JSON.stringify(payload, null, 2));
 
             // 4. Appeler PayTech
             const paytechResponse = await axios.post(PAYTECH_BASE_URL, payload, {

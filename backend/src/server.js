@@ -45,7 +45,10 @@ app.use('/uploads', (req, res, next) => {
 
 // Basic Middleware
 app.use(cors({
-    origin: true, // Dynamically allow the origin that made the request
+    origin: (origin, callback) => {
+        // Allow all origins in production for flexibility, or list them explicitly
+        callback(null, true); 
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-active-context']
