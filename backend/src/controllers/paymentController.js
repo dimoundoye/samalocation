@@ -70,22 +70,16 @@ const paymentController = {
             });
 
             if (paytechResponse.data.success === 1) {
-                // On enregistre la tentative en base de données
-                await db.query(`
-                    INSERT INTO subscriptions (
-                        user_id, plan_name, status, price, 
-                        payment_method, transaction_id, created_at
-                    ) 
-                    VALUES ($1, $2, 'pending', $3, 'paytech', $4, NOW())
-                `, [userId, planKey, price, refCommand]);
+                console.log('--- PayTech Success ---');
+                console.log('Redirect URL:', paytechResponse.data.redirect_url);
 
-                return response.success(res, {
+                return response.success(res, 'Lien de paiement généré', {
                     redirect_url: paytechResponse.data.redirect_url,
                     token: paytechResponse.data.token
-                }, 'Lien de paiement généré');
+                });
             } else {
-                console.error('PayTech Error:', paytechResponse.data);
-                return response.error(res, 'Erreur lors de la génération du lien de paiement', 500);
+                console.error('PayTech API Error:', paytechResponse.data);
+                return response.error(res, paytechResponse.data.message || 'Erreur lors de la génération du lien de paiement', 400);
             }
 
         } catch (error) {
