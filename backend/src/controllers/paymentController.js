@@ -73,10 +73,10 @@ const paymentController = {
                 console.log('--- PayTech Success ---');
                 console.log('Redirect URL:', paytechResponse.data.redirect_url);
 
-                return response.success(res, 'Lien de paiement généré', {
+                return response.success(res, {
                     redirect_url: paytechResponse.data.redirect_url,
                     token: paytechResponse.data.token
-                });
+                }, 'Lien de paiement généré');
             } else {
                 console.error('PayTech API Error:', paytechResponse.data);
                 return response.error(res, paytechResponse.data.message || 'Erreur lors de la génération du lien de paiement', 400);
