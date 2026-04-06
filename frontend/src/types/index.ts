@@ -34,6 +34,7 @@ export interface Property {
     equipments?: string[];
     bedrooms?: number;
     bathrooms?: number;
+    rooms_count?: number;
     area_sqm?: number;
     created_at: string;
     property_units?: PropertyUnit[];
@@ -50,6 +51,7 @@ export interface PropertyUnit {
     area_sqm?: number;
     bedrooms?: number;
     bathrooms?: number;
+    rooms_count?: number;
     is_available: boolean;
     rent_period?: string;
     properties?: Property;

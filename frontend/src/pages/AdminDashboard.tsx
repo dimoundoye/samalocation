@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { UserGrowthChart } from "@/components/admin/UserGrowthChart";
 import { PropertyStatsChart } from "@/components/admin/PropertyStatsChart";
 import { PropertyTypeChart } from "@/components/admin/PropertyTypeChart";
@@ -29,9 +29,10 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { tab: urlTab } = useParams();
   const { toast } = useToast();
   const { signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(urlTab || "overview");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [statistics, setStatistics] = useState<AdminStatistics>({
     totalUsers: 0,
@@ -152,6 +153,14 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
+    if (urlTab) {
+      setActiveTab(urlTab);
+    } else {
+      setActiveTab("overview");
+    }
+  }, [urlTab]);
+
+  useEffect(() => {
     if (activeTab === 'finances') {
       loadTransactions();
       loadRevenueStats();
@@ -217,7 +226,7 @@ const AdminDashboard = () => {
             <button
               key={item.id}
               onClick={() => {
-                setActiveTab(item.id);
+                navigate(`/admin-dashboard/${item.id}`);
                 setMobileMenuOpen(false);
 
                 // Réinitialiser le badge lors de la consultation
@@ -317,7 +326,7 @@ const AdminDashboard = () => {
                     </div>
                     <div className="max-h-[300px] overflow-y-auto">
                       {statistics.pendingPaymentsCount > 0 && (
-                        <button onClick={() => { setActiveTab("finances"); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <button onClick={() => { navigate("/admin-dashboard/finances"); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
                           <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
                             <CreditCard className="h-4 w-4" />
                           </div>
@@ -328,7 +337,7 @@ const AdminDashboard = () => {
                         </button>
                       )}
                       {statistics.pendingReportsCount > 0 && (
-                        <button onClick={() => setActiveTab("reports")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <button onClick={() => navigate("/admin-dashboard/reports")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
                           <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
                             <AlertTriangle className="h-4 w-4" />
                           </div>
@@ -339,7 +348,7 @@ const AdminDashboard = () => {
                         </button>
                       )}
                       {statistics.pendingVerificationsCount > 0 && (
-                        <button onClick={() => setActiveTab("verifications")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <button onClick={() => navigate("/admin-dashboard/verifications")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                             <Shield className="h-4 w-4" />
                           </div>
@@ -383,7 +392,7 @@ const AdminDashboard = () => {
               <PropertiesManagement
                 onViewProfile={(name) => {
                   setUserSearchTerm(name);
-                  setActiveTab("users");
+                  navigate("/admin-dashboard/users");
                 }}
               />
             </div>

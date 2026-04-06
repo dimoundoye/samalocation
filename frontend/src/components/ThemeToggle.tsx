@@ -1,4 +1,4 @@
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Laptop } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,15 +20,18 @@ export function ThemeToggle() {
                     <span className="sr-only">Changer le thème</span>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setTheme("light")}>
-                    Clair
+            <DropdownMenuContent align="end" className="w-[140px] p-1.5 shadow-premium border-primary/10 rounded-xl">
+                <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2.5 px-3 py-2 cursor-pointer transition-all hover:translate-x-1">
+                    <Sun className="h-4 w-4 text-orange-500" />
+                    <span>Clair</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("dark")}>
-                    Sombre
+                <DropdownMenuItem onClick={() => setTheme("dark")} className="gap-2.5 px-3 py-2 cursor-pointer transition-all hover:translate-x-1">
+                    <Moon className="h-4 w-4 text-blue-500" />
+                    <span>Sombre</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("system")}>
-                    Système
+                <DropdownMenuItem onClick={() => setTheme("system")} className="gap-2.5 px-3 py-2 cursor-pointer transition-all hover:translate-x-1 border-t mt-1 pt-2 rounded-none rounded-b-lg">
+                    <Laptop className="h-4 w-4 text-muted-foreground" />
+                    <span>Système</span>
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

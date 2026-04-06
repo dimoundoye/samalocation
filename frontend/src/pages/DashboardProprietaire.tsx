@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
   getOwnerProperties,
@@ -61,6 +61,7 @@ import { OwnerPublicProfileEditor } from "@/components/owner/OwnerPublicProfileE
 
 const DashboardProprietaire = () => {
   const navigate = useNavigate();
+  const { tab: urlTab } = useParams();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
   const { signOut, user, loading: authLoading } = useAuth();
@@ -74,8 +75,7 @@ const DashboardProprietaire = () => {
     }
   }, [user, authLoading, navigate]);
 
-  const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "dashboard");
+  const [activeTab, setActiveTab] = useState(urlTab || "dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [addPropertyOpen, setAddPropertyOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -397,11 +397,12 @@ const DashboardProprietaire = () => {
   }, [selectedChat, currentUserId, messages, activeTab]);
 
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab) {
-      setActiveTab(tab);
+    if (urlTab) {
+      setActiveTab(urlTab);
+    } else {
+      setActiveTab("dashboard");
     }
-  }, [searchParams]);
+  }, [urlTab]);
 
   const getMonthName = (month: number) => {
     const date = new Date(2000, month - 1, 1);
@@ -758,7 +759,7 @@ const DashboardProprietaire = () => {
               <button
                 key={item.id}
                 onClick={() => {
-                  setActiveTab(item.id);
+                  navigate(`/owner-dashboard/${item.id}`);
                   if (isMobile) setMobileMenuOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 relative group/nav ${activeTab === item.id

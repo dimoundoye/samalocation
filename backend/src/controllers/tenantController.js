@@ -50,6 +50,40 @@ const tenantController = {
             const ownerId = req.ownerId;
             const { full_name, email, phone, unit_id, monthly_rent, move_in_date, status, user_id } = req.body;
 
+            // --- NOUVEAU QUOTA D'AFFECTATION (GÉRANCE) ---
+            const Subscription = require('../models/subscriptionModel');
+            const PLANS = require('../config/plans');
+            const activeSub = await Subscription.findActiveByUserId(ownerId);
+            let planKey = activeSub ? (activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE') : 'FREE';
+            if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
+            const planConfig = PLANS[planKey] || PLANS.FREE;
+
+            const maxAssignments = planConfig.limits.max_properties; 
+
+            // On compte les affectations ACTIVES (tenants déjà assignés)
+            const db = require('../config/db');
+            const { rows: countRows } = await db.query(`
+                SELECT COUNT(*) as active_assignments 
+                FROM tenants t
+                JOIN property_units pu ON t.unit_id = pu.id
+                JOIN properties p ON pu.property_id = p.id
+                WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1)
+            `, [ownerId]);
+
+            const activeAssignments = parseInt(countRows[0].active_assignments);
+
+            // On vérifie si on n'est pas déjà en train de remplacer un locataire sur CETTE unité spécifique
+            const existingInUnit = await Tenant.findActiveByUnitId(unit_id);
+            
+            // Si l'unité n'a pas de locataire et qu'on veut en ajouter un nouveau, on vérifie le quota global
+            if (!existingInUnit && maxAssignments !== Infinity && maxAssignments !== -1 && activeAssignments >= maxAssignments) {
+                return res.status(403).json({
+                    status: 'error',
+                    message: `Votre plan ${planConfig.name} limite la gérance à ${maxAssignments} logements affectés. Veuillez passer au plan supérieur pour gérer plus de locataires (affectations).`
+                });
+            }
+            // ----------------------------------------------
+
             if (!unit_id) {
                 return response.error(res, 'Unit ID is required', 400);
             }

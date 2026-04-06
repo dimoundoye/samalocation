@@ -10,3 +10,10 @@ export const notifyPayment = async (data: { planName: string, price: number, tra
         body: JSON.stringify(data)
     });
 };
+
+export const initializePaytechPayment = async (data: { planId: string, period: 'monthly' | 'annual' }) => {
+    return baseClient('/payment/request', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    });
+};

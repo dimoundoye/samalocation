@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, QrCode, Smartphone, Info, ExternalLink, Phone, Zap } from "lucide-react";
-import { notifyPayment } from "@/lib/api";
+import { notifyPayment, initializePaytechPayment } from "@/api/subscription";
 import { useToast } from "@/hooks/use-toast";
 
 interface ManualPaymentModalProps {
@@ -20,13 +20,45 @@ interface ManualPaymentModalProps {
 }
 
 export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: ManualPaymentModalProps) => {
+    const [view, setView] = useState<'choice' | 'manual'>('choice');
     const [transactionId, setTransactionId] = useState("");
     const [senderPhone, setSenderPhone] = useState("");
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
+    // Reset view when modal closes/opens
+    const handleOpenChange = (isOpen: boolean) => {
+        if (!isOpen) setView('choice');
+        onOpenChange(isOpen);
+    };
+
     const getWaveLink = (price: number) => {
         return `https://pay.wave.com/m/M_sn_JG5-cxcdVaME/c/sn/?amount=${price}`;
+    };
+
+    const handlePaytechPayment = async () => {
+        setLoading(true);
+        try {
+            const period = plan.id === 'premium' || plan.id === 'professional' ? (plan.price > 15000 ? 'annual' : 'monthly') : 'monthly';
+            const res = await initializePaytechPayment({
+                planId: plan.id,
+                period: period as 'monthly' | 'annual'
+            });
+
+            if (res.status === 'success' && res.data.redirect_url) {
+                window.location.href = res.data.redirect_url;
+            } else {
+                throw new Error("Lien de paiement non reçu");
+            }
+        } catch (error: any) {
+            console.error("PayTech error:", error);
+            toast({
+                title: "Erreur",
+                description: "Impossible d'initialiser le paiement automatique.",
+                variant: "destructive",
+            });
+            setLoading(false);
+        }
     };
 
     const handleSubmit = async () => {
@@ -62,7 +94,7 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                 description: "Votre paiement a été signalé avec succès. L'administrateur validera sous 24h.",
             });
 
-            onOpenChange(false);
+            handleOpenChange(false);
             if (onSuccess) onSuccess();
         } catch (error: any) {
             console.error("ManualPaymentModal error:", error);
@@ -77,146 +109,184 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent
-                className="sm:max-w-[550px] rounded-[2.5rem] p-0 border-none shadow-strong"
-                style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}
+                className="sm:max-w-[550px] rounded-[2.5rem] p-0 border-none shadow-strong bg-white overflow-hidden"
+                style={{ display: 'flex', flexDirection: 'column', maxHeight: '95vh' }}
             >
                 {/* Header fixe */}
-                <DialogHeader className="p-8 pb-4 shrink-0 bg-white border-b">
+                <DialogHeader className="p-8 pb-4 shrink-0 bg-white">
                     <DialogTitle className="text-3xl font-black flex items-center gap-3 tracking-tighter">
                         <Zap className="h-8 w-8 text-primary fill-primary/20" />
                         Plan {plan.name}
                     </DialogTitle>
                     <DialogDescription className="text-base font-medium text-muted-foreground/80">
-                        Finalisez votre activation en suivant ces 3 étapes simples.
+                        {view === 'choice'
+                            ? "Choisissez votre méthode de paiement préférée au Sénégal."
+                            : "Suivez les étapes pour valider votre paiement manuel."
+                        }
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Zone scrollable — utilise overflow-y-auto natif */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
-                    <div className="space-y-8">
-                        {/* Étapes de paiement */}
-                        <div className="bg-primary/5 p-6 rounded-[2rem] border border-primary/10">
-                            <div className="flex justify-between items-center mb-6">
-                                <span className="text-xs font-black text-muted-foreground/60 uppercase tracking-[0.2em]">FACTURE À RÉGLER</span>
-                                <Badge className="text-2xl font-black bg-primary text-white border-none px-6 py-2 rounded-2xl">
-                                    {plan.price.toLocaleString()} F
-                                </Badge>
+                {/* Zone scrollable */}
+                <div className="flex-1 overflow-y-auto px-8 pb-8">
+                    {view === 'choice' ? (
+                        <div className="space-y-4 pt-2">
+                            {/* Option Automatique */}
+                            <button
+                                onClick={handlePaytechPayment}
+                                disabled={loading}
+                                className="w-full relative group p-6 rounded-[2rem] border-2 border-primary/10 hover:border-accent bg-white transition-all duration-300 text-left hover:shadow-xl hover:-translate-y-1 active:scale-[0.98]"
+                            >
+                                <div className="absolute top-4 right-6 bg-accent text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                                    Recommandé
+                                </div>
+                                <div className="flex items-start gap-4">
+                                    <div className="h-14 w-14 rounded-2xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                                        <Zap className="h-8 w-8 fill-accent/10" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="text-xl font-black tracking-tight">Automatique (Instant)</h4>
+                                        <p className="text-sm text-muted-foreground leading-snug">
+                                            Payez via <strong>Wave, Orange Money, Free Money</strong> ou <strong>Carte</strong>. Activation immédiate.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex items-center justify-between">
+                                    <div className="flex gap-2 opacity-60 grayscale group-hover:grayscale-0 transition-all">
+                                        {/* Icons for payment methods could go here */}
+                                        <Smartphone className="h-4 w-4" />
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    </div>
+                                    <span className="text-accent font-black text-xs uppercase tracking-widest flex items-center gap-1">
+                                        Continuer <ExternalLink className="h-3 w-3" />
+                                    </span>
+                                </div>
+                            </button>
+
+                            <div className="relative flex items-center py-2">
+                                <div className="flex-grow border-t border-border/50"></div>
+                                <span className="mx-4 text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.3em]">ou</span>
+                                <div className="flex-grow border-t border-border/50"></div>
                             </div>
 
-                            <div className="space-y-5">
-                                {/* Étape 1: Bouton Wave */}
+                            {/* Option Manuelle */}
+                            <button
+                                onClick={() => setView('manual')}
+                                className="w-full group p-6 rounded-[2rem] border-2 border-border/50 hover:border-primary/50 bg-secondary/5 transition-all duration-300 text-left hover:shadow-lg hover:bg-white"
+                            >
                                 <div className="flex items-start gap-4">
-                                    <div className="h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">1</div>
-                                    <div className="space-y-3 flex-1">
-                                        <p className="text-sm leading-relaxed">
-                                            Cliquez sur le bouton ci-dessous pour payer directement via <strong>Wave</strong> :
+                                    <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                        <Smartphone className="h-8 w-8 opacity-70" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="text-xl font-black tracking-tight">Manuel via Wave</h4>
+                                        <p className="text-sm text-muted-foreground leading-snug">
+                                            Transfert direct et envoi de l'ID de transaction. Validation sous 24h.
                                         </p>
-                                        <Button asChild className="w-full h-14 gradient-primary text-white rounded-2xl font-bold group">
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex justify-end">
+                                    <span className="text-primary font-black text-xs uppercase tracking-widest group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                                        Saisir l'ID <Info className="h-3 w-3" />
+                                    </span>
+                                </div>
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-6 pt-2">
+                            {/* Retour au choix */}
+                            <button
+                                onClick={() => setView('choice')}
+                                className="text-xs font-black text-primary uppercase underline tracking-widest hover:text-accent transition-colors mb-4 inline-flex items-center gap-2"
+                            >
+                                ← Revenir au choix du mode
+                            </button>
+
+                            <div className="bg-primary/5 p-6 rounded-[2rem] border border-primary/10 space-y-5">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-xs font-black text-muted-foreground/60 uppercase tracking-[0.2em]">FACTURE À RÉGLER</span>
+                                    <Badge className="text-2xl font-black bg-primary text-white border-none px-6 py-2 rounded-2xl">
+                                        {plan.price.toLocaleString()} F
+                                    </Badge>
+                                </div>
+
+                                <div className="flex items-start gap-4">
+                                    <div className="h-7 w-7 rounded-full bg-primary/40 text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">1</div>
+                                    <div className="space-y-3 flex-1">
+                                        <p className="text-sm leading-relaxed">Cliquez ci-dessous pour payer via Wave :</p>
+                                        <Button asChild variant="outline" className="w-full h-12 border-primary/20 hover:bg-primary/5 rounded-2xl font-bold group">
                                             <a href={getWaveLink(plan.price)} target="_blank" rel="noopener noreferrer">
-                                                Payer avec Wave ({plan.price.toLocaleString()} F)
+                                                Lien Wave Direct ({plan.price.toLocaleString()} F)
                                                 <ExternalLink className="ml-2 h-4 w-4 opacity-70 group-hover:translate-x-1 transition-transform" />
                                             </a>
                                         </Button>
                                     </div>
                                 </div>
 
-                                <div className="relative py-2 flex items-center">
-                                    <div className="flex-grow border-t border-border/50"></div>
-                                    <span className="flex-shrink mx-4 text-xs font-bold text-muted-foreground uppercase opacity-50 tracking-widest">OU</span>
-                                    <div className="flex-grow border-t border-border/50"></div>
-                                </div>
-
-                                {/* Étape 2: Numéro manuel */}
                                 <div className="flex items-start gap-4">
-                                    <div className="h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">2</div>
-                                    <div className="text-sm space-y-2">
-                                        <p>Effectuez le transfert manuellement au numéro Business :</p>
-                                        <div className="flex items-center gap-3 bg-white p-3 rounded-xl border-2 border-primary/20 w-fit">
-                                            <Phone className="h-5 w-5 text-primary" />
+                                    <div className="h-7 w-7 rounded-full bg-primary/40 text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">2</div>
+                                    <div className="text-sm space-y-2 flex-1">
+                                        <p> Ou effectuez le transfert au numéro :</p>
+                                        <div className="bg-white p-3 rounded-xl border-2 border-primary/20 w-fit">
                                             <span className="text-xl font-black text-primary tracking-tighter">76 162 95 29</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* QR Code */}
-                                <div className="flex justify-center py-2">
-                                    <div className="bg-white p-3 rounded-2xl border-2 border-primary/10">
-                                        <QrCode className="h-32 w-32 text-primary opacity-90" />
-                                    </div>
-                                </div>
-
-                                {/* Étape 3 */}
                                 <div className="flex items-start gap-4">
-                                    <div className="h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">3</div>
-                                    <div className="text-sm">
-                                        Relevez votre <strong>numéro de téléphone</strong> et l'<strong>ID de transaction</strong> reçu par SMS, puis remplissez ci-dessous.
+                                    <div className="h-7 w-7 rounded-full bg-primary/40 text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">3</div>
+                                    <div className="text-sm flex-1">
+                                        Rejoignez votre numéro et l'ID de transaction reçu par SMS ou sur votre facture.
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Formulaire de confirmation */}
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="sender-phone" className="font-bold text-sm ml-1 uppercase text-muted-foreground tracking-wider">
-                                    Votre numéro Wave
-                                </Label>
-                                <div className="relative">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-sm ml-1 uppercase text-muted-foreground tracking-wider">Votre numéro Wave</Label>
                                     <Input
-                                        id="sender-phone"
                                         placeholder="Ex: 77 123 45 67"
                                         value={senderPhone}
                                         onChange={(e) => setSenderPhone(e.target.value)}
-                                        className="h-14 rounded-2xl border-2 border-border/50 focus-visible:ring-primary focus-visible:border-primary pl-12"
+                                        className="h-14 rounded-2xl border-2 border-border/50 focus-visible:ring-primary pl-4"
                                     />
-                                    <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                                 </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="transaction-id" className="font-bold text-sm ml-1 uppercase text-muted-foreground tracking-wider">
-                                    ID Transaction Wave
-                                </Label>
-                                <div className="relative">
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-sm ml-1 uppercase text-muted-foreground tracking-wider">ID Transaction</Label>
                                     <Input
-                                        id="transaction-id"
                                         placeholder="Ex: ABC-123456789"
                                         value={transactionId}
                                         onChange={(e) => setTransactionId(e.target.value)}
-                                        className="h-14 rounded-2xl border-2 border-border/50 focus-visible:ring-primary focus-visible:border-primary pl-12 font-mono"
+                                        className="h-14 rounded-2xl border-2 border-border/50 focus-visible:ring-primary pl-4 font-mono"
                                     />
-                                    <CheckCircle2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                    <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 px-1 pt-1 italic">
+                                        <Info className="h-3 w-3" /> Activation sous 24h après vérification.
+                                    </p>
                                 </div>
-                                <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 px-1 pt-1 italic">
-                                    <Info className="h-3 w-3" />
-                                    L'activation sera effectuée dans un délai de 24h après vérification.
-                                </p>
                             </div>
                         </div>
-
-                        {/* Espaceur bas */}
-                        <div className="h-2" />
-                    </div>
+                    )}
                 </div>
 
                 {/* Footer fixe */}
-                <DialogFooter className="p-6 pt-4 border-t bg-secondary/10 flex-col sm:flex-row gap-3 shrink-0">
+                <DialogFooter className="p-6 pt-4 border-t bg-secondary/5 flex-col sm:flex-row gap-3">
                     <Button
                         variant="ghost"
-                        onClick={() => onOpenChange(false)}
-                        className="rounded-2xl h-14 px-8 font-bold hover:bg-white/50"
+                        onClick={() => handleOpenChange(false)}
+                        className="rounded-2xl h-14 px-8 font-bold"
                     >
-                        Fermer
+                        Annuler
                     </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="flex-1 gradient-primary text-white rounded-2xl h-14 font-black shadow-strong hover:scale-[1.02] transition-all uppercase tracking-widest text-sm"
-                    >
-                        {loading ? "Vérification..." : "Confirmer mon paiement"}
-                    </Button>
+                    {view === 'manual' && (
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={loading}
+                            className="flex-1 gradient-primary text-white rounded-2xl h-14 font-black shadow-strong uppercase tracking-widest text-sm"
+                        >
+                            {loading ? "Vérification..." : "Confirmer le paiement"}
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

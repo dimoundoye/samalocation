@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, Wrench } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfile } from "@/components/UserProfile";
@@ -29,10 +29,11 @@ import { useTranslation } from "react-i18next";
 
 const DashboardLocataire = () => {
   const navigate = useNavigate();
+  const { tab: urlTab } = useParams();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState(urlTab || "dashboard");
 
   const dateLocale = i18n.language === 'en' ? enUS : fr;
 
@@ -98,6 +99,14 @@ const DashboardLocataire = () => {
       socket.off("new_message", handleNewMessage);
     };
   }, [socket, selectedChat, toast, t]);
+
+  useEffect(() => {
+    if (urlTab) {
+      setActiveTab(urlTab);
+    } else {
+      setActiveTab("dashboard");
+    }
+  }, [urlTab]);
 
   useEffect(() => {
     if (activeTab === "messages") {
@@ -342,7 +351,7 @@ const DashboardLocataire = () => {
                 if (item.id === "search") {
                   navigate("/search");
                 } else {
-                  setActiveTab(item.id);
+                  navigate(`/tenant-dashboard/${item.id}`);
                   setMobileMenuOpen(false);
                 }
               }}

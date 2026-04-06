@@ -8,6 +8,7 @@ const cron = require('node-cron');
 const Message = require('./models/messageModel');
 const db = require('./config/db');
 
+const paymentRoutes = require('./routes/paymentRoutes');
 const propertiesRoutes = require('./routes/propertyRoutes');
 const authRoutes = require('./routes/authRoutes');
 const messageRoutes = require('./routes/messageRoutes');
@@ -130,6 +131,7 @@ app.get('/api/ping', (req, res) => {
 });
 
 // Routes
+app.use('/api/payment', paymentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);

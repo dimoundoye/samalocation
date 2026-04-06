@@ -83,6 +83,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     bathrooms: "",
     floors: "", // Nombre d'étages (pour maison et villa)
     rent_period: "mois",
+    rooms_count: "",
   });
 
   const addEquipment = () => {
@@ -121,17 +122,18 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
   const propertyTypes = [
     { value: "maison", label: "Maison", icon: Home },
     { value: "villa", label: "Villa", icon: Layers },
-    { value: "appartement", label: "Appartement ou Studio", icon: Building2 },
+    { value: "appartement", label: "Appartement", icon: Building2 },
+    { value: "studio", label: "Studio", icon: Building },
     { value: "chambre", label: "Chambre", icon: BedDouble },
     { value: "garage", label: "Garage", icon: Warehouse },
     { value: "locale", label: "Local", icon: Store },
   ];
 
   // Types de biens simples (un seul bien) - tous les types sont maintenant simples
-  const isSimpleProperty = ["maison", "villa", "appartement", "chambre", "garage", "locale"].includes(propertyType);
+  const isSimpleProperty = ["maison", "villa", "appartement", "studio", "chambre", "garage", "locale"].includes(propertyType);
 
   // Types qui nécessitent des champs supplémentaires (étages, chambres, salles de bain)
-  const needsDetailedFields = ["maison", "villa", "appartement", "chambre"].includes(propertyType);
+  const needsDetailedFields = ["maison", "villa", "appartement", "studio", "chambre"].includes(propertyType);
 
   const rentPeriodOptions = [
     { value: "jour", label: "Jour" },
@@ -142,6 +144,9 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
 
   const handleSubmit = async () => {
+    // Guard against double submission
+    if (uploading) return;
+
     if (!propertyType) {
       toast({
         title: "Type requis",
@@ -173,6 +178,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     }
 
 
+    setUploading(true);
     try {
       // Check subscription limits
       if (subscription) {
@@ -218,6 +224,8 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
             ? parseInt(simplePropertyData.bedrooms, 10) : 0,
           bathrooms: needsDetailedFields && simplePropertyData.bathrooms
             ? parseInt(simplePropertyData.bathrooms, 10) : 0,
+          rooms_count: needsDetailedFields && simplePropertyData.rooms_count
+            ? parseInt(simplePropertyData.rooms_count, 10) : 0,
           description: propertyData.description || null,
           is_available: true,
           rent_period: simplePropertyData.rent_period || "mois",
@@ -350,6 +358,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
       bedrooms: "",
       bathrooms: "",
       floors: "",
+      rooms_count: "",
       rent_period: "mois",
     });
     setUploading(false);
@@ -402,6 +411,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                         bedrooms: "",
                         bathrooms: "",
                         floors: "",
+                        rooms_count: "",
                         rent_period: "mois",
                       });
 
@@ -711,6 +721,17 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                               onChange={(e) => setSimplePropertyData({ ...simplePropertyData, bathrooms: e.target.value })}
                               placeholder="1"
                               min="0"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="simple_rooms_count">Nombre de pièces</Label>
+                            <Input
+                              id="simple_rooms_count"
+                              type="number"
+                              value={simplePropertyData.rooms_count}
+                              onChange={(e) => setSimplePropertyData({ ...simplePropertyData, rooms_count: e.target.value })}
+                              placeholder="Ex: 3"
+                              min="1"
                             />
                           </div>
                         </>

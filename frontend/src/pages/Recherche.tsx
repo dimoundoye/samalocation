@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import PropertyCard from "@/components/PropertyCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search as SearchIcon, SlidersHorizontal, ArrowLeft, Home, ChevronRight, Map as MapIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +22,14 @@ const Recherche = () => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [propertyType, setPropertyType] = useState("all");
-  const [priceRange, setPriceRange] = useState("all");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [minArea, setMinArea] = useState("");
+  const [maxArea, setMaxArea] = useState("");
+  const [minRooms, setMinRooms] = useState("");
+  const [maxRooms, setMaxRooms] = useState("");
+  const [minBedrooms, setMinBedrooms] = useState("");
+  const [maxBedrooms, setMaxBedrooms] = useState("");
   const [properties, setProperties] = useState<FormattedProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [appliedPropertyIds, setAppliedPropertyIds] = useState<string[]>([]);
@@ -65,7 +73,7 @@ const Recherche = () => {
     if (user) {
       loadAppliedProperties();
     }
-  }, [user, currentPage, searchTerm, propertyType]);
+  }, [user, currentPage, searchTerm, propertyType, minPrice, maxPrice, minArea, maxArea, minRooms, maxRooms, minBedrooms, maxBedrooms]);
 
   // Redundant checkAuth removed, useAuth handles it now
   const isAuthenticated = !!user;
@@ -76,10 +84,16 @@ const Recherche = () => {
       setLoading(true);
       // Utiliser notre nouveau backend local avec filtres
       const data = await getProperties({
-        limit: 20,
-        page,
         search: searchTerm,
-        type: propertyType
+        type: propertyType,
+        minPrice,
+        maxPrice,
+        minArea,
+        maxArea,
+        minRooms,
+        maxRooms,
+        minBedrooms,
+        maxBedrooms
       });
 
       // The backend now returns { properties, pagination }
@@ -125,61 +139,13 @@ const Recherche = () => {
     }
   };
 
-  const filteredProperties = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-
-    const matchesSearch = (property: FormattedProperty) => {
-      if (!term) return true;
-      const name = property.name?.toLowerCase() || "";
-      const address = property.address?.toLowerCase() || "";
-
-      // Split term into words and check if each word matches name OR address
-      const words = term.split(/\s+/).filter(w => w.length > 1);
-      if (words.length > 1) {
-        return words.every(word => name.includes(word) || address.includes(word));
-      }
-
-      return name.includes(term) || address.includes(term);
-    };
-
-    const matchesType = (property: FormattedProperty) => {
-      if (propertyType === "all") return true;
-
-      const propertyMatches = property.property_type === propertyType;
-      const unitMatches = property.property_units?.some((unit: any) => unit?.unit_type === propertyType);
-
-      return propertyMatches || unitMatches;
-    };
-
-    const matchesPrice = (property: FormattedProperty) => {
-      if (priceRange === "all") return true;
-
-      const price = property.rent_amount || 0;
-      if (price === 0) return false;
-
-      switch (priceRange) {
-        case "0-100000":
-          return price <= 100000;
-        case "100000-200000":
-          return price > 100000 && price <= 200000;
-        case "200000-400000":
-          return price > 200000 && price <= 400000;
-        case "400000+":
-          return price > 400000;
-        default:
-          return true;
-      }
-    };
-
-    return properties.filter((property) => matchesSearch(property) && matchesType(property) && matchesPrice(property));
-  }, [properties, searchTerm, propertyType, priceRange]);
+  const filteredProperties = properties;
 
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24">
       <Navbar />
-
-      <div className="pt-24 pb-16 px-4">
+      <div className="pt-32 px-4">
         <div className="container mx-auto">
           {/* Back Button for authenticated users */}
           {isAuthenticated && (
@@ -203,24 +169,24 @@ const Recherche = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8">
-            <div className={`${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
-              {/* Filters */}
-              <div className="bg-card p-6 rounded-xl shadow-soft mb-8 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="md:col-span-2 relative">
-                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      placeholder={t('search.placeholder')}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                      onKeyDown={(e) => e.key === "Enter" && navigate(`/search/page_1${location.search}`)}
-                    />
-                  </div>
+          <div className="space-y-8">
+            {/* Filters Section */}
+            <div className="bg-card p-6 rounded-2xl shadow-soft border border-border/50 space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <div className="lg:col-span-3 relative">
+                  <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    placeholder={t('search.placeholder')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-12 bg-background border-border/50 rounded-xl focus:border-primary/50 transition-all"
+                    onKeyDown={(e) => e.key === "Enter" && navigate(`/search/page_1${location.search}`)}
+                  />
+                </div>
 
+                <div className="lg:col-span-2">
                   <Select value={propertyType} onValueChange={setPropertyType}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 bg-background border-border/50 rounded-xl focus:border-primary/50 transition-all">
                       <SelectValue placeholder={t('search.property_type')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -234,153 +200,191 @@ const Recherche = () => {
                       <SelectItem value="locale">{t('search.types.office')}</SelectItem>
                     </SelectContent>
                   </Select>
-
-                  <Select value={priceRange} onValueChange={setPriceRange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('common.price')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('search.prices.all')}</SelectItem>
-                      <SelectItem value="0-100000">{t('search.prices.under_100k')}</SelectItem>
-                      <SelectItem value="100000-200000">{t('search.prices.100k_200k')}</SelectItem>
-                      <SelectItem value="200000-400000">{t('search.prices.200k_400k')}</SelectItem>
-                      <SelectItem value="400000+">{t('search.prices.over_440k')}</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
-
-                <Button
-                  variant="outline"
-                  className="w-full md:w-auto"
-                  onClick={() => {
-                    toast({
-                      title: "Filtres avancés",
-                      description: "Les filtres avancés seront bientôt disponibles.",
-                    });
-                  }}
-                >
-                  <SlidersHorizontal className="mr-2 h-4 w-4" />
-                  {t('search.more_filters')}
-                </Button>
               </div>
 
-              {/* Properties Grid */}
-              {loading ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">{t('search.loading')}</p>
+              {/* Advanced Range Filters */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Loyer Min</Label>
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                  />
                 </div>
-              ) : filteredProperties.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">{t('search.no_results')}</p>
-                  <p className="text-sm text-muted-foreground mt-2">{t('search.no_results_desc')}</p>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Loyer Max</Label>
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-12">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {filteredProperties.map((property) => {
-                      const ownerProfile = (property as any).owner_profiles
-                        ? Array.isArray((property as any).owner_profiles)
-                          ? (property as any).owner_profiles[0]
-                          : (property as any).owner_profiles
-                        : null;
-                      const ownerPhone = ownerProfile?.contact_phone || ownerProfile?.phone;
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Surface Min (m²)</Label>
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    value={minArea}
+                    onChange={(e) => setMinArea(e.target.value)}
+                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Surface Max</Label>
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    value={maxArea}
+                    onChange={(e) => setMaxArea(e.target.value)}
+                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Chambres Min</Label>
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    value={minBedrooms}
+                    onChange={(e) => setMinBedrooms(e.target.value)}
+                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Chambres Max</Label>
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    value={maxBedrooms}
+                    onChange={(e) => setMaxBedrooms(e.target.value)}
+                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                  />
+                </div>
+              </div>
 
-                      return (
-                        <PropertyCard
-                          key={property.id}
-                          id={property.id}
-                          image={property.cover_photo || property.photo_url || property1}
-                          title={property.name}
-                          location={property.address}
-                          price={property.rent_amount || 0}
-                          type={property.property_type}
-                          status={property.display_status}
-                          bedrooms={property.aggregated_bedrooms || undefined}
-                          area={property.aggregated_area || undefined}
-                          bathrooms={property.aggregated_bathrooms || undefined}
-                          rentPeriod={property.primary_rent_period}
-                          isApplied={currentUserId && property.id ? appliedPropertyIds.includes(property.id) : false}
-                          ownerPhone={ownerPhone}
-                          isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
-                          isNew={property.published_at ? (new Date().getTime() - new Date(property.published_at).getTime()) < 7 * 24 * 60 * 60 * 1000 : false}
-                        />
-                      );
-                    })}
-                  </div>
+              <div className="flex justify-between items-center bg-accent/5 p-3 rounded-xl border border-accent/10">
+                <p className="text-xs text-muted-foreground italic">
+                  Les filtres sont appliqués instantanément.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs font-semibold hover:bg-red-50 hover:text-red-600 transition-colors"
+                  onClick={() => {
+                    setMinPrice(""); setMaxPrice(""); setMinArea(""); setMaxArea("");
+                    setMinRooms(""); setMaxRooms(""); setMinBedrooms(""); setMaxBedrooms("");
+                    setPropertyType("all"); setSearchTerm("");
+                  }}
+                >
+                  Réinitialiser
+                </Button>
+              </div>
+            </div>
 
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-4 pt-10 border-t">
-                      <Button
-                        variant="outline"
-                        disabled={currentPage <= 1}
-                        onClick={() => navigate(`/search/page_${currentPage - 1}${location.search}`)}
-                        className="flex items-center gap-2 px-6"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                        {t('search.pagination.prev')}
-                      </Button>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{t('search.pagination.page', { current: currentPage, total: totalPages })}</span>
+            {/* Content View */}
+            <div className="relative min-h-[500px]">
+              {viewMode === "list" ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  {loading ? (
+                    <div className="flex flex-col items-center justify-center py-32 bg-card rounded-2xl border border-dashed border-border/60">
+                      <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
+                      <p className="text-muted-foreground font-medium">{t('search.loading')}</p>
+                    </div>
+                  ) : filteredProperties.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-32 bg-card rounded-2xl border border-dashed border-border/60">
+                      <div className="bg-muted/30 p-6 rounded-full mb-6">
+                        <Home className="h-12 w-12 text-muted-foreground/40" />
                       </div>
-                      <Button
-                        variant="outline"
-                        disabled={currentPage >= totalPages}
-                        onClick={() => navigate(`/search/page_${currentPage + 1}${location.search}`)}
-                        className="flex items-center gap-2 px-6"
-                      >
-                        {t('search.pagination.next')}
-                        <ChevronRight className="h-4 w-4" />
+                      <h3 className="text-xl font-bold mb-2">{t('search.no_results')}</h3>
+                      <p className="text-muted-foreground mb-6">{t('search.no_results_desc')}</p>
+                      <Button variant="outline" className="rounded-xl px-8" onClick={() => navigate(0)}>
+                        Actualiser la page
                       </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-12">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {filteredProperties.map((property) => {
+                          const ownerProfile = (property as any).owner_profiles?.[0] || (property as any).owner_profiles || null;
+                          return (
+                            <PropertyCard
+                              key={property.id}
+                              id={property.id}
+                              image={property.cover_photo || property.photo_url || property1}
+                              title={property.name}
+                              location={property.address}
+                              price={property.rent_amount || 0}
+                              type={property.property_type}
+                              status={property.display_status}
+                              bedrooms={property.aggregated_bedrooms || undefined}
+                              area={property.aggregated_area || undefined}
+                              bathrooms={property.aggregated_bathrooms || undefined}
+                              rentPeriod={property.primary_rent_period || "mois"}
+                              isApplied={currentUserId && property.id ? appliedPropertyIds.includes(property.id) : false}
+                              ownerPhone={ownerProfile?.phone}
+                              isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
+                              isNew={property.created_at ? (new Date().getTime() - new Date(property.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000 : false}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-center gap-4 pt-12 border-t">
+                          <Button variant="outline" disabled={currentPage <= 1} onClick={() => navigate(`/search/page_${currentPage - 1}${location.search}`)} className="rounded-xl px-6">
+                            <ArrowLeft className="h-4 w-4 mr-2" /> {t('search.pagination.prev')}
+                          </Button>
+                          <div className="flex items-center px-4 py-2 bg-muted/30 rounded-xl font-bold text-sm">
+                            {t('search.pagination.page', { current: currentPage, total: totalPages })}
+                          </div>
+                          <Button variant="outline" disabled={currentPage >= totalPages} onClick={() => navigate(`/search/page_${currentPage + 1}${location.search}`)} className="rounded-xl px-6">
+                            {t('search.pagination.next')} <ChevronRight className="h-4 w-4 ml-2" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-
-            {/* Map Section */}
-            <div className={`${viewMode === 'list' ? 'hidden lg:block' : 'block'} mt-12 max-w-5xl mx-auto w-full`}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <MapIcon className="h-6 w-6 text-primary" />
-                  <h2 className="text-2xl font-bold">{t('search.map_title')}</h2>
+              ) : (
+                <div className="animate-in zoom-in-95 fade-in duration-500">
+                  <div className="bg-card p-3 rounded-2xl shadow-xl border border-border/50 overflow-hidden isolate h-[650px] w-full">
+                    <MapComponent properties={filteredProperties} />
+                  </div>
+                  <p className="text-center text-xs text-muted-foreground mt-4">
+                    Utilisez les filtres pour affiner les biens affichés sur la carte.
+                  </p>
                 </div>
-                {viewMode === 'map' && (
-                  <Button variant="outline" size="sm" onClick={() => setViewMode('list')} className="lg:hidden">
-                    <ArrowLeft className="h-4 w-4 mr-2" /> {t('search.view_list')}
-                  </Button>
-                )}
-              </div>
-              <div className="h-[400px] w-full bg-secondary/20 rounded-xl overflow-hidden shadow-soft border border-border/50 relative z-0 isolate">
-                <MapComponent properties={filteredProperties} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Seuls les biens avec des coordonnées renseignées apparaissent sur la carte.
-              </p>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Floating Action Button for Mobile Toggle */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 lg:hidden">
+      {/* Floating View Toggle Button */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
         <Button
           onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-          className="rounded-full shadow-lg px-6 py-6 flex items-center gap-2 animate-in fade-in zoom-in slide-in-from-bottom-4"
+          className="rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] px-6 py-4 flex items-center gap-3 animate-in slide-in-from-bottom-8 duration-700 bg-primary hover:bg-primary/95 text-primary-foreground border-2 border-background min-w-[180px] group transition-all"
         >
           {viewMode === 'list' ? (
             <>
-              <MapIcon className="h-5 w-5" />
-              Voir la carte
+              <MapIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-bold tracking-tight">VOIR SUR LA CARTE</span>
             </>
           ) : (
             <>
-              <SearchIcon className="h-5 w-5" />
-              Voir la liste
+              <SlidersHorizontal className="h-5 w-5 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-bold tracking-tight">VOIR LA LISTE</span>
             </>
           )}
         </Button>
       </div>
-    </div >
+    </div>
   );
 };
 

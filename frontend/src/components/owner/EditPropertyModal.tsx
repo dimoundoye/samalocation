@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Upload, Sparkles, Loader2, Home, Layers, Building2, BedDouble, Warehouse, Store } from "lucide-react";
+import { X, Upload, Sparkles, Loader2, Home, Layers, Building2, Building, BedDouble, Warehouse, Store } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { updateProperty, uploadPhotos, generateAIDescription } from "@/lib/api";
 import { Property } from "@/types";
@@ -38,6 +38,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
         area_sqm: "",
         bedrooms: "",
         bathrooms: "",
+        rooms_count: "",
         rent_period: "mois",
     });
 
@@ -76,6 +77,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                     area_sqm: unit.area_sqm?.toString() || "",
                     bedrooms: unit.bedrooms?.toString() || "",
                     bathrooms: unit.bathrooms?.toString() || "",
+                    rooms_count: unit.rooms_count?.toString() || "0",
                     rent_period: unit.rent_period || "mois",
                 });
             } else {
@@ -85,6 +87,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                     area_sqm: "",
                     bedrooms: "",
                     bathrooms: "",
+                    rooms_count: "",
                     rent_period: "mois",
                 });
             }
@@ -145,6 +148,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                         area_sqm: unitData.area_sqm ? parseFloat(unitData.area_sqm) : null,
                         bedrooms: unitData.bedrooms ? parseInt(unitData.bedrooms) : 0,
                         bathrooms: unitData.bathrooms ? parseInt(unitData.bathrooms) : 0,
+                        rooms_count: unitData.rooms_count ? parseInt(unitData.rooms_count) : 0,
                         rent_period: unitData.rent_period,
                         unit_number: propertyType.charAt(0).toUpperCase() + propertyType.slice(1)
                     }
@@ -217,13 +221,14 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
     const propertyTypes = [
         { value: "maison", label: "Maison", icon: Home },
         { value: "villa", label: "Villa", icon: Layers },
-        { value: "appartement", label: "Appartement ou Studio", icon: Building2 },
+        { value: "appartement", label: "Appartement", icon: Building2 },
+        { value: "studio", label: "Studio", icon: Building },
         { value: "chambre", label: "Chambre", icon: BedDouble },
         { value: "garage", label: "Garage", icon: Warehouse },
         { value: "locale", label: "Local", icon: Store },
     ];
 
-    const needsDetailedFields = ["maison", "villa", "appartement", "chambre"].includes(propertyType);
+    const needsDetailedFields = ["maison", "villa", "appartement", "studio", "chambre"].includes(propertyType);
 
     const rentPeriodOptions = [
         { value: "jour", label: "Jour" },
@@ -519,6 +524,16 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                                                 type="number"
                                                 value={unitData.bathrooms}
                                                 onChange={(e) => setUnitData({ ...unitData, bathrooms: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="edit-rooms">Nombre de pièces</Label>
+                                            <Input
+                                                id="edit-rooms"
+                                                type="number"
+                                                value={unitData.rooms_count}
+                                                onChange={(e) => setUnitData({ ...unitData, rooms_count: e.target.value })}
+                                                min="1"
                                             />
                                         </div>
                                     </>

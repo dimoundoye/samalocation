@@ -51,10 +51,11 @@ const Pricing = () => {
             name: "Gratuit",
             id: "free",
             price: 0,
-            description: "Offre de lancement : 5 logements pour les 500 premiers inscrits !",
+            description: "Offre de lancement : Gérez vos premiers locataires gratuitement !",
             icon: <Shield className="w-8 h-8 text-blue-500" />,
             features: [
-                "Jusqu'à 5 logements (Offre Limitée)",
+                "Logements ILLIMITÉS (Publication)",
+                "Gestion de 5 locataires (Gérance)",
                 "Messagerie locataires",
                 "Gestion des maintenances (Basique)",
                 "Génération de reçus (5/mois)",
@@ -64,8 +65,8 @@ const Pricing = () => {
             ],
             notIncluded: [
                 "Assistant IA Gemini",
-                "Import Excel & Multi-compteurs",
-                "Logo sur les quittances"
+                "Import Excel de masse",
+                "Branding personnalisé"
             ],
             cta: "Saisir l'offre gratuite",
             highlight: false,
@@ -79,7 +80,8 @@ const Pricing = () => {
             description: "Pour les propriétaires indépendants voulant automatiser leur gérance.",
             icon: <Zap className="w-8 h-8 text-accent" />,
             features: [
-                "Jusqu'à 15 logements",
+                "Logements ILLIMITÉS (Publication)",
+                "Gestion de 15 locataires (Gérance)",
                 "Reçus illimités & PDF",
                 "Génération de contrats PDF",
                 "Signature électronique (Scan)",
@@ -104,11 +106,11 @@ const Pricing = () => {
             icon: <Crown className="w-8 h-8 text-yellow-500" />,
             features: [
                 "Logements ILLIMITÉS",
+                "Gérance de locataires ILLIMITÉE",
                 "Import de fichier Excel (Biens)",
                 "Gestion Multi-utilisateurs (Collaborateurs)",
                 "Logo & Branding sur les reçus",
                 "Assistant IA Gemini ILLIMITÉ",
-                "Signature électronique certifiée",
                 "Exports Excel structurés",
                 "Gestionnaire de compte dédié"
             ],
@@ -185,62 +187,62 @@ const Pricing = () => {
                                         <p className="text-sm font-bold text-muted-foreground">Non disponible pour les agents</p>
                                     </div>
                                 )}
-                            {plan.highlight && (
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium whitespace-nowrap">
-                                    PLUS POPULAIRE
-                                </div>
-                            )}
-                            {plan.badge && (
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium whitespace-nowrap">
-                                    {plan.badge}
-                                </div>
-                            )}
-
-                            <div className="mb-8">
-                                <div className="mb-4 inline-block">{plan.icon}</div>
-                                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                                <p className="text-muted-foreground text-sm leading-relaxed">{plan.description}</p>
-                            </div>
-
-                            <div className="mb-8">
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-bold">{plan.price.toLocaleString('fr-FR')}</span>
-                                    <span className="text-xl font-bold">FCFA</span>
-                                    <span className="text-muted-foreground ml-1">{plan.period}</span>
-                                </div>
-                                {isAnnual && plan.price > 0 && (
-                                    <p className="text-xs text-green-600 font-medium mt-1">Facturé annuellement</p>
+                                {plan.highlight && (
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium whitespace-nowrap">
+                                        PLUS POPULAIRE
+                                    </div>
                                 )}
-                            </div>
+                                {plan.badge && (
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium whitespace-nowrap">
+                                        {plan.badge}
+                                    </div>
+                                )}
 
-                            <Button
-                                onClick={() => handlePlanSelect(plan)}
-                                className={`w-full h-12 rounded-xl text-base font-bold transition-all hover:scale-105 ${plan.highlight
-                                    ? "gradient-primary shadow-medium text-white"
-                                    : "bg-white border-2 border-primary text-primary hover:bg-primary hover:text-white dark:bg-card"
-                                    }`}
-                            >
-                                {plan.cta}
-                            </Button>
+                                <div className="mb-8">
+                                    <div className="mb-4 inline-block">{plan.icon}</div>
+                                    <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">{plan.description}</p>
+                                </div>
 
-                            <hr className="my-8 border-border/50" />
-                            <ul className="space-y-4">
-                                {plan.features.map((feature, i) => (
-                                    <li key={i} className="flex items-start gap-3">
-                                        <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                                        <span className="text-sm font-medium">{feature}</span>
-                                    </li>
-                                ))}
-                                {plan.notIncluded?.map((feature, i) => (
-                                    <li key={i} className="flex items-start gap-3 opacity-60">
-                                        <X className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                                        <span className="text-sm text-muted-foreground">{feature}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </motion.div>
-                    );
-                })}
+                                <div className="mb-8">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-4xl font-bold">{plan.price.toLocaleString('fr-FR')}</span>
+                                        <span className="text-xl font-bold">FCFA</span>
+                                        <span className="text-muted-foreground ml-1">{plan.period}</span>
+                                    </div>
+                                    {isAnnual && plan.price > 0 && (
+                                        <p className="text-xs text-green-600 font-medium mt-1">Facturé annuellement</p>
+                                    )}
+                                </div>
+
+                                <Button
+                                    onClick={() => handlePlanSelect(plan)}
+                                    className={`w-full h-12 rounded-xl text-base font-bold transition-all hover:scale-105 ${plan.highlight
+                                        ? "gradient-primary shadow-medium text-white"
+                                        : "bg-white border-2 border-primary text-primary hover:bg-primary hover:text-white dark:bg-card"
+                                        }`}
+                                >
+                                    {plan.cta}
+                                </Button>
+
+                                <hr className="my-8 border-border/50" />
+                                <ul className="space-y-4">
+                                    {plan.features.map((feature, i) => (
+                                        <li key={i} className="flex items-start gap-3">
+                                            <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                                            <span className="text-sm font-medium">{feature}</span>
+                                        </li>
+                                    ))}
+                                    {plan.notIncluded?.map((feature, i) => (
+                                        <li key={i} className="flex items-start gap-3 opacity-60">
+                                            <X className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                                            <span className="text-sm text-muted-foreground">{feature}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </motion.div>
+                        );
+                    })}
                 </div>
 
                 {/* Trust Section */}

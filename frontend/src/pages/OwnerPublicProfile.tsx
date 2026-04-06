@@ -28,7 +28,8 @@ import {
   MessageSquare,
   Building2,
   Calendar,
-  Layers
+  Layers,
+  ArrowLeft
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -155,6 +156,19 @@ const OwnerPublicProfile = () => {
   return (
     <div className="min-h-screen bg-neutral-50/50 flex flex-col">
       <Navbar />
+      
+      {/* Back Button */}
+      <div className="absolute top-24 left-4 md:left-12 z-20 pointer-events-none sticky">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => navigate(-1)}
+          className="pointer-events-auto bg-white/20 backdrop-blur-md text-white hover:bg-white/40 border border-white/20 rounded-full h-10 w-10 md:h-12 md:w-12 p-0 shadow-lg transition-all hover:scale-110 active:scale-95"
+          title="Retour"
+        >
+          <ArrowLeft className="h-5 w-5 md:h-6 md:w-6" />
+        </Button>
+      </div>
 
       {/* Hero Banner Section */}
       <div className="relative w-full h-[350px] md:h-[450px] overflow-hidden">

@@ -15,10 +15,12 @@ import Turnstile from "react-turnstile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "next-themes";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = searchParams.get("mode") || "login";
   const setMode = (newMode: string) => setSearchParams({ mode: newMode, type: formData.userType });
@@ -235,7 +237,7 @@ const Auth = () => {
           </CardFooter>
         </Card>
       ) : (
-        <Card className="w-full max-w-md shadow-strong animate-scale-in">
+        <Card className="w-full max-w-md shadow-strong animate-scale-in border-primary/10">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             <img src="/logo-sl.png" alt="Samalocation" className="h-20 w-auto mx-auto object-contain" />
@@ -301,10 +303,11 @@ const Auth = () => {
                   </div>
                 </div>
                 {import.meta.env.PROD && (
-                  <div className="flex justify-center py-2">
+                  <div className="flex justify-center py-2 min-h-[65px]">
                     <Turnstile
                       sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
                       onVerify={(token) => setTurnstileToken(token)}
+                      theme={(theme === "dark" ? "dark" : "light") as any}
                     />
                   </div>
                 )}
@@ -333,7 +336,7 @@ const Auth = () => {
                   <div className="grid grid-cols-1 gap-4">
                     <button
                       type="button"
-                      className="flex items-center p-4 rounded-xl border-2 border-transparent bg-card hover:border-primary/50 hover:bg-primary/5 transition-all group text-left shadow-sm hover:shadow-md"
+                      className="flex items-center p-4 rounded-xl border-2 border-primary/10 bg-card hover:border-primary/50 hover:bg-primary/5 transition-all group text-left shadow-sm hover:shadow-md"
                       onClick={() => {
                         setFormData({ ...formData, userType: "owner" });
                         setSearchParams({ mode: "signup", type: "owner" });
@@ -350,7 +353,7 @@ const Auth = () => {
 
                     <button
                       type="button"
-                      className="flex items-center p-4 rounded-xl border-2 border-transparent bg-card hover:border-accent/50 hover:bg-accent/5 transition-all group text-left shadow-sm hover:shadow-md"
+                      className="flex items-center p-4 rounded-xl border-2 border-accent/10 bg-card hover:border-accent/50 hover:bg-accent/5 transition-all group text-left shadow-sm hover:shadow-md"
                       onClick={() => {
                         setFormData({ ...formData, userType: "tenant" });
                         setSearchParams({ mode: "signup", type: "tenant" });
@@ -481,11 +484,12 @@ const Auth = () => {
                       </p>
                     </div>
                   )}
-                  {import.meta.env.PROD && (
-                    <div className="flex justify-center py-2">
+                   {import.meta.env.PROD && (
+                    <div className="flex justify-center py-2 min-h-[65px]">
                       <Turnstile
                         sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
                         onVerify={(token) => setTurnstileToken(token)}
+                        theme={(theme === "dark" ? "dark" : "light") as any}
                       />
                     </div>
                   )}

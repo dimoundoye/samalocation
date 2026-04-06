@@ -1,6 +1,19 @@
 import { baseClient } from "./baseClient";
 
-export const getProperties = async (params: { limit?: number; page?: number; search?: string; type?: string } = {}) => {
+export const getProperties = async (params: { 
+    limit?: number; 
+    page?: number; 
+    search?: string; 
+    type?: string;
+    minPrice?: number | string | null;
+    maxPrice?: number | string | null;
+    minArea?: number | string | null;
+    maxArea?: number | string | null;
+    minRooms?: number | string | null;
+    maxRooms?: number | string | null;
+    minBedrooms?: number | string | null;
+    maxBedrooms?: number | string | null;
+} = {}) => {
     try {
         return await baseClient("/properties", { params });
     } catch (error) {

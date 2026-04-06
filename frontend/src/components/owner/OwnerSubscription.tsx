@@ -108,12 +108,12 @@ export const OwnerSubscription = () => {
 
                     <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6 pt-4">
                         <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-background/50 border border-border/50">
-                            <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Nombre de logements</p>
+                            <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Gérance (Locataires affectés)</p>
                             <div className="flex items-end gap-1.5 sm:gap-2">
                                 <span className="text-xl sm:text-2xl font-bold">{subscription?.properties_count || 0}</span>
                                 <span className="text-xs sm:text-base text-muted-foreground pb-0.5">/ {formatLimit(subscription?.properties_limit)}</span>
                             </div>
-                            <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-2">Villas, appartements, studios, etc.</p>
+                            <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-2">L'ajout de logements est gratuit et illimité.</p>
                         </div>
 
                         <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-background/50 border border-border/50">
@@ -173,29 +173,28 @@ export const OwnerSubscription = () => {
                             <Users className="h-5 w-5 text-accent" />
                             <CardTitle className="text-lg font-bold">Parrainage</CardTitle>
                         </div>
-                        <Badge variant="outline" className={subscription?.referral_count >= 5 ? "border-red-500 text-red-500 bg-red-50" : "border-accent text-accent"}>
-                            {subscription?.referral_count >= 5 ? "Limite atteinte" : `${subscription?.referral_count || 0} / 5 validés`}
+                        <Badge variant="outline" className={subscription?.referral_count >= 5 ? "border-green-500 text-green-600 bg-green-50" : "border-accent text-accent"}>
+                            {subscription?.referral_count || 0} parrainages réussis
                         </Badge>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <p className="text-sm text-muted-foreground">
-                        Offrez 1 mois Premium à vos amis bailleurs. Pour chaque parrainage réussi, **vous recevez aussi 1 mois Premium offert** (limité à 5 amis).
+                        Offrez 1 mois Premium à vos amis bailleurs. Ils reçoivent **1 mois gratuit**, et vous aussi (limité à vos 5 premiers amis).
                     </p>
                     
-                    <div className={`flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl border ${subscription?.referral_count >= 5 ? 'bg-slate-50 border-slate-200' : 'bg-white/50 border-accent/10'}`}>
+                    <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl border bg-white/50 border-accent/10">
                         <div className="flex-1 w-full">
                             <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Votre code personnel</p>
                             <div className="flex items-center gap-2">
-                                <code className={`bg-card px-4 py-2 rounded-xl border-2 text-xl font-black flex-1 text-center ${subscription?.referral_count >= 5 ? 'border-slate-300 text-slate-400 line-through' : 'border-accent text-accent'}`}>
+                                <code className="bg-card px-4 py-2 rounded-xl border-2 border-accent text-accent text-xl font-black flex-1 text-center">
                                     {user?.customId}
                                 </code>
                                 <Button 
                                     size="icon" 
                                     variant="ghost" 
-                                    className="h-11 w-11 rounded-xl text-accent hover:bg-accent/10 disabled:opacity-30" 
+                                    className="h-11 w-11 rounded-xl text-accent hover:bg-accent/10" 
                                     onClick={() => copyToClipboard(user?.customId || "")}
-                                    disabled={subscription?.referral_count >= 5}
                                 >
                                     <Copy className="h-5 w-5" />
                                 </Button>
@@ -203,10 +202,9 @@ export const OwnerSubscription = () => {
                         </div>
                         <Button 
                             onClick={shareReferralWA}
-                            disabled={subscription?.referral_count >= 5}
-                            className={`w-full sm:w-auto font-bold h-11 px-6 rounded-xl flex items-center gap-2 shadow-sm ${subscription?.referral_count >= 5 ? 'bg-slate-300 text-white' : 'bg-[#25D366] hover:bg-[#20bd5a] text-white'}`}
+                            className="w-full sm:w-auto font-bold h-11 px-6 rounded-xl flex items-center gap-2 shadow-sm bg-[#25D366] hover:bg-[#20bd5a] text-white"
                         >
-                            <Share2 className="h-4 w-4" /> {subscription?.referral_count >= 5 ? "Code expiré" : "Partager l'invitation"}
+                            <Share2 className="h-4 w-4" /> Partager l'invitation
                         </Button>
                     </div>
 
@@ -220,8 +218,8 @@ export const OwnerSubscription = () => {
                         </div>
                         <p className="text-[11px] text-muted-foreground text-center italic">
                             {subscription?.referral_count && subscription.referral_count >= 5 
-                                ? "Félicitations ! Vous avez atteint le plafond de parrainage." 
-                                : `Encore ${5 - (subscription?.referral_count || 0)} amis pour débloquer votre cadeau maximum !`}
+                                ? "Votre quota de bonus est atteint, mais vos amis recevront toujours 1 mois gratuit grâce à vous !" 
+                                : `Encore ${5 - (subscription?.referral_count || 0)} amis pour débloquer tous vos bonus !`}
                         </p>
                     </div>
                 </CardContent>

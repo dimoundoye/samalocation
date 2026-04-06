@@ -46,7 +46,7 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <TooltipProvider>
         <Toaster />
-        <Sonner />
+        <Sonner position="bottom-right" closeButton richColors expand={true} />
         <BrowserRouter>
           <ScrollToTop />
           <AuthProvider>
@@ -68,6 +68,14 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/owner-dashboard/:tab"
+                  element={
+                    <ProtectedRoute requiredRole="owner">
+                      <DashboardProprietaire />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/tenant-dashboard"
                   element={
                     <ProtectedRoute requiredRole="tenant">
@@ -76,7 +84,23 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/tenant-dashboard/:tab"
+                  element={
+                    <ProtectedRoute requiredRole="tenant">
+                      <DashboardLocataire />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/admin-dashboard"
+                  element={
+                    <ProtectedRoute requiredRole="admin">
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin-dashboard/:tab"
                   element={
                     <ProtectedRoute requiredRole="admin">
                       <AdminDashboard />

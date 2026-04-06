@@ -2,6 +2,7 @@ const Subscription = require('../models/subscriptionModel');
 const response = require('../utils/response');
 const Notification = require('../models/notificationModel');
 const { v4: uuidv4 } = require('uuid');
+const db = require('../config/db');
 
 const subscriptionController = {
     /**
@@ -13,21 +14,15 @@ const subscriptionController = {
             const activeSub = await Subscription.findActiveByUserId(userId);
             const latestSub = await Subscription.findLatestByUserId(userId);
             
-            // Compter le nombre total de LOGEMENTS (unités) au lieu des bâtiments
+            // Compter les affectations actives (gérance de locataires)
             const { rows: countRows } = await db.query(`
-                SELECT (
-                    -- Compter toutes les unités dans property_units
-                    (SELECT COUNT(*) FROM property_units pu 
-                     JOIN properties p ON pu.property_id = p.id 
-                     WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
-                    +
-                    -- PLUS les propriétés qui n'ont AUCUNE unité enregistrée (elles comptent pour 1 logement)
-                    (SELECT COUNT(*) FROM properties p 
-                     WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
-                     AND NOT EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id))
-                ) as total_units
+                SELECT COUNT(*) as active_assignments 
+                FROM tenants t
+                JOIN property_units pu ON t.unit_id = pu.id
+                JOIN properties p ON pu.property_id = p.id
+                WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1)
             `, [userId]);
-            const unitsCount = parseInt(countRows[0].total_units);
+            const unitsCount = parseInt(countRows[0].active_assignments);
 
             // Get monthly receipts count
             const { rows: receiptRows } = await db.query(`

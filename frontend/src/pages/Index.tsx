@@ -124,7 +124,7 @@ const Index = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-24 pb-20 md:pt-32 md:pb-24">
+      <section className="relative overflow-hidden pt-32 pb-20 md:pt-32 md:pb-24">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent hidden md:block" />
         <div className="container mx-auto px-6 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-center">

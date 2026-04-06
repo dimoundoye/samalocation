@@ -95,17 +95,18 @@ export const TenantHistoryDialog = ({
                             <p className="text-muted-foreground">Aucun reçu trouvé pour ce locataire.</p>
                         </div>
                     ) : (
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>N° Reçu</TableHead>
-                                        <TableHead>Période</TableHead>
-                                        <TableHead>Date Paiement</TableHead>
-                                        <TableHead>Montant</TableHead>
-                                        <TableHead className="text-right">Action</TableHead>
-                                    </TableRow>
-                                </TableHeader>
+                        <div className="rounded-md border overflow-hidden">
+                            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
+                                <Table className="min-w-[650px]">
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/50">
+                                            <TableHead className="w-[120px]">N° Reçu</TableHead>
+                                            <TableHead>Période</TableHead>
+                                            <TableHead>Paiement</TableHead>
+                                            <TableHead>Montant</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
                                 <TableBody>
                                     {tenantReceipts.map((receipt) => (
                                         <TableRow key={receipt.id}>
@@ -143,7 +144,8 @@ export const TenantHistoryDialog = ({
                                         </TableRow>
                                     ))}
                                 </TableBody>
-                            </Table>
+                                </Table>
+                            </div>
                         </div>
                     )}
                 </div>

@@ -3,65 +3,16 @@ const { v4: uuidv4 } = require('uuid');
 
 const Property = {
     async countAllPublished(filters = {}) {
-        let query = `
-            SELECT COUNT(*) as count FROM properties p
-            WHERE p.is_published = true
-            AND (
-                NOT EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id)
-                OR
-                EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id AND pu.is_available = true)
-            )
-        `;
-        const params = [];
-        let idx = 1;
-
-        if (filters.type && filters.type !== 'all') {
-            query += ` AND property_type = $${idx++}`;
-            params.push(filters.type);
-        }
-
-        if (filters.search) {
-            const searchTerms = filters.search.trim().split(/\s+/);
-            searchTerms.forEach(term => {
-                query += ` AND (name ILIKE $${idx} OR address ILIKE $${idx + 1})`;
-                params.push(`%${term}%`, `%${term}%`);
-                idx += 2;
-            });
-        }
-
+        const { query, params } = this._buildFilteredQuery('SELECT COUNT(DISTINCT p.id) as count FROM properties p', filters);
         const { rows } = await db.query(query, params);
         return parseInt(rows[0].count);
     },
 
     async findAllPublished(limit, offset = 0, filters = {}) {
-        let query = `
-            SELECT p.* FROM properties p
-            WHERE p.is_published = true
-            AND (
-                NOT EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id)
-                OR
-                EXISTS (SELECT 1 FROM property_units pu WHERE pu.property_id = p.id AND pu.is_available = true)
-            )
-        `;
-        const params = [];
-        let idx = 1;
-
-        if (filters.type && filters.type !== 'all') {
-            query += ` AND property_type = $${idx++}`;
-            params.push(filters.type);
-        }
-
-        if (filters.search) {
-            const searchTerms = filters.search.trim().split(/\s+/);
-            searchTerms.forEach(term => {
-                query += ` AND (name ILIKE $${idx} OR address ILIKE $${idx + 1})`;
-                params.push(`%${term}%`, `%${term}%`);
-                idx += 2;
-            });
-        }
-
-        query += ' ORDER BY published_at DESC';
-
+        const { query: baseQuery, params } = this._buildFilteredQuery('SELECT DISTINCT p.* FROM properties p', filters);
+        let query = baseQuery + ' ORDER BY p.published_at DESC';
+        
+        let idx = params.length + 1;
         if (limit) {
             query += ` LIMIT $${idx++}`;
             params.push(parseInt(limit));
@@ -79,7 +30,7 @@ const Property = {
         if (propertyIds.length === 0) return rows;
 
         const { rows: allUnits } = await db.query(
-            'SELECT id, property_id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, area_sqm, rent_period, unit_number FROM property_units WHERE property_id = ANY($1)',
+            'SELECT id, property_id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, rooms_count, area_sqm, rent_period, unit_number FROM property_units WHERE property_id = ANY($1)',
             [propertyIds]
         );
 
@@ -98,6 +49,48 @@ const Property = {
             property_units: allUnits.filter(u => u.property_id === row.id),
             owner_profiles: allOwnerProfiles.filter(o => o.user_profile_id === row.owner_id || o.id === row.owner_id)
         }));
+    },
+
+    _buildFilteredQuery(selectClause, filters) {
+        let query = `${selectClause} WHERE p.is_published = true`;
+        const params = [];
+        let idx = 1;
+
+        if (filters.type && filters.type !== 'all') {
+            query += ` AND p.property_type = $${idx++}`;
+            params.push(filters.type);
+        }
+
+        if (filters.search) {
+            const searchTerms = filters.search.trim().split(/\s+/);
+            searchTerms.forEach(term => {
+                query += ` AND (p.name ILIKE $${idx} OR p.address ILIKE $${idx + 1})`;
+                params.push(`%${term}%`, `%${term}%`);
+                idx += 2;
+            });
+        }
+
+        // Base condition for units (only applied if unit filters exist)
+        let unitConditions = 'pu.property_id = p.id';
+        
+        if (filters.minPrice) { unitConditions += ` AND pu.monthly_rent >= $${idx++}`; params.push(parseFloat(filters.minPrice)); }
+        if (filters.maxPrice) { unitConditions += ` AND pu.monthly_rent <= $${idx++}`; params.push(parseFloat(filters.maxPrice)); }
+        if (filters.minArea) { unitConditions += ` AND pu.area_sqm >= $${idx++}`; params.push(parseFloat(filters.minArea)); }
+        if (filters.maxArea) { unitConditions += ` AND pu.area_sqm <= $${idx++}`; params.push(parseFloat(filters.maxArea)); }
+        if (filters.minRooms) { unitConditions += ` AND pu.rooms_count >= $${idx++}`; params.push(parseInt(filters.minRooms)); }
+        if (filters.maxRooms) { unitConditions += ` AND pu.rooms_count <= $${idx++}`; params.push(parseInt(filters.maxRooms)); }
+        if (filters.minBedrooms) { unitConditions += ` AND pu.bedrooms >= $${idx++}`; params.push(parseInt(filters.minBedrooms)); }
+        if (filters.maxBedrooms) { unitConditions += ` AND pu.bedrooms <= $${idx++}`; params.push(parseInt(filters.maxBedrooms)); }
+
+        const hasUnitFilters = filters.minPrice || filters.maxPrice || filters.minArea || filters.maxArea || filters.minRooms || filters.maxRooms || filters.minBedrooms || filters.maxBedrooms;
+        
+        if (hasUnitFilters) {
+            // Apply unit availability only when filtering
+            unitConditions += ' AND pu.is_available = true';
+            query += ` AND EXISTS (SELECT 1 FROM property_units pu WHERE ${unitConditions})`;
+        }
+
+        return { query, params };
     },
 
     async findByOwnerId(ownerId) {
@@ -181,8 +174,8 @@ const Property = {
         for (const unit of units) {
             const unitId = uuidv4();
             await db.query(
-                'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10)',
-                [unitId, propertyId, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.description, unit.rent_period || 'mois']
+                'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, rooms_count, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11)',
+                [unitId, propertyId, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.rooms_count, unit.description, unit.rent_period || 'mois']
             );
         }
 
@@ -254,7 +247,7 @@ const Property = {
     },
 
     async updateUnit(unitId, data) {
-        const { unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, description, is_available, rent_period } = data;
+        const { unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, rooms_count, description, is_available, rent_period } = data;
         const updateFields = [];
         const params = [];
         let idx = 1;
@@ -265,6 +258,7 @@ const Property = {
         if (area_sqm !== undefined) { updateFields.push(`area_sqm = $${idx++}`); params.push(area_sqm); }
         if (bedrooms !== undefined) { updateFields.push(`bedrooms = $${idx++}`); params.push(bedrooms); }
         if (bathrooms !== undefined) { updateFields.push(`bathrooms = $${idx++}`); params.push(bathrooms); }
+        if (rooms_count !== undefined) { updateFields.push(`rooms_count = $${idx++}`); params.push(rooms_count); }
         if (description !== undefined) { updateFields.push(`description = $${idx++}`); params.push(description); }
         if (is_available !== undefined) { updateFields.push(`is_available = $${idx++}`); params.push(is_available); }
         if (rent_period) { updateFields.push(`rent_period = $${idx++}`); params.push(rent_period); }
@@ -310,8 +304,8 @@ const Property = {
                     // Create new unit
                     const unitId = uuidv4();
                     await db.query(
-                        'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10)',
-                        [unitId, id, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.description, unit.rent_period || 'mois']
+                        'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, rooms_count, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11)',
+                        [unitId, id, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.rooms_count, unit.description, unit.rent_period || 'mois']
                     );
                 }
             }
@@ -325,7 +319,8 @@ const Property = {
         const queries = [
             "ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8) NULL",
             "ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8) NULL",
-            "ALTER TABLE properties ADD COLUMN IF NOT EXISTS equipments JSONB NULL"
+            "ALTER TABLE properties ADD COLUMN IF NOT EXISTS equipments JSONB NULL",
+            "ALTER TABLE property_units ADD COLUMN IF NOT EXISTS rooms_count INTEGER DEFAULT 0"
         ];
 
         for (const sql of queries) {
