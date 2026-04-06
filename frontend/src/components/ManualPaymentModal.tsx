@@ -45,8 +45,9 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                 period: period as 'monthly' | 'annual'
             });
 
-            if (res.status === 'success' && res.data.redirect_url) {
-                window.location.href = res.data.redirect_url;
+            // baseClient returns data.data directly if status is success
+            if (res && res.redirect_url) {
+                window.location.href = res.redirect_url;
             } else {
                 throw new Error("Lien de paiement non reçu");
             }
