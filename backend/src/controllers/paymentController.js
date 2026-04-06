@@ -46,7 +46,7 @@ const paymentController = {
                 ref_command: refCommand,
                 command_name: `Paiement abonnement ${plan.name} SamaLocation`,
                 env: process.env.PAYTECH_ENV || (process.env.NODE_ENV === 'production' ? 'prod' : 'test'),
-                success_url: `${frontendUrl}/dashboard?payment=success`,
+                success_url: `${frontendUrl}/owner-dashboard?payment=success`,
                 cancel_url: `${frontendUrl}/pricing?payment=cancel`,
                 ipn_url: `${backendUrl}/api/payment/ipn`,
                 custom_field: JSON.stringify({
@@ -93,17 +93,17 @@ const paymentController = {
      */
     async handleIPN(req, res, next) {
         try {
+            console.log('🔔 Received IPN from PayTech. Body:', JSON.stringify(req.body, null, 2));
+
             const {
                 type_event,
                 ref_command,
                 item_price,
                 custom_field,
                 token,
-                api_key_sha256,
-                api_secret_sha256
             } = req.body;
 
-            console.log('🔔 Received IPN from PayTech:', { ref_command, type_event });
+            console.log('Processing payload:', { ref_command, type_event });
 
             // 1. Vérification de sécurité (facultatif mais recommandé si PayTech envoie les hash)
             // Note: PayTech envoie le corps de la requête. On peut vérifier que c'est bien valide.
