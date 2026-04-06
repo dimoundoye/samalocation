@@ -45,7 +45,7 @@ const paymentController = {
                 currency: 'XOF',
                 ref_command: refCommand,
                 command_name: `Paiement abonnement ${plan.name} SamaLocation`,
-                env: process.env.NODE_ENV === 'production' ? 'prod' : 'test',
+                env: process.env.PAYTECH_ENV || (process.env.NODE_ENV === 'production' ? 'prod' : 'test'),
                 success_url: `${frontendUrl}/dashboard?payment=success`,
                 cancel_url: `${frontendUrl}/pricing?payment=cancel`,
                 ipn_url: `${backendUrl}/api/payment/ipn`,
