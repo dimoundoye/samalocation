@@ -19,10 +19,14 @@ const paymentController = {
             const planKey = planId.toUpperCase();
             const plan = PLANS[planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : planKey];
 
-            console.log('--- Init Payment Request ---');
-            console.log('Plan:', planId, 'Period:', period);
-            console.log('API Key present:', !!process.env.PAYTECH_API_KEY);
-            console.log('BACKEND_URL:', process.env.BACKEND_URL);
+            const backendUrl = process.env.BACKEND_URL || process.env.URL_BACKEND || process.env.API_URL;
+            const frontendUrl = process.env.FRONTEND_URL || process.env.URL_FRONTEND;
+
+            console.log('--- Debug Environnement ---');
+            console.log('BACKEND_URL env:', process.env.BACKEND_URL);
+            console.log('URL_BACKEND env:', process.env.URL_BACKEND);
+            console.log('Final Backend URL selected:', backendUrl);
+            console.log('---------------------------');
 
             if (!plan || planId.toLowerCase() === 'free') {
                 return response.error(res, 'Plan invalide', 400);
@@ -42,9 +46,9 @@ const paymentController = {
                 ref_command: refCommand,
                 command_name: `Paiement abonnement ${plan.name} SamaLocation`,
                 env: process.env.NODE_ENV === 'production' ? 'prod' : 'test',
-                success_url: `${process.env.FRONTEND_URL}/dashboard?payment=success`,
-                cancel_url: `${process.env.FRONTEND_URL}/pricing?payment=cancel`,
-                ipn_url: `${process.env.BACKEND_URL}/api/payment/ipn`,
+                success_url: `${frontendUrl}/dashboard?payment=success`,
+                cancel_url: `${frontendUrl}/pricing?payment=cancel`,
+                ipn_url: `${backendUrl}/api/payment/ipn`,
                 custom_field: JSON.stringify({
                     userId: userId,
                     planId: planId,
