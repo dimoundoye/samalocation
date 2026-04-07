@@ -22,12 +22,6 @@ const paymentController = {
             const backendUrl = process.env.BACKEND_URL || process.env.URL_BACKEND || process.env.API_URL;
             const frontendUrl = process.env.FRONTEND_URL || process.env.URL_FRONTEND;
 
-            console.log('--- Debug Environnement ---');
-            console.log('BACKEND_URL env:', process.env.BACKEND_URL);
-            console.log('URL_BACKEND env:', process.env.URL_BACKEND);
-            console.log('Final Backend URL selected:', backendUrl);
-            console.log('---------------------------');
-
             if (!plan || planId.toLowerCase() === 'free') {
                 return response.error(res, 'Plan invalide', 400);
             }
@@ -57,8 +51,6 @@ const paymentController = {
                 })
             };
 
-            console.log('Payload to PayTech:', JSON.stringify(payload, null, 2));
-
             // 4. Appeler PayTech
             const paytechResponse = await axios.post(PAYTECH_BASE_URL, payload, {
                 headers: {
@@ -70,9 +62,6 @@ const paymentController = {
             });
 
             if (paytechResponse.data.success === 1) {
-                console.log('--- PayTech Success ---');
-                console.log('Redirect URL:', paytechResponse.data.redirect_url);
-
                 return response.success(res, {
                     redirect_url: paytechResponse.data.redirect_url,
                     token: paytechResponse.data.token
@@ -93,8 +82,6 @@ const paymentController = {
      */
     async handleIPN(req, res, next) {
         try {
-            console.log('🔔 Received IPN from PayTech. Body:', JSON.stringify(req.body, null, 2));
-
             const {
                 type_event,
                 ref_command,

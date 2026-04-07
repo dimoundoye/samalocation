@@ -97,13 +97,20 @@ const Subscription = {
             durationDays
         } = data;
 
-        // On récupère l'abonnement actif actuel pour le cumul
-        const activeSub = await this.findActiveByUserId(userId);
+        // On cherche la date d'expiration la plus lointaine parmi TOUS les abonnements actifs
+        const { rows: maxRows } = await db.query(`
+            SELECT MAX(expires_at) as max_expiration 
+            FROM subscriptions 
+            WHERE user_id = $1 AND status = 'active'
+            AND (expires_at > NOW() OR expires_at IS NULL)
+        `, [userId]);
         
         let startDate = new Date();
-        // Si l'abonnement actuel est encore valide, on cumule à partir de sa date d'expiration
-        if (activeSub && activeSub.expires_at && new Date(activeSub.expires_at) > new Date()) {
-            startDate = new Date(activeSub.expires_at);
+        const maxExpiration = maxRows[0]?.max_expiration;
+        
+        // Si on a déjà une date d'expiration dans le futur, on cumule à partir de là
+        if (maxExpiration && new Date(maxExpiration) > new Date()) {
+            startDate = new Date(maxExpiration);
         }
 
         // On expire l'ancien abonnement s'il y en a un
@@ -144,20 +151,28 @@ const Subscription = {
         const PLANS = require('../config/plans');
 
         // 1. Déterminer la date de début (Upgrade = Immédiat, Downgrade/Renouvellement = Cumulé)
-        const activeSub = await this.findActiveByUserId(userId);
-        let startDate = new Date();
+        const { rows: maxRows } = await db.query(`
+            SELECT MAX(expires_at) as max_expiration 
+            FROM subscriptions 
+            WHERE user_id = $1 AND status = 'active'
+            AND (expires_at > NOW() OR expires_at IS NULL)
+        `, [userId]);
         
-        if (status === 'active' && activeSub && activeSub.expires_at && new Date(activeSub.expires_at) > new Date()) {
-            const oldPlanKey = activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE';
+        let startDate = new Date();
+        const maxExpiration = maxRows[0]?.max_expiration;
+        
+        if (status === 'active' && maxExpiration && new Date(maxExpiration) > new Date()) {
+            const activeSub = await this.findActiveByUserId(userId); // Juste pour connaître l'ancien plan
+            const oldPlanKey = activeSub?.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE';
             const newPlanKey = planName ? planName.toUpperCase() : 'FREE';
             
             const oldPlan = PLANS[oldPlanKey === 'PROFESSIONNEL' || oldPlanKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : oldPlanKey] || PLANS.FREE;
             const newPlan = PLANS[newPlanKey === 'PROFESSIONNEL' || newPlanKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : newPlanKey] || PLANS.FREE;
-
+ 
             // Si c'est un upgrade (nouveau plan plus cher), on commence AUJOURD'HUI
             // Si c'est le même plan ou un downgrade (moins cher), on CUMULE à la fin
             if (newPlan.price_monthly <= oldPlan.price_monthly) {
-                startDate = new Date(activeSub.expires_at);
+                startDate = new Date(maxExpiration);
             }
         }
 
