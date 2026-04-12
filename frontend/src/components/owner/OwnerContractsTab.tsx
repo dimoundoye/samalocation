@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Plus, Search, Loader2, AlertCircle, Info, AlertTriangle, Send, Share2 } from "lucide-react";
+import { Plus, Search, FileText, Download, Share2, Loader2, Info, Eye, AlertCircle, AlertTriangle, Send } from "lucide-react";
+import { ContractModelPreview } from "./ContractModelPreview";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { getOwnerContracts, downloadContract } from "@/lib/api";
@@ -105,9 +106,12 @@ export const OwnerContractsTab = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto gap-2">
-                    <Plus className="h-4 w-4" /> Nouveau Contrat
-                </Button>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <ContractModelPreview />
+                    <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+                        <Plus className="h-4 w-4" /> Nouveau Contrat
+                    </Button>
+                </div>
             </div>
 
             <Card>

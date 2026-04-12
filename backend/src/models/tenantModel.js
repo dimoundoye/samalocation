@@ -137,7 +137,15 @@ const Tenant = {
             [id, full_name, email, phone, unit_id, monthly_rent, move_in_date, status, user_id]
         );
 
+        // Mark unit as occupied
         await db.query('UPDATE property_units SET is_available = false WHERE id = $1', [unit_id]);
+
+        // Check and Unpublish if needed via Property model
+        const Property = require('./propertyModel');
+        const { rows: propertyRow } = await db.query('SELECT property_id FROM property_units WHERE id = $1', [unit_id]);
+        if (propertyRow.length > 0) {
+            await Property.checkAndUnpublish(propertyRow[0].property_id);
+        }
 
         const { rows } = await db.query(`
             SELECT t.*, pu.unit_number, p.name as property_name

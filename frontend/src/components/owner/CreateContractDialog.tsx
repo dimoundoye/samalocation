@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { createContract, getOwnerTenants } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck, User, MapPin, ClipboardList, Info, AlertTriangle, PlusCircle, X, FileText, CheckCircle2, Crown, Zap, Lock } from "lucide-react";
+import { ContractModelPreview } from "./ContractModelPreview";
 import { UpgradeModal } from "./UpgradeModal";
 import { Badge } from "@/components/ui/badge";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -276,7 +277,20 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
 
                         <form onSubmit={handleSubmit} id="contract-form">
                             {/* TAB 1: GENERAL */}
-                            <TabsContent value="general" className="space-y-6 focus-visible:outline-none">
+                            <TabsContent value="general" className="space-y-6 focus-visible:outline-none pb-6">
+                                <div className="flex items-center justify-between gap-4 bg-primary/5 p-3 rounded-xl border border-primary/10">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-primary/10">
+                                            <FileText className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold">Modèles de contrats</p>
+                                            <p className="text-[10px] text-muted-foreground">Consultez nos modèles certifiés avant de commencer.</p>
+                                        </div>
+                                    </div>
+                                    <ContractModelPreview />
+                                </div>
+
                                 <div className="space-y-3">
                                     <Label className="text-sm font-bold flex items-center gap-2 mb-2">
                                         <Zap className="h-4 w-4 text-accent fill-accent" />
@@ -395,6 +409,16 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                 <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
                                     <h4 className="font-semibold text-sm flex items-center gap-2 border-b pb-2"><User className="h-4 w-4 text-primary" /> Identité du Locataire</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Type de pièce ID</Label>
+                                            <Select value={formData.tenant_id_type} onValueChange={(v) => setFormData({ ...formData, tenant_id_type: v })}>
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="CNI">Carte d'Identité Nationale</SelectItem>
+                                                    <SelectItem value="Passeport">Passeport</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                         <div className="space-y-2"><Label>Numéro de pièce ID *</Label><Input value={formData.tenant_id_number} onChange={(e) => setFormData({ ...formData, tenant_id_number: e.target.value })} placeholder="Numéro ID" required /></div>
                                         <div className="space-y-2"><Label>Date de délivrance ID</Label><Input type="date" value={formData.tenant_id_date} onChange={(e) => setFormData({ ...formData, tenant_id_date: e.target.value })} /></div>
                                         <div className="space-y-2"><Label>Né(e) le</Label><Input type="date" value={formData.tenant_dob} onChange={(e) => setFormData({ ...formData, tenant_dob: e.target.value })} /></div>

@@ -1,9 +1,30 @@
 const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+// Load environment variables from .env file
+const envPath = path.join(__dirname, '../../.env');
+const dotenvResult = require('dotenv').config({ path: envPath });
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+if (dotenvResult.error) {
+    // Try the parent directory if../../.env was not found (useful for different build structures)
+    require('dotenv').config();
+    console.log('ℹ️ Local .env file loading failed or missing, using system env vars.');
+} else {
+    console.log('✅ Local .env file loaded successfully.');
+}
+
+const resendKey = process.env.RESEND_API_KEY;
+const resend = resendKey ? new Resend(resendKey) : null;
+
+// Diagnostics au démarrage
+if (resendKey) {
+    console.log(`ℹ️ Resend SDK Initialized with key starting with: ${resendKey.substring(0, 5)}...`);
+    if (resendKey.includes('http')) {
+        console.error('❌ CRITICAL: RESEND_API_KEY seems to be a URL instead of a key! Check your environment variables.');
+    }
+} else {
+    console.warn('⚠️ RESEND_API_KEY is missing!');
+}
 
 /**
  * Service pour l'envoi d'e-mails
@@ -27,38 +48,47 @@ const transporter = nodemailer.createTransport({
 const sendEmail = async (to, subject, html) => {
     try {
         console.log(`Attempting to send email to ${to} with subject "${subject}"...`);
+        
+        const fromEmail = process.env.RESEND_FROM || process.env.SMTP_FROM || 'onboarding@resend.dev';
+        console.log(`Sender: ${fromEmail}`);
 
         // PRIORITÉ 1: Utiliser Resend si la clé API est configurée
         if (resend) {
             console.log('Using Resend API for email delivery...');
-            const { data, error } = await resend.emails.send({
-                from: process.env.RESEND_FROM || process.env.SMTP_FROM || 'onboarding@resend.dev',
-                to,
-                subject,
-                html,
-                text: html.replace(/<[^>]*>?/gm, ''), // Basic HTML strip for fallback
-            });
+            try {
+                const { data, error } = await resend.emails.send({
+                    from: fromEmail,
+                    to,
+                    subject,
+                    html,
+                    text: html.replace(/<[^>]*>?/gm, ''), // Basic HTML strip for fallback
+                });
 
-            if (error) {
-                console.error('❌ Resend Error:', error);
-                throw error;
+                if (error) {
+                    console.error('❌ Resend Error:', error);
+                    // On ne jette pas l'erreur, on tente le fallback Nodemailer
+                    console.warn('Attempting Nodemailer fallback due to Resend error...');
+                } else {
+                    console.log('✅ Email sent via Resend:', data.id);
+                    return true;
+                }
+            } catch (resendException) {
+                console.error('❌ Resend Exception:', resendException.message);
+                console.warn('Attempting Nodemailer fallback due to exception...');
             }
-
-            console.log('✅ Email sent via Resend:', data.id);
-            return true;
         }
 
-        // PRIORITÉ 2: Utiliser Nodemailer (fallback)
+        // PRIORITÉ 2: Utiliser Nodemailer (fallback ou mode log)
         if (!process.env.SMTP_USER) {
-            console.log('--- EMAIL SENT (LOG) ---');
+            console.log('--- EMAIL SENT (LOG MODE) ---');
             console.log(`To: ${to}`);
             console.log(`Subject: ${subject}`);
-            console.log('--- SMTP_USER is missing, falling back to log mode ---');
+            console.log('--- SMTP_USER is missing, email logged instead of sent ---');
             console.log('------------------------');
             return true;
         }
 
-        console.log(`Attempting to send email to ${to} with subject "${subject}"...`);
+        console.log(`Attempting to send email via Nodemailer (${process.env.SMTP_HOST})...`);
 
         const info = await transporter.sendMail({
             from: `"Samalocation" <${process.env.SMTP_FROM || 'noreply@samalocation.com'}>`,
@@ -68,23 +98,21 @@ const sendEmail = async (to, subject, html) => {
             text: html.replace(/<[^>]*>?/gm, ''), // Basic HTML strip for fallback
         });
 
-        console.log('✅ Email sent: %s', info.messageId);
+        console.log('✅ Email sent via Nodemailer: %s', info.messageId);
         return true;
     } catch (error) {
-        console.error('❌ Error sending email:', {
+        console.error('❌ Error sending email (Final Catch):', {
             message: error.message,
             code: error.code,
-            command: error.command,
-            response: error.response,
-            stack: error.stack
+            response: error.response
         });
-        console.error('Diagnostic - SMTP Config:', {
-            host: process.env.SMTP_HOST,
-            port: process.env.SMTP_PORT,
-            secure: process.env.SMTP_SECURE,
-            user: process.env.SMTP_USER ? 'Present (REDACTED)' : 'MISSING',
-            from: process.env.SMTP_FROM,
-            env: process.env.NODE_ENV
+        console.error('Diagnostic - Env State:', {
+            hasResendKey: !!process.env.RESEND_API_KEY,
+            resendFrom: process.env.RESEND_FROM,
+            smtpFrom: process.env.SMTP_FROM,
+            smtpHost: process.env.SMTP_HOST,
+            smtpPort: process.env.SMTP_PORT,
+            nodeEnv: process.env.NODE_ENV
         });
         return false;
     }

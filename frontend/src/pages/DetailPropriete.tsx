@@ -413,43 +413,39 @@ const DetailPropriete = () => {
                     <div className="flex items-center gap-2">
                       <Square className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Unités totales</p>
+                        <p className="text-sm text-muted-foreground">Surface</p>
+                        <p className="font-semibold">{property.aggregated_area || property.property_units?.[0]?.area_sqm || "—"} m²</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <BedDouble className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Chambres</p>
                         <p className="font-semibold">
-                          {totalUnits} unité{totalUnits > 1 ? "s" : ""}
+                          {aggregatedBedrooms || property.property_units?.[0]?.bedrooms || "—"}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-primary" />
+                      <Bath className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Disponibles</p>
+                        <p className="text-sm text-muted-foreground">SDB</p>
                         <p className="font-semibold">
-                          {availableUnits > 0 ? `${availableUnits} unité${availableUnits > 1 ? "s" : ""}` : "À confirmer"}
+                          {property.aggregated_bathrooms || property.property_units?.[0]?.bathrooms || "—"}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Shield className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Publication</p>
+                        <p className="text-sm text-muted-foreground">Disponibilité</p>
                         <p className="font-semibold">
-                          {property.published_at
-                            ? new Date(property.published_at).toLocaleDateString("fr-FR")
-                            : "Non publié"}
+                          {availableUnits > 0 ? "Disponible" : "Occupé"}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {aggregatedBedrooms > 0 && (
-                    <div className="flex items-center gap-2 bg-secondary/30 border rounded-lg p-3">
-                      <BedDouble className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Capacité</p>
-                        <p className="font-semibold">{aggregatedBedrooms} chambre{aggregatedBedrooms > 1 ? "s" : ""}</p>
-                      </div>
-                    </div>
-                  )}
 
                   {property.description && (
                     <div>
@@ -460,57 +456,6 @@ const DetailPropriete = () => {
                     </div>
                   )}
 
-                  {hasUnitsDetails ? (
-                    <div>
-                      <h3 className="text-lg md:text-xl font-semibold mb-3">Unités disponibles</h3>
-                      <div className="space-y-3">
-                        {property.property_units.map((unit: any) => (
-                          <div
-                            key={unit.id}
-                            className="p-4 border rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3"
-                          >
-                            <div>
-                              <p className="font-semibold capitalize">
-                                {unit.unit_type} — {unit.unit_number}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {unit.description || "Aucune description fournie."}
-                              </p>
-                              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-2">
-                                {unit.area_sqm && (
-                                  <span>{unit.area_sqm} m²</span>
-                                )}
-                                {typeof unit.bedrooms === "number" && unit.bedrooms > 0 && (
-                                  <span>{unit.bedrooms} chambre{unit.bedrooms > 1 ? "s" : ""}</span>
-                                )}
-                                {typeof unit.bathrooms === "number" && unit.bathrooms > 0 && (
-                                  <span>{unit.bathrooms} salle{unit.bathrooms > 1 ? "s" : ""} de bain</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-right space-y-2">
-                              <p className="text-lg font-bold text-primary">
-                                {formatCurrency(unit.monthly_rent || 0)}{" "}
-                                <span className="text-sm text-muted-foreground">
-                                  /{rentPeriodLabels[unit.rent_period as string] ?? unit.rent_period ?? "mois"}
-                                </span>
-                              </p>
-                              <Badge variant="outline" className="text-xs uppercase tracking-wide">
-                                Paiement {rentPeriodLabels[unit.rent_period as string] ?? unit.rent_period ?? "mois"}
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 border rounded-lg bg-muted/40">
-                      <p className="font-medium">Informations complémentaires</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Les détails des unités seront fournis par le propriétaire lors de la prise de contact.
-                      </p>
-                    </div>
-                  )}
 
                   <div>
                     <h3 className="text-lg md:text-xl font-semibold mb-3">Équipements</h3>

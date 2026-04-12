@@ -104,7 +104,9 @@ const Contract = {
                    t.full_name as tenant_name, t.email as tenant_email, t.phone as tenant_phone,
                    up_owner.full_name as owner_name, up_owner.email as owner_email, up_owner.phone as owner_phone,
                    op.company_name as owner_company, op.address as owner_address, 
-                   COALESCE(c.owner_signature, op.signature_url) as owner_signature,
+                   c.owner_signature as archived_owner_signature,
+                   op.signature_url as live_owner_signature,
+                   COALESCE(NULLIF(c.owner_signature, ''), op.signature_url) as owner_signature,
                    COALESCE(c.tenant_signature, null) as tenant_signature,
                    p.name as property_name, p.address as property_address, p.property_type,
                    pu.unit_number

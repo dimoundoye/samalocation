@@ -2,7 +2,7 @@
 
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![MySQL](https://img.shields.io/badge/MySQL-00000F?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-00000F?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 **Samalocation** est une plateforme web moderne conçue pour révolutionner la gestion locative immobilière au Sénégal. Elle offre une solution digitale complète, sécurisée et transparente tant pour les propriétaires que pour les locataires.
@@ -11,7 +11,7 @@
 
 ## 🚀 Vision du Projet
 
-Le marché locatif traditionnel peut être complexe et opaque. Samalocation simplifie cette expérience en digitalisant chaque étape : de la recherche d'un bien à la génération de quittances, en passant par la communication directe et sécurisée.
+Le marché locatif traditionnel peut être complexe et opaque. Samalocation simplifie cette expérience en digitalisant chaque étape : de la recherche d'un bien à la génération de contrats et de quittances, en passant par la communication directe et sécurisée.
 
 ---
 
@@ -23,6 +23,10 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 - **Messagerie Temps-Réel :** Chat direct avec les propriétaires pour poser des questions et organiser des visites.
 - **Candidature Simplifiée :** Postulez aux annonces en un clic.
 - **Espace Personnel :** Suivi des locations actives, téléchargement de quittances et gestion des demandes de maintenance.
+-**Signature électronique :** Signature électronique des contrats de location.
+
+
+
 
 ### 🏠 Pour les Propriétaires
 - **Dashboard Complet :** Gestion centralisée de votre patrimoine immobilier.
@@ -31,6 +35,10 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 - **Gestion des Locataires :** Attribution des biens, suivi des paiements et historique locatif.
 - **Digitalisation Administrative :** Génération automatique de quittances de loyer au format PDF.
 - **Suivi de Maintenance :** Système de tickets pour gérer les réparations et demandes d'entretien.
+- **Gestion des Contrats :** Génération automatique de contrats de location au format PDF.
+- **Gestion des États des lieux :** Génération automatique d'états des lieux au format PDF.
+- **Gestion des Reçus :** Génération automatique de reçus de loyer au format PDF.
+- **Multi-collaborateur :** Gestion de plusieurs collaborateurs pour les agences immobilières.
 
 ### 🛡️ Sécurité & IA
 - **Anti-Bot :** Protection des formulaires via Cloudflare Turnstile.
@@ -53,7 +61,7 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 ### Backend
 - **Runtime :** [Node.js](https://nodejs.org/)
 - **Framework API :** [Express.js](https://expressjs.com/)
-- **Base de Données :** [MySQL](https://www.mysql.com/)
+- **Base de Données :** [PostgreSQL](https://www.postgresql.org/)
 - **Real-time :** [Socket.io](https://socket.io/)
 - **Intelligence Artificielle :** [Google Gemini AI API](https://ai.google.dev/)
 - **Stockage Media :** [Cloudinary](https://cloudinary.com/) (Images)

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
     const { t } = useTranslation();
@@ -21,23 +22,24 @@ const Footer = () => {
                     <div>
                         <h4 className="font-bold mb-6 text-primary">{t('footer.nav.title')}</h4>
                         <ul className="space-y-4 text-muted-foreground">
-                            <li><a href="/" className="hover:text-accent transition-colors">{t('footer.nav.home')}</a></li>
-                            <li><a href="/pricing" className="hover:text-accent transition-colors">{t('nav.pricing')}</a></li>
-                            <li><a href="/search" className="hover:text-accent transition-colors">{t('footer.nav.search')}</a></li>
-                            <li><a href="/auth" className="hover:text-accent transition-colors">{t('footer.nav.login')}</a></li>
+                            <li><Link to="/" className="hover:text-accent transition-colors">{t('footer.nav.home')}</Link></li>
+                            <li><Link to="/pricing" className="hover:text-accent transition-colors">{t('nav.pricing')}</Link></li>
+                            <li><Link to="/search" className="hover:text-accent transition-colors">{t('footer.nav.search')}</Link></li>
+                            <li><Link to="/about" className="hover:text-accent transition-colors">{t('footer.nav.about')}</Link></li>
+                            <li><Link to="/auth" className="hover:text-accent transition-colors">{t('footer.nav.login')}</Link></li>
                         </ul>
                     </div>
                     <div>
                         <h4 className="font-bold mb-6 text-primary">{t('footer.legal.title')}</h4>
                         <ul className="space-y-4 text-muted-foreground">
-                            <li><a href="/terms" className="hover:text-accent transition-colors">{t('footer.legal.terms')}</a></li>
-                            <li><a href="/privacy" className="hover:text-accent transition-colors">{t('footer.legal.privacy')}</a></li>
+                            <li><Link to="/terms" className="hover:text-accent transition-colors">{t('footer.legal.terms')}</Link></li>
+                            <li><Link to="/privacy" className="hover:text-accent transition-colors">{t('footer.legal.privacy')}</Link></li>
                         </ul>
                     </div>
                     <div>
                         <h4 className="font-bold mb-6 text-primary">{t('footer.support.title')}</h4>
                         <ul className="space-y-4 text-muted-foreground">
-                            <li><a href="/contact" className="hover:text-accent transition-colors">{t('footer.support.contact')}</a></li>
+                            <li><Link to="/contact" className="hover:text-accent transition-colors">{t('footer.support.contact')}</Link></li>
                             <li><a href="mailto:contact@samalocation.com" className="hover:text-accent transition-colors">contact@samalocation.com</a></li>
                         </ul>
                     </div>

@@ -2,6 +2,7 @@ const express = require('express'); // Heartbeat for reload
 const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const cron = require('node-cron');
@@ -25,6 +26,7 @@ const aiRoutes = require('./routes/aiRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const contractRoutes = require('./routes/contractRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
+const favoriteRoutes = require('./routes/favoriteRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const securityMiddleware = require('./middleware/security');
 const { trackVisit } = require('./middleware/analyticsMiddleware');
@@ -34,6 +36,9 @@ const app = express();
 const server = require('http').createServer(app);
 const io = require('./utils/socket').init(server);
 const PORT = process.env.PORT || 5000;
+
+// Performance Middleware
+app.use(compression());
 
 // Static Files - TOP PRIORITY to avoid security header conflicts
 app.use('/uploads', (req, res, next) => {
@@ -55,10 +60,6 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use((req, res, next) => {
-    console.log(`[${req.method}] ${req.url}`);
-    next();
-});
 app.use(trackVisit);
 app.use(maintenanceMiddleware);
 
@@ -103,10 +104,11 @@ app.use(helmet({
 
 
 // Rate Limiting
+app.set('trust proxy', 1); // Nécessaire pour Render/Heroku pour détecter la bonne IP
 const response = require('./utils/response');
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000, // Augmenté pour éviter les blocages lors des rafraîchissements/polling
+    max: 3000, // Très large pour le confort des utilisateurs
     handler: (req, res) => {
         return response.error(res, "Trop de requêtes. Veuillez patienter 15 minutes.", 429);
     }
@@ -114,7 +116,7 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50,
+    max: 100, // Sécurité contre le brute-force mais confortable
     handler: (req, res) => {
         return response.error(res, "Trop de tentatives. Veuillez réessayer dans 15 minutes.", 429);
     }
@@ -152,6 +154,7 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/contracts', contractRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/properties', propertiesRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 // Keep-alive Cron Job (Runs every 15 minutes)
 // This pings the database to keep the connection warm and prevent Supabase from pausing

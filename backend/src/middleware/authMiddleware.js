@@ -34,18 +34,14 @@ const authMiddleware = async (req, res, next) => {
     req.user = { 
         ...decoded, 
         ...userProfile,
-        parentId: effectiveParentId, // Standardiser en camelCase
-        parent_id: effectiveParentId // Garder snake_case pour compatibilité
+        parent_id: effectiveParentId
     };
-    
-    console.log(`[authMiddleware] User authenticated: ${decoded.id}, role: ${decoded.role}, parentId: ${effectiveParentId}`);
 
     // Resolve effective owner ID for data access
     req.ownerId = decoded.id; // Par défaut, l'utilisateur voit son propre espace
     
     const activeContext = req.headers['x-active-context'];
     if (activeContext) {
-        console.log(`[authMiddleware] x-active-context header found: ${activeContext}`);
         // If user is a collaborator, they can switch to their parent's context
         if (effectiveParentId === activeContext) {
             // CRITICAL: Check if the owner still has a subscription allowing multi-user
@@ -54,19 +50,10 @@ const authMiddleware = async (req, res, next) => {
             
             if (hasMultiUserAccess) {
                 req.ownerId = activeContext;
-                console.log(`[authMiddleware] User is collaborator, switching ownerId to parent: ${req.ownerId}`);
-            } else {
-                console.log(`[authMiddleware] Collaborator blocked: Parent account (${activeContext}) does not have multi_user feature enabled.`);
             }
         }
-    } else if (effectiveParentId) {
-        // Optionnel: On peut choisir de basculer automatiquement sur le contexte du propriétaire 
-        // si l'agent n'a rien à lui. Pour l'instant on reste sur l'espace perso par défaut.
-        console.log(`[authMiddleware] No active context, but user has parentId: ${effectiveParentId}. Defaulting to personal space.`);
     }
-
-    console.log(`[AUTH] Resolved ownerId context: ${req.ownerId} (User: ${decoded.id})`);
-
+    
     next();
 };
 

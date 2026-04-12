@@ -90,15 +90,10 @@ const paymentController = {
                 token,
             } = req.body;
 
-            console.log('Processing payload:', { ref_command, type_event });
-
-            // 1. Vérification de sécurité (facultatif mais recommandé si PayTech envoie les hash)
-            // Note: PayTech envoie le corps de la requête. On peut vérifier que c'est bien valide.
             if (type_event !== 'sale_complete') {
                 return res.status(200).send('Event ignored');
             }
 
-            // 2. Extraire les données du custom_field
             let userData = {};
             try {
                 userData = JSON.parse(custom_field);
@@ -109,8 +104,6 @@ const paymentController = {
 
             const { userId, planId, durationDays, price } = userData;
 
-            // 3. Valider l'abonnement en base de données
-            // On utilise la méthode existante du modèle Subscription
             await Subscription.createSubscription(userId, {
                 planName: planId.toUpperCase(),
                 price: price,
@@ -118,8 +111,6 @@ const paymentController = {
                 transactionId: token || ref_command,
                 durationDays: durationDays
             });
-
-            console.log(`✅ Subscription activated for user ${userId} (${planId})`);
 
             // 4. Répondre à PayTech 200 OK
             return res.status(200).json({ success: 1 });

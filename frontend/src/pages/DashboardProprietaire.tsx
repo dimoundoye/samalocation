@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe } from "lucide-react";
+import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -128,6 +128,17 @@ const DashboardProprietaire = () => {
   const [tenantSearch, setTenantSearch] = useState("");
   const [createContractOpen, setCreateContractOpen] = useState(false);
   const [selectedTenantForContract, setSelectedTenantForContract] = useState<Tenant | null>(null);
+
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const saved = localStorage.getItem("show_onboarding_guide");
+    return saved === null ? true : saved === "true";
+  });
+
+  const toggleOnboarding = () => {
+    const newValue = !showOnboarding;
+    setShowOnboarding(newValue);
+    localStorage.setItem("show_onboarding_guide", String(newValue));
+  };
 
   const userGroupsKey = useMemo(() => user?.id ? `owner_tenant_groups_v2_${user.id}` : "owner_tenant_groups_v2_guest", [user?.id]);
   const [customGroups, setCustomGroups] = useState<{ id: string; name: string; tenantIds: string[]; parentId?: string }[]>([]);
@@ -906,7 +917,7 @@ const DashboardProprietaire = () => {
             {/* Dashboard Tab */}
             {activeTab === "dashboard" && (
               <div className="space-y-6">
-                {!isInitialLoading && (
+                {!isInitialLoading && showOnboarding && (
                   <OnboardingChecklist
                     stats={stats}
                     ownerProfile={ownerProfile}
@@ -1036,6 +1047,16 @@ const DashboardProprietaire = () => {
                     </div>
                   </div>
                   <div className="flex flex-row items-center gap-2 ml-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 sm:h-10 bg-background flex items-center gap-2 border-primary/20 hover:border-primary/50 text-primary hover:bg-primary/5 transition-colors"
+                      onClick={toggleOnboarding}
+                      title={showOnboarding ? t('dashboard.common.hide_guide') : t('dashboard.common.show_guide')}
+                    >
+                      <HelpCircle className={`h-4 w-4 ${showOnboarding ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className="hidden md:inline">{showOnboarding ? t('dashboard.common.hide_guide') : t('dashboard.common.show_guide')}</span>
+                    </Button>
                     <Select value={selectedYear} onValueChange={setSelectedYear}>
                       <SelectTrigger className="w-[85px] sm:w-[120px] h-9 sm:h-10 bg-background">
                         <SelectValue placeholder="Année" />

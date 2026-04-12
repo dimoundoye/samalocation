@@ -5,13 +5,24 @@ const response = require('../utils/response');
  */
 const errorHandler = (err, req, res, next) => {
     // Toujours logger l'erreur réelle côté serveur pour le débogage
-    console.error(`[Error] ${err.stack || err.message}`);
+    console.error(`[Error] ${err.name || 'Internal'}: ${err.message}`);
+    
+    let statusCode = err.statusCode || 500;
+    let message = err.message || 'Une erreur interne est survenue';
 
-    const statusCode = err.statusCode || 500;
+    // Gestion spécifique des erreurs JWT
+    if (err.name === 'TokenExpiredError') {
+        statusCode = 401;
+        message = 'Votre session a expiré. Veuillez vous reconnecter.';
+    } else if (err.name === 'JsonWebTokenError') {
+        statusCode = 401;
+        message = 'Session invalide. Veuillez vous reconnecter.';
+    }
 
-    // Si c'est une erreur 500, on utilise un message générique
-    // Sinon on peut garder le message (ex: 400 Bad Request, 401 Unauthorized) car ils sont souvent fonctionnels
-    const message = statusCode === 500 ? 'Une erreur interne est survenue' : (err.message || 'Une erreur est survenue');
+    // Protection contre la fuite d'informations DB en production
+    if (statusCode === 500) {
+        message = 'Une erreur interne est survenue';
+    }
 
     return response.error(res, message, statusCode, null);
 };

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import PropertyCard from "@/components/PropertyCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -173,14 +174,12 @@ const Recherche = () => {
             {/* Filters Section */}
             <div className="bg-card p-6 rounded-2xl shadow-soft border border-border/50 space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                <div className="lg:col-span-3 relative">
-                  <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
+                <div className="lg:col-span-3">
+                  <SearchAutocomplete 
                     placeholder={t('search.placeholder')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-12 bg-background border-border/50 rounded-xl focus:border-primary/50 transition-all"
-                    onKeyDown={(e) => e.key === "Enter" && navigate(`/search/page_1${location.search}`)}
+                    initialValue={searchTerm}
+                    onValueChange={setSearchTerm}
+                    className="h-12"
                   />
                 </div>
 

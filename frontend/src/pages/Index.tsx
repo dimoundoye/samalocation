@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import Navbar from "@/components/Navbar";
 import PropertyCard from "@/components/PropertyCard";
 import Footer from "@/components/Footer";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -162,20 +163,15 @@ const Index = () => {
               </div>
 
               {/* Quick Search */}
-              <div className="max-w-xl p-3 bg-card dark:bg-card rounded-2xl shadow-strong flex flex-col sm:flex-row items-center gap-3 border border-border/50 transition-all">
-                <div className="flex items-center w-full gap-2 px-2">
-                  <MapPin className="h-6 w-6 text-muted-foreground shrink-0" />
-                  <Input
-                    placeholder={t('hero.search_placeholder')}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="border-0 focus-visible:ring-0 text-base md:text-lg h-14 w-full bg-transparent"
-                    onKeyPress={(e) => e.key === 'Enter' && navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
-                  />
-                </div>
+              <div className="max-w-xl p-2 bg-card dark:bg-card rounded-2xl shadow-strong flex flex-col sm:flex-row items-center gap-2 border border-border/50 transition-all">
+                <SearchAutocomplete 
+                  placeholder={t('hero.search_placeholder')}
+                  initialValue={searchQuery}
+                  onValueChange={setSearchQuery}
+                />
                 <Button
                   onClick={() => navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
-                  className="h-14 w-full sm:w-14 rounded-xl gradient-accent shadow-medium hover:scale-105 sm:hover:scale-110 transition-transform flex items-center justify-center"
+                  className="h-14 w-full sm:w-14 rounded-xl gradient-accent shadow-medium hover:scale-105 sm:hover:scale-110 transition-transform flex items-center justify-center shrink-0"
                 >
                   <span className="sm:hidden font-bold mr-2 text-base">{t('hero.search_button')}</span>
                   <ArrowRight className="h-10 w-10 text-white" />

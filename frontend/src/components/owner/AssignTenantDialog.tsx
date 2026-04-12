@@ -142,6 +142,17 @@ export const AssignTenantDialog = ({
     onOpenChange(nextOpen);
   };
 
+  // Auto-select unit if only one exists
+  useEffect(() => {
+    if (availableUnits.length === 1 && selectedPropertyId && !selectedUnitId) {
+      const unit = availableUnits[0];
+      setSelectedUnitId(unit.id);
+      if (unit.monthly_rent) {
+        setMonthlyRent(String(unit.monthly_rent));
+      }
+    }
+  }, [availableUnits, selectedPropertyId, selectedUnitId]);
+
   const searchUsersLocal = async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -578,7 +589,7 @@ export const AssignTenantDialog = ({
                           </Select>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className={`space-y-2 ${availableUnits.length <= 1 ? 'hidden' : ''}`}>
                           <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Unité / Porte</Label>
                           <Select
                             value={selectedUnitId}

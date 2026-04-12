@@ -26,7 +26,10 @@ import ScrollToTop from "./components/ScrollToTop";
 import Chatbot from "./components/Chatbot";
 import OwnerPublicProfile from "./pages/OwnerPublicProfile";
 import AcceptInvitation from "./pages/AcceptInvitation";
+import About from "./pages/About";
 import VerifyEmail from "./pages/VerifyEmail";
+import Favorites from "./pages/Favorites";
+import { OfflineStatus } from "./components/OfflineStatus";
 
 import { SocketProvider } from "@/contexts/SocketContext";
 
@@ -115,8 +118,17 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/favorites"
+                  element={
+                    <ProtectedRoute>
+                      <Favorites />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/verify/contract/:id" element={<VerifyContract />} />
@@ -126,6 +138,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Chatbot />
+              <OfflineStatus />
             </SocketProvider>
           </AuthProvider>
         </BrowserRouter>

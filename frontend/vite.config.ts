@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: [], // ⚠️ ne force pas favicon/logo en cache
+      includeAssets: ['favicon.ico', 'logo-sl.png', 'robots.txt', 'apple-touch-icon.png', 'android-chrome-192x192.png', 'android-chrome-512x512.png', 'favicon-16x16.png', 'favicon-32x32.png', 'manifest.json', 'site.webmanifest'],
       manifest: {
         name: 'Samalocation',
         short_name: 'Samalocation',
@@ -22,6 +22,7 @@ export default defineConfig(({ mode }) => ({
         theme_color: '#2563eb',
         background_color: '#ffffff',
         display: 'standalone',
+        orientation: 'portrait',
         icons: [
           { src: 'logo-sl.png', sizes: '192x192', type: 'image/png' },
           { src: 'logo-sl.png', sizes: '512x512', type: 'image/png' },
@@ -31,7 +32,59 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         cleanupOutdatedCaches: true,
         skipWaiting: true,
-        clientsClaim: true
+        clientsClaim: true,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+            },
+          },
+          {
+            urlPattern: /\/api\/(auth\/me|tenant|receipts|properties|owner|maintenance|notifications|messages)/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 1 week
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /\/api\/receipts\/.*\/download/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'receipt-pdfs',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'image-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+            },
+          },
+        ],
       }
     }),
     mode === "development" && componentTagger()

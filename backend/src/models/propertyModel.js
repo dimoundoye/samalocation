@@ -267,7 +267,28 @@ const Property = {
 
         params.push(unitId);
         await db.query(`UPDATE property_units SET ${updateFields.join(', ')} WHERE id = $${idx}`, params);
+
+        // If availability was changed to false, check if we should unpublish
+        if (is_available === false) {
+            const { rows } = await db.query('SELECT property_id FROM property_units WHERE id = $1', [unitId]);
+            if (rows.length > 0) {
+                await this.checkAndUnpublish(rows[0].property_id);
+            }
+        }
         return true;
+    },
+
+    async checkAndUnpublish(propertyId) {
+        const { rows: availableRows } = await db.query(
+            'SELECT id FROM property_units WHERE property_id = $1 AND is_available = true LIMIT 1',
+            [propertyId]
+        );
+
+        if (availableRows.length === 0) {
+            await db.query('UPDATE properties SET is_published = false WHERE id = $1', [propertyId]);
+            return true;
+        }
+        return false;
     },
 
     async update(id, ownerId, data) {

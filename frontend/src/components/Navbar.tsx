@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { Home, LogIn, UserPlus, LayoutDashboard, Menu, Search, CreditCard, Mail, Globe } from "lucide-react";
+import { Home, LogIn, UserPlus, LayoutDashboard, Menu, Search, CreditCard, Mail, Globe, Info, Heart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
@@ -35,9 +35,16 @@ const Navbar = () => {
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden lg:flex items-center gap-6 mr-4">
               <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.home')}</Link>
-              <Link to="/pricing" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.pricing')}</Link>
               <Link to="/search" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.explore')}</Link>
+              <Link to="/about" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.about')}</Link>
+              <Link to="/pricing" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.pricing')}</Link>
               <Link to="/contact" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.contact')}</Link>
+              {user && (
+                <Link to="/favorites" className="text-sm font-medium text-red-500 hover:text-red-600 transition-colors flex items-center gap-1">
+                  <Heart className="h-4 w-4 fill-current" />
+                  {t('nav.favorites') || "Favoris"}
+                </Link>
+              )}
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-3">
@@ -45,7 +52,7 @@ const Navbar = () => {
                 <LanguageToggle />
                 <ThemeToggle />
               </div>
-              
+
               {user ? (
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <NotificationBell />
@@ -55,7 +62,7 @@ const Navbar = () => {
                     className="flex items-center gap-2 h-10 px-4"
                   >
                     <LayoutDashboard className="h-4 w-4" />
-                    <span className="hidden md:inline">Espace</span>
+                    <span className="hidden md:inline">Mon espace</span>
                   </Button>
                 </div>
               ) : (
@@ -93,12 +100,16 @@ const Navbar = () => {
                         Samalocation
                       </SheetTitle>
                     </SheetHeader>
-                    
+
                     <div className="flex flex-col gap-1 py-4">
                       <MobileNavLink to="/" icon={Home} label={t('nav.home')} onClick={() => setOpen(false)} />
                       <MobileNavLink to="/search" icon={Search} label={t('nav.explore')} onClick={() => setOpen(false)} />
                       <MobileNavLink to="/pricing" icon={CreditCard} label={t('nav.pricing')} onClick={() => setOpen(false)} />
                       <MobileNavLink to="/contact" icon={Mail} label={t('nav.contact')} onClick={() => setOpen(false)} />
+                      <MobileNavLink to="/about" icon={Info} label={t('nav.about')} onClick={() => setOpen(false)} />
+                      {user && (
+                        <MobileNavLink to="/favorites" icon={Heart} label={t('nav.favorites') || "Mes Favoris"} onClick={() => setOpen(false)} />
+                      )}
                     </div>
 
                     <div className="border-t pt-6 mt-4 space-y-4">
@@ -111,8 +122,8 @@ const Navbar = () => {
                       </div>
 
                       {user ? (
-                        <Button 
-                          className="w-full justify-start h-12 text-base px-4" 
+                        <Button
+                          className="w-full justify-start h-12 text-base px-4"
                           onClick={() => { navigate(getDashboardPath()); setOpen(false); }}
                         >
                           <LayoutDashboard className="mr-3 h-5 w-5" />
@@ -120,15 +131,15 @@ const Navbar = () => {
                         </Button>
                       ) : (
                         <div className="grid grid-cols-2 gap-3 p-1">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="h-12 text-base"
                             onClick={() => { navigate("/auth?mode=login"); setOpen(false); }}
                           >
                             <LogIn className="mr-2 h-4 w-4" />
                             {t('nav.login')}
                           </Button>
-                          <Button 
+                          <Button
                             className="h-12 text-base gradient-accent"
                             onClick={() => { navigate("/auth?mode=signup"); setOpen(false); }}
                           >
@@ -157,8 +168,8 @@ interface MobileNavLinkProps {
 }
 
 const MobileNavLink = ({ to, icon: Icon, label, onClick }: MobileNavLinkProps) => (
-  <Link 
-    to={to} 
+  <Link
+    to={to}
     onClick={onClick}
     className="flex items-center gap-4 px-4 py-4 rounded-xl hover:bg-secondary transition-colors text-lg font-medium"
   >

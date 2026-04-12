@@ -86,7 +86,7 @@ const Receipt = {
             LEFT JOIN user_profiles tenant ON r.tenant_id = tenant.id
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles owner ON p.owner_id = owner.id
-            LEFT JOIN owner_profiles owner_prof ON p.owner_id = owner_prof.id
+            LEFT JOIN owner_profiles owner_prof ON p.owner_id = owner_prof.user_profile_id
             LEFT JOIN property_units pu ON r.property_id = pu.property_id AND (
                 EXISTS (SELECT 1 FROM tenants t2 WHERE t2.user_id = r.tenant_id AND t2.unit_id = pu.id)
             )
@@ -96,8 +96,9 @@ const Receipt = {
         );
 
         if (receipts[0]) {
-            // Prioritize the signature and template saved with the receipt (Immutability)
-            // Fallback to current profile values only if stored values are missing (e.g., legacy data)
+            // Priority:
+            // 1. Value stored in receipt table (Immutability)
+            // 2. Value in live owner profile (only for legacy receipts created without snapshot)
             receipts[0].signature_url = receipts[0].owner_signature || receipts[0].current_owner_signature;
             receipts[0].receipt_template = receipts[0].receipt_template || receipts[0].current_receipt_template || 'classic';
             receipts[0].logo_url = receipts[0].owner_logo || receipts[0].current_owner_logo;

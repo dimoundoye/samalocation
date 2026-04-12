@@ -166,8 +166,6 @@ const authController = {
                     durationDays: 30,
                     price: 0
                 });
-
-                console.log(`🎁 Parrainage activé : ${parrain.custom_id} -> ${customId}`);
             }
 
             // Envoi de l'e-mail de vérification (asynchrone)

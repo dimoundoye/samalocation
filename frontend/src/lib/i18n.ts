@@ -67,7 +67,9 @@ const resources = {
                 "signup": "Inscription",
                 "logout": "Déconnexion",
                 "my_space": "Mon espace",
-                "pricing": "Tarifs"
+                "pricing": "Tarifs",
+                "about": "À Propos",
+                "favorites": "Favoris"
             },
             "period": {
                 "jour": "jour",
@@ -85,7 +87,17 @@ const resources = {
                 "bedrooms_short": "ch.",
                 "bathrooms_short": "sdb",
                 "details_soon": "La page de détails sera bientôt disponible.",
-                "new": "Nouveau"
+                "new": "Nouveau",
+                "favorites": {
+                    "add": "Ajouter aux favoris",
+                    "remove": "Retirer des favoris",
+                    "added": "Ajouté aux favoris",
+                    "removed": "Retiré des favoris",
+                    "added_desc": "Le bien a été ajouté à vos favoris.",
+                    "removed_desc": "Le bien a été retiré de vos favoris.",
+                    "login_required": "Connexion requise",
+                    "login_required_desc": "Vous devez être connecté pour ajouter des favoris."
+                }
             },
             "hero": {
                 "badge": "La révolution locative au Sénégal",
@@ -165,7 +177,8 @@ const resources = {
                     "title": "Navigation",
                     "home": "Accueil",
                     "search": "Rechercher",
-                    "login": "Se connecter"
+                    "login": "Se connecter",
+                    "about": "À Propos"
                 },
                 "legal": {
                     "title": "Légal",
@@ -314,7 +327,9 @@ const resources = {
                     "account": "Compte",
                     "profile": "Profil",
                     "recent_activity": "Activité récente",
-                    "no_activity": "Aucune activité trouvée"
+                    "no_activity": "Aucune activité trouvée",
+                    "show_guide": "Afficher le guide",
+                    "hide_guide": "Masquer le guide"
                 }
             },
             "tenant": {
@@ -515,7 +530,9 @@ const resources = {
                 "signup": "Sign Up",
                 "logout": "Logout",
                 "my_space": "My space",
-                "pricing": "Pricing"
+                "pricing": "Pricing",
+                "about": "About Us",
+                "favorites": "Favorites"
             },
             "period": {
                 "jour": "day",
@@ -533,7 +550,17 @@ const resources = {
                 "bedrooms_short": "bd.",
                 "bathrooms_short": "bt",
                 "details_soon": "The details page will be available soon.",
-                "new": "New"
+                "new": "New",
+                "favorites": {
+                    "add": "Add to favorites",
+                    "remove": "Remove from favorites",
+                    "added": "Added to favorites",
+                    "removed": "Removed from favorites",
+                    "added_desc": "The property has been added to your favorites.",
+                    "removed_desc": "The property has been removed from your favorites.",
+                    "login_required": "Login required",
+                    "login_required_desc": "You must be logged in to add favorites."
+                }
             },
             "hero": {
                 "badge": "The rental revolution in Senegal",
@@ -613,7 +640,8 @@ const resources = {
                     "title": "Navigation",
                     "home": "Home",
                     "search": "Search",
-                    "login": "Login"
+                    "login": "Login",
+                    "about": "About Us"
                 },
                 "legal": {
                     "title": "Legal",
@@ -762,6 +790,8 @@ const resources = {
                     "profile": "Profile",
                     "recent_activity": "Recent Activity",
                     "no_activity": "No activity found",
+                    "show_guide": "Show Guide",
+                    "hide_guide": "Hide Guide",
                     "loading_error": "Unable to load data at this time.",
                     "save_success": "Changes saved successfully.",
                     "save_error": "Failed to save changes. Please try again.",
