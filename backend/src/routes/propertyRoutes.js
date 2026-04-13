@@ -6,9 +6,6 @@ const propertyController = require('../controllers/propertyController');
 // Get all published properties (public)
 router.get('/', propertyController.getAllPublished);
 
-// Route temporaire pour migrer la base de données
-router.get('/migrate-database-coords', propertyController.runMigration);
-
 // Get owner properties (protected)
 router.get('/owner', authMiddleware, propertyController.getOwnerProperties);
 

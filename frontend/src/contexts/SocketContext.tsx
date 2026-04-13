@@ -34,7 +34,6 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             });
 
             newSocket.on('connect', () => {
-                console.log('[SOCKET] Connected to server successfully');
                 setConnected(true);
                 // Join user-specific room for private messages/notifications
                 newSocket.emit('join', user.id);
@@ -46,14 +45,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             });
 
             newSocket.on('reconnect_attempt', (attempt) => {
-                console.log(`[SOCKET] Reconnection attempt #${attempt}`);
             });
 
             newSocket.on('reconnect_failed', () => {
                 console.error('[SOCKET] Reconnection failed after all attempts');
             });
             newSocket.on('disconnect', () => {
-                console.log('[SOCKET] Disconnected from server');
                 setConnected(false);
             });
 

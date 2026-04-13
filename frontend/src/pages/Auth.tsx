@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { login, signup, forgotPassword, resendVerificationEmail } from "@/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { verifyEmail } from "@/api/emailverification";
-import Turnstile from "react-turnstile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
@@ -29,7 +28,6 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showVerificationSent, setShowVerificationSent] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
@@ -50,20 +48,12 @@ const Auth = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isDev = import.meta.env.DEV;
-    if (!turnstileToken && !isDev) {
-      toast.error("Veuillez confirmer que vous n'êtes pas un robot.");
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
 
     try {
       const data = await login({
-        email: formData.identifier || formData.email, // backend expects 'email' key but supports both
+        email: formData.identifier || formData.email,
         password: formData.password,
-        turnstileToken: turnstileToken || "",
       });
 
       if (data.token) {
@@ -99,13 +89,6 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isDev = import.meta.env.DEV;
-    if (!turnstileToken && !isDev) {
-      toast.error("Veuillez confirmer que vous n'êtes pas un robot.");
-      setLoading(false);
-      return;
-    }
-
     if (!acceptedTerms) {
       toast.error("Veuillez accepter les conditions d'utilisation et la politique de confidentialité.");
       setLoading(false);
@@ -129,7 +112,6 @@ const Auth = () => {
         role: formData.userType,
         companyName: formData.userType === "owner" ? formData.companyName : null,
         referralCode: formData.referralCode || null,
-        turnstileToken: turnstileToken || "",
       });
 
       if (data.token) {
@@ -250,7 +232,6 @@ const Auth = () => {
 
         <CardContent>
           <Tabs value={mode} onValueChange={(value) => {
-            setTurnstileToken(null);
             // Si on passe à l'inscription, on ne définit pas de type par défaut pour forcer le choix
             const newSearchParams = new URLSearchParams(searchParams);
             newSearchParams.set("mode", value);
@@ -302,15 +283,6 @@ const Auth = () => {
                     </Button>
                   </div>
                 </div>
-                {import.meta.env.PROD && (
-                  <div className="flex justify-center py-2 min-h-[65px]">
-                    <Turnstile
-                      sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                      onVerify={(token) => setTurnstileToken(token)}
-                      theme={(theme === "dark" ? "dark" : "light") as any}
-                    />
-                  </div>
-                )}
 
                 <Button type="submit" className="w-full gradient-primary text-white" disabled={loading}>
                   {loading ? (
@@ -482,15 +454,6 @@ const Auth = () => {
                       <p className="text-[10px] text-muted-foreground italic">
                         Optionnel: Recevez 1 mois Premium offert avec un code valide.
                       </p>
-                    </div>
-                  )}
-                   {import.meta.env.PROD && (
-                    <div className="flex justify-center py-2 min-h-[65px]">
-                      <Turnstile
-                        sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                        onVerify={(token) => setTurnstileToken(token)}
-                        theme={(theme === "dark" ? "dark" : "light") as any}
-                      />
                     </div>
                   )}
 

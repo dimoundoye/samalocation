@@ -68,8 +68,7 @@ const DashboardLocataire = () => {
   useEffect(() => {
     // Si on se reconnecte (ou première connexion) et qu'on est sur l'onglet messages, rafraîchir pour ne rien rater
     if (connected && activeTab === "messages") {
-      console.log("[SOCKET] Reconnected! Refreshing messages...");
-      loadMessages();
+        loadMessages();
     }
   }, [connected, activeTab, socket]);
 
@@ -77,7 +76,6 @@ const DashboardLocataire = () => {
     if (!socket) return;
 
     const handleNewMessage = (msg: any) => {
-      console.log("[SOCKET] Tenant received new message:", msg);
       setMessages((prev) => {
         // Prevent duplicates
         if (prev.some(m => m.id === msg.id)) return prev;

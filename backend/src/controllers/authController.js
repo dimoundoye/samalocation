@@ -5,7 +5,6 @@ const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/emai
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
-const { verifyTurnstileToken } = require('../utils/cloudflare');
 const db = require('../config/db');
 
 /**
@@ -29,7 +28,6 @@ const generateCustomId = async () => {
         if (attemptsForCurrentCount > 10) {
             digitCount++;
             attemptsForCurrentCount = 0; // On reset les tentatives pour le nouveau palier
-            console.log(`[ID-GEN] Trop de collisions, passage à ${digitCount} chiffres...`);
             
             // Sécurité pour ne pas dépasser la taille de la colonne en base (2 lettres + 8 chiffres = 10)
             if (digitCount > 8) {
@@ -66,14 +64,8 @@ const authController = {
      */
     async signup(req, res, next) {
         try {
-            let { email, password, name, phone, role, companyName, turnstileToken, referralCode } = req.body;
+            let { email, password, name, phone, role, companyName, referralCode } = req.body;
             email = email?.toLowerCase();
-
-            // Vérification Turnstile
-            const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);
-            if (!isHuman) {
-                return response.error(res, "Veuillez confirmer que vous n'êtes pas un robot.", 403);
-            }
 
             const existingUser = await User.findByEmail(email);
             if (existingUser) {
@@ -187,14 +179,8 @@ const authController = {
      */
     async login(req, res, next) {
         try {
-            let { email, password, turnstileToken } = req.body; // email is now identifier (email or ID)
+            let { email, password } = req.body; // email is now identifier (email or ID)
             email = email?.toLowerCase();
-
-            // Vérification Turnstile
-            const isHuman = await verifyTurnstileToken(turnstileToken, req.ip);
-            if (!isHuman) {
-                return response.error(res, "Veuillez confirmer que vous n'êtes pas un robot.", 403);
-            }
 
             const user = await User.findByEmailOrId(email);
             if (!user) {

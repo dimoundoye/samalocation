@@ -14,17 +14,14 @@ module.exports = {
         });
 
         io.on('connection', (socket) => {
-            console.log('[SOCKET] Client connected:', socket.id);
 
             socket.on('join', (userId) => {
                 if (userId) {
-                    console.log(`[SOCKET] User ${userId} joined their room`);
                     socket.join(userId);
                 }
             });
 
             socket.on('disconnect', () => {
-                console.log('[SOCKET] Client disconnected:', socket.id);
             });
         });
 

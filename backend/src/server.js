@@ -162,7 +162,6 @@ cron.schedule('*/15 * * * *', async () => {
     try {
         const start = Date.now();
         await db.query('SELECT 1');
-        console.log(`[Keep-Alive] DB Ping successful (${Date.now() - start}ms)`);
     } catch (err) {
         console.error('[Keep-Alive] DB Ping failed:', err.message);
     }

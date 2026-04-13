@@ -125,7 +125,6 @@ const getChatResponse = async (message, history = []) => {
             validHistory = [];
         }
 
-        console.log(`[AI Chat] Sending request with history length: ${validHistory.length}`);
 
         const chat = model.startChat({
             history: validHistory,

@@ -10,7 +10,6 @@ const authMiddleware = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
     if (!decoded) {
-        console.log('[authMiddleware] Invalid token provided');
         return res.status(401).json({ status: 'error', message: 'Invalid token' });
     }
 
@@ -21,7 +20,6 @@ const authMiddleware = async (req, res, next) => {
     }
 
     if (userProfile.is_blocked) {
-        console.log(`[authMiddleware] User ID ${decoded.id} is blocked`);
         return res.status(403).json({
             status: 'error',
             message: 'Votre compte a été bloqué. Veuillez contacter l\'administrateur.'

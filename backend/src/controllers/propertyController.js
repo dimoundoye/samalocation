@@ -8,7 +8,6 @@ const CACHE_DURATION = 1 * 60 * 1000; // 1 minute pour un ressenti plus "direct"
 
 const clearPropertyCache = () => {
     propertyCache.clear();
-    console.log('[Cache] Property cache cleared');
 };
 
 const propertyController = {
@@ -39,7 +38,6 @@ const propertyController = {
             const cachedData = propertyCache.get(cacheKey);
             
             if (cachedData && (Date.now() - cachedData.timestamp < CACHE_DURATION)) {
-                console.log(`[Cache] Returning cached data for ${cacheKey}`);
                 return response.success(res, cachedData.data);
             }
 
@@ -194,19 +192,6 @@ const propertyController = {
             return response.success(res, updatedProperty, 'Property updated successfully');
         } catch (error) {
             next(error);
-        }
-    },
-
-    /**
-     * Run database migration for coordinates
-     */
-    async runMigration(req, res, next) {
-        try {
-            await Property.migrate();
-            return response.success(res, null, 'Migration successful (latitude, longitude, equipments added)');
-        } catch (error) {
-            console.error('Migration error:', error);
-            return response.error(res, 'Migration failed: ' + error.message, 500);
         }
     },
 

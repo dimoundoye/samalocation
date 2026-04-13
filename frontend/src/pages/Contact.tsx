@@ -7,14 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock } from "lucide-react";
 import { baseClient } from "@/api/baseClient";
-import Turnstile from "react-turnstile";
 import { useTranslation } from "react-i18next";
 
 const Contact = () => {
     const { toast } = useToast();
     const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
-    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -24,15 +22,6 @@ const Contact = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const isDev = import.meta.env.DEV;
-        if (!turnstileToken && !isDev) {
-            toast({
-                title: t('contact.form.robot_error'),
-                variant: "destructive",
-            });
-            return;
-        }
-
         setLoading(true);
 
         try {
@@ -40,7 +29,6 @@ const Contact = () => {
                 method: "POST",
                 body: JSON.stringify({
                     ...formData,
-                    turnstileToken,
                 }),
             });
 
@@ -49,7 +37,6 @@ const Contact = () => {
                 description: t('contact.form.success_desc'),
             });
             setFormData({ name: "", email: "", subject: "", message: "" });
-            setTurnstileToken(null);
         } catch (error: any) {
             toast({
                 title: t('common.error'),
@@ -198,15 +185,6 @@ const Contact = () => {
                                             </div>
 
                                             <div className="flex flex-col gap-4">
-                                                {!import.meta.env.DEV && (
-                                                    <div className="flex justify-center">
-                                                        <Turnstile
-                                                            sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                                                            onVerify={(token) => setTurnstileToken(token)}
-                                                            onExpire={() => setTurnstileToken(null)}
-                                                        />
-                                                    </div>
-                                                )}
 
 
                                                 <Button
