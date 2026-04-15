@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # --- 1. PERFORMANCE MONITORING (RAM, CPU, STOCKAGE) ---
+  netdata:
+    image: netdata/netdata:latest
+    container_name: netdata
+    hostname: monitoring-sama
+    ports:
+      - "19999:19999"
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdataconfig:/etc/netdata
+      - netdatalib:/var/lib/netdata
+      - netdatacache:/var/cache/netdata
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: always
+
+  # --- 2. DOCKER LOGS VISUALIZER (LOGS EN DIRECT) ---
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8888:8080"
+    restart: always
+
+  # --- 3. UPTIME & STATUS PAGE (ALERTS) ---
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    volumes:
+      - uptime-kuma:/app/data
+    ports:
+      - "3001:3001"
+    restart: always
+
+  # --- 4. ANALYTICS (UTILISATEURS & FREQUENCE) ---
+  umami-db:
+    image: postgres:15-alpine
+    container_name: umami-db
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami_user
+      POSTGRES_PASSWORD: umami_password_secure
+    volumes:
+      - umami-db-data:/var/lib/postgresql/data
+    restart: always
+
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: umami
+    environment:
+      DATABASE_URL: postgresql://umami_user:umami_password_secure@umami-db:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: mon_secret_ultra_prive_umami_123
+    ports:
+      - "3000:3000"
+    depends_on:
+      - umami-db
+    restart: always
+
+volumes:
+  netdataconfig:
+  netdatalib:
+  netdatacache:
+  uptime-kuma:
+  umami-db-data:
