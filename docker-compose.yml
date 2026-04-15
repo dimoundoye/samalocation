@@ -13,6 +13,30 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - samalocation-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  db-backup:
+    image: prodrigestivill/postgres-backup-local:16-alpine
+    container_name: samalocation-supabase-backup
+    restart: always
+    user: postgres:postgres
+    volumes:
+      - ./backups:/backups
+    environment:
+      - POSTGRES_HOST=aws-1-eu-west-1.pooler.supabase.com
+      - POSTGRES_PORT=6543
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres.oleotkybcuvndaoevvrj
+      - POSTGRES_PASSWORD=n9Zh6cSHscySTLDG
+      - SCHEDULE=@daily
+      - BACKUP_KEEP_DAYS=7
+      - BACKUP_SUFFIX=.sql
+    networks:
+      - samalocation-network
 
   backend:
     build:
