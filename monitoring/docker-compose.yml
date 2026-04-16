@@ -70,9 +70,26 @@ services:
       - umami-db
     restart: always
 
+  # --- 5. SECURITY & INTRUSION DETECTION (CROWDSEC) ---
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    environment:
+      - COLLECTIONS=crowdsecurity/linux crowdsecurity/nginx-proxy-manager crowdsecurity/sshd
+    ports:
+      - "8080:8080"
+    volumes:
+      - crowdsec-db:/var/lib/crowdsec/data
+      - crowdsec-config:/etc/crowdsec
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: always
+
 volumes:
   netdataconfig:
   netdatalib:
   netdatacache:
   uptime-kuma:
   umami-db-data:
+  crowdsec-db:
+  crowdsec-config:
