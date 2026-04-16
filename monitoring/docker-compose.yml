@@ -76,17 +76,13 @@ services:
     container_name: crowdsec
     environment:
       - COLLECTIONS=crowdsecurity/linux crowdsecurity/nginx-proxy-manager crowdsecurity/sshd
-    ports:
-      - "8080:8080"
+    network_mode: host
     volumes:
       - crowdsec-db:/var/lib/crowdsec/data
       - crowdsec-config:/etc/crowdsec
       - /var/log:/var/log:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: always
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
 
 volumes:
   netdataconfig:
