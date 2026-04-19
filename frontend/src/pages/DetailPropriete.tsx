@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/carousel";
 import Navbar from "@/components/Navbar";
 import { useToast } from "@/hooks/use-toast";
-import { transformProperty, FormattedProperty } from "@/lib/property";
+import { transformProperty, FormattedProperty, formatImageUrl } from "@/lib/property";
 import propertyFallback from "@/assets/property-1.jpg";
 import PropertyCard from "@/components/PropertyCard";
 import { getPropertyById, getProperties, sendMessage, createNotification, getMessages, getSimilarProperties } from "@/lib/api";
@@ -290,7 +290,7 @@ const DetailPropriete = () => {
 
   const ownerCompanyName = ownerProfile?.company_name || "Non renseigné";
   const ownerContactPhone = ownerProfile?.contact_phone || ownerProfile?.phone || null;
-  const ownerContactEmail = ownerProfile?.contact_email || null;
+  const ownerContactEmail = ownerProfile?.external_email || ownerProfile?.email || null;
   const rentPeriodLabels: Record<string, string> = {
     jour: "jour",
     semaine: "semaine",
@@ -303,7 +303,7 @@ const DetailPropriete = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="pt-24 pb-16 px-4">
+      <div className="pt-24 pb-16 px-4 md:px-8">
         <div className="container mx-auto max-w-6xl">
           <div className="flex items-center justify-between mb-6">
             <Button
@@ -314,21 +314,10 @@ const DetailPropriete = () => {
               <ArrowLeft className="h-4 w-4" />
               Retour à la recherche
             </Button>
-
-            {user && (
-              <Button
-                variant="default"
-                onClick={() => navigate("/tenant-dashboard")}
-                className="flex items-center gap-2"
-              >
-                <Home className="h-4 w-4" />
-                Mon espace
-              </Button>
-            )}
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
+          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+            <div className="md:col-span-2 space-y-6">
               <div className="space-y-4">
                 <div className="relative rounded-xl overflow-hidden shadow-medium bg-secondary/20 group">
                   <Carousel className="w-full" opts={{ loop: true }}>
@@ -356,7 +345,7 @@ const DetailPropriete = () => {
                         </div>
                       </>
                     )}
-                    </Carousel>
+                  </Carousel>
                 </div>
 
                 {allPhotos.length > 1 && (
@@ -450,9 +439,9 @@ const DetailPropriete = () => {
                   {property.description && (
                     <div>
                       <h3 className="text-lg md:text-xl font-semibold mb-3">Description</h3>
-                      <p className="text-muted-foreground leading-relaxed">
+                      <div className="text-muted-foreground whitespace-pre-line leading-relaxed">
                         {property.description}
-                      </p>
+                      </div>
                     </div>
                   )}
 
@@ -477,7 +466,7 @@ const DetailPropriete = () => {
               </Card>
             </div>
 
-            <div className="lg:col-span-1">
+            <div className="md:col-span-1">
               <Card className="shadow-soft sticky top-24">
                 <CardHeader>
                   <CardTitle>Intéressé par ce bien ?</CardTitle>
@@ -519,16 +508,20 @@ const DetailPropriete = () => {
                     <h4 className="font-semibold mb-3">Propriétaire</h4>
                     <div className="space-y-4 text-sm">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
                           {ownerProfile?.logo_url ? (
-                            <img src={ownerProfile.logo_url} alt="Logo" className="w-full h-full object-contain rounded-full" />
+                            <img
+                              src={formatImageUrl(ownerProfile.logo_url) || ""}
+                              alt={ownerCompanyName}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <Building2 className="w-5 h-5 text-primary" />
                           )}
                         </div>
                         <div className="flex flex-col">
-                          <Link 
-                            to={`/proprio/${ownerProfile?.id || property.owner_id}`} 
+                          <Link
+                            to={`/proprio/${ownerProfile?.id || property.owner_id}`}
                             className="font-bold text-base hover:text-primary transition-colors flex items-center gap-1 group"
                           >
                             {ownerCompanyName}
@@ -623,6 +616,7 @@ const DetailPropriete = () => {
                           rentPeriod={suggestion.primary_rent_period}
                           ownerPhone={ownerPhone}
                           isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
+                          ownerLogo={ownerProfile?.logo_url}
                         />
                       </CarouselItem>
                     );

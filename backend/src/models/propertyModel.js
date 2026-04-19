@@ -37,7 +37,7 @@ const Property = {
         let allOwnerProfiles = [];
         if (ownerIds.length > 0) {
             const { rows: profiles } = await db.query(`
-                SELECT user_profile_id, id, company_name, phone, phone as contact_phone, verification_status, is_verified
+                SELECT id, user_profile_id, company_name, phone, phone as contact_phone, logo_url, external_email, verification_status, is_verified
                 FROM owner_profiles 
                 WHERE user_profile_id = ANY($1) OR id = ANY($2)
             `, [ownerIds, ownerIds]);
@@ -109,7 +109,7 @@ const Property = {
         );
 
         const { rows: allOwnerProfiles } = await db.query(`
-            SELECT user_profile_id, company_name, phone, phone as contact_phone, bio, verification_status, is_verified
+            SELECT id, user_profile_id, company_name, phone, phone as contact_phone, bio, logo_url, external_email, verification_status, is_verified
             FROM owner_profiles 
             WHERE user_profile_id = $1 OR id = $2
         `, [ownerId, ownerId]);
@@ -131,7 +131,7 @@ const Property = {
         property.property_units = units;
 
         const { rows: ownerProfiles } = await db.query(`
-            SELECT company_name, phone, phone as contact_phone, bio, verification_status, is_verified
+            SELECT id, user_profile_id, company_name, phone, phone as contact_phone, bio, logo_url, external_email, verification_status, is_verified
             FROM owner_profiles 
             WHERE user_profile_id = $1 OR id = $2
         `, [property.owner_id, property.owner_id]);
@@ -224,7 +224,7 @@ const Property = {
         let allOwnerProfiles = [];
         if (ownerIds.length > 0) {
             const { rows: profiles } = await db.query(`
-                SELECT user_profile_id, id, company_name, phone, phone as contact_phone, verification_status, is_verified
+                SELECT id, user_profile_id, company_name, phone, phone as contact_phone, logo_url, external_email, verification_status, is_verified
                 FROM owner_profiles 
                 WHERE user_profile_id = ANY($1) OR id = ANY($2)
             `, [ownerIds, ownerIds]);

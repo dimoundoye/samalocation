@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { X, Upload, Sparkles, Loader2, Home, Layers, Building2, Building, BedDouble, Warehouse, Store } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { updateProperty, uploadPhotos, generateAIDescription } from "@/lib/api";
+import { compressImage } from "@/lib/imageCompression";
 import { Property } from "@/types";
 import LocationPicker from "./LocationPicker";
 
@@ -181,11 +182,20 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
 
         if (!propertyData.name || !propertyData.address) {
             toast({
-                title: "Informations manquantes",
-                description: "Le nom et l'adresse sont requis pour générer une description.",
+                title: "Informations minimales requises",
+                description: "Le nom et l'adresse sont requis pour que l'IA puisse travailler.",
                 variant: "destructive",
             });
             return;
+        }
+
+        // Hint: Encouraging more data for better AI
+        const hasEnoughData = unitData.monthly_rent && unitData.area_sqm && propertyEquipments.length > 0;
+        if (!hasEnoughData) {
+            toast({
+                title: "Conseil pour l'IA",
+                description: "Plus vous remplissez de détails (prix, surface, équipements), plus la description sera précise.",
+            });
         }
 
         try {
@@ -334,13 +344,19 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                             </div>
 
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <Label htmlFor="edit-description">Description</Label>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor="edit-description">Description</Label>
+                                        <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                                            <Sparkles className="h-2 w-2 text-primary" />
+                                            Plus d'infos (prix, surface, équipements) = meilleure description
+                                        </p>
+                                    </div>
                                     <Button
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 text-xs flex items-center gap-1.5"
+                                        className="h-8 text-xs flex items-center gap-1.5 border-primary/20 hover:bg-primary/5 transition-all"
                                         onClick={handleGenerateAI}
                                         disabled={generatingAI}
                                     >
@@ -415,14 +431,36 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                                         className="hidden"
                                         multiple
                                         accept="image/*"
-                                        onChange={(e) => {
+                                        onChange={async (e) => {
                                             const files = Array.from(e.target.files || []);
-                                            setPropertyPhotos(prev => [...prev, ...files]);
-                                            files.forEach(file => {
-                                                const reader = new FileReader();
-                                                reader.onloadend = () => setPropertyPhotosPreviews(prev => [...prev, reader.result as string]);
-                                                reader.readAsDataURL(file);
-                                            });
+                                            
+                                            const totalPhotos = existingPhotos.length + propertyPhotos.length + files.length;
+                                            if (totalPhotos > 15) {
+                                                toast({
+                                                    title: "Limite atteinte",
+                                                    description: "Le nombre total de photos ne peut pas dépasser 15.",
+                                                    variant: "destructive",
+                                                });
+                                                return;
+                                            }
+
+                                            const compressedFiles: File[] = [];
+                                            for (const file of files) {
+                                                try {
+                                                    const compressed = await compressImage(file);
+                                                    compressedFiles.push(compressed);
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => setPropertyPhotosPreviews(prev => [...prev, reader.result as string]);
+                                                    reader.readAsDataURL(compressed);
+                                                } catch (err) {
+                                                    console.error("Compression error:", err);
+                                                    compressedFiles.push(file);
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => setPropertyPhotosPreviews(prev => [...prev, reader.result as string]);
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }
+                                            setPropertyPhotos(prev => [...prev, ...compressedFiles]);
                                         }}
                                     />
                                     <Button

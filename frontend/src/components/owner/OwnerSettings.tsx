@@ -34,6 +34,7 @@ export const OwnerSettings = () => {
     address: "",
     signatureUrl: "",
     logoUrl: "",
+    receiptLogoUrl: "",
     idCardUrl: "",
     ownershipProofUrl: "",
     livenessSelfieUrl: "",
@@ -67,6 +68,7 @@ export const OwnerSettings = () => {
           address: data.address || "",
           signatureUrl: data.signature_url || "",
           logoUrl: data.logo_url || "",
+          receiptLogoUrl: data.receipt_logo_url || "",
           idCardUrl: data.id_card_url || "",
           ownershipProofUrl: data.ownership_proof_url || "",
           livenessSelfieUrl: data.liveness_selfie_url || "",
@@ -103,6 +105,7 @@ export const OwnerSettings = () => {
         verification_status: profile.verificationStatus,
         receipt_template: profile.receiptTemplate,
         logo_url: profile.logoUrl,
+        receipt_logo_url: profile.receiptLogoUrl,
       };
 
       const result = await updateOwnerProfile(profileData);
@@ -154,7 +157,7 @@ export const OwnerSettings = () => {
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReceiptLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!hasFeature('branding')) {
       setUpgradeModal({
         open: true,
@@ -173,7 +176,7 @@ export const OwnerSettings = () => {
       if (urls && urls.length > 0) {
         setProfile({
           ...profile,
-          logoUrl: urls[0],
+          receiptLogoUrl: urls[0],
         });
         toast({
           title: t('common.upload_success'),
@@ -500,18 +503,18 @@ export const OwnerSettings = () => {
                     </div>
                   ) : (
                     <>
-                      {profile.logoUrl ? (
+                      {profile.receiptLogoUrl ? (
                         <div className="relative w-32 h-32 border rounded-lg overflow-hidden bg-white flex items-center justify-center p-2">
                           <img
-                            src={profile.logoUrl}
-                            alt="Logo"
+                            src={profile.receiptLogoUrl}
+                            alt="Logo Reçu"
                             className="max-w-full max-h-full object-contain"
                           />
                           <Button
                             variant="destructive"
                             size="icon"
                             className="absolute top-1 right-1 h-6 w-6"
-                            onClick={() => setProfile({ ...profile, logoUrl: "" })}
+                            onClick={() => setProfile({ ...profile, receiptLogoUrl: "" })}
                           >
                             <X className="h-3 w-3" />
                           </Button>
@@ -535,7 +538,7 @@ export const OwnerSettings = () => {
                               type="file"
                               className="hidden"
                               accept="image/*"
-                              onChange={handleLogoUpload}
+                              onChange={handleReceiptLogoUpload}
                             />
                           </label>
                         </Button>

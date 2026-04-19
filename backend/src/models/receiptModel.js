@@ -26,11 +26,12 @@ const Receipt = {
             // Find owner_id first from property
             const { rows: propRows } = await db.query('SELECT owner_id FROM properties WHERE id = $1', [property_id]);
             if (propRows[0]) {
-                const { rows: ownerRows } = await db.query('SELECT signature_url, receipt_template, logo_url FROM owner_profiles WHERE user_profile_id = $1', [propRows[0].owner_id]);
+                const { rows: ownerRows } = await db.query('SELECT signature_url, receipt_template, logo_url, receipt_logo_url FROM owner_profiles WHERE user_profile_id = $1', [propRows[0].owner_id]);
                 if (ownerRows[0]) {
                     owner_signature = ownerRows[0].signature_url;
                     receipt_template = ownerRows[0].receipt_template || 'classic';
-                    owner_logo = ownerRows[0].logo_url;
+                    // Use receipt_logo_url for official documents
+                    owner_logo = ownerRows[0].receipt_logo_url;
                 }
             }
         } catch (error) {
@@ -76,7 +77,8 @@ const Receipt = {
                 owner.phone as owner_phone,
                 owner_prof.signature_url as current_owner_signature,
                 owner_prof.receipt_template as current_receipt_template,
-                owner_prof.logo_url as current_owner_logo,
+                owner_prof.logo_url as current_owner_agency_logo,
+                owner_prof.receipt_logo_url as current_owner_receipt_logo,
                 p.name as property_name,
                 p.address as property_address,
                 pu.unit_number,
@@ -101,7 +103,8 @@ const Receipt = {
             // 2. Value in live owner profile (only for legacy receipts created without snapshot)
             receipts[0].signature_url = receipts[0].owner_signature || receipts[0].current_owner_signature;
             receipts[0].receipt_template = receipts[0].receipt_template || receipts[0].current_receipt_template || 'classic';
-            receipts[0].logo_url = receipts[0].owner_logo || receipts[0].current_owner_logo;
+            // Priority for branding: snapshot logo, then professional receipt logo, then nothing for receipts if plan doesn't allow (handled in controller)
+            receipts[0].logo_url = receipts[0].owner_logo || receipts[0].current_owner_receipt_logo;
         }
 
         return receipts[0] || null;

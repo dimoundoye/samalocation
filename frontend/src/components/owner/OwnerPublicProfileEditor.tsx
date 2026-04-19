@@ -7,16 +7,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile, uploadPhotos } from "@/lib/api";
-import { X, FileText, Clock, Facebook, Instagram, Linkedin, Globe, MessageSquare, Mail } from "lucide-react";
+import { X, FileText, Clock, Facebook, Instagram, Linkedin, Globe, MessageSquare, Mail, Building2 } from "lucide-react";
 
 export const OwnerPublicProfileEditor = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [bannerLoading, setBannerLoading] = useState(false);
+  const [logoLoading, setLogoLoading] = useState(false);
   const [profile, setProfile] = useState<any>({
     bio: "",
     companyName: "",
     bannerUrl: "",
+    logoUrl: "",
     externalEmail: "",
     website: "",
     socialLinks: { facebook: "", instagram: "", linkedin: "" },
@@ -47,6 +49,7 @@ export const OwnerPublicProfileEditor = () => {
           bio: data.bio || "",
           companyName: data.company_name || "",
           bannerUrl: data.banner_url || "",
+          logoUrl: data.logo_url || "",
           externalEmail: data.external_email || "",
           website: data.website || "",
           socialLinks: {
@@ -85,6 +88,7 @@ export const OwnerPublicProfileEditor = () => {
       const profileData = {
         bio: profile.bio,
         banner_url: profile.bannerUrl,
+        logo_url: profile.logoUrl,
         external_email: profile.externalEmail,
         website: profile.website,
         social_links: profile.socialLinks,
@@ -127,17 +131,145 @@ export const OwnerPublicProfileEditor = () => {
               <CardTitle>Informations Générales</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Banner Upload */}
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">Bannière de l'agence</Label>
-                <div className="relative h-56 rounded-2xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center bg-muted/10 overflow-hidden group transition-all hover:bg-muted/20">
-                  {profile.bannerUrl ? (
-                    <>
-                      <img src={profile.bannerUrl} alt="Banner" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              {/* Logo and Banner Section */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Logo Upload */}
+                <div className="md:col-span-1 space-y-4">
+                  <Label className="text-base font-semibold">Logo</Label>
+                  <div className="relative aspect-square rounded-2xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center bg-muted/10 overflow-hidden group transition-all hover:bg-muted/20">
+                    {profile.logoUrl ? (
+                      <>
+                        <img src={profile.logoUrl} alt="Logo" className="w-full h-full object-contain p-2 transition-transform group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label className="cursor-pointer">
+                            <Button variant="secondary" size="icon" className="h-8 w-8" asChild>
+                              <X className="h-4 w-4 rotate-45" />
+                            </Button>
+                            <Input 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*" 
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const localPreview = URL.createObjectURL(file);
+                                  setProfile({ ...profile, logoUrl: localPreview });
+                                  setLogoLoading(true);
+                                  try {
+                                    const urls = await uploadPhotos([file]);
+                                    if (urls && urls.length > 0) setProfile({ ...profile, logoUrl: urls[0] });
+                                  } catch (err) {
+                                    toast({ title: "Erreur", description: "Échec du téléchargement.", variant: "destructive" });
+                                    setProfile({ ...profile, logoUrl: "" });
+                                  } finally {
+                                    setLogoLoading(false);
+                                    URL.revokeObjectURL(localPreview);
+                                  }
+                                }
+                              }} 
+                            />
+                          </label>
+                          <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => setProfile({ ...profile, logoUrl: "" })}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {logoLoading && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white backdrop-blur-[2px]">
+                             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center p-4">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                          <Building2 className="h-5 w-5 text-primary" />
+                        </div>
+                        <p className="text-[10px] font-bold text-center">Ajouter Logo</p>
+                        <Input 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*" 
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const localPreview = URL.createObjectURL(file);
+                              setProfile({ ...profile, logoUrl: localPreview });
+                              setLogoLoading(true);
+                              try {
+                                const urls = await uploadPhotos([file]);
+                                if (urls && urls.length > 0) setProfile({ ...profile, logoUrl: urls[0] });
+                              } catch (err) {
+                                toast({ title: "Erreur", description: "Échec du téléchargement.", variant: "destructive" });
+                                setProfile({ ...profile, logoUrl: "" });
+                              } finally {
+                                setLogoLoading(false);
+                                URL.revokeObjectURL(localPreview);
+                              }
+                            }
+                          }} 
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {/* Banner Upload */}
+                <div className="md:col-span-3 space-y-4">
+                  <Label className="text-base font-semibold">Bannière de l'agence</Label>
+                  <div className="relative h-full min-h-[140px] rounded-2xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center bg-muted/10 overflow-hidden group transition-all hover:bg-muted/20">
+                    {profile.bannerUrl ? (
+                      <>
+                        <img src={profile.bannerUrl} alt="Banner" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label className="cursor-pointer">
+                            <Button variant="secondary" size="sm" asChild>
+                              <span>Changer l'image</span>
+                            </Button>
+                            <Input 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*" 
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const localPreview = URL.createObjectURL(file);
+                                  setProfile({ ...profile, bannerUrl: localPreview });
+                                  setBannerLoading(true);
+                                  try {
+                                    const urls = await uploadPhotos([file]);
+                                    if (urls && urls.length > 0) setProfile({ ...profile, bannerUrl: urls[0] });
+                                  } catch (err) {
+                                    toast({ title: "Erreur", description: "Échec du téléchargement.", variant: "destructive" });
+                                    setProfile({ ...profile, bannerUrl: "" });
+                                  } finally {
+                                    setBannerLoading(false);
+                                    URL.revokeObjectURL(localPreview);
+                                  }
+                                }
+                              }} 
+                            />
+                          </label>
+                          <Button variant="destructive" size="sm" onClick={() => setProfile({ ...profile, bannerUrl: "" })}>
+                            Supprimer
+                          </Button>
+                        </div>
+                        {bannerLoading && (
+                          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-[2px]">
+                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-3"></div>
+                             <p className="text-sm font-bold tracking-wide">Optimisation de l'image...</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center p-8">
+                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FileText className="h-8 w-8 text-primary" />
+                        </div>
+                        <p className="text-base font-bold mb-1">Image de couverture</p>
+                        <p className="text-sm text-muted-foreground mb-6 max-w-[280px]">Ajoutez une bannière pour personnaliser la vitrine de votre agence (1200x400).</p>
                         <label className="cursor-pointer">
-                          <Button variant="secondary" size="sm" asChild>
-                            <span>Changer l'image</span>
+                          <Button className="gradient-primary text-white" asChild>
+                            <span>Choisir une image</span>
                           </Button>
                           <Input 
                             type="file" 
@@ -163,67 +295,33 @@ export const OwnerPublicProfileEditor = () => {
                             }} 
                           />
                         </label>
-                        <Button variant="destructive" size="sm" onClick={() => setProfile({ ...profile, bannerUrl: "" })}>
-                          Supprimer
-                        </Button>
                       </div>
-                      {bannerLoading && (
-                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-[2px]">
-                           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-3"></div>
-                           <p className="text-sm font-bold tracking-wide">Optimisation de l'image...</p>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center p-8">
-                      <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <FileText className="h-8 w-8 text-primary" />
-                      </div>
-                      <p className="text-base font-bold mb-1">Image de couverture</p>
-                      <p className="text-sm text-muted-foreground mb-6 max-w-[280px]">Ajoutez une bannière pour personnaliser la vitrine de votre agence (1200x400).</p>
-                      <label className="cursor-pointer">
-                        <Button className="gradient-primary text-white" asChild>
-                          <span>Choisir une image</span>
-                        </Button>
-                        <Input 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*" 
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const localPreview = URL.createObjectURL(file);
-                              setProfile({ ...profile, bannerUrl: localPreview });
-                              setBannerLoading(true);
-                              try {
-                                const urls = await uploadPhotos([file]);
-                                if (urls && urls.length > 0) setProfile({ ...profile, bannerUrl: urls[0] });
-                              } catch (err) {
-                                toast({ title: "Erreur", description: "Échec du téléchargement.", variant: "destructive" });
-                                setProfile({ ...profile, bannerUrl: "" });
-                              } finally {
-                                setBannerLoading(false);
-                                URL.revokeObjectURL(localPreview);
-                              }
-                            }
-                          }} 
-                        />
-                      </label>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="space-y-2">
-                <Label className="text-base font-semibold">Description de l'agence</Label>
-                <Textarea 
-                  placeholder="Présentez votre agence, vos années d'expérience et votre vision..."
-                  className="min-h-[180px] resize-y"
-                  value={profile.bio}
-                  onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                />
-              </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Description de l'agence</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Textarea 
+                placeholder="Présentez votre agence, vos années d'expérience et votre vision..."
+                className="min-h-[180px] resize-y"
+                value={profile.bio}
+                onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+              />
+            </CardContent>
+          </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle>Informations de Contact et Réseaux</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Email Public (affiché sur le profil)</Label>
@@ -250,43 +348,38 @@ export const OwnerPublicProfileEditor = () => {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Réseaux Sociaux</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Facebook className="h-4 w-4 text-[#1877F2]" /> Facebook
-                </Label>
-                <Input 
-                  placeholder="URL Facebook"
-                  value={profile.socialLinks?.facebook || ""}
-                  onChange={(e) => setProfile({ ...profile, socialLinks: { ...profile.socialLinks, facebook: e.target.value } })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Instagram className="h-4 w-4 text-[#E4405F]" /> Instagram
-                </Label>
-                <Input 
-                  placeholder="URL Instagram"
-                  value={profile.socialLinks?.instagram || ""}
-                  onChange={(e) => setProfile({ ...profile, socialLinks: { ...profile.socialLinks, instagram: e.target.value } })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Linkedin className="h-4 w-4 text-[#0A66C2]" /> LinkedIn
-                </Label>
-                <Input 
-                  placeholder="URL LinkedIn"
-                  value={profile.socialLinks?.linkedin || ""}
-                  onChange={(e) => setProfile({ ...profile, socialLinks: { ...profile.socialLinks, linkedin: e.target.value } })}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Facebook className="h-4 w-4 text-[#1877F2]" /> Facebook
+                  </Label>
+                  <Input 
+                    placeholder="URL Facebook"
+                    value={profile.socialLinks?.facebook || ""}
+                    onChange={(e) => setProfile({ ...profile, socialLinks: { ...profile.socialLinks, facebook: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Instagram className="h-4 w-4 text-[#E4405F]" /> Instagram
+                  </Label>
+                  <Input 
+                    placeholder="URL Instagram"
+                    value={profile.socialLinks?.instagram || ""}
+                    onChange={(e) => setProfile({ ...profile, socialLinks: { ...profile.socialLinks, instagram: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Linkedin className="h-4 w-4 text-[#0A66C2]" /> LinkedIn
+                  </Label>
+                  <Input 
+                    placeholder="URL LinkedIn"
+                    value={profile.socialLinks?.linkedin || ""}
+                    onChange={(e) => setProfile({ ...profile, socialLinks: { ...profile.socialLinks, linkedin: e.target.value } })}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>

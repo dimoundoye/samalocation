@@ -17,6 +17,17 @@ const errorHandler = (err, req, res, next) => {
     } else if (err.name === 'JsonWebTokenError') {
         statusCode = 401;
         message = 'Session invalide. Veuillez vous reconnecter.';
+    } else if (err.name === 'MulterError') {
+        statusCode = 400;
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            message = 'Le fichier est trop volumineux (max 5MB).';
+        } else if (err.code === 'LIMIT_FILE_COUNT') {
+            message = 'Nombre maximum de fichiers dépassé.';
+        } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            message = 'Nombre de photos maximum dépassé ou champ invalide.';
+        } else {
+            message = `Erreur de téléchargement: ${err.message}`;
+        }
     }
 
     // Protection contre la fuite d'informations DB en production

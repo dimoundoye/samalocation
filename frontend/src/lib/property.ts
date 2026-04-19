@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "@/api/baseClient";
+
 export interface RawProperty {
   id?: string;
   name?: string;
@@ -56,6 +58,14 @@ const getSafeEquipmentsArray = (equipments: any) => {
   } catch {
     return [];
   }
+};
+
+export const formatImageUrl = (url: string | null) => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  // Prepend backend base URL for local uploads
+  const baseUrl = API_BASE_URL.replace("/api", "");
+  return `${baseUrl}${url}`;
 };
 
 export const transformProperty = (property: RawProperty): FormattedProperty => {
@@ -148,14 +158,6 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
   const hasAvailability = availableUnits.length > 0 || !hasUnitsInfo;
   const displayStatus: "available" | "occupied" = isPublished && hasAvailability ? "available" : "occupied";
 
-  const formatImageUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.startsWith('http') || url.startsWith('data:')) return url;
-    // Prepend backend base URL for local uploads
-    const baseUrl = API_BASE_URL.replace("/api", "");
-    return `${baseUrl}${url}`;
-  };
-
   const photosArray = getSafePhotosArray(property.photos).map(formatImageUrl).filter(Boolean) as string[];
   const coverPhoto = formatImageUrl(property.photo_url || photosArray[0] || null);
 
@@ -197,7 +199,3 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
     primary_rent_period: primaryRentPeriod,
   };
 };
-
-import { API_BASE_URL } from "@/api/baseClient";
-
-

@@ -121,7 +121,7 @@ const Index = () => {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/10 transition-colors duration-300">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/10">
       <Navbar />
 
       {/* Hero Section */}
@@ -138,26 +138,26 @@ const Index = () => {
                 <span className="text-accent">{t('hero.title_part2')}</span>
               </h1>
 
-              <p className="text-lg md:text-xl text-muted-foreground max-w-lg leading-relaxed">
+              <p className="text-lg md:text-xl text-foreground/90 max-w-lg leading-relaxed">
                 {t('hero.description')}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 pt-4 max-w-xl">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 w-full max-w-xl">
                 <Button
                   size="lg"
                   onClick={() => navigate("/auth?mode=signup&type=owner")}
-                  className="gradient-primary h-16 px-8 text-lg shadow-strong hover:scale-105 transition-transform flex-1"
+                  className="gradient-primary h-16 sm:h-12 md:h-14 lg:h-16 px-8 sm:px-6 md:px-8 text-lg sm:text-base md:text-lg shadow-strong md:hover:scale-105 transition-transform flex-1 font-bold"
                 >
-                  <Home className="h-10 w-10 mr-2" />
+                  <Home className="h-7 w-7 sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 mr-3 sm:mr-2 md:mr-3" />
                   {t('hero.list_property')}
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
                   onClick={() => navigate("/search")}
-                  className="h-16 px-8 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-medium flex-1"
+                  className="h-16 sm:h-12 md:h-14 lg:h-16 px-8 sm:px-6 md:px-8 text-lg sm:text-base md:text-lg border-2 border-primary text-primary hover:bg-primary md:hover:text-white transition-all shadow-medium flex-1 font-bold"
                 >
-                  <Search className="h-10 w-10 mr-2" />
+                  <Search className="h-7 w-7 sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 mr-3 sm:mr-2 md:mr-3" />
                   {t('hero.search_property')}
                 </Button>
               </div>
@@ -171,10 +171,10 @@ const Index = () => {
                 />
                 <Button
                   onClick={() => navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
-                  className="h-14 w-full sm:w-14 rounded-xl gradient-accent shadow-medium hover:scale-105 sm:hover:scale-110 transition-transform flex items-center justify-center shrink-0"
+                  className="h-14 w-full sm:w-14 rounded-xl gradient-accent shadow-medium md:hover:scale-105 sm:hover:scale-110 transition-transform flex items-center justify-center shrink-0"
                 >
                   <span className="sm:hidden font-bold mr-2 text-base">{t('hero.search_button')}</span>
-                  <ArrowRight className="h-10 w-10 text-white" />
+                  <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-white" />
                 </Button>
               </div>
 
@@ -204,7 +204,7 @@ const Index = () => {
           <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-4">
             <div className="space-y-4">
               <h2 className="text-3xl md:text-5xl font-bold text-primary">{t('featured.title')}</h2>
-              <p className="text-muted-foreground text-lg">{t('featured.desc')}</p>
+              <p className="text-foreground/90 text-lg">{t('featured.desc')}</p>
             </div>
             <Button
               variant="ghost"
@@ -277,6 +277,7 @@ const Index = () => {
                         isApplied={property.id ? appliedPropertyIds.includes(property.id) : false}
                         ownerPhone={ownerPhone}
                         isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
+                        ownerLogo={ownerProfile?.logo_url}
                         isNew={property.published_at ? (new Date().getTime() - new Date(property.published_at).getTime()) < 7 * 24 * 60 * 60 * 1000 : false}
                       />
                     </CarouselItem>
@@ -337,7 +338,7 @@ const Index = () => {
               </div>
               <div className="relative z-10 space-y-6">
                 <h3 className="text-3xl lg:text-4xl font-bold">{t('roles.tenants.title')}</h3>
-                <p className="text-muted-foreground text-lg leading-relaxed max-w-md">
+                <p className="text-foreground/90 text-lg leading-relaxed max-w-md">
                   {t('roles.tenants.desc')}
                 </p>
                 <ul className="space-y-4 text-primary/80">
@@ -386,7 +387,7 @@ const Index = () => {
                     {item.step}
                   </div>
                   <h3 className="text-2xl font-bold mb-4 text-primary">{item.title}</h3>
-                  <p className="text-muted-foreground text-lg px-4">{item.desc}</p>
+                  <p className="text-foreground/90 text-lg px-4">{item.desc}</p>
                 </div>
               ))}
             </div>

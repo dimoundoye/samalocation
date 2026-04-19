@@ -9,6 +9,7 @@ import { Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { addFavorite, removeFavorite, checkFavoriteStatus } from "@/lib/api";
+import { formatImageUrl } from "@/lib/property";
 
 interface PropertyCardProps {
   id?: string;
@@ -28,6 +29,7 @@ interface PropertyCardProps {
   showStatus?: boolean;
   isNew?: boolean;
   initialIsFavorite?: boolean;
+  ownerLogo?: string;
 }
 
 const PropertyCard = ({
@@ -48,6 +50,7 @@ const PropertyCard = ({
   showStatus = false,
   isNew = false,
   initialIsFavorite = false,
+  ownerLogo,
 }: PropertyCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -135,7 +138,7 @@ const PropertyCard = ({
         <img
           src={image}
           alt={title}
-          className="w-full h-full object-cover bg-secondary/30 transition-transform duration-500 group-hover:scale-110"
+          className="w-full h-full object-cover bg-secondary/30 transition-transform duration-500 md:group-hover:scale-110"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = "/placeholder.jpg";
@@ -161,6 +164,16 @@ const PropertyCard = ({
           <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 bg-orange-500 text-white border-none text-[10px] sm:text-xs px-2 py-0.5 shadow-md animate-pulse">
             {t('property.new') || "Nouveau"}
           </Badge>
+        )}
+        
+        {ownerLogo && (
+          <div className="absolute bottom-2 left-2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/90 backdrop-blur-sm p-1 shadow-sm border border-white/20 overflow-hidden hidden sm:flex items-center justify-center">
+            <img 
+              src={formatImageUrl(ownerLogo) || ""} 
+              alt="Owner logo" 
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
         )}
         
         {/* Favorite Button */}
@@ -242,7 +255,7 @@ const PropertyCard = ({
 
         <CardFooter className="p-4 pt-0 sm:pt-4 hidden sm:flex">
           <Button
-            className="w-full gradient-accent text-white hover:scale-105 transition-transform duration-300 h-9 sm:h-10"
+            className="w-full gradient-accent text-white md:hover:scale-105 transition-transform duration-300 h-9 sm:h-10"
             onClick={handleViewDetails}
           >
             {t('property.view_details')}

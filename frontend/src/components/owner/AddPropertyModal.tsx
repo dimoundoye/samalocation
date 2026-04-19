@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { createProperty, createPropertyUnits, uploadPhotos, generateAIDescription, getMySubscription } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { compressImage } from "@/lib/imageCompression";
 import LocationPicker from "./LocationPicker";
 import { UpgradeModal } from "./UpgradeModal";
 import { useEffect } from "react";
@@ -180,9 +181,10 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
     setUploading(true);
     try {
-      // Check subscription limits
+      // Check subscription limits - REMOVED: Property creation is now free for all plans
+      /* 
       if (subscription) {
-        if (subscription.properties_count >= subscription.properties_limit) {
+        if (subscription.properties_limit !== -1 && subscription.properties_count >= subscription.properties_limit) {
           setUpgradeModal({
             open: true,
             title: "Limite de biens atteinte",
@@ -192,6 +194,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
           return;
         }
       }
+      */
 
       setUploading(true);
       if (!user) throw new Error("Non authentifié");
@@ -293,11 +296,20 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
   const handleGenerateAI = async () => {
     if (!propertyData.name || !propertyType || !propertyData.address) {
       toast({
-        title: "Informations manquantes",
-        description: "Veuillez remplir au moins le nom, le type et l'adresse pour que l'IA puisse générer une description.",
+        title: "Informations minimales requises",
+        description: "Veuillez renseigner au moins le nom et l'adresse pour que l'IA puisse travailler.",
         variant: "destructive",
       });
       return;
+    }
+
+    // Hint: Encouraging more data for better AI
+    const hasEnoughData = simplePropertyData.monthly_rent && simplePropertyData.area_sqm && propertyEquipments.length > 0;
+    if (!hasEnoughData) {
+      toast({
+        title: "Conseil pour l'IA",
+        description: "Plus vous remplissez de détails (loyer, surface, équipements), plus la description sera riche.",
+      });
     }
 
     try {
@@ -503,24 +515,30 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                   </p>
 
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs flex items-center gap-1.5"
-                        onClick={handleGenerateAI}
-                        disabled={generatingAI}
-                      >
-                        {generatingAI ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-3 w-3 text-primary" />
-                        )}
-                        Générer avec l'IA
-                      </Button>
-                    </div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="description">Description</Label>
+                          <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                            <Sparkles className="h-2 w-2 text-primary" />
+                            Plus d'infos (prix, surface, équipements) = meilleure description
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs flex items-center gap-1.5 border-primary/20 hover:bg-primary/5 transition-all"
+                          onClick={handleGenerateAI}
+                          disabled={generatingAI}
+                        >
+                          {generatingAI ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3 w-3 text-primary" />
+                          )}
+                          Générer avec l'IA
+                        </Button>
+                      </div>
                     <Textarea
                       id="description"
                       value={propertyData.description}
@@ -580,17 +598,42 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                           type="file"
                           accept="image/*"
                           multiple
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const files = Array.from(e.target.files || []);
-                            setPropertyPhotos((prev) => [...prev, ...files]);
+                            
+                            if (propertyPhotos.length + files.length > 15) {
+                              toast({
+                                title: "Limite atteinte",
+                                description: "Vous ne pouvez pas ajouter plus de 15 photos par bien.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
 
-                            files.forEach((file) => {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setPropertyPhotosPreviews((prev) => [...prev, reader.result as string]);
-                              };
-                              reader.readAsDataURL(file);
-                            });
+                            const compressedFiles: File[] = [];
+                            
+                            for (const file of files) {
+                              try {
+                                const compressed = await compressImage(file);
+                                compressedFiles.push(compressed);
+                                
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setPropertyPhotosPreviews((prev) => [...prev, reader.result as string]);
+                                };
+                                reader.readAsDataURL(compressed);
+                              } catch (err) {
+                                console.error("Compression error:", err);
+                                compressedFiles.push(file); // Fallback to original
+                                
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setPropertyPhotosPreviews((prev) => [...prev, reader.result as string]);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }
+                            setPropertyPhotos((prev) => [...prev, ...compressedFiles]);
                           }}
                           className="hidden"
                         />

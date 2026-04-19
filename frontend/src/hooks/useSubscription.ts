@@ -61,7 +61,10 @@ export const useSubscription = () => {
 
     const isAtPropertyLimit = () => {
         if (!subscription) return false;
-        return subscription.properties_count >= subscription.properties_limit;
+        // As per new policy, property adding is free for everyone.
+        // Also handling -1 as unlimited.
+        if (subscription.properties_limit === -1) return false;
+        return false; // Force false as it's now free for all
     };
 
     return {

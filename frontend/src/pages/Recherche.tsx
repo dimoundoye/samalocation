@@ -16,6 +16,7 @@ import { getProperties, getMessages } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import MapComponent from "@/components/MapComponent";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 const Recherche = () => {
   const { toast } = useToast();
@@ -37,6 +38,7 @@ const Recherche = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [isSearchActive, setIsSearchActive] = useState(false);
   const { user } = useAuth();
   const location = useLocation();
   const { pageParam } = useParams();
@@ -51,7 +53,7 @@ const Recherche = () => {
     } else if (!pageParam && currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [pageParam]);
+  }, [pageParam, currentPage]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -62,28 +64,18 @@ const Recherche = () => {
   }, [location.search]);
 
   useEffect(() => {
-    if (currentPage !== 1 && !pageParam) {
-      // If filters change, we should reset to page 1 but only if we are not already on page 1
-      // and only if the URL hasn't been updated yet
-      // This is a bit tricky with path-based pagination
-    }
-  }, [searchTerm, propertyType]);
-
-  useEffect(() => {
     loadProperties(currentPage);
     if (user) {
       loadAppliedProperties();
     }
   }, [user, currentPage, searchTerm, propertyType, minPrice, maxPrice, minArea, maxArea, minRooms, maxRooms, minBedrooms, maxBedrooms]);
 
-  // Redundant checkAuth removed, useAuth handles it now
   const isAuthenticated = !!user;
   const currentUserId = user?.id || null;
 
   const loadProperties = async (page = 1) => {
     try {
       setLoading(true);
-      // Utiliser notre nouveau backend local avec filtres
       const data = await getProperties({
         search: searchTerm,
         type: propertyType,
@@ -97,7 +89,6 @@ const Recherche = () => {
         maxBedrooms
       });
 
-      // The backend now returns { properties, pagination }
       const propertiesList = data.properties || [];
       const pagination = data.pagination;
 
@@ -118,8 +109,6 @@ const Recherche = () => {
       window.scrollTo(0, 0);
     }
   };
-
-
 
   const loadAppliedProperties = async () => {
     try {
@@ -142,18 +131,17 @@ const Recherche = () => {
 
   const filteredProperties = properties;
 
-
   return (
     <div className="min-h-screen bg-background pb-24">
       <Navbar />
-      <div className="pt-32 px-4">
+      <div className={cn("pt-32 px-4 transition-all duration-300", isSearchActive && "pt-20 sm:pt-32")}>
         <div className="container mx-auto">
           {/* Back Button for authenticated users */}
           {isAuthenticated && (
             <Button
               variant="ghost"
               onClick={() => navigate("/tenant-dashboard")}
-              className="mb-4 flex items-center gap-2"
+              className={cn("mb-4 flex items-center gap-2 transition-all", isSearchActive && "md:flex hidden")}
             >
               <ArrowLeft className="h-4 w-4" />
               {t('nav.my_space')}
@@ -161,7 +149,10 @@ const Recherche = () => {
           )}
 
           {/* Search Header */}
-          <div className="mb-8">
+          <div className={cn(
+            "mb-8 transition-all duration-500 origin-top overflow-hidden",
+            isSearchActive ? "max-h-0 opacity-0 mb-0 pointer-events-none" : "max-h-40 opacity-100 mb-8"
+          )}>
             <h1 className="text-3xl md:text-4xl font-bold mb-4">
               {t('search.title')}
             </h1>
@@ -172,20 +163,24 @@ const Recherche = () => {
 
           <div className="space-y-8">
             {/* Filters Section */}
-            <div className="bg-card p-6 rounded-2xl shadow-soft border border-border/50 space-y-6">
+            <div className={cn(
+              "bg-card p-6 rounded-2xl shadow-soft border border-border/50 space-y-6 transition-all duration-300 relative z-50",
+              isSearchActive && "md:p-6 p-4 translate-y-[-10px] sm:translate-y-0"
+            )}>
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                 <div className="lg:col-span-3">
                   <SearchAutocomplete 
                     placeholder={t('search.placeholder')}
                     initialValue={searchTerm}
                     onValueChange={setSearchTerm}
-                    className="h-12"
+                    onOpenChange={setIsSearchActive}
+                    className="h-12 bg-background border border-primary/20 rounded-xl focus-within:border-primary/50 transition-all shadow-sm"
                   />
                 </div>
 
                 <div className="lg:col-span-2">
                   <Select value={propertyType} onValueChange={setPropertyType}>
-                    <SelectTrigger className="h-12 bg-background border-border/50 rounded-xl focus:border-primary/50 transition-all">
+                    <SelectTrigger className="h-12 bg-background border border-primary/20 rounded-xl focus:border-primary/50 transition-all shadow-sm">
                       <SelectValue placeholder={t('search.property_type')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -202,8 +197,11 @@ const Recherche = () => {
                 </div>
               </div>
 
-              {/* Advanced Range Filters */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {/* Advanced Range Filters (Only visible when search is not active on mobile or always on desktop) */}
+              <div className={cn(
+                "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 transition-all duration-300 overflow-hidden",
+                isSearchActive ? "max-h-0 sm:max-h-96 opacity-0 sm:opacity-100 mt-0 pointer-events-none sm:pointer-events-auto" : "max-h-96 opacity-100"
+              )}>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Loyer Min</Label>
                   <Input
@@ -211,7 +209,7 @@ const Recherche = () => {
                     placeholder="Min"
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
-                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                    className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -221,7 +219,7 @@ const Recherche = () => {
                     placeholder="Max"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
-                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                    className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -231,7 +229,7 @@ const Recherche = () => {
                     placeholder="Min"
                     value={minArea}
                     onChange={(e) => setMinArea(e.target.value)}
-                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                    className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -241,7 +239,7 @@ const Recherche = () => {
                     placeholder="Max"
                     value={maxArea}
                     onChange={(e) => setMaxArea(e.target.value)}
-                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                    className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -251,7 +249,7 @@ const Recherche = () => {
                     placeholder="Min"
                     value={minBedrooms}
                     onChange={(e) => setMinBedrooms(e.target.value)}
-                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                    className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -261,28 +259,30 @@ const Recherche = () => {
                     placeholder="Max"
                     value={maxBedrooms}
                     onChange={(e) => setMaxBedrooms(e.target.value)}
-                    className="h-10 bg-background border-border/40 focus:border-primary/50 rounded-lg transition-all"
+                    className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-between items-center bg-accent/5 p-3 rounded-xl border border-accent/10">
-                <p className="text-xs text-muted-foreground italic">
-                  Les filtres sont appliqués instantanément.
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs font-semibold hover:bg-red-50 hover:text-red-600 transition-colors"
-                  onClick={() => {
-                    setMinPrice(""); setMaxPrice(""); setMinArea(""); setMaxArea("");
-                    setMinRooms(""); setMaxRooms(""); setMinBedrooms(""); setMaxBedrooms("");
-                    setPropertyType("all"); setSearchTerm("");
-                  }}
-                >
-                  Réinitialiser
-                </Button>
-              </div>
+              {!isSearchActive && (
+                <div className="flex justify-between items-center bg-accent/5 p-3 rounded-xl border border-accent/10">
+                  <p className="text-xs text-muted-foreground italic">
+                    Les filtres sont appliqués instantanément.
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs font-semibold hover:bg-red-50 hover:text-red-600 transition-colors"
+                    onClick={() => {
+                      setMinPrice(""); setMaxPrice(""); setMinArea(""); setMaxArea("");
+                      setMinRooms(""); setMaxRooms(""); setMinBedrooms(""); setMaxBedrooms("");
+                      setPropertyType("all"); setSearchTerm("");
+                    }}
+                  >
+                    Réinitialiser
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Content View */}
@@ -327,7 +327,8 @@ const Recherche = () => {
                               isApplied={currentUserId && property.id ? appliedPropertyIds.includes(property.id) : false}
                               ownerPhone={ownerProfile?.phone}
                               isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
-                              isNew={property.created_at ? (new Date().getTime() - new Date(property.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000 : false}
+                              ownerLogo={ownerProfile?.logo_url}
+                              isNew={(property.published_at || property.created_at) ? (new Date().getTime() - new Date(property.published_at || property.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000 : false}
                             />
                           );
                         })}
@@ -365,24 +366,26 @@ const Recherche = () => {
       </div>
 
       {/* Floating View Toggle Button */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-        <Button
-          onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-          className="rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] px-6 py-4 flex items-center gap-3 animate-in slide-in-from-bottom-8 duration-700 bg-primary hover:bg-primary/95 text-primary-foreground border-2 border-background min-w-[180px] group transition-all"
-        >
-          {viewMode === 'list' ? (
-            <>
-              <MapIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-bold tracking-tight">VOIR SUR LA CARTE</span>
-            </>
-          ) : (
-            <>
-              <SlidersHorizontal className="h-5 w-5 group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-bold tracking-tight">VOIR LA LISTE</span>
-            </>
-          )}
-        </Button>
-      </div>
+      {!isSearchActive && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+          <Button
+            onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+            className="rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] px-6 py-4 flex items-center gap-3 animate-in slide-in-from-bottom-8 duration-700 bg-primary hover:bg-primary/95 text-primary-foreground border-2 border-background min-w-[180px] group transition-all"
+          >
+            {viewMode === 'list' ? (
+              <>
+                <MapIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-bold tracking-tight">VOIR SUR LA CARTE</span>
+              </>
+            ) : (
+              <>
+                <SlidersHorizontal className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-bold tracking-tight">VOIR LA LISTE</span>
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

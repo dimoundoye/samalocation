@@ -31,6 +31,7 @@ import {
   Layers,
   ArrowLeft
 } from "lucide-react";
+import { formatImageUrl } from "@/lib/property";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -174,7 +175,7 @@ const OwnerPublicProfile = () => {
       <div className="relative w-full h-[350px] md:h-[450px] overflow-hidden">
         {profile.banner_url ? (
           <img 
-            src={profile.banner_url} 
+            src={formatImageUrl(profile.banner_url) || ""} 
             alt="Agency Banner" 
             className="w-full h-full object-cover"
           />
@@ -192,7 +193,7 @@ const OwnerPublicProfile = () => {
             <div className="relative group">
               <div className="w-28 h-28 md:w-40 md:h-40 rounded-2xl bg-white p-2 shadow-2xl border-4 border-white/20 backdrop-blur-sm overflow-hidden flex items-center justify-center translate-y-4 md:translate-y-8">
                 {profile.logo_url ? (
-                  <img src={profile.logo_url} alt={profile.company_name} className="max-w-full max-h-full object-contain" />
+                  <img src={formatImageUrl(profile.logo_url) || ""} alt={profile.company_name} className="max-w-full max-h-full object-contain" />
                 ) : (
                   <Building2 className="w-16 h-16 text-primary" />
                 )}
@@ -437,9 +438,9 @@ const OwnerPublicProfile = () => {
         <DialogContent className="max-w-md rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
           <div className="gradient-primary p-6 text-white">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center overflow-hidden">
                 {profile.logo_url ? (
-                  <img src={profile.logo_url} alt="Logo" className="w-full h-full object-contain rounded-full" />
+                  <img src={formatImageUrl(profile.logo_url) || ""} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
                   <Building2 className="w-6 h-6 text-white" />
                 )}

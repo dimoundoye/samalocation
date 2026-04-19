@@ -19,9 +19,10 @@ interface SearchAutocompleteProps {
   className?: string;
   initialValue?: string;
   onValueChange?: (val: string) => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const SearchAutocomplete = ({ placeholder, className, initialValue = "", onValueChange }: SearchAutocompleteProps) => {
+export const SearchAutocomplete = ({ placeholder, className, initialValue = "", onValueChange, onOpenChange }: SearchAutocompleteProps) => {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(initialValue);
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -31,6 +32,11 @@ export const SearchAutocomplete = ({ placeholder, className, initialValue = "", 
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
+
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("search_history");
@@ -153,7 +159,7 @@ export const SearchAutocomplete = ({ placeholder, className, initialValue = "", 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 z-[999] bg-card border border-border/50 shadow-2xl rounded-2xl overflow-hidden"
+            className="absolute top-full left-0 right-0 mt-2 z-[100] bg-card border border-border/50 shadow-2xl rounded-2xl overflow-hidden"
           >
             <div className="max-h-[400px] overflow-y-auto py-2">
               {/* History */}
