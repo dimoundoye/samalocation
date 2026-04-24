@@ -20,7 +20,7 @@ const errorHandler = (err, req, res, next) => {
     } else if (err.name === 'MulterError') {
         statusCode = 400;
         if (err.code === 'LIMIT_FILE_SIZE') {
-            message = 'Le fichier est trop volumineux (max 5MB).';
+            message = 'Le fichier est trop volumineux (max 15MB).';
         } else if (err.code === 'LIMIT_FILE_COUNT') {
             message = 'Nombre maximum de fichiers dépassé.';
         } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {

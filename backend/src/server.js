@@ -52,7 +52,7 @@ app.use('/uploads', (req, res, next) => {
 app.use(cors({
     origin: (origin, callback) => {
         // Allow all origins in production for flexibility, or list them explicitly
-        callback(null, true); 
+        callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -156,19 +156,38 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/properties', propertiesRoutes);
 app.use('/api/favorites', favoriteRoutes);
 
-// Keep-alive Cron Job (Runs every 15 minutes)
-// This pings the database to keep the connection warm and prevent Supabase from pausing
-cron.schedule('*/15 * * * *', async () => {
+// ─── Keep-alive Cron Job (Every 14 minutes to prevent Supabase pausing) ───────
+cron.schedule('*/14 * * * *', async () => {
     try {
         const start = Date.now();
         await db.query('SELECT 1');
+        const duration = Date.now() - start;
+        console.log(`[Keep-Alive] ✅ DB ping réussi en ${duration}ms — ${new Date().toLocaleTimeString('fr-FR')}`);
     } catch (err) {
-        console.error('[Keep-Alive] DB Ping failed:', err.message);
+        console.error(`[Keep-Alive] ❌ Échec du ping DB: ${err.message}`);
     }
 });
 
 // Error handler MUST be last
 app.use(errorHandler);
-server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+
+server.listen(PORT, async () => {
+    const env = process.env.NODE_ENV || 'development';
+    const dbType = process.env.DATABASE_URL ? 'Supabase (PostgreSQL)' : 'PostgreSQL Local';
+    console.log('\n╔═════════════════════════════════════════════╗');
+    console.log(`║       🚀 SamaLocation Backend — DÉMARRÉ     ║`);
+    console.log('╠═════════════════════════════════════════════╣');
+    console.log(`║  Port        : ${String(PORT).padEnd(29)}║`);
+    console.log(`║  Environnement : ${env.padEnd(27)}║`);
+    console.log(`║  Base de données : ${dbType.padEnd(25)}║`);
+    console.log(`║  Heure       : ${new Date().toLocaleString('fr-FR').padEnd(29)}║`);
+    console.log('╚═════════════════════════════════════════════╝\n');
+
+    // Test initial DB connection
+    try {
+        await db.query('SELECT 1');
+        console.log('  [DB] ✅ Connexion à la base de données établie.\n');
+    } catch (err) {
+        console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
+    }
 });

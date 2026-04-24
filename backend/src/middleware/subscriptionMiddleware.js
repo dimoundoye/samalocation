@@ -81,11 +81,10 @@ const checkTenantLimit = async (req, res, next) => {
         `, [ownerId]);
         const currentCount = parseInt(rows[0].count);
 
-        // Si Free, limite à 5 locataires par exemple, ou basé sur max_properties
-        const maxTenants = planConfig.limits.max_properties * 2; // Règle empirique
+        const maxTenants = planConfig.limits.max_tenants;
 
-        if (currentCount >= maxTenants && planConfig.limits.max_properties !== Infinity) {
-            return response.error(res, `Vous avez atteint la limite de ${maxTenants} locataires pour votre plan ${planConfig.name}.`, 403);
+        if (currentCount >= maxTenants && maxTenants !== Infinity) {
+            return response.error(res, `Vous avez atteint la limite de ${maxTenants} locataires pour votre plan ${planConfig.name}. Passez au plan supérieur pour en ajouter plus.`, 403);
         }
 
         next();

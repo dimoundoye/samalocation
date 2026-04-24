@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,7 @@ export const AssignTenantDialog = ({
   const [searching, setSearching] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [createAccount, setCreateAccount] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [tempCredentials, setTempCredentials] = useState<{ customId: string, tempPassword: string } | null>(null);
   const [step, setStep] = useState<"choice" | "form" | "credentials">("choice");
 
@@ -220,10 +222,14 @@ export const AssignTenantDialog = ({
     );
 
     if (isActuallyOccupied) {
-      if (!confirm("⚠️ Cette unité contient déjà un locataire.\n\nEn enregistrant, vous remplacerez le locataire actuel.\nVoulez-vous vraiment continuer ?")) {
-        return;
-      }
+      setConfirmOpen(true);
+      return;
     }
+
+    executeSubmit();
+  };
+
+  const executeSubmit = async () => {
 
     if (!fullName.trim() && !createAccount) {
       toast({
@@ -381,8 +387,9 @@ export const AssignTenantDialog = ({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl max-h-[95vh] overflow-y-auto w-[95vw] sm:w-full border-none shadow-2xl p-0 overflow-hidden bg-background">
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-xl max-h-[95vh] overflow-y-auto w-[95vw] sm:w-full border-none shadow-2xl p-0 bg-background">
         <AnimatePresence mode="wait">
           {step === "choice" ? (
             <motion.div
@@ -468,215 +475,227 @@ export const AssignTenantDialog = ({
                 </div>
               </div>
 
-              <div className="p-6 space-y-6">
-                <div className="space-y-4">
-                  {searchMode === "existing" ? (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Rechercher par nom ou email</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Ex: Moussa Diop..."
-                            value={searchQuery}
-                            onChange={(e) => {
-                              setSearchQuery(e.target.value);
-                              setSelectedUser(null);
-                            }}
-                            className="rounded-xl h-12"
-                            onKeyPress={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                searchUsersLocal();
-                              }
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            onClick={() => searchUsersLocal()}
-                            disabled={searching || !searchQuery.trim()}
-                            className="h-12 w-12 rounded-xl"
-                          >
-                            <Search className="h-5 w-5" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {selectedUser && (
-                        <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            {selectedUser.full_name?.charAt(0)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold truncate">{selectedUser.full_name}</p>
-                            <p className="text-sm text-muted-foreground truncate">{selectedUser.email}</p>
-                          </div>
-                          <CheckCircle className="h-5 w-5 text-primary shrink-0" />
-                        </div>
-                      )}
-
-                      {searchResults.length > 0 && !selectedUser && (
-                        <ScrollArea className="h-40 border rounded-2xl p-2 bg-muted/5">
-                          <div className="space-y-1">
-                            {searchResults.map((user) => (
-                              <button
-                                key={user.id}
-                                type="button"
-                                onClick={() => handleSelectUser(user)}
-                                className="w-full text-left p-3 hover:bg-secondary rounded-xl transition-colors flex items-center gap-3"
-                              >
-                                <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
-                                  {user.full_name?.charAt(0)}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="font-medium truncate text-sm">{user.full_name}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white">
-                          <UserPlus className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold">Nouveau Locataire</p>
-                          <p className="text-xs text-muted-foreground">Un compte sera automatiquement généré.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2 pt-2 border-t border-primary/5">
-                        <input
-                          type="checkbox"
-                          id="create-account"
-                          checked={createAccount}
-                          onChange={(e) => setCreateAccount(e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                        <Label htmlFor="create-account" className="text-xs cursor-pointer text-muted-foreground">
-                          Générer un identifiant et mot de passe provisoire
-                        </Label>
-                      </div>
-                    </div>
-                  )}
-
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ScrollArea className="flex-1 max-h-[calc(95vh-150px)]">
+                <div className="p-6 space-y-6">
+                  <div className="space-y-4">
+                    {searchMode === "existing" ? (
+                      <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bien Immobilier</Label>
-                          <Select
-                            value={selectedPropertyId}
-                            onValueChange={(value) => {
-                              setSelectedPropertyId(value);
-                              setSelectedUnitId("");
-                              setMonthlyRent("");
-                            }}
-                          >
-                            <SelectTrigger className="rounded-xl">
-                              <SelectValue placeholder="Choisir un bien" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              {properties.map((property) => (
-                                <SelectItem key={property.id} value={property.id}>
-                                  {property.name}
-                                </SelectItem>
+                          <Label>Rechercher par nom ou email</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Ex: Moussa Diop..."
+                              value={searchQuery}
+                              onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setSelectedUser(null);
+                              }}
+                              className="rounded-xl h-12"
+                              onKeyPress={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  searchUsersLocal();
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => searchUsersLocal()}
+                              disabled={searching || !searchQuery.trim()}
+                              className="h-12 w-12 rounded-xl"
+                            >
+                              <Search className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {selectedUser && (
+                          <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                              {selectedUser.full_name?.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold truncate">{selectedUser.full_name}</p>
+                              <p className="text-sm text-muted-foreground truncate">{selectedUser.email}</p>
+                            </div>
+                            <CheckCircle className="h-5 w-5 text-primary shrink-0" />
+                          </div>
+                        )}
+
+                        {searchResults.length > 0 && !selectedUser && (
+                          <div className="h-60 border rounded-2xl p-2 bg-muted/5 overflow-y-auto">
+                            <div className="space-y-1">
+                              {searchResults.map((user) => (
+                                <button
+                                  key={user.id}
+                                  type="button"
+                                  onClick={() => handleSelectUser(user)}
+                                  className="w-full text-left p-3 hover:bg-secondary rounded-xl transition-colors flex items-center gap-3"
+                                >
+                                  <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
+                                    {user.full_name?.charAt(0)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-medium truncate text-sm">{user.full_name}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                  </div>
+                                </button>
                               ))}
-                            </SelectContent>
-                          </Select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white">
+                            <UserPlus className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="font-bold">Nouveau Locataire</p>
+                            <p className="text-xs text-muted-foreground">Un compte sera automatiquement généré.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 pt-2 border-t border-primary/5">
+                          <input
+                            type="checkbox"
+                            id="create-account"
+                            checked={createAccount}
+                            onChange={(e) => setCreateAccount(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          />
+                          <Label htmlFor="create-account" className="text-xs cursor-pointer text-muted-foreground">
+                            Générer un identifiant et mot de passe provisoire
+                          </Label>
+                        </div>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bien Immobilier</Label>
+                            <Select
+                              value={selectedPropertyId}
+                              onValueChange={(value) => {
+                                setSelectedPropertyId(value);
+                                setSelectedUnitId("");
+                                setMonthlyRent("");
+                              }}
+                            >
+                              <SelectTrigger className="rounded-xl">
+                                <SelectValue placeholder="Choisir un bien" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                {properties.map((property) => (
+                                  <SelectItem key={property.id} value={property.id}>
+                                    {property.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className={`space-y-2 ${availableUnits.length <= 1 ? 'hidden' : ''}`}>
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Unité / Porte</Label>
+                            <Select
+                              value={selectedUnitId}
+                              onValueChange={(value) => {
+                                setSelectedUnitId(value);
+                                const unit = availableUnits.find((item) => item.id === value);
+                                if (unit?.monthly_rent) setMonthlyRent(String(unit.monthly_rent));
+                              }}
+                              disabled={!selectedPropertyId}
+                            >
+                              <SelectTrigger className="rounded-xl">
+                                <SelectValue placeholder="Choisir l'unité" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                {availableUnits.map((unit) => (
+                                  <SelectItem key={unit.id} value={unit.id}>
+                                    {unit.unit_number} - {unit.monthly_rent?.toLocaleString()} F
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
 
-                        <div className={`space-y-2 ${availableUnits.length <= 1 ? 'hidden' : ''}`}>
-                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Unité / Porte</Label>
-                          <Select
-                            value={selectedUnitId}
-                            onValueChange={(value) => {
-                              setSelectedUnitId(value);
-                              const unit = availableUnits.find((item) => item.id === value);
-                              if (unit?.monthly_rent) setMonthlyRent(String(unit.monthly_rent));
-                            }}
-                            disabled={!selectedPropertyId}
-                          >
-                            <SelectTrigger className="rounded-xl">
-                              <SelectValue placeholder="Choisir l'unité" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              {availableUnits.map((unit) => (
-                                <SelectItem key={unit.id} value={unit.id}>
-                                  {unit.unit_number} - {unit.monthly_rent?.toLocaleString()} F
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nom complet *</Label>
+                            <Input
+                              value={fullName}
+                              onChange={(e) => setFullName(e.target.value)}
+                              placeholder="Prénom et Nom"
+                              className="rounded-xl"
+                              disabled={!!selectedUser}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Loyer Mensuel *</Label>
+                            <Input
+                              type="number"
+                              value={monthlyRent}
+                              onChange={(e) => setMonthlyRent(e.target.value)}
+                              className="rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</Label>
+                            <Input
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="locataire@exemple.com"
+                              className="rounded-xl"
+                              disabled={!!selectedUser}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Téléphone</Label>
+                            <Input
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value)}
+                              placeholder="77..."
+                              className="rounded-xl"
+                              disabled={!!selectedUser}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Date d'entrée *</Label>
+                            <Input
+                              type="date"
+                              value={moveInDate}
+                              onChange={(e) => setMoveInDate(e.target.value)}
+                              className="rounded-xl"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nom complet *</Label>
-                          <Input
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            placeholder="Prénom et Nom"
-                            className="rounded-xl"
-                            disabled={!!selectedUser}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Loyer Mensuel *</Label>
-                          <Input
-                            type="number"
-                            value={monthlyRent}
-                            onChange={(e) => setMonthlyRent(e.target.value)}
-                            className="rounded-xl"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</Label>
-                          <Input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="locataire@exemple.com"
-                            className="rounded-xl"
-                            disabled={!!selectedUser}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Date d'entrée *</Label>
-                          <Input
-                            type="date"
-                            value={moveInDate}
-                            onChange={(e) => setMoveInDate(e.target.value)}
-                            className="rounded-xl"
-                          />
-                        </div>
+                      <div className="flex gap-3 pt-4">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setStep("choice")}
+                          className="flex-1 rounded-xl h-12"
+                        >
+                          Annuler
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={submitting}
+                          className="flex-1 rounded-xl h-12 bg-primary shadow-lg shadow-primary/20"
+                        >
+                          {submitting ? "Traitement..." : "Confirmer l'ajout"}
+                        </Button>
                       </div>
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setStep("choice")}
-                        className="flex-1 rounded-xl h-12"
-                      >
-                        Annuler
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={submitting}
-                        className="flex-1 rounded-xl h-12 bg-primary shadow-lg shadow-primary/20"
-                      >
-                        {submitting ? "Traitement..." : "Confirmer l'ajout"}
-                      </Button>
-                    </div>
-                  </form>
+                    </form>
+                  </div>
                 </div>
-              </div>
+              </ScrollArea>
             </motion.div>
           ) : (
             <motion.div
@@ -743,5 +762,15 @@ export const AssignTenantDialog = ({
         </AnimatePresence>
       </DialogContent>
     </Dialog>
-  );
+    <ConfirmDialog
+      open={confirmOpen}
+      onOpenChange={setConfirmOpen}
+      title="Unité déjà occupée"
+      description="⚠️ Cette unité contient déjà un locataire. En enregistrant, vous remplacerez le locataire actuel. Voulez-vous vraiment continuer ?"
+      onConfirm={executeSubmit}
+      confirmText="Remplacer"
+      variant="warning"
+    />
+  </>
+);
 };

@@ -125,15 +125,16 @@ export const TenantHistoryDialog = ({
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="text-[#25D366] hover:text-[#128C7E] hover:bg-[#25D366]/10"
+                                                        className="h-8 w-8 text-[#25D366] hover:text-[#128C7E] hover:bg-[#25D366]/10 border border-[#25D366]/20 bg-[#25D366]/5"
                                                         onClick={() => shareOnWhatsApp(receipt)}
                                                         title="Partager via WhatsApp"
                                                     >
                                                         <Send className="h-4 w-4" />
                                                     </Button>
                                                     <Button
-                                                        variant="ghost"
+                                                        variant="outline"
                                                         size="sm"
+                                                        className="h-8 bg-primary/5 text-primary hover:bg-primary/10 border-primary/20 shadow-sm"
                                                         onClick={() => handleDownload(receipt.id, receipt.receipt_number, receipt.payment_date)}
                                                     >
                                                         <Download className="h-4 w-4 mr-2" />

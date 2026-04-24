@@ -16,10 +16,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import SEO from "@/components/SEO";
 
 const About = () => {
   return (
     <div className="min-h-screen bg-background pb-12">
+      <SEO 
+        title="À Propos de nous | Samalocation"
+        description="Découvrez l'histoire de Samalocation, notre mission de digitaliser l'immobilier au Sénégal et nos valeurs de transparence et d'innovation."
+      />
       <Navbar />
 
       <div className="pt-24 pb-16 px-4">

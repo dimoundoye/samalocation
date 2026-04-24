@@ -43,8 +43,6 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         title: "",
         description: ""
     });
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [createdReceipt, setCreatedReceipt] = useState<any>(null);
 
     useEffect(() => {
         if (open) {
@@ -171,26 +169,8 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                 description: "Le reçu de paiement a été créé avec succès"
             });
 
-            const tenantForSuccess = tenants.find(t => t.user_id === formData.tenant_id);
-            setCreatedReceipt({
-                ...formData,
-                tenant_name: tenantForSuccess?.full_name || tenantName,
-                tenant_phone: tenantForSuccess?.phone
-            });
-            setIsSuccess(true);
             onSuccess();
-
-            // Reset form
-            setFormData({
-                tenant_id: "",
-                property_id: propertyId,
-                month: new Date().getMonth() + 1,
-                year: new Date().getFullYear(),
-                amount: "",
-                payment_date: new Date().toISOString().split('T')[0],
-                payment_method: "virement",
-                notes: ""
-            });
+            handleClose();
         } catch (error: any) {
             toast({
                 title: "Erreur",
@@ -202,22 +182,9 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         }
     };
 
-    const shareOnWhatsApp = () => {
-        if (!createdReceipt) return;
-        
-        const phone = createdReceipt.tenant_phone?.replace(/[\s\(\)\-\+]/g, '') || '';
-        const monthLabel = months.find(m => m.value === createdReceipt.month)?.label;
-        const amount = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(createdReceipt.amount).replace('XOF', 'F CFA');
-        
-        const text = `Bonjour ${createdReceipt.tenant_name}, votre quittance de loyer pour le mois de ${monthLabel} ${createdReceipt.year} (${amount}) est maintenant disponible sur votre compte Samalocation. Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com. Merci pour votre confiance !`;
-        
-        const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-        window.open(waUrl, '_blank');
-    };
+
 
     const handleClose = () => {
-        setIsSuccess(false);
-        setCreatedReceipt(null);
         setFormData({
             tenant_id: "",
             property_id: propertyId,
@@ -255,45 +222,12 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
             else onOpenChange(val);
         }}>
             <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
-                {isSuccess ? (
-                    <div className="py-6 flex flex-col items-center text-center space-y-4 animate-in zoom-in-95 duration-300">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
-                            <CheckCircle2 className="h-10 w-10 text-green-600" />
-                        </div>
-                        <div className="space-y-2">
-                            <h2 className="text-2xl font-bold">Quittance générée !</h2>
-                            <p className="text-muted-foreground">
-                                Le reçu pour {createdReceipt?.tenant_name} a été créé avec succès.
-                            </p>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full pt-4">
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                className="w-full h-12"
-                                onClick={handleClose}
-                            >
-                                Fermer
-                            </Button>
-                            <Button 
-                                type="button" 
-                                className="w-full h-12 bg-[#25D366] hover:bg-[#128C7E] text-white border-none"
-                                onClick={shareOnWhatsApp}
-                            >
-                                <Send className="h-4 w-4 mr-2" />
-                                Partager via WhatsApp
-                            </Button>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <DialogHeader>
-                            <DialogTitle>Créer un reçu de paiement</DialogTitle>
-                            <DialogDescription>
-                                Générer un reçu PDF pour le locataire de {propertyName}
-                            </DialogDescription>
-                        </DialogHeader>
+                <DialogHeader>
+                    <DialogTitle>Créer un reçu de paiement</DialogTitle>
+                    <DialogDescription>
+                        Générer un reçu PDF pour le locataire de {propertyName}
+                    </DialogDescription>
+                </DialogHeader>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
@@ -426,8 +360,6 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                                 </Button>
                             </DialogFooter>
                         </form>
-                    </>
-                )}
             </DialogContent>
 
             <UpgradeModal

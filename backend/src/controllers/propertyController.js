@@ -140,7 +140,7 @@ const propertyController = {
      */
     async addUnits(req, res, next) {
         try {
-            const ownerId = req.user.id;
+            const ownerId = req.ownerId;
             const { property_id, units } = req.body;
 
             const success = await Property.addUnits(property_id, ownerId, units);

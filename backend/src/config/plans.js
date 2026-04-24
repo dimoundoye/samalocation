@@ -8,12 +8,13 @@ const PLANS = {
         price_monthly: 0,
         price_annual: 0,
         limits: {
-            max_properties: 5,
+            max_properties: Infinity,
+            max_tenants: 5,
             max_receipts_per_month: 5,
             ai_descriptions_per_month: 0,
             custom_branding: false,
             excel_reports: false,
-            inventory_contract: true // Indiqué comme disponible pour tous
+            inventory_contract: false
         }
     },
     PREMIUM: {
@@ -22,7 +23,8 @@ const PLANS = {
         price_monthly: 5000,
         price_annual: 54000, // ~10% de réduction (5000 * 12 * 0.9)
         limits: {
-            max_properties: 15,
+            max_properties: Infinity,
+            max_tenants: 15,
             max_receipts_per_month: Infinity,
             ai_descriptions_per_month: 15, // Augmenté à 15 selon les détails
             custom_branding: false,
@@ -37,6 +39,7 @@ const PLANS = {
         price_annual: 162000, // ~10% de réduction
         limits: {
             max_properties: Infinity,
+            max_tenants: Infinity,
             max_receipts_per_month: Infinity,
             ai_descriptions_per_month: Infinity,
             custom_branding: true,

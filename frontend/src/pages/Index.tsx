@@ -33,6 +33,7 @@ import { transformProperty, FormattedProperty } from "@/lib/property";
 import { getProperties, getMessages } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import SEO from "@/components/SEO";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -122,6 +123,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/10">
+      <SEO 
+        title="Samalocation - Simplifiez la gestion locative au Sénégal"
+        description="Trouvez votre prochain logement ou gérez vos biens immobiliers en toute simplicité au Sénégal. Appartements, villas, studios et plus."
+      />
       <Navbar />
 
       {/* Hero Section */}

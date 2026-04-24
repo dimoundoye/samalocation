@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 import { useToast } from "@/hooks/use-toast";
+import SEO from "@/components/SEO";
 
 const Pricing = () => {
     const { user } = useAuth();
@@ -57,7 +58,7 @@ const Pricing = () => {
                 "Logements ILLIMITÉS (Publication)",
                 "Gestion de 5 locataires (Gérance)",
                 "Messagerie locataires",
-                "Gestion des maintenances (Basique)",
+                "Gestion des maintenances",
                 "Génération de reçus (5/mois)",
                 "Génération de baux (Standard)",
                 "Signature électronique",
@@ -69,8 +70,7 @@ const Pricing = () => {
                 "Branding personnalisé"
             ],
             cta: "Saisir l'offre gratuite",
-            highlight: false,
-            badge: "LANCEMENT"
+            highlight: false
         },
         {
             name: "Premium",
@@ -121,6 +121,10 @@ const Pricing = () => {
 
     return (
         <div className="min-h-screen bg-background">
+            <SEO
+                title="Tarifs et Abonnements | Samalocation"
+                description="Découvrez nos offres pour propriétaires et agences immobilières au Sénégal. Gérez vos locataires à partir de 0 FCFA par mois."
+            />
             <Navbar />
 
             <main className="container mx-auto px-6 pt-24 pb-20">
@@ -190,11 +194,6 @@ const Pricing = () => {
                                 {plan.highlight && (
                                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium whitespace-nowrap">
                                         PLUS POPULAIRE
-                                    </div>
-                                )}
-                                {plan.badge && (
-                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium whitespace-nowrap">
-                                        {plan.badge}
                                     </div>
                                 )}
 

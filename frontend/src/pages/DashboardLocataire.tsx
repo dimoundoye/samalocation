@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, Wrench } from "lucide-react";
+import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, Wrench, HelpCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -19,6 +20,7 @@ import { AccountSettings } from "@/components/shared/AccountSettings";
 import { ReportOwnerDialog } from "@/components/tenant/ReportOwnerDialog";
 import { MaintenanceTab } from "@/components/tenant/MaintenanceTab";
 import { TenantContractsTab } from "@/components/tenant/TenantContractsTab";
+import { TenantDocumentationTab } from "@/components/tenant/TenantDocumentationTab";
 import { format } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +36,13 @@ const DashboardLocataire = () => {
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState(urlTab || "dashboard");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
 
   const dateLocale = i18n.language === 'en' ? enUS : fr;
 
@@ -225,26 +234,26 @@ const DashboardLocataire = () => {
     return format(new Date(date), "dd MMM yyyy", { locale: dateLocale });
   };
 
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!confirm(t('tenant.delete_confirm'))) {
-      return;
-    }
-
-    try {
-      await deleteMessage(messageId);
-
-      // Refresh messages list
-      loadMessages();
-
-      toast({
-        title: t('tenant.delete_success'),
-      });
-    } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        variant: "destructive",
-      });
-    }
+  const handleDeleteMessage = (messageId: string) => {
+    setConfirmConfig({
+      title: "Supprimer le message",
+      description: t('tenant.delete_confirm'),
+      onConfirm: async () => {
+        try {
+          await deleteMessage(messageId);
+          loadMessages();
+          toast({
+            title: t('tenant.delete_success'),
+          });
+        } catch (error: any) {
+          toast({
+            title: t('common.error'),
+            variant: "destructive",
+          });
+        }
+      },
+    });
+    setConfirmOpen(true);
   };
 
   const handleSendMessage = async () => {
@@ -316,15 +325,19 @@ const DashboardLocataire = () => {
 
   const sidebarContent = (
     <>
-      <button
-        onClick={() => navigate("/")}
-        className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity overflow-hidden"
-      >
-        <img src="/logo-sl.png" alt="Logo" className="h-12 w-auto object-contain shrink-0" />
-        <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate hidden lg:block">
-          Samalocation
-        </span>
-      </button>
+      <div className="flex items-center gap-2 mb-8">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity overflow-hidden"
+        >
+          <img src="/logo-sl.png" alt="Logo" className="h-10 w-auto object-contain shrink-0" />
+          {!isSidebarCollapsed && (
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
+              Samalocation
+            </span>
+          )}
+        </button>
+      </div>
 
       <nav className="space-y-2">
         {[
@@ -334,6 +347,7 @@ const DashboardLocataire = () => {
           { id: "contracts", label: t('dashboard.sidebar.contracts'), icon: FileText },
           { id: "maintenance", label: t('dashboard.sidebar.maintenance'), icon: Wrench },
           { id: "settings", label: t('dashboard.sidebar.settings'), icon: Settings },
+          { id: "guide", label: "Guide", icon: HelpCircle },
         ].map((item) => {
           // Calculer le nombre de messages non lus
           const unreadCount = item.id === "messages"
@@ -359,8 +373,8 @@ const DashboardLocataire = () => {
                 }`}
             >
               <div className="flex items-center gap-3">
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
+                <item.icon className="h-5 w-5 shrink-0" />
+                {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
               </div>
               {unreadCount > 0 && (
                 <Badge
@@ -378,10 +392,10 @@ const DashboardLocataire = () => {
       <Button
         variant="ghost"
         onClick={signOut}
-        className="w-full mt-8 justify-start text-muted-foreground"
+        className={`w-full mt-8 justify-start text-muted-foreground ${isSidebarCollapsed ? "px-2" : ""}`}
       >
-        <LogOut className="mr-3 h-5 w-5" />
-        {t('dashboard.sidebar.logout')}
+        <LogOut className={`${isSidebarCollapsed ? "" : "mr-3"} h-5 w-5 shrink-0`} />
+        {!isSidebarCollapsed && <span>{t('dashboard.sidebar.logout')}</span>}
       </Button>
     </>
   );
@@ -389,10 +403,24 @@ const DashboardLocataire = () => {
   return (
     <div className="h-screen bg-background flex overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="w-64 bg-card border-r shadow-soft hidden md:block h-screen sticky top-0 overflow-y-auto overflow-x-hidden scrollbar-none">
-        <div className="p-6">
-          {sidebarContent}
+      <aside 
+        className={`${isSidebarCollapsed ? "w-20" : "w-64"} bg-card border-r shadow-soft hidden md:block h-screen sticky top-0 transition-all duration-300 ease-in-out z-20`}
+      >
+        <div className={`p-4 h-full flex flex-col ${isSidebarCollapsed ? "items-center" : ""}`}>
+          <div className="flex-1 overflow-y-auto scrollbar-none w-full">
+            {sidebarContent}
+          </div>
         </div>
+
+        {/* Floating Toggle Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute -right-4 top-8 h-8 w-8 rounded-full border shadow-md bg-background hover:bg-secondary z-50 hidden md:flex"
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        >
+          {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </Button>
       </aside>
 
       {/* Main Content */}
@@ -412,6 +440,15 @@ const DashboardLocataire = () => {
             </Sheet>
 
             <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => setActiveTab("guide")}
+                title="Guide d'utilisation"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </Button>
               <ThemeToggle />
               <NotificationBell />
               <UserProfile />
@@ -933,6 +970,9 @@ const DashboardLocataire = () => {
                 </Tabs>
               </div>
             )}
+
+            {/* Guide Tab */}
+            {activeTab === "guide" && <TenantDocumentationTab />}
           </div>
         </div>
       </main>
@@ -943,6 +983,13 @@ const DashboardLocataire = () => {
         ownerId={currentOwnerId || ""}
         ownerName={ownerProfile?.company_name || ownerProfile?.full_name || tenantData?.owner_name || t('tenant.owner')}
         leases={leases}
+      />
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={confirmConfig.title}
+        description={confirmConfig.description}
+        onConfirm={confirmConfig.onConfirm}
       />
     </div>
   );

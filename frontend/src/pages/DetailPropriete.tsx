@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X, Building2 } from "lucide-react";
+import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X, Building2, Layers, Share2, Facebook, Link as LinkIcon, Send } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -19,8 +20,10 @@ import propertyFallback from "@/assets/property-1.jpg";
 import PropertyCard from "@/components/PropertyCard";
 import { getPropertyById, getProperties, sendMessage, createNotification, getMessages, getSimilarProperties } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import SEO from "@/components/SEO";
 
 const DetailPropriete = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -273,6 +276,38 @@ const DetailPropriete = () => {
     setSelectedImageIndex((prev) => (prev - 1 + allPhotos.length) % allPhotos.length);
   };
 
+  const handleShare = (platform?: 'whatsapp' | 'facebook' | 'copy') => {
+    const shareUrl = window.location.href;
+    const shareTitle = `${property.name} | SamaLocation`;
+    const shareText = `Découvrez ce bien sur SamaLocation : ${property.name} à ${property.address}. ${property.rent_amount ? `${property.rent_amount.toLocaleString()} F CFA` : "Prix sur demande"}`;
+
+    if (!platform && navigator.share) {
+      navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: shareUrl,
+      }).catch((error) => console.log('Error sharing', error));
+      return;
+    }
+
+    switch (platform) {
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
+        break;
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+        break;
+      case 'copy':
+      default:
+        navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: "Lien copié",
+          description: "Le lien a été copié dans votre presse-papier.",
+        });
+        break;
+    }
+  };
+
   const totalUnits = property?.total_units ?? property?.property_units?.length ?? 0;
   const availableUnits =
     property.available_units ??
@@ -301,6 +336,12 @@ const DetailPropriete = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title={`${property.name} à ${property.address}`}
+        description={`${property.property_type} à louer à ${property.address}. ${property.aggregated_area || property.property_units?.[0]?.area_sqm || ""} m², ${property.aggregated_bedrooms || property.property_units?.[0]?.bedrooms || ""} chambres. ${property.description?.substring(0, 100)}...`}
+        image={property.cover_photo || property.photo_url}
+        type="article"
+      />
       <Navbar />
 
       <div className="pt-24 pb-16 px-4 md:px-8">
@@ -395,21 +436,21 @@ const DetailPropriete = () => {
                     <div className="flex items-center gap-2">
                       <Home className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Type</p>
+                        <p className="text-sm text-muted-foreground">{t('common.type')}</p>
                         <p className="font-semibold capitalize">{property.property_type}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Square className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Surface</p>
+                        <p className="text-sm text-muted-foreground">{t('common.area')}</p>
                         <p className="font-semibold">{property.aggregated_area || property.property_units?.[0]?.area_sqm || "—"} m²</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <BedDouble className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Chambres</p>
+                        <p className="text-sm text-muted-foreground">{t('common.bedrooms')}</p>
                         <p className="font-semibold">
                           {aggregatedBedrooms || property.property_units?.[0]?.bedrooms || "—"}
                         </p>
@@ -418,18 +459,27 @@ const DetailPropriete = () => {
                     <div className="flex items-center gap-2">
                       <Bath className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">SDB</p>
+                        <p className="text-sm text-muted-foreground">{t('property.bathrooms_short').toUpperCase()}</p>
                         <p className="font-semibold">
                           {property.aggregated_bathrooms || property.property_units?.[0]?.bathrooms || "—"}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Layers className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">{t('property.rooms')}</p>
+                        <p className="font-semibold">
+                          {property.aggregated_rooms_count || property.property_units?.[0]?.rooms_count || "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <Shield className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Disponibilité</p>
+                        <p className="text-sm text-muted-foreground">{t('common.status')}</p>
                         <p className="font-semibold">
-                          {availableUnits > 0 ? "Disponible" : "Occupé"}
+                          {availableUnits > 0 ? t('property.available') : t('property.occupied')}
                         </p>
                       </div>
                     </div>
@@ -557,6 +607,42 @@ const DetailPropriete = () => {
                           </a>
                         </p>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t mt-6">
+                    <h4 className="font-semibold mb-4 flex items-center gap-2">
+                      <Share2 className="h-4 w-4 text-primary" />
+                      Partager ce bien
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex flex-col h-auto py-3 gap-1 hover:text-green-600 hover:border-green-200 hover:bg-green-50 transition-all"
+                        onClick={() => handleShare('whatsapp')}
+                      >
+                        <Send className="h-4 w-4" />
+                        <span className="text-[10px]">WhatsApp</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex flex-col h-auto py-3 gap-1 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all"
+                        onClick={() => handleShare('facebook')}
+                      >
+                        <Facebook className="h-4 w-4" />
+                        <span className="text-[10px]">Facebook</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex flex-col h-auto py-3 gap-1 hover:text-primary hover:border-primary/20 hover:bg-primary/5 transition-all"
+                        onClick={() => handleShare('copy')}
+                      >
+                        <LinkIcon className="h-4 w-4" />
+                        <span className="text-[10px]">Lien</span>
+                      </Button>
                     </div>
                   </div>
                 </CardContent>

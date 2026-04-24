@@ -242,7 +242,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         photoUrls = await uploadPhotos(propertyPhotos);
       }
 
-      // Créer la propriété
+      // Créer la propriété avec ses unités en une seule fois
       const propertyInsert: any = {
         property_type: propertyType,
         name: propertyData.name.trim(),
@@ -253,7 +253,8 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         is_published: false,
         equipments: propertyEquipments.length > 0 ? propertyEquipments : null,
         latitude: propertyData.latitude ? parseFloat(propertyData.latitude) : 14.7167,
-        longitude: propertyData.longitude ? parseFloat(propertyData.longitude) : -17.4677
+        longitude: propertyData.longitude ? parseFloat(propertyData.longitude) : -17.4677,
+        units: preparedUnits // Ajout des unités ici
       };
 
       const property = await createProperty(propertyInsert);
@@ -261,14 +262,6 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
       if (!property) {
         throw new Error("Erreur lors de la création de la propriété");
       }
-
-      // Créer les unités
-      const unitsToInsert = preparedUnits.map(unit => ({
-        property_id: property.id,
-        ...unit,
-      }));
-
-      await createPropertyUnits(property.id, unitsToInsert);
 
       toast({
         title: "Bien ajouté",
@@ -340,12 +333,21 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         title: "Description générée",
         description: "L'IA a généré une description personnalisée pour votre bien.",
       });
-    } catch (error) {
-      toast({
-        title: "Erreur de génération",
-        description: "Impossible de générer la description. Vérifiez votre connexion.",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      if (error.response?.status === 403 || error.message?.includes('403')) {
+        setUpgradeModal({
+          open: true,
+          title: "Limite IA atteinte",
+          description: "Vous avez atteint votre limite mensuelle de générations par IA. Passez au plan Professionnel pour un usage illimité !",
+          feature: "ai"
+        });
+      } else {
+        toast({
+          title: "Erreur de génération",
+          description: "Impossible de générer la description. Vérifiez votre connexion.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setGeneratingAI(false);
     }

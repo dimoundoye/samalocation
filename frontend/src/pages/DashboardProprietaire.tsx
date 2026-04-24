@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -8,8 +9,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle } from "lucide-react";
+import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { motion } from "framer-motion";
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -58,6 +60,7 @@ import { useTranslation } from "react-i18next";
 import { OnboardingChecklist } from "@/components/owner/OnboardingChecklist";
 import { useSubscription } from "@/hooks/useSubscription";
 import { OwnerPublicProfileEditor } from "@/components/owner/OwnerPublicProfileEditor";
+import { OwnerDocumentationTab } from "@/components/owner/OwnerDocumentationTab";
 
 const DashboardProprietaire = () => {
   const navigate = useNavigate();
@@ -77,6 +80,12 @@ const DashboardProprietaire = () => {
 
   const [activeTab, setActiveTab] = useState(urlTab || "dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: "",
+    description: "",
+    onConfirm: () => { },
+  });
   const [addPropertyOpen, setAddPropertyOpen] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<PropertyUnit[]>([]);
@@ -140,8 +149,8 @@ const DashboardProprietaire = () => {
     localStorage.setItem("show_onboarding_guide", String(newValue));
   };
 
-  const userGroupsKey = useMemo(() => user?.id ? `owner_tenant_groups_v2_${user.id}` : "owner_tenant_groups_v2_guest", [user?.id]);
-  const [customGroups, setCustomGroups] = useState<{ id: string; name: string; tenantIds: string[]; parentId?: string }[]>([]);
+  const userGroupsKey = useMemo(() => user?.id ? `owner_property_groups_v1_${user.id}` : "owner_property_groups_v1_guest", [user?.id]);
+  const [customGroups, setCustomGroups] = useState<{ id: string; name: string; propertyIds: string[]; parentId?: string }[]>([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const years = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -198,19 +207,15 @@ const DashboardProprietaire = () => {
       name: cg.name,
       type: 'group' as const,
       parentId: cg.parentId,
-      tenantIds: cg.tenantIds,
+      propertyIds: cg.propertyIds,
       children: [] as any[]
     }));
 
-    // 3. Find assigned entities
+    // 3. Find assigned entities (Properties assigned to groups)
     const assignedPropertyIds = new Set<string>();
     propertyNodes.forEach(pNode => {
       const groupWithProp = groupNodes.find(g =>
-        pNode.units.some(u => {
-          if (!u.tenant) return false;
-          const tId = String(u.tenant.id);
-          return g.tenantIds.some(id => String(id) === tId);
-        })
+        customGroups.find(cg => cg.id === g.id)?.propertyIds?.includes(pNode.id)
       );
       if (groupWithProp) {
         groupWithProp.children.push(pNode);
@@ -236,30 +241,7 @@ const DashboardProprietaire = () => {
       }
     });
 
-    // 6. Handle stray tenants
-    const allAssignedTenants = new Set([
-      ...properties.flatMap(p => (p.property_units || []).map(u => tenants.find(t => t.unit_id === u.id)?.id)).filter(Boolean),
-      ...customGroups.flatMap(cg => cg.tenantIds)
-    ]);
-    const unassignedTenants = tenants.filter(t => t && !allAssignedTenants.has(t.id));
-
-    if (unassignedTenants.length > 0) {
-      rootNodes.push({
-        id: "default",
-        name: "Locataires non classés",
-        type: 'group',
-        children: unassignedTenants.map(tenant => ({
-          id: `stray-${tenant.id}`,
-          name: tenant.full_name,
-          type: 'property',
-          units: [{
-            unit: { id: tenant.unit_id, unit_number: tenant.unit_number } as PropertyUnit,
-            tenant
-          }]
-        }))
-      });
-    }
-
+    // 6. Final check for root consistency
     return rootNodes;
   }, [properties, tenants, customGroups]);
 
@@ -576,69 +558,75 @@ const DashboardProprietaire = () => {
   };
 
   const handleDeleteTenant = async (tenantId: string) => {
-    if (!confirm(t('tenant.delete_confirm'))) {
-      return;
-    }
-
-    try {
-      await deleteTenant(tenantId);
-      toast({
-        title: t('tenant.delete_success'),
-        description: "Le locataire a été supprimé avec succès.", // This specific error message was not requested for translation, keeping it as is.
-      });
-      await loadData();
-    } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: "La suppression du locataire a échoué.", // This specific error message was not requested for translation, keeping it as is.
-        variant: "destructive",
-      });
-    }
+    setConfirmConfig({
+      title: t('dashboard.sidebar.tenants'),
+      description: t('tenant.delete_confirm'),
+      onConfirm: async () => {
+        try {
+          await deleteTenant(tenantId);
+          toast({
+            title: t('tenant.delete_success'),
+            description: "Le locataire a été supprimé avec succès.",
+          });
+          await loadData();
+        } catch (error: any) {
+          toast({
+            title: t('common.error'),
+            description: "La suppression du locataire a échoué.",
+            variant: "destructive",
+          });
+        }
+      },
+    });
+    setConfirmOpen(true);
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-    if (!confirm(t('tenant.delete_confirm'))) { // Reusing tenant.delete_confirm for message, assuming it's a generic confirmation.
-      return;
-    }
-
-    try {
-      await deleteMessage(messageId);
-
-      // Rafraîchir la liste des messages
-      loadMessagesOnly();
-
-      toast({
-        title: t('dashboard.common.message_deleted'),
-        description: "Le message a été supprimé avec succès.", // This specific error message was not requested for translation, keeping it as is.
-      });
-    } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: "Le message n'a pas pu être supprimé.", // This specific error message was not requested for translation, keeping it as is.
-        variant: "destructive",
-      });
-    }
+    setConfirmConfig({
+      title: t('dashboard.sidebar.messages'),
+      description: t('tenant.delete_confirm'),
+      onConfirm: async () => {
+        try {
+          await deleteMessage(messageId);
+          loadMessagesOnly();
+          toast({
+            title: t('dashboard.common.message_deleted'),
+            description: "Le message a été supprimé avec succès.",
+          });
+        } catch (error: any) {
+          toast({
+            title: t('common.error'),
+            description: "Le message n'a pas pu être supprimé.",
+            variant: "destructive",
+          });
+        }
+      },
+    });
+    setConfirmOpen(true);
   };
 
   const handleDeleteProperty = async (propertyId: string) => {
-    if (!confirm(t('owner.property_delete_confirm'))) {
-      return;
-    }
-
-    try {
-      await deleteProperty(propertyId);
-      toast({
-        title: t('owner.property_deleted'),
-        description: "Le bien a été supprimé avec succès.", // This specific error message was not requested for translation, keeping it as is.
-      });
-      await loadData();
-    } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: "La suppression du bien a échoué.", // This specific error message was not requested for translation, keeping it as is.
-        variant: "destructive",
-      });
-    }
+    setConfirmConfig({
+      title: t('dashboard.sidebar.properties'),
+      description: t('owner.property_delete_confirm'),
+      onConfirm: async () => {
+        try {
+          await deleteProperty(propertyId);
+          toast({
+            title: t('owner.property_deleted'),
+            description: "Le bien a été supprimé avec succès.",
+          });
+          await loadData();
+        } catch (error: any) {
+          toast({
+            title: t('common.error'),
+            description: "La suppression du bien a échoué.",
+            variant: "destructive",
+          });
+        }
+      },
+    });
+    setConfirmOpen(true);
   };
 
   const handleSendMessage = async () => {
@@ -688,24 +676,26 @@ const DashboardProprietaire = () => {
 
     return (
       <>
-        <button
-          onClick={() => {
-            navigate("/");
-            if (isMobile) setMobileMenuOpen(false);
-          }}
-          className={`flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity overflow-hidden ${isMobile ? 'justify-start' : (isSidebarCollapsed ? 'justify-center px-2' : 'justify-start')}`}
-        >
-          <img 
-            src="/logo-sl.png" 
-            alt="Logo" 
-            className={`${isSidebarCollapsed ? 'h-8 w-8 object-contain' : 'h-12 w-auto object-contain'}`} 
-          />
-          {showLabels && (
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate hidden lg:block">
-              Samalocation
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-2 mb-8">
+          <button
+            onClick={() => {
+              navigate("/");
+              if (isMobile) setMobileMenuOpen(false);
+            }}
+            className={`flex items-center gap-2 hover:opacity-80 transition-opacity overflow-hidden ${isMobile ? 'justify-start' : (isSidebarCollapsed ? 'justify-center px-1' : 'justify-start')}`}
+          >
+            <img
+              src="/logo-sl.png"
+              alt="Logo"
+              className={`${isSidebarCollapsed ? 'h-8 w-8 object-contain' : 'h-10 w-auto object-contain'}`}
+            />
+            {showLabels && (
+              <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate hidden lg:block">
+                Samalocation
+              </span>
+            )}
+          </button>
+        </div>
 
         {/* Context Switcher for Collaborators */}
         {
@@ -750,6 +740,7 @@ const DashboardProprietaire = () => {
             { id: "subscription", label: t('dashboard.sidebar.subscription'), icon: CreditCard },
             { id: "team", label: "Équipe", icon: Users2 },
             { id: "settings", label: t('dashboard.sidebar.settings'), icon: Settings },
+            { id: "guide", label: "Guide", icon: HelpCircle },
           ].filter(item => {
             // Collaborators (with parentId) shouldn't manage the team or billing
             if (user?.parentId && (item.id === "team" || item.id === "subscription")) return false;
@@ -838,17 +829,16 @@ const DashboardProprietaire = () => {
           {renderSidebarContent(false)}
         </div>
 
-        {/* Collapse Toggle Button */}
-        <button
+        {/* Floating Toggle Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute -right-4 top-8 h-9 w-9 rounded-full border-2 border-primary/10 shadow-strong bg-background hover:bg-primary/5 hover:border-primary/30 hover:scale-110 transition-all duration-200 z-50 hidden md:flex items-center justify-center"
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-card border rounded-full flex items-center justify-center shadow-md hover:bg-secondary transition-colors z-50"
+          title={isSidebarCollapsed ? "Afficher le menu" : "Réduire le menu"}
         >
-          {isSidebarCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </button>
+          {isSidebarCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronLeft className="h-4 w-4 text-primary" />}
+        </Button>
       </aside>
 
       {/* Main Content */}
@@ -895,12 +885,23 @@ const DashboardProprietaire = () => {
                                 ? "Abonnement"
                                 : activeTab === "team"
                                   ? "Équipe"
-                                  : "Paramètres"}
+                                  : activeTab === "guide"
+                                    ? "Guide d'utilisation"
+                                    : "Paramètres"}
               </h2>
             </div>
 
             {/* Right Side - Theme, Notifications & User Profile */}
             <div className="flex items-center gap-2 sm:gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => setActiveTab("guide")}
+                title="Aide & Guide"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </Button>
               <ThemeToggle />
               <NotificationBell />
               <UserProfile onSettingsClick={() => setActiveTab("settings")} />
@@ -939,35 +940,35 @@ const DashboardProprietaire = () => {
                       return (
                         <Alert className={isGracePeriod
                           ? "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400 flex items-center gap-4 py-5 rounded-2xl shadow-md border-2 animate-pulse"
-                          : isExpiringSoon 
+                          : isExpiringSoon
                             ? "bg-orange-500/10 border-orange-500/20 text-orange-700 dark:text-orange-400 flex items-center gap-4 py-4 rounded-2xl shadow-sm"
                             : "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400 flex items-center gap-4 py-4 rounded-2xl shadow-sm"
                         }>
                           <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${isGracePeriod ? 'bg-red-500/20' : isExpiringSoon ? 'bg-orange-500/20' : 'bg-green-500/20'}`}>
-                            {isGracePeriod 
+                            {isGracePeriod
                               ? <History className="h-6 w-6 text-red-600" />
-                              : isExpiringSoon 
+                              : isExpiringSoon
                                 ? <AlertTriangle className="h-6 w-6 text-orange-600" />
                                 : <CheckCircle2 className="h-6 w-6 text-green-600" />
                             }
                           </div>
                           <div className="flex-1">
                             <AlertTitle className="font-bold text-base">
-                              {isGracePeriod 
-                                ? "Action requise : Abonnement expiré !" 
-                                : isExpiringSoon 
-                                  ? "Votre abonnement expire bientôt !" 
+                              {isGracePeriod
+                                ? "Action requise : Abonnement expiré !"
+                                : isExpiringSoon
+                                  ? "Votre abonnement expire bientôt !"
                                   : (subscription.price === 0 ? "Récompense de parrainage activée !" : "Paiement validé avec succès !")
                               }
                             </AlertTitle>
                             <AlertDescription className="text-sm opacity-90">
-                              {isGracePeriod 
+                              {isGracePeriod
                                 ? `Votre plan ${subscription.plan_name} est terminé, mais Samalocation vous offre 3 jours de sursis pour régulariser. Profitez-en pour renouveler dès maintenant.`
-                                : isExpiringSoon 
+                                : isExpiringSoon
                                   ? `Attention, votre accès ${subscription.plan_name} se termine dans quelques jours.`
-                                  : (subscription.price === 0 
-                                      ? `Félicitations ! Vous profitez de ${subscription.referral_count} mois de plan ${subscription.plan_name} offerts grâce à vos parrainages.`
-                                      : `Votre abonnement ${subscription.plan_name} est actif.`)
+                                  : (subscription.price === 0
+                                    ? `Félicitations ! Vous profitez de ${subscription.referral_count} mois de plan ${subscription.plan_name} offerts grâce à vos parrainages.`
+                                    : `Votre abonnement ${subscription.plan_name} est actif.`)
                               }
                               {subscription.expires_at && (
                                 <span> {isGracePeriod ? "Était valide jusqu'au" : "Fin de l'offre"} : <strong>{format(new Date(subscription.expires_at), 'dd MMMM yyyy', { locale: fr })}</strong>.</span>
@@ -975,11 +976,11 @@ const DashboardProprietaire = () => {
                             </AlertDescription>
                           </div>
                           {(isExpiringSoon || isGracePeriod) && (
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant={isGracePeriod ? "default" : "outline"}
-                              className={isGracePeriod 
-                                ? "bg-red-600 hover:bg-red-700 text-white font-black px-6 shadow-lg h-12" 
+                              className={isGracePeriod
+                                ? "bg-red-600 hover:bg-red-700 text-white font-black px-6 shadow-lg h-12"
                                 : "border-orange-500/30 hover:bg-orange-500/10 text-orange-700 dark:text-orange-400 font-bold"}
                               onClick={() => setActiveTab('subscription')}
                             >
@@ -1027,38 +1028,38 @@ const DashboardProprietaire = () => {
                   </div>
                 )}
 
-                <div className="flex flex-col sm:grid sm:grid-cols-2 gap-4 items-start sm:items-center justify-between">
-                  <div>
-                    <h1 className="text-xl md:text-3xl font-bold">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="space-y-1">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                       {t('dashboard.sidebar.home')}
                     </h1>
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <p className="text-[12px] sm:text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm text-muted-foreground font-medium">
                         {t('dashboard.common.welcome')}, {ownerProfile?.company_name || ownerProfile?.full_name || user?.name || "Propriétaire"}
                       </p>
                       {user?.customId && (
                         <Badge
-                          variant="outline"
-                          className="text-[10px] sm:text-xs text-primary font-mono font-bold px-1.5 py-0"
+                          variant="secondary"
+                          className="text-[10px] sm:text-xs font-mono font-bold px-2 py-0.5"
                         >
                           ID: {user.customId}
                         </Badge>
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-row items-center gap-2 ml-auto">
+                  <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 sm:h-10 bg-background flex items-center gap-2 border-primary/20 hover:border-primary/50 text-primary hover:bg-primary/5 transition-colors"
+                      className="h-10 sm:h-11 bg-background flex items-center gap-2 border-primary/10 hover:border-primary/30 text-primary hover:bg-primary/5 transition-all shadow-sm rounded-xl px-4"
                       onClick={toggleOnboarding}
                       title={showOnboarding ? t('dashboard.common.hide_guide') : t('dashboard.common.show_guide')}
                     >
                       <HelpCircle className={`h-4 w-4 ${showOnboarding ? "text-primary" : "text-muted-foreground"}`} />
-                      <span className="hidden md:inline">{showOnboarding ? t('dashboard.common.hide_guide') : t('dashboard.common.show_guide')}</span>
+                      <span className="text-xs font-bold sm:inline">{showOnboarding ? t('dashboard.common.hide_guide') : t('dashboard.common.show_guide')}</span>
                     </Button>
                     <Select value={selectedYear} onValueChange={setSelectedYear}>
-                      <SelectTrigger className="w-[85px] sm:w-[120px] h-9 sm:h-10 bg-background">
+                      <SelectTrigger className="w-[100px] sm:w-[120px] h-10 sm:h-11 bg-background border-primary/10 rounded-xl shadow-sm">
                         <SelectValue placeholder="Année" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1071,12 +1072,11 @@ const DashboardProprietaire = () => {
                     </Select>
                     <Button
                       size="sm"
-                      className="gradient-accent text-white h-11 sm:h-10 px-4 sm:px-4"
+                      className="gradient-accent text-white h-10 sm:h-11 px-5 rounded-xl shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all font-bold"
                       onClick={() => setAddPropertyOpen(true)}
                     >
-                      <Plus className="mr-1 sm:mr-2 h-5 w-5" />
-                      <span className="hidden xs:inline">{t('owner.add_property')}</span>
-                      <span className="xs:hidden">Ajouter un logement</span>
+                      <Plus className="mr-2 h-4 w-4" />
+                      <span className="text-xs sm:text-sm">{t('owner.add_property')}</span>
                     </Button>
                   </div>
                 </div>
@@ -1141,6 +1141,66 @@ const DashboardProprietaire = () => {
                     </Card>
                   )}
                 </div>
+
+                {/* Referral Banner (Visible if less than 5 referrals) */}
+                {subscription && (subscription.referral_count || 0) < 5 && (
+                  <Card className="border-accent/20 border-dashed bg-accent/5 overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-4 duration-700">
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex flex-col lg:flex-row items-center gap-6">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="h-14 w-14 rounded-2xl bg-accent/10 flex items-center justify-center shrink-0 animate-bounce-slow">
+                            <Gift className="h-8 w-8 text-accent" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-bold text-slate-900">🎁 Obtenez jusqu'à 5 mois d'abonnement premium offerts !</h3>
+                            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+                              Offrez 1 mois Premium à vos amis bailleurs. Ils reçoivent **1 mois gratuit**, et vous aussi (limité à vos 5 premiers amis).
+                            </p>
+                            <div className="flex items-center gap-3 mt-3">
+                              <div className="flex-1 max-w-[200px] h-2 bg-secondary rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${((subscription.referral_count || 0) / 5) * 100}%` }}
+                                  className="h-full bg-accent"
+                                />
+                              </div>
+                              <span className="text-xs font-bold text-accent">
+                                {subscription.referral_count || 0}/5 parrainages
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                          <div className="flex items-center gap-2 bg-background border px-4 py-2 rounded-xl flex-1 lg:flex-none">
+                            <code className="text-sm font-black text-accent">{user?.customId}</code>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-accent"
+                              onClick={() => {
+                                navigator.clipboard.writeText(user?.customId || "");
+                                toast({ title: "Copié !", description: "Votre code de parrainage est prêt à être partagé." });
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <Button
+                            className="bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold gap-2 px-5 py-2 h-auto flex-1 lg:flex-none rounded-xl"
+                            onClick={() => {
+                              const text = `Inscris-toi sur Samalocation.com avec mon code ${user?.customId} pour gérer tes biens immobiliers et profite d'un mois Premium offert !`;
+                              window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                            }}
+                          >
+                            <Share2 className="h-4 w-4" />
+                            Inviter via WhatsApp
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* Recent Activity */}
@@ -2052,6 +2112,9 @@ const DashboardProprietaire = () => {
 
             {/* Public Profile Tab */}
             {activeTab === "public-profile" && <OwnerPublicProfileEditor />}
+
+            {/* Guide Tab */}
+            {activeTab === "guide" && <OwnerDocumentationTab />}
           </div>
         </div>
       </main>
@@ -2120,6 +2183,14 @@ const DashboardProprietaire = () => {
           onSuccess={loadData}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={confirmConfig.title}
+        description={confirmConfig.description}
+        onConfirm={confirmConfig.onConfirm}
+      />
     </div>
   );
 };

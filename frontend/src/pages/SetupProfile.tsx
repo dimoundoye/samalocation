@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, LogOut, CheckCircle2, Loader2, Key, Phone, Mail, UserCircle } from "lucide-react";
+import { LogOut, CheckCircle2, Loader2, Key, Phone, Mail, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { completeSetup } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const SetupProfile = () => {
     const navigate = useNavigate();
-    const { user, signOut, setUser } = useAuth();
+    const { user, signOut } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
@@ -26,10 +26,13 @@ const SetupProfile = () => {
             setFormData(prev => ({
                 ...prev,
                 name: user.name || "",
-                email: user.email && !user.email.endsWith("@samalocation.com") ? user.email : "",
+                // L'email est toujours laissé vide : le locataire doit saisir son propre email
+                email: "",
             }));
         }
     }, [user]);
+
+    const [setupDone, setSetupDone] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -54,19 +57,9 @@ const SetupProfile = () => {
                 newPassword: formData.password,
             });
 
-            toast.success("Profil configuré avec succès !");
-
-            // Mettre à jour l'utilisateur localement pour enlever le flag setupRequired
-            if (user) {
-                setUser({
-                    ...user,
-                    name: formData.name,
-                    email: formData.email,
-                    setupRequired: false
-                });
-            }
-
-            navigate("/tenant-dashboard");
+            // Afficher l'état "vérification en attente"
+            setSetupDone(true);
+            toast.success("Un e-mail de confirmation vous a été envoyé !");
         } catch (error: any) {
             toast.error("La configuration du profil a échoué. Veuillez réessayer.");
         } finally {
@@ -87,6 +80,35 @@ const SetupProfile = () => {
                 </div>
 
                 <Card className="border-none shadow-xl bg-white/80 backdrop-blur-sm">
+
+                    {/* Écran de confirmation post-setup */}
+                    {setupDone ? (
+                        <CardContent className="py-12 text-center space-y-6">
+                            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+                                <Mail className="h-10 w-10 text-green-600" />
+                            </div>
+                            <div className="space-y-3">
+                                <h2 className="text-xl font-bold">Vérifiez votre boîte mail</h2>
+                                <p className="text-muted-foreground text-sm">
+                                    Un e-mail de confirmation a été envoyé à{" "}
+                                    <span className="font-semibold text-foreground">{formData.email}</span>.
+                                    <br />
+                                    Cliquez sur le lien dans l'e-mail pour activer votre compte.
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Une fois votre e-mail confirmé, reconnectez-vous avec votre nouveau mot de passe.
+                                </p>
+                            </div>
+                            <Button
+                                className="w-full mt-4"
+                                onClick={() => signOut()}
+                            >
+                                <LogOut className="mr-2 h-4 w-4" />
+                                Se déconnecter
+                            </Button>
+                        </CardContent>
+                    ) : (
+                    <>
                     <CardHeader className="space-y-1 text-center">
                         <CardTitle className="text-2xl font-bold">Bienvenue !</CardTitle>
                         <CardDescription>
@@ -197,6 +219,8 @@ const SetupProfile = () => {
                             </Button>
                         </div>
                     </CardContent>
+                    </>
+                    )}
                 </Card>
             </div>
         </div>

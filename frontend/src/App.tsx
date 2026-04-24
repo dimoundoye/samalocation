@@ -33,6 +33,8 @@ import { OfflineStatus } from "./components/OfflineStatus";
 
 import { SocketProvider } from "@/contexts/SocketContext";
 
+import { HelmetProvider } from "react-helmet-async";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -45,106 +47,108 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner position="bottom-right" closeButton richColors expand={true} />
-        <BrowserRouter>
-          <ScrollToTop />
-          <AuthProvider>
-            <SocketProvider>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/verify-email" element={<VerifyEmail />} />
-                <Route path="/search" element={<Recherche />} />
-                <Route path="/search/:pageParam" element={<Recherche />} />
-                <Route path="/property/:id" element={<DetailPropriete />} />
-                <Route path="/proprio/:id" element={<OwnerPublicProfile />} />
-                <Route
-                  path="/owner-dashboard"
-                  element={
-                    <ProtectedRoute requiredRole="owner">
-                      <DashboardProprietaire />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/owner-dashboard/:tab"
-                  element={
-                    <ProtectedRoute requiredRole="owner">
-                      <DashboardProprietaire />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/tenant-dashboard"
-                  element={
-                    <ProtectedRoute requiredRole="tenant">
-                      <DashboardLocataire />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/tenant-dashboard/:tab"
-                  element={
-                    <ProtectedRoute requiredRole="tenant">
-                      <DashboardLocataire />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin-dashboard"
-                  element={
-                    <ProtectedRoute requiredRole="admin">
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin-dashboard/:tab"
-                  element={
-                    <ProtectedRoute requiredRole="admin">
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/setup-profile"
-                  element={
-                    <ProtectedRoute>
-                      <SetupProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/favorites"
-                  element={
-                    <ProtectedRoute>
-                      <Favorites />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/verify/contract/:id" element={<VerifyContract />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/accept-invitation" element={<AcceptInvitation />} />
-                <Route path="/maintenance" element={<Maintenance />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <Chatbot />
-              <OfflineStatus />
-            </SocketProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner position="bottom-right" closeButton richColors expand={true} />
+          <BrowserRouter>
+            <ScrollToTop />
+            <AuthProvider>
+              <SocketProvider>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
+                  <Route path="/search" element={<Recherche />} />
+                  <Route path="/search/:pageParam" element={<Recherche />} />
+                  <Route path="/property/:id" element={<DetailPropriete />} />
+                  <Route path="/proprio/:id" element={<OwnerPublicProfile />} />
+                  <Route
+                    path="/owner-dashboard"
+                    element={
+                      <ProtectedRoute requiredRole="owner">
+                        <DashboardProprietaire />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/owner-dashboard/:tab"
+                    element={
+                      <ProtectedRoute requiredRole="owner">
+                        <DashboardProprietaire />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/tenant-dashboard"
+                    element={
+                      <ProtectedRoute requiredRole="tenant">
+                        <DashboardLocataire />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/tenant-dashboard/:tab"
+                    element={
+                      <ProtectedRoute requiredRole="tenant">
+                        <DashboardLocataire />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin-dashboard"
+                    element={
+                      <ProtectedRoute requiredRole="admin">
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin-dashboard/:tab"
+                    element={
+                      <ProtectedRoute requiredRole="admin">
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/setup-profile"
+                    element={
+                      <ProtectedRoute>
+                        <SetupProfile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/favorites"
+                    element={
+                      <ProtectedRoute>
+                        <Favorites />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/verify/contract/:id" element={<VerifyContract />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/accept-invitation" element={<AcceptInvitation />} />
+                  <Route path="/maintenance" element={<Maintenance />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Chatbot />
+                <OfflineStatus />
+              </SocketProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;

@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import MapComponent from "@/components/MapComponent";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import SEO from "@/components/SEO";
 
 const Recherche = () => {
   const { toast } = useToast();
@@ -133,6 +134,10 @@ const Recherche = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
+      <SEO 
+        title="Recherche de biens immobiliers au Sénégal | Samalocation"
+        description="Parcourez nos annonces de location au Sénégal : appartements, maisons, villas, studios et terrains à Dakar, Thiès, Saly et plus."
+      />
       <Navbar />
       <div className={cn("pt-32 px-4 transition-all duration-300", isSearchActive && "pt-20 sm:pt-32")}>
         <div className="container mx-auto">
@@ -323,6 +328,7 @@ const Recherche = () => {
                               bedrooms={property.aggregated_bedrooms || undefined}
                               area={property.aggregated_area || undefined}
                               bathrooms={property.aggregated_bathrooms || undefined}
+                              roomsCount={property.aggregated_rooms_count || undefined}
                               rentPeriod={property.primary_rent_period || "mois"}
                               isApplied={currentUserId && property.id ? appliedPropertyIds.includes(property.id) : false}
                               ownerPhone={ownerProfile?.phone}

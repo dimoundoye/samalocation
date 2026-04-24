@@ -86,6 +86,8 @@ const resources = {
                 "view_details": "Voir les détails",
                 "bedrooms_short": "ch.",
                 "bathrooms_short": "sdb",
+                "rooms_short": "p.",
+                "rooms": "Pièces",
                 "details_soon": "La page de détails sera bientôt disponible.",
                 "new": "Nouveau",
                 "favorites": {
@@ -549,6 +551,8 @@ const resources = {
                 "view_details": "View details",
                 "bedrooms_short": "bd.",
                 "bathrooms_short": "bt",
+                "rooms_short": "rm.",
+                "rooms": "Rooms",
                 "details_soon": "The details page will be available soon.",
                 "new": "New",
                 "favorites": {

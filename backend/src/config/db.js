@@ -5,9 +5,9 @@ require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 const pool = new Pool(process.env.DATABASE_URL ? {
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 20, // Plus de capacité pour les pics de charge
-  idleTimeoutMillis: 60000, // Garder les connexions "chaudes" pendant 1 minute
-  connectionTimeoutMillis: 10000, // Laisser 10 sec à Supabase pour répondre (évite les erreurs immédiates)
+  max: 20,
+  idleTimeoutMillis: 60000,
+  connectionTimeoutMillis: 10000,
 } : {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'postgres',
@@ -22,14 +22,22 @@ const pool = new Pool(process.env.DATABASE_URL ? {
     : false
 });
 
+// Throttled connection logger: log a summary every 5 minutes instead of every connection
+let newConnectionCount = 0;
+setInterval(() => {
+  if (newConnectionCount > 0) {
+    console.log(`[DB Pool] ${newConnectionCount} nouvelle(s) connexion(s) établie(s) au cours des 5 dernières minutes.`);
+    newConnectionCount = 0;
+  }
+}, 300000);
+
 pool.on('connect', (client) => {
-  // Enforce public schema first to avoid ambiguity with auth.users
   client.query('SET search_path TO public, auth, extensions');
-  console.log('✅ Nouvel utilisateur connecté à la base de données PostgreSQL (Supabase)');
+  newConnectionCount++;
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+  console.error(`[DB Pool] ❌ Erreur inattendue sur un client inactif (${new Date().toISOString()}):`, err.message);
 });
 
 module.exports = pool;

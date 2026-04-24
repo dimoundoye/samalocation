@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
     Table,
     TableBody,
@@ -49,7 +50,7 @@ interface ManagementTableProps {
     onYearChange: (year: string) => void;
     navigationPath: string[];
     onNavigationChange: (path: string[] | ((prev: string[]) => string[])) => void;
-    customGroups: { id: string; name: string; tenantIds: string[]; parentId?: string }[];
+    customGroups: { id: string; name: string; propertyIds: string[]; parentId?: string }[];
     onGroupsChange: (groups: any[] | ((prev: any[]) => any[])) => void;
     groupedData: any[];
     years: number[];
@@ -73,12 +74,18 @@ export const ManagementTable = ({
     const { user } = useAuth();
     const { hasFeature, subscription } = useSubscription();
     const canExport = hasFeature('excel');
-    const userGroupsKey = useMemo(() => user?.id ? `owner_tenant_groups_v2_${user.id}` : "owner_tenant_groups_v2_guest", [user?.id]);
+    const userGroupsKey = useMemo(() => user?.id ? `owner_property_groups_v1_${user.id}` : "owner_property_groups_v1_guest", [user?.id]);
 
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
     const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
     const [newGroupParentId, setNewGroupParentId] = useState<string>("root");
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmConfig, setConfirmConfig] = useState({
+        title: "",
+        description: "",
+        onConfirm: () => {},
+    });
 
     const enterGroup = (groupId: string) => {
         onNavigationChange(prev => [...prev, groupId]);
@@ -124,7 +131,7 @@ export const ManagementTable = ({
         const newGroup = {
             id: Date.now().toString(),
             name: newGroupName.trim(),
-            tenantIds: [],
+            propertyIds: [],
             parentId: newGroupParentId === "root" ? undefined : newGroupParentId,
         };
         saveGroups([...customGroups, newGroup]);
@@ -160,32 +167,36 @@ export const ManagementTable = ({
     };
 
     const handleDeleteAllGroups = () => {
-        if (window.confirm("Êtes-vous sûr de vouloir supprimer TOUS les groupes ? Cette action est irréversible.")) {
-            saveGroups([]);
-            onNavigationChange([]);
-            toast({
-                title: "Dossiers supprimés",
-                description: "Tous les dossiers personnalisés ont été effacés.",
-            });
-        }
+        setConfirmConfig({
+            title: "Supprimer tous les dossiers",
+            description: "Êtes-vous sûr de vouloir supprimer TOUS les groupes ? Cette action est irréversible.",
+            onConfirm: () => {
+                saveGroups([]);
+                onNavigationChange([]);
+                toast({
+                    title: "Dossiers supprimés",
+                    description: "Tous les dossiers personnalisés ont été effacés.",
+                });
+            },
+        });
+        setConfirmOpen(true);
     };
 
-    const toggleTenantInGroup = (groupId: string, tenantId: string) => {
+    const togglePropertyInGroup = (groupId: string, propertyId: string) => {
         saveGroups(customGroups.map(g => {
             if (g.id === groupId) {
-                const isIncluded = g.tenantIds.includes(tenantId);
+                const isIncluded = (g.propertyIds || []).includes(propertyId);
                 return {
                     ...g,
-                    tenantIds: isIncluded
-                        ? g.tenantIds.filter(id => id !== tenantId)
-                        : [...g.tenantIds, tenantId]
+                    propertyIds: isIncluded
+                        ? (g.propertyIds || []).filter(id => id !== propertyId)
+                        : [...(g.propertyIds || []), propertyId]
                 };
             }
-            // Remove tenant from other groups to ensure unique assignment
-            // (Only if not in the same branch? No, keep it simple for now: one tenant per group)
+            // Ensure unique assignment
             return {
                 ...g,
-                tenantIds: g.tenantIds.filter(id => id !== tenantId)
+                propertyIds: (g.propertyIds || []).filter(id => id !== propertyId)
             };
         }));
     };
@@ -206,6 +217,7 @@ export const ManagementTable = ({
         { id: 11, label: "Nov" },
         { id: 12, label: "Déc" },
     ];
+
 
     const shareOnWhatsApp = (tenant: Tenant, receipt: Receipt) => {
         if (!tenant.phone) {
@@ -391,18 +403,18 @@ export const ManagementTable = ({
                                                         </Button>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-2">
-                                                        {tenants.map(tenant => (
-                                                            <div key={tenant.id} className="flex items-center space-x-2">
+                                                        {properties.map(property => (
+                                                            <div key={property.id} className="flex items-center space-x-2">
                                                                 <Checkbox
-                                                                    id={`${group.id}-${tenant.id}`}
-                                                                    checked={group.tenantIds.includes(tenant.id)}
-                                                                    onCheckedChange={() => toggleTenantInGroup(group.id, tenant.id)}
+                                                                    id={`${group.id}-${property.id}`}
+                                                                    checked={(group.propertyIds || []).includes(property.id)}
+                                                                    onCheckedChange={() => togglePropertyInGroup(group.id, property.id)}
                                                                 />
                                                                 <label
-                                                                    htmlFor={`${group.id}-${tenant.id}`}
+                                                                    htmlFor={`${group.id}-${property.id}`}
                                                                     className="text-sm font-medium leading-none cursor-pointer truncate"
                                                                 >
-                                                                    {tenant.full_name}
+                                                                    {property.name}
                                                                 </label>
                                                             </div>
                                                         ))}
@@ -453,7 +465,7 @@ export const ManagementTable = ({
                     <div className="flex-1">
                         <p className="text-sm font-bold text-slate-900">Astuce d'organisation :</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                            Regroupez vos locataires par bâtiment ou appartement pour une meilleure visibilité.
+                            Regroupez vos logements par bâtiment ou par zone géographique pour une meilleure visibilité.
                         </p>
                     </div>
                     <div className="flex items-center gap-2 font-mono text-[10px] bg-white/50 px-3 py-2 rounded border border-primary/5 shrink-0">
@@ -653,9 +665,14 @@ export const ManagementTable = ({
                                                                                     className="h-7 w-7 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 opacity-0 group-hover/tenant:opacity-100 transition-all border border-red-200"
                                                                                     onClick={(e) => {
                                                                                         e.stopPropagation();
-                                                                                        if (confirm(`⚠️ ATTENTION : Voulez-vous vraiment supprimer le locataire ${u.tenant.full_name} ?\n\nCette action retirera le locataire de cette unité et supprimera ses accès.`)) {
-                                                                                            onDeleteTenant(u.tenant.id);
-                                                                                        }
+                                                                                        setConfirmConfig({
+                                                                                            title: "Supprimer le locataire",
+                                                                                            description: `⚠️ ATTENTION : Voulez-vous vraiment supprimer le locataire ${u.tenant.full_name} ?\n\nCette action retirera le locataire de cette unité et supprimera ses accès.`,
+                                                                                            onConfirm: () => {
+                                                                                                onDeleteTenant(u.tenant.id);
+                                                                                            }
+                                                                                        });
+                                                                                        setConfirmOpen(true);
                                                                                     }}
                                                                                     title="Supprimer le locataire"
                                                                                 >
@@ -684,14 +701,14 @@ export const ManagementTable = ({
                                                                                         <div className="hidden group-hover:flex absolute -top-10 left-1/2 -translate-x-1/2 bg-white border border-border shadow-strong rounded-lg p-1.5 z-50 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
                                                                                             <button 
                                                                                                 onClick={() => shareOnWhatsApp(u.tenant, receipt)}
-                                                                                                className="p-1 px-1.5 hover:bg-green-50 text-green-600 rounded flex items-center gap-1 transition-colors border border-green-100"
+                                                                                                className="p-1 px-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-md flex items-center gap-1.5 transition-all border border-green-200 shadow-sm"
                                                                                                 title="Partager sur WhatsApp"
                                                                                             >
-                                                                                                <Send className="h-3 w-3" />
-                                                                                                <span className="text-[10px] font-bold">WhatsApp</span>
+                                                                                                <Send className="h-3.5 w-3.5" />
+                                                                                                <span className="text-[10px] font-black uppercase tracking-wider">WhatsApp</span>
                                                                                             </button>
                                                                                             <div className="w-[1px] h-3 bg-border mx-1"></div>
-                                                                                            <span className="text-[10px] font-medium text-muted-foreground px-1">
+                                                                                            <span className="text-[10px] font-bold text-primary px-1">
                                                                                                 {formatCurrency(receipt.amount)}
                                                                                             </span>
                                                                                         </div>
@@ -782,6 +799,13 @@ export const ManagementTable = ({
                     </ScrollArea>
                 </div>
             </CardContent>
+            <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                title={confirmConfig.title}
+                description={confirmConfig.description}
+                onConfirm={confirmConfig.onConfirm}
+            />
         </Card>
     );
 };

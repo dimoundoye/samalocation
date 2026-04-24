@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, BedDouble, Home, CheckCircle2, Phone, ArrowRight, Square, Bath, Shield } from "lucide-react";
+import { MapPin, BedDouble, Home, CheckCircle2, Phone, ArrowRight, Square, Bath, Shield, Layers, Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -21,6 +21,7 @@ interface PropertyCardProps {
   status: "available" | "occupied";
   bedrooms?: number;
   bathrooms?: number;
+  roomsCount?: number;
   area?: number;
   isApplied?: boolean;
   rentPeriod?: "jour" | "semaine" | "mois";
@@ -42,6 +43,7 @@ const PropertyCard = ({
   status,
   bedrooms,
   bathrooms,
+  roomsCount,
   area,
   isApplied,
   rentPeriod = "mois",
@@ -108,6 +110,27 @@ const PropertyCard = ({
       setIsFavoriteLoading(false);
     }
   };
+  
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/property/${id}`;
+    const shareTitle = `${title} | SamaLocation`;
+    const shareText = `${t('common.type')}: ${type} à ${location}. ${price > 0 ? `${price.toLocaleString()} F CFA` : t('property.on_request')}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: shareUrl,
+      }).catch((error) => console.log('Error sharing', error));
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: t('common.link_copied'),
+        description: t('common.link_copied_desc'),
+      });
+    }
+  };
 
   const periodLabels: Record<string, string> = {
     jour: t('period.jour'),
@@ -117,7 +140,11 @@ const PropertyCard = ({
 
   const resolvedPeriod = periodLabels[rentPeriod] ?? t('period.mois');
 
-  const handleViewDetails = () => {
+  const handleViewDetails = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
     if (id) {
       navigate(`/property/${id}`);
     } else {
@@ -189,6 +216,15 @@ const PropertyCard = ({
         >
           <Heart className={`h-4 w-4 sm:h-5 sm:w-5 ${isFavorite ? "fill-current" : ""}`} />
         </button>
+
+        {/* Share Button */}
+        <button
+          onClick={handleShare}
+          className="absolute top-10 right-2 sm:top-14 sm:right-3 p-1.5 sm:p-2 rounded-full z-30 bg-white/80 text-gray-600 hover:bg-white hover:text-primary shadow-md transition-all duration-300"
+          title={t('common.share') || "Partager"}
+        >
+          <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
+        </button>
       </div>
 
       <div className="flex flex-col flex-1 min-w-0">
@@ -231,6 +267,12 @@ const PropertyCard = ({
                 <div className="flex items-center gap-1">
                   <Bath className="h-3 w-3 shrink-0 text-accent" />
                   <span>{bathrooms} {t('property.bathrooms_short')}</span>
+                </div>
+              )}
+              {roomsCount > 0 && (
+                <div className="flex items-center gap-1">
+                  <Layers className="h-3 w-3 shrink-0 text-accent" />
+                  <span>{roomsCount} {t('property.rooms_short') || "p."}</span>
                 </div>
               )}
             </div>

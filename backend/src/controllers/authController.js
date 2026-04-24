@@ -350,7 +350,10 @@ const authController = {
                 name: finalName,
                 phone: phone || '',
                 role: 'tenant',
-                isSetupComplete: false
+                isSetupComplete: false,
+                // Le compte est créé par le propriétaire, l'e-mail est déjà connu :
+                // on marque directement comme vérifié pour que le locataire puisse se connecter
+                emailVerified: true
             });
 
             return response.success(res, {
@@ -380,19 +383,39 @@ const authController = {
                 return response.error(res, 'Le mot de passe doit contenir au moins 8 caractères', 400);
             }
 
-            // Update profile
+            // Update profile info
             await User.finalizeProfile(userId, { name, email, phone });
 
-            // Update password
+            // Générer un token de vérification d'email (même mécanisme que l'inscription normale)
+            const verificationToken = crypto.randomBytes(32).toString('hex');
+            const verificationTokenExpires = new Date();
+            verificationTokenExpires.setHours(verificationTokenExpires.getHours() + 24);
+
+            // Update password + mark setup complete + reset email_verified to false
             const hashedPassword = await bcrypt.hash(newPassword, 10);
-            const db = require('../config/db');
-            await db.query('UPDATE users SET password_hash = $1, is_setup_complete = TRUE WHERE id = $2', [hashedPassword, userId]);
+            await db.query(
+                `UPDATE users 
+                 SET password_hash = $1, 
+                     is_setup_complete = TRUE, 
+                     email_verified = FALSE,
+                     verification_token = $2, 
+                     verification_token_expires = $3
+                 WHERE id = $4`,
+                [hashedPassword, verificationToken, verificationTokenExpires, userId]
+            );
 
             // Synchronize name and email in tenants table
             await db.query('UPDATE tenants SET full_name = $1, email = $2, phone = $3 WHERE user_id = $4', [name, email, phone, userId]);
 
-            return response.success(res, null, 'Configuration terminée avec succès');
+            // Envoyer l'email de vérification (asynchrone, ne bloque pas la réponse)
+            console.log(`📧 [completeSetup] Envoi email vérification à : ${email}`);
+            sendVerificationEmail(email, verificationToken).catch(err => {
+                console.error('❌ Erreur envoi e-mail vérification (completeSetup) :', err);
+            });
+
+            return response.success(res, null, 'Configuration terminée ! Un e-mail de confirmation vous a été envoyé.');
         } catch (error) {
+
             next(error);
         }
     },

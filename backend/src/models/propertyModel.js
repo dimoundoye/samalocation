@@ -104,7 +104,7 @@ const Property = {
         const propertyIds = rows.map(r => r.id);
 
         const { rows: allUnits } = await db.query(
-            'SELECT id, property_id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, area_sqm, rent_period, unit_number FROM property_units WHERE property_id = ANY($1)',
+            'SELECT id, property_id, monthly_rent, is_available, unit_type, bedrooms, bathrooms, rooms_count, area_sqm, rent_period, unit_number FROM property_units WHERE property_id = ANY($1)',
             [propertyIds]
         );
 
@@ -141,12 +141,23 @@ const Property = {
     },
 
     async create(data) {
-        const { id, owner_id, property_type, name, address, latitude, longitude, description, photos, photo_url, equipments } = data;
+        const { id, owner_id, property_type, name, address, latitude, longitude, description, photos, photo_url, equipments, units } = data;
 
         await db.query(
             'INSERT INTO properties (id, owner_id, property_type, name, address, latitude, longitude, description, photos, photo_url, is_published, equipments) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, $11)',
             [id, owner_id, property_type, name, address, latitude || null, longitude || null, description, JSON.stringify(photos || []), photo_url, JSON.stringify(equipments || [])]
         );
+
+        // Handle units creation if provided
+        if (units && Array.isArray(units)) {
+            for (const unit of units) {
+                const unitId = uuidv4();
+                await db.query(
+                    'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, rooms_count, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+                    [unitId, id, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.rooms_count, unit.description, true, unit.rent_period || 'mois']
+                );
+            }
+        }
 
         return this.findById(id);
     },
@@ -174,8 +185,8 @@ const Property = {
         for (const unit of units) {
             const unitId = uuidv4();
             await db.query(
-                'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, rooms_count, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11)',
-                [unitId, propertyId, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.rooms_count, unit.description, unit.rent_period || 'mois']
+                'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, rooms_count, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+                [unitId, propertyId, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.rooms_count, unit.description, true, unit.rent_period || 'mois']
             );
         }
 
@@ -325,8 +336,8 @@ const Property = {
                     // Create new unit
                     const unitId = uuidv4();
                     await db.query(
-                        'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, rooms_count, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11)',
-                        [unitId, id, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.rooms_count, unit.description, unit.rent_period || 'mois']
+                        'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, rooms_count, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+                        [unitId, id, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.rooms_count, unit.description, true, unit.rent_period || 'mois']
                     );
                 }
             }

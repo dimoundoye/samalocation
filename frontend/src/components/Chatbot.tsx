@@ -45,8 +45,8 @@ const Chatbot = () => {
 
             const aiResponse = await getAIChatResponse(userMessage, history);
             setMessages((prev) => [...prev, { role: "model", text: aiResponse }]);
-        } catch (error) {
-            setMessages((prev) => [...prev, { role: "model", text: "Désolé, je n'arrive pas à joindre le serveur IA. Assurez-vous que le backend tourne localement sur le port 5000." }]);
+        } catch (error: any) {
+            setMessages((prev) => [...prev, { role: "model", text: "Désolé, je rencontre une petite erreur technique. Veuillez réessayer dans quelques instants ! 🛠️" }]);
         } finally {
             setLoading(false);
         }

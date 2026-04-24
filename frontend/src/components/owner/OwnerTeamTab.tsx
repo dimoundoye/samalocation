@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,8 @@ export const OwnerTeamTab = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form state
@@ -122,11 +125,16 @@ export const OwnerTeamTab = () => {
         }
     };
 
-    const handleRemoveCollaborator = async (memberId: string) => {
-        if (!window.confirm("Êtes-vous sûr de vouloir retirer ce collaborateur de votre équipe ?")) return;
+    const handleRemoveCollaborator = (memberId: string) => {
+        setSelectedMemberId(memberId);
+        setConfirmOpen(true);
+    };
+
+    const confirmRemoveCollaborator = async () => {
+        if (!selectedMemberId) return;
 
         try {
-            await removeCollaborator(memberId);
+            await removeCollaborator(selectedMemberId);
             toast({
                 title: "Succès",
                 description: "Le collaborateur a été retiré de l'équipe."
@@ -138,6 +146,8 @@ export const OwnerTeamTab = () => {
                 description: "Impossible de retirer le collaborateur.",
                 variant: "destructive"
             });
+        } finally {
+            setSelectedMemberId(null);
         }
     };
 
@@ -394,6 +404,13 @@ export const OwnerTeamTab = () => {
                     </p>
                 </div>
             </div>
+            <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                title="Retirer un collaborateur"
+                description="Êtes-vous sûr de vouloir retirer ce collaborateur de votre équipe ?"
+                onConfirm={confirmRemoveCollaborator}
+            />
         </div>
     );
 };

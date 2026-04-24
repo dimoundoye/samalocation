@@ -1,9 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /admin/
-Disallow: /admin-dashboard/
-Disallow: /owner-dashboard/
-Disallow: /tenant-dashboard/
-Disallow: /api/
 
+# Sitemaps
 Sitemap: https://samalocation.com/sitemap.xml

@@ -2,10 +2,15 @@ import Navbar from "@/components/Navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SEO from "@/components/SEO";
 
 const Privacy = () => {
   return (
     <div className="min-h-screen bg-background pb-12">
+      <SEO 
+        title="Politique de Confidentialité | Samalocation"
+        description="Découvrez comment Samalocation protège vos données personnelles. Nous nous engageons à respecter la confidentialité de nos utilisateurs au Sénégal."
+      />
       <Navbar />
 
       <div className="pt-24 pb-16 px-4">

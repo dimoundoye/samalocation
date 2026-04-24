@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock } from "lucide-react";
 import { baseClient } from "@/api/baseClient";
 import { useTranslation } from "react-i18next";
+import SEO from "@/components/SEO";
 
 const Contact = () => {
     const { toast } = useToast();
@@ -55,6 +56,10 @@ const Contact = () => {
 
     return (
         <div className="min-h-screen bg-background">
+            <SEO 
+                title="Contactez-nous | Samalocation"
+                description="Une question ou un besoin d'assistance ? Contactez l'équipe Samalocation. Nous sommes à votre écoute pour vous accompagner dans votre gestion immobilière."
+            />
             <Navbar />
 
             <main className="pt-24 pb-16 px-4">

@@ -23,18 +23,19 @@ services:
     image: prodrigestivill/postgres-backup-local:16-alpine
     container_name: samalocation-supabase-backup
     restart: always
-    user: postgres:postgres
     volumes:
       - ./backups:/backups
     environment:
       - POSTGRES_HOST=aws-1-eu-west-1.pooler.supabase.com
-      - POSTGRES_PORT=6543
+      - POSTGRES_PORT=5432
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres.oleotkybcuvndaoevvrj
-      - POSTGRES_PASSWORD=n9Zh6cSHscySTLDG
+      - POSTGRES_PASSWORD=n9Zh6cSHscySTlDG
       - SCHEDULE=@daily
       - BACKUP_KEEP_DAYS=7
       - BACKUP_SUFFIX=.sql
+      - POSTGRES_EXTRA_OPTS=--no-owner --no-privileges
+      - BACKUP_ON_START=TRUE
     networks:
       - samalocation-network
 

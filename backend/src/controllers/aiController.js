@@ -23,7 +23,7 @@ const aiController = {
 
             // Log usage
             await AIUsage.log({
-                user_id: req.user?.id,
+                user_id: req.ownerId,
                 action: 'description_generation'
             });
 
@@ -44,7 +44,7 @@ const aiController = {
 
             // Log usage (user_id might be null for public search)
             await AIUsage.log({
-                user_id: req.user?.id,
+                user_id: req.ownerId || req.user?.id,
                 action: 'smart_search'
             });
 
@@ -65,7 +65,7 @@ const aiController = {
 
             // Log usage
             await AIUsage.log({
-                user_id: req.user?.id,
+                user_id: req.ownerId || req.user?.id || null,
                 action: 'chat'
             });
 

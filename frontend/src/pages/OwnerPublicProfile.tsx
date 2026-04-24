@@ -29,7 +29,10 @@ import {
   Building2,
   Calendar,
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  Share2,
+  Link as LinkIcon,
+  Send
 } from "lucide-react";
 import { formatImageUrl } from "@/lib/property";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +40,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import SEO from "@/components/SEO";
 
 const OwnerPublicProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -112,6 +116,39 @@ const OwnerPublicProfile = () => {
     }
   };
 
+  const handleShare = (platform?: 'whatsapp' | 'facebook' | 'copy') => {
+    const shareUrl = window.location.href;
+    const agencyName = profile.company_name || profile.full_name;
+    const shareTitle = `Agence ${agencyName} | SamaLocation`;
+    const shareText = `Découvrez le catalogue immobilier de ${agencyName} sur SamaLocation.`;
+
+    if (!platform && navigator.share) {
+      navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: shareUrl,
+      }).catch((error) => console.log('Error sharing', error));
+      return;
+    }
+
+    switch (platform) {
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
+        break;
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+        break;
+      case 'copy':
+      default:
+        navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: "Lien copié",
+          description: "Le lien vers le profil de l'agence a été copié.",
+        });
+        break;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -156,6 +193,12 @@ const OwnerPublicProfile = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50/50 flex flex-col">
+      <SEO 
+        title={`Agence ${profile.company_name || profile.full_name}`}
+        description={`Découvrez le catalogue immobilier de ${profile.company_name || profile.full_name} sur Samalocation. ${profile.bio?.substring(0, 150) || "Agence immobilière partenaire au Sénégal."}`}
+        image={profile.logo_url}
+        type="profile"
+      />
       <Navbar />
       
       {/* Back Button */}
@@ -236,6 +279,13 @@ const OwnerPublicProfile = () => {
                   </a>
                 </Button>
               )}
+              <Button 
+                variant="outline" 
+                className="bg-white/10 border-white/20 text-white backdrop-blur-md hover:bg-white/20 h-12"
+                onClick={() => handleShare()}
+              >
+                <Share2 className="w-5 h-5 mr-2" /> Partager
+              </Button>
             </div>
           </div>
         </div>

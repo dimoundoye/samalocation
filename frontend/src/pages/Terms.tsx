@@ -2,10 +2,15 @@ import Navbar from "@/components/Navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SEO from "@/components/SEO";
 
 const Terms = () => {
     return (
         <div className="min-h-screen bg-background pb-12">
+            <SEO 
+                title="Conditions d'Utilisation | Samalocation"
+                description="Consultez les conditions d'utilisation de Samalocation. Apprenez-en plus sur nos règles de sécurité, de mise en relation et de gestion immobilière au Sénégal."
+            />
             <Navbar />
 
             <div className="pt-24 pb-16 px-4">

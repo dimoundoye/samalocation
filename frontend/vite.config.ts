@@ -33,6 +33,16 @@ export default defineConfig(({ mode }) => ({
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        // Critical fix: Tell the SW to serve index.html for all navigation requests
+        // that don't match a precached asset. This is the SPA fallback pattern.
+        navigateFallback: '/index.html',
+        // Exclude API calls and PDF/file downloads from the navigate fallback
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /\/download$/,
+          /\.pdf$/,
+          /^\/uploads\//,
+        ],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
