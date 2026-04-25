@@ -27,7 +27,7 @@ services:
       - ./backups:/backups
     environment:
       - POSTGRES_HOST=aws-1-eu-west-1.pooler.supabase.com
-      - POSTGRES_PORT=5432
+      - POSTGRES_PORT=6543
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres.oleotkybcuvndaoevvrj
       - POSTGRES_PASSWORD=n9Zh6cSHscySTlDG
