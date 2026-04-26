@@ -66,27 +66,27 @@ export const OnboardingChecklist = ({ stats, ownerProfile, onAction, onAddProper
     return (
         <Card className="border-none shadow-lg bg-gradient-to-br from-primary/5 via-white to-accent/5 overflow-hidden mb-8 border-l-4 border-l-primary animate-in fade-in slide-in-from-top duration-500">
             <CardContent className="p-4 sm:p-6">
-                <div className="flex flex-row items-start justify-between gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-lg bg-primary/10">
+                            <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
                                 <Zap className="h-5 w-5 text-primary fill-primary" />
                             </div>
-                            <h2 className="text-xl font-bold text-slate-900 leading-none">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">
                                 Bienvenue sur Samalocation !
                             </h2>
                         </div>
-                        <p className="text-[12px] sm:text-sm text-muted-foreground ml-7 sm:ml-9">
+                        <p className="text-[12px] sm:text-sm text-muted-foreground ml-9 sm:ml-9">
                             Suivez ces étapes pour configurer votre compte professionnel en quelques minutes.
                         </p>
                     </div>
 
-                    <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="flex flex-col items-start sm:items-end gap-2 shrink-0 sm:mt-1 ml-9 sm:ml-0">
                         <div className="flex items-center gap-2 text-[12px] sm:text-sm font-bold whitespace-nowrap">
                             <span className="text-primary">{completedCount} sur {steps.length} complété</span>
                             <span className="text-slate-400">({Math.round(progress)}%)</span>
                         </div>
-                        <Progress value={progress} className="w-24 sm:w-48 h-1.5 sm:h-2 bg-slate-100" />
+                        <Progress value={progress} className="w-full max-w-[200px] sm:w-48 h-1.5 sm:h-2 bg-slate-100" />
                     </div>
                 </div>
 

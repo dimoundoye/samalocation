@@ -846,18 +846,18 @@ const DashboardProprietaire = () => {
         <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b">
           <div
             className={`${activeTab === "management" ? "max-w-full" : "max-w-7xl"
-              } mx-auto px-4 md:px-8 py-4 flex items-center justify-between`}
+              } mx-auto px-3 sm:px-8 py-3 sm:py-4 flex items-center justify-between`}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               {/* Mobile Menu */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="md:hidden h-12 w-12"
+                    className="md:hidden h-10 w-10 sm:h-12 sm:w-12 shrink-0"
                   >
-                    <Menu className="h-7 w-7" />
+                    <Menu className="h-5 w-5 sm:h-7 sm:w-7" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[85vw] sm:w-72 p-0 border-r-0">
@@ -866,7 +866,7 @@ const DashboardProprietaire = () => {
                   </div>
                 </SheetContent>
               </Sheet>
-              <h2 className="text-xl font-bold md:hidden truncate max-w-[150px]">
+              <h2 className="text-base sm:text-xl font-bold md:hidden truncate flex-1 min-w-0 max-w-[180px] sm:max-w-[350px]">
                 {activeTab === "dashboard"
                   ? "Dashboard"
                   : activeTab === "properties"
@@ -892,15 +892,15 @@ const DashboardProprietaire = () => {
             </div>
 
             {/* Right Side - Theme, Notifications & User Profile */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors h-9 w-9 sm:h-10 sm:w-10"
                 onClick={() => setActiveTab("guide")}
                 title="Aide & Guide"
               >
-                <HelpCircle className="h-5 w-5" />
+                <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <ThemeToggle />
               <NotificationBell />
@@ -1653,52 +1653,52 @@ const DashboardProprietaire = () => {
 
                                 <div className="flex flex-wrap gap-2 pt-4 border-t border-dashed">
                                   <Button
-                                    variant="secondary"
+                                    variant="outline"
                                     size="sm"
-                                    className="flex-1 h-9 text-xs bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700"
+                                    className="flex-1 h-10 text-xs font-bold bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
                                     onClick={() => {
                                       setSelectedChat(tenant);
                                       setActiveTab("messages");
                                     }}
                                   >
-                                    <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                                    <MessageSquare className="h-4 w-4 mr-1.5" />
                                     Chat
                                   </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1 h-9 text-xs bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700"
+                                    className="flex-1 h-10 text-xs font-bold bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
                                     onClick={() => {
                                       setSelectedPropertyForReceipt(tenant);
                                       setCreateReceiptOpen(true);
                                     }}
                                   >
-                                    <ReceiptIcon className="h-3.5 w-3.5 mr-1.5" />
+                                    <ReceiptIcon className="h-4 w-4 mr-1.5" />
                                     {t('common.receipt')}
                                   </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1 h-9 text-xs bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700"
+                                    className="flex-1 h-10 text-xs font-bold bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
                                     onClick={() => {
                                       setSelectedTenantForContract(tenant);
                                       setCreateContractOpen(true);
                                     }}
                                   >
-                                    <FileSignature className="h-3.5 w-3.5 mr-1.5" />
+                                    <FileSignature className="h-4 w-4 mr-1.5" />
                                     Bail
                                   </Button>
                                   <div className="flex gap-2 w-full mt-1">
                                     <Button
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
-                                      className="flex-1 h-9 text-xs border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                                      className="flex-1 h-10 text-xs font-bold bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
                                       onClick={() => {
                                         setSelectedTenantForHistory(tenant);
                                         setHistoryDialogOpen(true);
                                       }}
                                     >
-                                      <History className="h-3.5 w-3.5 mr-1.5" />
+                                      <History className="h-4 w-4 mr-1.5" />
                                       Historique
                                     </Button>
                                     <Button
@@ -1762,9 +1762,9 @@ const DashboardProprietaire = () => {
                                     <TableCell>
                                       <div className="flex gap-2">
                                         <Button
-                                          variant="ghost"
+                                          variant="outline"
                                           size="sm"
-                                          className="h-9 w-9 p-0 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                          className="h-9 w-9 p-0 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700 shadow-sm transition-all hover:scale-105"
                                           onClick={() => {
                                             setSelectedChat(tenant);
                                             setActiveTab("messages");
@@ -1776,19 +1776,19 @@ const DashboardProprietaire = () => {
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          className="h-9 gap-1.5 bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700"
+                                          className="h-9 gap-1.5 bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 shadow-sm transition-all hover:scale-105"
                                           onClick={() => {
                                             setSelectedPropertyForReceipt(tenant);
                                             setCreateReceiptOpen(true);
                                           }}
                                         >
                                           <ReceiptIcon className="h-4 w-4" />
-                                          <span className="hidden lg:inline">{t('common.receipt')}</span>
+                                          <span className="hidden lg:inline font-bold">{t('common.receipt')}</span>
                                         </Button>
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          className="h-9 w-9 p-0 hover:bg-slate-50 hover:text-slate-600 transition-colors"
+                                          className="h-9 w-9 p-0 bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-700 shadow-sm transition-all hover:scale-105"
                                           onClick={() => {
                                             setSelectedTenantForHistory(tenant);
                                             setHistoryDialogOpen(true);
@@ -1800,7 +1800,7 @@ const DashboardProprietaire = () => {
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          className="h-9 gap-1.5 bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700"
+                                          className="h-9 gap-1.5 bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700 shadow-sm transition-all hover:scale-105"
                                           onClick={() => {
                                             setSelectedTenantForContract(tenant);
                                             setCreateContractOpen(true);
@@ -1808,7 +1808,7 @@ const DashboardProprietaire = () => {
                                           title="Contrat de bail"
                                         >
                                           <FileSignature className="h-4 w-4" />
-                                          <span className="hidden lg:inline">Bail</span>
+                                          <span className="hidden lg:inline font-bold">Bail</span>
                                         </Button>
                                         <Button
                                           variant="ghost"

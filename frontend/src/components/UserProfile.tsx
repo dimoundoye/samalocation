@@ -47,7 +47,7 @@ export const UserProfile = ({ onSettingsClick }: UserProfileProps) => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <Avatar className="h-10 w-10 cursor-pointer">
+          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 cursor-pointer shrink-0">
             <AvatarImage src="" alt={userName} />
             <AvatarFallback className="bg-primary text-white">
               {getInitials()}

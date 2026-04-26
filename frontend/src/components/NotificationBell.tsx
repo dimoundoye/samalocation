@@ -125,7 +125,7 @@ export const NotificationBell = () => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon" className="relative">
+        <Button variant="outline" size="icon" className="relative h-8 w-8 sm:h-10 sm:w-10 shrink-0">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <Badge

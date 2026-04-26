@@ -59,13 +59,14 @@ const subscriptionController = {
                 // Show latest sub info (even if pending) for status tracking
                 ...(latestSub || { plan_name: 'gratuit', status: 'active' }),
                 properties_count: unitsCount, // On garde le nom de clé pour la compatibilité frontend temporaire
-                properties_limit: sanitize(planConfig.limits.max_properties),
+                properties_limit: sanitize(planConfig.limits.max_tenants), // Utilise max_tenants pour refléter la gérance réelle
                 receipts_this_month: receiptsThisMonth,
                 receipts_limit: sanitize(planConfig.limits.max_receipts_per_month),
                 referral_count: referralCount,
                 limits: {
                     ...planConfig.limits,
                     max_properties: sanitize(planConfig.limits.max_properties),
+                    max_tenants: sanitize(planConfig.limits.max_tenants),
                     max_receipts_per_month: sanitize(planConfig.limits.max_receipts_per_month),
                     ai_descriptions_per_month: sanitize(planConfig.limits.ai_descriptions_per_month)
                 }

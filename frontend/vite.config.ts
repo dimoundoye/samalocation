@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logo-sl.png', 'robots.txt', 'apple-touch-icon.png', 'android-chrome-192x192.png', 'android-chrome-512x512.png', 'favicon-16x16.png', 'favicon-32x32.png', 'manifest.json', 'site.webmanifest'],
+      includeAssets: ['favicon.ico', 'logo-sl.png', 'robots.txt', 'apple-touch-icon.png', 'android-chrome-192x192.png', 'android-chrome-512x512.png', 'favicon-16x16.png', 'favicon-32x32.png', 'manifest.json', 'site.webmanifest', 'contrat_standard.pdf', 'contrat_premium.pdf'],
       manifest: {
         name: 'Samalocation',
         short_name: 'Samalocation',

@@ -74,13 +74,13 @@ export const ContractModelPreview = () => {
                                             <p className="text-xs text-muted-foreground">Idéal pour les locations résidentielles classiques au Sénégal. Sans états des lieux</p>
                                         </div>
                                         <Button size="sm" variant="ghost" className="gap-2" asChild>
-                                            <a href="/contrat_standard.pdf" download>
+                                            <a href={`${window.location.origin}/contrat_standard.pdf`} download>
                                                 <Download className="h-4 w-4" /> Télécharger
                                             </a>
                                         </Button>
                                     </div>
                                     <iframe
-                                        src="/contrat_standard.pdf#toolbar=0"
+                                        src={`${window.location.origin}/contrat_standard.pdf#toolbar=0`}
                                         className="w-full flex-1 border-none"
                                         title="Modèle Standard"
                                     />
@@ -97,13 +97,13 @@ export const ContractModelPreview = () => {
                                             <p className="text-xs text-slate-400">Clauses renforcées. Avec états des lieux</p>
                                         </div>
                                         <Button size="sm" variant="secondary" className="gap-2 bg-white text-slate-900 hover:bg-slate-100" asChild>
-                                            <a href="/contrat_premium.pdf" download>
+                                            <a href={`${window.location.origin}/contrat_premium.pdf`} download>
                                                 <Download className="h-4 w-4" /> Télécharger
                                             </a>
                                         </Button>
                                     </div>
                                     <iframe
-                                        src="/contrat_premium.pdf#toolbar=0"
+                                        src={`${window.location.origin}/contrat_premium.pdf#toolbar=0`}
                                         className="w-full flex-1 border-none"
                                         title="Modèle Premium"
                                     />
