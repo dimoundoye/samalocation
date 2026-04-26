@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2 } from "lucide-react";
+import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
@@ -1655,7 +1655,7 @@ const DashboardProprietaire = () => {
                                   <Button
                                     variant="secondary"
                                     size="sm"
-                                    className="flex-1 h-9 text-xs"
+                                    className="flex-1 h-9 text-xs bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700"
                                     onClick={() => {
                                       setSelectedChat(tenant);
                                       setActiveTab("messages");
@@ -1667,30 +1667,32 @@ const DashboardProprietaire = () => {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1 h-9 text-xs"
+                                    className="flex-1 h-9 text-xs bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700"
                                     onClick={() => {
                                       setSelectedPropertyForReceipt(tenant);
                                       setCreateReceiptOpen(true);
                                     }}
                                   >
+                                    <ReceiptIcon className="h-3.5 w-3.5 mr-1.5" />
                                     {t('common.receipt')}
                                   </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1 h-9 text-xs"
+                                    className="flex-1 h-9 text-xs bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700"
                                     onClick={() => {
                                       setSelectedTenantForContract(tenant);
                                       setCreateContractOpen(true);
                                     }}
                                   >
+                                    <FileSignature className="h-3.5 w-3.5 mr-1.5" />
                                     Bail
                                   </Button>
                                   <div className="flex gap-2 w-full mt-1">
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="flex-1 h-9 text-xs border bg-background"
+                                      className="flex-1 h-9 text-xs border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
                                       onClick={() => {
                                         setSelectedTenantForHistory(tenant);
                                         setHistoryDialogOpen(true);
@@ -1762,43 +1764,51 @@ const DashboardProprietaire = () => {
                                         <Button
                                           variant="ghost"
                                           size="sm"
+                                          className="h-9 w-9 p-0 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                                           onClick={() => {
                                             setSelectedChat(tenant);
                                             setActiveTab("messages");
                                           }}
+                                          title="Chat"
                                         >
                                           <MessageSquare className="h-4 w-4" />
                                         </Button>
                                         <Button
                                           variant="outline"
                                           size="sm"
+                                          className="h-9 gap-1.5 bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700"
                                           onClick={() => {
                                             setSelectedPropertyForReceipt(tenant);
                                             setCreateReceiptOpen(true);
                                           }}
                                         >
-                                          {t('common.receipt')}
+                                          <ReceiptIcon className="h-4 w-4" />
+                                          <span className="hidden lg:inline">{t('common.receipt')}</span>
                                         </Button>
                                         <Button
                                           variant="outline"
                                           size="sm"
+                                          className="h-9 w-9 p-0 hover:bg-slate-50 hover:text-slate-600 transition-colors"
                                           onClick={() => {
                                             setSelectedTenantForHistory(tenant);
                                             setHistoryDialogOpen(true);
                                           }}
+                                          title="Historique"
                                         >
                                           <History className="h-4 w-4" />
                                         </Button>
                                         <Button
                                           variant="outline"
                                           size="sm"
+                                          className="h-9 gap-1.5 bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700"
                                           onClick={() => {
                                             setSelectedTenantForContract(tenant);
                                             setCreateContractOpen(true);
                                           }}
                                           title="Contrat de bail"
                                         >
-                                          <FileText className="h-4 w-4" />
+                                          <FileSignature className="h-4 w-4" />
+                                          <span className="hidden lg:inline">Bail</span>
                                         </Button>
                                         <Button
                                           variant="ghost"

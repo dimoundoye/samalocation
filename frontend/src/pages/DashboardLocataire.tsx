@@ -917,7 +917,7 @@ const DashboardLocataire = () => {
                                     size="sm"
                                     variant="outline"
                                     onClick={() => handleDownloadReceipt(receipt.id)}
-                                    className="w-full sm:w-auto"
+                                    className="w-full sm:w-auto bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 transition-all"
                                   >
                                     <Download className="h-4 w-4 mr-2" />
                                     <span>{t('tenant.download_pdf')}</span>
