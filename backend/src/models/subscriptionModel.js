@@ -314,6 +314,8 @@ const Subscription = {
                 return planConfig.limits.multi_user;
             case 'inventory_contract':
                 return planConfig.limits.inventory_contract;
+            case 'electronic_signature':
+                return planConfig.limits.electronic_signature;
             default:
                 return true;
         }

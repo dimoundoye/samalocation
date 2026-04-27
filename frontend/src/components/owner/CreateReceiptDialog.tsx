@@ -20,10 +20,11 @@ interface CreateReceiptDialogProps {
     tenantId?: string; // Optional pre-selected tenant ID
     tenantName?: string; // Optional pre-selected tenant name
     monthlyRent?: number; // Optional pre-selected monthly rent
+    unitId?: string; // Optional pre-selected unit ID
     receipts?: any[]; // All receipts to help determine the next month
 }
 
-export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId, propertyName, tenantId, tenantName, monthlyRent, receipts = [] }: CreateReceiptDialogProps) => {
+export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId, propertyName, tenantId, tenantName, monthlyRent, unitId, receipts = [] }: CreateReceiptDialogProps) => {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [tenants, setTenants] = useState<any[]>([]);
@@ -35,7 +36,10 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         amount: "",
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: "virement",
-        notes: ""
+        notes: "",
+        period_type: 'mois' as 'mois' | 'semaine' | 'jour',
+        start_date: "",
+        end_date: ""
     });
     const { subscription, loading: subLoading } = useSubscription();
     const [upgradeModal, setUpgradeModal] = useState({
@@ -65,11 +69,12 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
 
         const selectedTenant = tenants.find(t => t.user_id === formData.tenant_id);
 
-        // Update amount if tenant has a defined rent
-        if (selectedTenant && selectedTenant.monthly_rent) {
+        // Update amount and period type if tenant has a defined rent
+        if (selectedTenant) {
             setFormData(prev => ({
                 ...prev,
-                amount: String(selectedTenant.monthly_rent)
+                amount: selectedTenant.monthly_rent ? String(selectedTenant.monthly_rent) : prev.amount,
+                period_type: selectedTenant.rent_period || 'mois'
             }));
         }
 
@@ -152,16 +157,18 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         try {
             setLoading(true);
 
-            // Trouver le unit_id pour ce locataire
+            // Trouver le unit_id pour ce locataire (si non fourni en prop)
             const selectedTenant = tenants.find(t => t.user_id === formData.tenant_id);
-            const unit_id = selectedTenant?.unit_id;
+            const final_unit_id = unitId || selectedTenant?.unit_id;
 
             await createReceipt({
                 ...formData,
-                unit_id,
+                unit_id: final_unit_id,
                 amount: Number(formData.amount),
                 month: Number(formData.month),
-                year: Number(formData.year)
+                year: Number(formData.year),
+                start_date: formData.period_type !== 'mois' ? formData.start_date : undefined,
+                end_date: formData.period_type !== 'mois' ? formData.end_date : undefined,
             });
 
             toast({
@@ -193,7 +200,10 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
             amount: "",
             payment_date: new Date().toISOString().split('T')[0],
             payment_method: "virement",
-            notes: ""
+            notes: "",
+            period_type: 'mois',
+            start_date: "",
+            end_date: ""
         });
         onOpenChange(false);
     };
@@ -258,45 +268,96 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="month">Mois</Label>
-                                    <Select
-                                        value={formData.month.toString()}
-                                        onValueChange={(value) => setFormData({ ...formData, month: Number(value) })}
-                                    >
-                                        <SelectTrigger id="month">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {months.map((month) => (
-                                                <SelectItem key={month.value} value={month.value.toString()}>
-                                                    {month.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="year">Année</Label>
-                                    <Select
-                                        value={formData.year.toString()}
-                                        onValueChange={(value) => setFormData({ ...formData, year: Number(value) })}
-                                    >
-                                        <SelectTrigger id="year">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {years.map((year) => (
-                                                <SelectItem key={year} value={year.toString()}>
-                                                    {year}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="period_type">Type de période</Label>
+                                <Select
+                                    value={formData.period_type}
+                                    onValueChange={(value: any) => setFormData({ ...formData, period_type: value })}
+                                >
+                                    <SelectTrigger id="period_type">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="mois">Mensuel</SelectItem>
+                                        <SelectItem value="semaine">Hebdomadaire</SelectItem>
+                                        <SelectItem value="jour">Journalier</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
+
+                            {formData.period_type === 'mois' ? (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="month">Mois</Label>
+                                        <Select
+                                            value={formData.month.toString()}
+                                            onValueChange={(value) => setFormData({ ...formData, month: Number(value) })}
+                                        >
+                                            <SelectTrigger id="month">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {months.map((month) => (
+                                                    <SelectItem key={month.value} value={month.value.toString()}>
+                                                        {month.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="year">Année</Label>
+                                        <Select
+                                            value={formData.year.toString()}
+                                            onValueChange={(value) => setFormData({ ...formData, year: Number(value) })}
+                                        >
+                                            <SelectTrigger id="year">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {years.map((year) => (
+                                                    <SelectItem key={year} value={year.toString()}>
+                                                        {year}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-4 p-3 bg-primary/5 rounded-lg border border-primary/10">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="start_date">Date de début</Label>
+                                        <Input
+                                            id="start_date"
+                                            type="date"
+                                            value={formData.start_date}
+                                            onChange={(e) => {
+                                                const start = e.target.value;
+                                                const date = new Date(start);
+                                                setFormData({ 
+                                                    ...formData, 
+                                                    start_date: start,
+                                                    month: date.getMonth() + 1,
+                                                    year: date.getFullYear()
+                                                });
+                                            }}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="end_date">Date de fin</Label>
+                                        <Input
+                                            id="end_date"
+                                            type="date"
+                                            value={formData.end_date}
+                                            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <Label htmlFor="amount">Montant (FCFA) *</Label>

@@ -4,6 +4,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 interface OnboardingChecklistProps {
     stats: {
@@ -50,7 +51,16 @@ export const OnboardingChecklist = ({ stats, ownerProfile, onAction, onAddProper
         },
         {
             id: "signature",
-            title: "Configurer votre signature numérique",
+            title: (
+                <div className="flex items-center gap-2">
+                    Configurer votre signature
+                    {!hasFeature('signature') && (
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200 text-[9px] h-4 px-1 leading-none uppercase">
+                            Premium
+                        </Badge>
+                    )}
+                </div>
+            ),
             description: "Essentiel pour valider vos contrats et quittances électroniquement.",
             completed: !!ownerProfile?.signature_url,
             action: () => onAction("settings"),

@@ -61,10 +61,10 @@ const Pricing = () => {
                 "Gestion des maintenances",
                 "Génération de reçus (5/mois)",
                 "Génération de baux (Standard)",
-                "Signature électronique",
                 "Support communautaire"
             ],
             notIncluded: [
+                "Signature électronique",
                 "Assistant IA Gemini",
                 "Import Excel de masse",
                 "Branding personnalisé"

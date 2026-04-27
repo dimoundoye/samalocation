@@ -8,7 +8,20 @@ const receiptController = {
      */
     async createReceipt(req, res, next) {
         try {
-            const { tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, notes } = req.body;
+            const { 
+                tenant_id, 
+                property_id, 
+                unit_id, 
+                month, 
+                year, 
+                amount, 
+                payment_date, 
+                payment_method, 
+                notes,
+                period_type,
+                start_date,
+                end_date
+            } = req.body;
             const ownerId = req.ownerId;
 
             console.log('📋 Creating receipt with data:', {
@@ -19,7 +32,9 @@ const receiptController = {
                 amount,
                 payment_date,
                 payment_method,
-                notes,
+                period_type,
+                start_date,
+                end_date,
                 ownerId
             });
 
@@ -90,7 +105,10 @@ const receiptController = {
                 amount,
                 payment_date,
                 payment_method,
-                notes
+                notes,
+                period_type,
+                start_date,
+                end_date
             });
 
             console.log('✅ Receipt created successfully:', receipt);

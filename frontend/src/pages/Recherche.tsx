@@ -204,7 +204,7 @@ const Recherche = () => {
 
               {/* Advanced Range Filters (Only visible when search is not active on mobile or always on desktop) */}
               <div className={cn(
-                "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 transition-all duration-300 overflow-hidden",
+                "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 transition-all duration-300 overflow-hidden",
                 isSearchActive ? "max-h-0 sm:max-h-96 opacity-0 sm:opacity-100 mt-0 pointer-events-none sm:pointer-events-auto" : "max-h-96 opacity-100"
               )}>
                 <div className="space-y-1.5">
@@ -228,7 +228,7 @@ const Recherche = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Surface Min (m²)</Label>
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Surface Min</Label>
                   <Input
                     type="number"
                     placeholder="Min"
@@ -264,6 +264,26 @@ const Recherche = () => {
                     placeholder="Max"
                     value={maxBedrooms}
                     onChange={(e) => setMaxBedrooms(e.target.value)}
+                    className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Pièces Min</Label>
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    value={minRooms}
+                    onChange={(e) => setMinRooms(e.target.value)}
+                    className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Pièces Max</Label>
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    value={maxRooms}
+                    onChange={(e) => setMaxRooms(e.target.value)}
                     className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>

@@ -1,5 +1,5 @@
 const response = require('../utils/response');
-const geminiService = require('../utils/geminiService');
+const aiService = require('../utils/aiService');
 const AIUsage = require('../models/aiUsageModel');
 
 const aiController = {
@@ -11,7 +11,7 @@ const aiController = {
                 return response.error(res, "Veuillez fournir au moins le nom, le type ou l'adresse du bien pour générer une description.", 400);
             }
 
-            const description = await geminiService.generatePropertyDescription({
+            const description = await aiService.generatePropertyDescription({
                 name,
                 type,
                 address,
@@ -40,7 +40,7 @@ const aiController = {
                 return response.error(res, "Requête trop courte.", 400);
             }
 
-            const filters = await geminiService.parseSearchQuery(q);
+            const filters = await aiService.parseSearchQuery(q);
 
             // Log usage (user_id might be null for public search)
             await AIUsage.log({
@@ -61,7 +61,7 @@ const aiController = {
                 return response.error(res, "Message requis.", 400);
             }
 
-            const aiResponse = await geminiService.getChatResponse(message, history || []);
+            const aiResponse = await aiService.getChatResponse(message, history || []);
 
             // Log usage
             await AIUsage.log({

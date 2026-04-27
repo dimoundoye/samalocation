@@ -53,7 +53,7 @@ const Tenant = {
     async findByOwnerId(ownerId) {
         const { rows: tenants } = await db.query(`
             SELECT t.*, 
-                   pu.unit_number, pu.monthly_rent as unit_rent,
+                   pu.unit_number, pu.monthly_rent as unit_rent, pu.rent_period,
                    p.name as property_name, p.property_type, p.id as property_id
             FROM tenants t
             JOIN property_units pu ON t.unit_id = pu.id

@@ -14,7 +14,8 @@ const PLANS = {
             ai_descriptions_per_month: 0,
             custom_branding: false,
             excel_reports: false,
-            inventory_contract: false
+            inventory_contract: false,
+            electronic_signature: false
         }
     },
     PREMIUM: {
@@ -29,7 +30,8 @@ const PLANS = {
             ai_descriptions_per_month: 15, // Augmenté à 15 selon les détails
             custom_branding: false,
             excel_reports: false,
-            inventory_contract: true
+            inventory_contract: true,
+            electronic_signature: true
         }
     },
     PROFESSIONAL: {
@@ -45,7 +47,8 @@ const PLANS = {
             custom_branding: true,
             excel_reports: true,
             multi_user: true,
-            inventory_contract: true
+            inventory_contract: true,
+            electronic_signature: true
         }
     }
 };

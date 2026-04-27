@@ -2158,6 +2158,7 @@ const DashboardProprietaire = () => {
           propertyName={selectedPropertyForReceipt.property_name || t('common.property')}
           tenantId={selectedPropertyForReceipt.user_id}
           tenantName={selectedPropertyForReceipt.full_name}
+          unitId={selectedPropertyForReceipt.unit_id}
           monthlyRent={selectedPropertyForReceipt.monthly_rent}
           receipts={receipts}
           onSuccess={() => {

@@ -24,6 +24,49 @@ async function fetchImageSource(imageUrl) {
 }
 
 /**
+ * Formate un montant en FCFA avec des espaces pour les milliers
+ */
+function formatCurrency(amount) {
+    if (amount === undefined || amount === null || isNaN(amount)) return '0 FCFA';
+    const formatted = Math.floor(Number(amount)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    return `${formatted} FCFA`;
+}
+
+/**
+ * Retourne le libellé du loyer selon la période
+ */
+function getRentLabel(rentPeriod) {
+    switch (rentPeriod) {
+        case 'jour': return 'Loyer journalier';
+        case 'semaine': return 'Loyer hebdomadaire';
+        default: return 'Loyer mensuel';
+    }
+}
+
+/**
+ * Formate le libellé de la période (Mois ou Plage de dates)
+ */
+function formatPeriodLabel(receiptData) {
+    if (receiptData.period_type !== 'mois' && receiptData.start_date && receiptData.end_date) {
+        try {
+            const start = format(new Date(receiptData.start_date), 'dd/MM/yyyy');
+            const end = format(new Date(receiptData.end_date), 'dd/MM/yyyy');
+            return `Du ${start} au ${end}`;
+        } catch (e) {
+            console.error("Error formatting period dates:", e);
+        }
+    }
+    
+    const yearNum = parseInt(receiptData.year) || new Date().getFullYear();
+    const monthNum = parseInt(receiptData.month) || 1;
+    try {
+        return format(new Date(yearNum, monthNum - 1, 1), 'MMMM yyyy', { locale: fr });
+    } catch (e) {
+        return 'N/A';
+    }
+}
+
+/**
  * Générer un PDF de reçu de paiement
  * @param {Object} receiptData - Données complètes du reçu
  * @returns {Promise<PDFDocument>} - Document PDF (Promise)
@@ -85,27 +128,26 @@ async function drawClassicTemplate(doc, receiptData) {
 
     // Section Bien
     doc.fontSize(12).fillColor(primaryColor).text('BIEN LOUÉ', 50, doc.y, { underline: true }).moveDown(0.5);
+    const rentLabel = getRentLabel(receiptData.rent_period);
     doc.fontSize(10).fillColor(textColor)
         .text(`Propriété : ${receiptData.property_name || 'N/A'}`)
         .text(`Adresse : ${receiptData.property_address || 'N/A'}`)
         .text(`Unité : ${receiptData.unit_number || 'N/A'}`)
-        .text(`Loyer mensuel : ${receiptData.tenant_rent ? Number(receiptData.tenant_rent).toLocaleString('fr-FR') : 'N/A'} FCFA`)
+        .text(`${rentLabel} : ${formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent)}`)
         .moveDown(1.5);
 
     doc.strokeColor(grayColor).lineWidth(1).moveTo(50, doc.y).lineTo(550, doc.y).stroke().moveDown(1.5);
 
     // Détails paiement
     doc.fontSize(12).fillColor(primaryColor).text('DÉTAILS DU PAIEMENT', { underline: true }).moveDown(0.5);
-    const yearNum = parseInt(receiptData.year) || new Date().getFullYear();
-    const monthNum = parseInt(receiptData.month) || 1;
-    const monthName = format(new Date(yearNum, monthNum - 1, 1), 'MMMM yyyy', { locale: fr });
+    const periodLabel = formatPeriodLabel(receiptData);
     doc.fontSize(10).fillColor(textColor)
-        .text(`Période: ${monthName}`)
+        .text(`Période: ${periodLabel}`)
         .text(`Date de paiement: ${format(new Date(receiptData.payment_date), 'dd MMMM yyyy', { locale: fr })}`)
         .text(`Mode de paiement: ${receiptData.payment_method || 'Virement'}`)
         .moveDown(1);
 
-    doc.fontSize(16).fillColor(primaryColor).text(`MONTANT PAYÉ: ${Number(receiptData.amount).toLocaleString('fr-FR')} FCFA`, { align: 'center', bold: true }).moveDown(2);
+    doc.fontSize(16).fillColor(primaryColor).text(`MONTANT PAYÉ: ${formatCurrency(receiptData.amount)}`, { align: 'center', bold: true }).moveDown(2);
 
     if (receiptData.notes) {
         doc.fontSize(10).fillColor(grayColor).text(`Notes: ${receiptData.notes}`).moveDown(1);
@@ -152,11 +194,9 @@ async function drawModernTemplate(doc, receiptData) {
     doc.text('DATE', col1, detailsY + 30);
     doc.text('MODE', col1, detailsY + 60);
 
-    const yearNum = parseInt(receiptData.year) || new Date().getFullYear();
-    const monthNum = parseInt(receiptData.month) || 1;
-    const monthName = format(new Date(yearNum, monthNum - 1, 1), 'MMMM yyyy', { locale: fr });
+    const periodLabel = formatPeriodLabel(receiptData);
     doc.fillColor(accentColor).fontSize(11);
-    doc.text(monthName.toUpperCase(), col1 + 80, detailsY);
+    doc.text(periodLabel.toUpperCase(), col1 + 80, detailsY);
     doc.text(format(new Date(receiptData.payment_date), 'dd/MM/yyyy'), col1 + 80, detailsY + 30);
     doc.text((receiptData.payment_method || 'Virement').toUpperCase(), col1 + 80, detailsY + 60);
 
@@ -187,20 +227,20 @@ async function drawModernTemplate(doc, receiptData) {
     doc.text('PROPRIÉTÉ', col1, bienDetailsY);
     doc.text('ADRESSE', col1, bienDetailsY + 20);
     doc.text('UNITÉ', col2, bienDetailsY);
-    doc.text('LOYER MENSUEL', col2, bienDetailsY + 20);
+    doc.text(getRentLabel(receiptData.rent_period).toUpperCase(), col2, bienDetailsY + 20);
 
     doc.fillColor(accentColor).fontSize(10);
     doc.text(receiptData.property_name || 'N/A', col1 + 80, bienDetailsY);
     doc.text(receiptData.property_address || 'N/A', col1 + 80, bienDetailsY + 20);
     doc.text(receiptData.unit_number || 'N/A', col2 + 100, bienDetailsY);
-    doc.text(`${receiptData.tenant_rent ? Number(receiptData.tenant_rent).toLocaleString('fr-FR') : 'N/A'} FCFA`, col2 + 100, bienDetailsY + 20);
+    doc.text(formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent), col2 + 100, bienDetailsY + 20);
 
     // Section Montant Total
     doc.moveDown(3);
     const totalBoxY = doc.y;
     doc.rect(50, totalBoxY, 512, 50).fill('#f8fafc');
     doc.fillColor('#64748b').fontSize(10).text('MONTANT TOTAL PAYÉ', 70, totalBoxY + 18);
-    doc.fillColor(accentColor).fontSize(18).text(`${Number(receiptData.amount).toLocaleString('fr-FR')} FCFA`, 300, totalBoxY + 15, { bold: true, align: 'right', width: 240 });
+    doc.fillColor(accentColor).fontSize(18).text(formatCurrency(receiptData.amount), 300, totalBoxY + 15, { bold: true, align: 'right', width: 240 });
 
     doc.y = totalBoxY + 55;
 
@@ -259,7 +299,7 @@ async function drawMinimalTemplate(doc, receiptData) {
         .text(`Propriété : ${receiptData.property_name || 'N/A'}`)
         .text(`Adresse : ${receiptData.property_address || 'N/A'}`)
         .text(`Unité : ${receiptData.unit_number || 'N/A'}`)
-        .text(`Loyer mensuel : ${receiptData.tenant_rent ? Number(receiptData.tenant_rent).toLocaleString('fr-FR') : 'N/A'} FCFA`)
+        .text(`${getRentLabel(receiptData.rent_period)} : ${formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent)}`)
         .moveDown(1.5);
 
     doc.rect(50, doc.y, 512, 0.5).fill('#eeeeee');
@@ -267,17 +307,17 @@ async function drawMinimalTemplate(doc, receiptData) {
     doc.moveDown(1);
 
     // Détails du paiement
-    const monthName = format(new Date(receiptData.year, receiptData.month - 1), 'MMMM yyyy', { locale: fr });
+    const periodLabel = formatPeriodLabel(receiptData);
     doc.fontSize(10).text('DÉTAILS DU PAIEMENT:', { bold: true });
     doc.fontSize(10)
-        .text(`Objet : Loyer mensuel - ${monthName}`)
+        .text(`Objet : Location - ${periodLabel}`)
         .text(`Date de paiement : ${format(new Date(receiptData.payment_date), 'dd/MM/yyyy')}`)
         .text(`Mode de paiement : ${receiptData.payment_method || 'Virement'}`)
         .moveDown(1.5);
 
     // Montant
     doc.strokeColor(textColor).lineWidth(1).rect(50, doc.y, 512, 35).stroke();
-    doc.fillColor(textColor).fontSize(12).text(`MONTANT PAYÉ : ${Number(receiptData.amount).toLocaleString('fr-FR')} FCFA`, 65, doc.y + 11, { bold: true });
+    doc.fillColor(textColor).fontSize(12).text(`MONTANT PAYÉ : ${formatCurrency(receiptData.amount)}`, 65, doc.y + 11, { bold: true });
     doc.y += 35;
     doc.moveDown(1.5);
 
@@ -345,10 +385,6 @@ async function drawCorporateTemplate(doc, receiptData) {
 
     // Body content
     doc.fontSize(12).fillColor(primaryColor).text('OBJET DU PAIEMENT', { underline: true }).moveDown(0.5);
-    const yearNum = parseInt(receiptData.year) || new Date().getFullYear();
-    const monthNum = parseInt(receiptData.month) || 1;
-    const monthName = format(new Date(yearNum, monthNum - 1, 1), 'MMMM yyyy', { locale: fr });
-
     // Styled Table-like list
     const itemsY = doc.y;
     const drawItem = (label, value, y) => {
@@ -356,7 +392,7 @@ async function drawCorporateTemplate(doc, receiptData) {
         doc.fillColor(primaryColor).fontSize(10).text(value, 200, y, { bold: true });
     };
 
-    drawItem('Période de location', monthName.toUpperCase(), itemsY + 10);
+    drawItem('Période de location', formatPeriodLabel(receiptData).toUpperCase(), itemsY + 10);
     drawItem('Propriété louée', receiptData.property_name || 'N/A', itemsY + 30);
     drawItem('Adresse du bien', receiptData.property_address || 'N/A', itemsY + 50);
     drawItem('Date de règlement', format(new Date(receiptData.payment_date), 'dd/MM/yyyy'), itemsY + 70);
@@ -369,7 +405,7 @@ async function drawCorporateTemplate(doc, receiptData) {
     doc.strokeColor(primaryColor).lineWidth(1.5).rect(50, amountY, 512, 45).stroke();
     doc.fillColor('#f8fafc').rect(51, amountY + 1, 510, 43).fill();
     doc.fillColor(primaryColor).fontSize(14).text(`MONTANT NET PERÇU :`, 70, amountY + 15, { bold: true });
-    doc.fontSize(16).text(`${Number(receiptData.amount).toLocaleString('fr-FR')} FCFA`, 300, amountY + 14, { bold: true, align: 'right', width: 240 });
+    doc.fontSize(16).text(formatCurrency(receiptData.amount), 300, amountY + 14, { bold: true, align: 'right', width: 240 });
 
     doc.y = amountY + 70;
 

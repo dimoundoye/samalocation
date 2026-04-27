@@ -253,25 +253,48 @@ export const ManagementTable = ({
             .replace("XOF", "F CFA");
     };
 
-    const getReceiptForNode = (unitId: string, tenant: Tenant | null | undefined, monthId: number) => {
-        if (!receipts) return null;
+    const getReceiptsForMonth = (unitId: string, tenant: Tenant | null | undefined, monthId: number) => {
+        if (!receipts) return [];
         const year = parseInt(selectedYear);
-        return receipts.find(r => {
+        
+        return receipts.filter(r => {
             const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
             const rMonth = typeof r.month === 'string' ? parseInt(r.month) : r.month;
-            if (rYear !== year || rMonth !== monthId) return false;
+            
+            // Check by year/month first (legacy and standard monthly)
+            const matchesMonth = rYear === year && rMonth === monthId;
+            
+            // Check if receipt period overlaps with this month (for day/week receipts)
+            let overlaps = false;
+            if (r.start_date && r.end_date) {
+                const startDate = new Date(r.start_date);
+                const endDate = new Date(r.end_date);
+                const monthStart = new Date(year, monthId - 1, 1);
+                const monthEnd = new Date(year, monthId, 0);
+                
+                overlaps = (startDate <= monthEnd && endDate >= monthStart);
+            }
+
+            if (!matchesMonth && !overlaps) return false;
 
             const rUnitId = r.unit_id ? String(r.unit_id) : null;
             const targetUnitId = unitId ? String(unitId) : null;
-            if (rUnitId && targetUnitId && rUnitId === targetUnitId) return true;
+            
+            // Priority 1: Strict unit match if unit_id exists in receipt
+            if (rUnitId && targetUnitId) {
+                return rUnitId === targetUnitId;
+            }
 
-            const rTenantId = (r as any).tenant_id ? String((r as any).tenant_id) : null;
-            const rUserId = (r as any).user_id ? String((r as any).user_id) : null;
-            const tId = tenant?.id ? String(tenant.id) : null;
-            const tUserId = tenant?.user_id ? String(tenant.user_id) : null;
+            // Priority 2: Fallback to tenant match only if receipt has no unit_id (legacy)
+            if (!rUnitId) {
+                const rTenantId = (r as any).tenant_id ? String((r as any).tenant_id) : null;
+                const rUserId = (r as any).user_id ? String((r as any).user_id) : null;
+                const tId = tenant?.id ? String(tenant.id) : null;
+                const tUserId = tenant?.user_id ? String(tenant.user_id) : null;
 
-            if (tId && (rTenantId === tId || rUserId === tId)) return true;
-            if (tUserId && (rTenantId === tUserId || rUserId === tUserId)) return true;
+                if (tId && (rTenantId === tId || rUserId === tId)) return true;
+                if (tUserId && (rTenantId === tUserId || rUserId === tUserId)) return true;
+            }
 
             return false;
         });
@@ -290,8 +313,8 @@ export const ManagementTable = ({
                     (node.units || []).forEach(({ unit, tenant }: any) => {
                         let annualTotal = 0;
                         const monthlyAmounts = months.map(month => {
-                            const receipt = getReceiptForNode(unit?.id, tenant, month.id);
-                            const amount = receipt ? (typeof receipt.amount === 'number' ? receipt.amount : parseFloat(receipt.amount) || 0) : 0;
+                            const nodeReceipts = getReceiptsForMonth(unit?.id, tenant, month.id);
+                            const amount = nodeReceipts.reduce((sum, r) => sum + (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0), 0);
                             annualTotal += amount;
                             return amount.toString();
                         });
@@ -566,12 +589,12 @@ export const ManagementTable = ({
                                             if (n.type === 'property') {
                                                 (n.units || []).forEach(({ unit, tenant }: any) => {
                                                     months.forEach(m => {
-                                                        const r = getReceiptForNode(unit?.id, tenant, m.id);
-                                                        if (r) {
-                                                            const amount = typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0;
-                                                            total += amount;
-                                                            monthly[m.id] += amount;
-                                                        }
+                                                        const nodeReceipts = getReceiptsForMonth(unit?.id, tenant, m.id);
+                                                         nodeReceipts.forEach(r => {
+                                                             const amount = typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0;
+                                                             total += amount;
+                                                             monthly[m.id] += amount;
+                                                         });
                                                     });
                                                 });
                                             } else {
@@ -682,25 +705,23 @@ export const ManagementTable = ({
                                                                         </div>
                                                                     </TableCell>
                                                                     {months.map((month) => {
-                                                                        const receipt = getReceiptForNode(u.unit?.id, u.tenant, month.id);
-                                                                        if (receipt) {
-                                                                            const amount = typeof receipt.amount === 'number' ? receipt.amount : parseFloat(receipt.amount) || 0;
-                                                                            tenantYearTotal += amount;
-                                                                        }
+                                                                        const nodeReceipts = getReceiptsForMonth(u.unit?.id, u.tenant, month.id);
+                                                                         const monthAmount = nodeReceipts.reduce((sum, r) => sum + (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0), 0);
+                                                                         tenantYearTotal += monthAmount;
 
                                                                         return (
                                                                             <TableCell key={month.id} className="text-center p-2">
-                                                                                {receipt ? (
+                                                                                {nodeReceipts.length > 0 ? (
                                                                                     <div className="flex flex-col items-center gap-0.5 group relative">
                                                                                         <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                                                                                         <span className="text-[9px] font-semibold text-green-700">
-                                                                                            {(receipt.amount / 1000).toFixed(1).replace(/\.0$/, '')}k
+                                                                                            {(monthAmount / 1000).toFixed(1).replace(/\.0$/, '')}k
                                                                                         </span>
                                                                                         
                                                                                         {/* Action Buttons */}
                                                                                         <div className="hidden group-hover:flex absolute -top-10 left-1/2 -translate-x-1/2 bg-white border border-border shadow-strong rounded-lg p-1.5 z-50 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
                                                                                             <button 
-                                                                                                onClick={() => shareOnWhatsApp(u.tenant, receipt)}
+                                                                                                onClick={() => shareOnWhatsApp(u.tenant, nodeReceipts[0])}
                                                                                                 className="p-1 px-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-md flex items-center gap-1.5 transition-all border border-green-200 shadow-sm"
                                                                                                 title="Partager sur WhatsApp"
                                                                                             >
@@ -709,7 +730,7 @@ export const ManagementTable = ({
                                                                                             </button>
                                                                                             <div className="w-[1px] h-3 bg-border mx-1"></div>
                                                                                             <span className="text-[10px] font-bold text-primary px-1">
-                                                                                                {formatCurrency(receipt.amount)}
+                                                                                                {formatCurrency(monthAmount)}
                                                                                             </span>
                                                                                         </div>
                                                                                     </div>
@@ -746,8 +767,8 @@ export const ManagementTable = ({
                                                 nodes.forEach(n => {
                                                     if (n.type === 'property') {
                                                         (n.units || []).forEach(({ unit, tenant }: any) => {
-                                                            const r = getReceiptForNode(unit?.id, tenant, month.id);
-                                                            if (r) total += (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0);
+                                                            const nodeReceipts = getReceiptsForMonth(unit?.id, tenant, month.id);
+                                                            nodeReceipts.forEach(r => total += (typeof r.amount === "number" ? r.amount : parseFloat(r.amount) || 0));
                                                         });
                                                     } else {
                                                         total += calculateMonthlyTotal(n.children || []);
@@ -778,8 +799,10 @@ export const ManagementTable = ({
                                                         if (n.type === 'property') {
                                                             (n.units || []).forEach(({ unit, tenant }: any) => {
                                                                 months.forEach(m => {
-                                                                    const r = getReceiptForNode(unit?.id, tenant, m.id);
-                                                                    if (r) total += (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0);
+                                                                    const nodeReceipts = getReceiptsForMonth(unit?.id, tenant, m.id);
+                                                                    nodeReceipts.forEach(r => {
+                                                                        total += (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0);
+                                                                    });
                                                                 });
                                                             });
                                                         } else {

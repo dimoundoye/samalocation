@@ -21,6 +21,7 @@ import PropertyCard from "@/components/PropertyCard";
 import { getPropertyById, getProperties, sendMessage, createNotification, getMessages, getSimilarProperties } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import SEO from "@/components/SEO";
+import PropertyDetailSkeleton from "@/components/PropertyDetailSkeleton";
 
 const DetailPropriete = () => {
   const { t } = useTranslation();
@@ -236,11 +237,7 @@ const DetailPropriete = () => {
   }, [galleryOpen, allPhotos.length]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p>Chargement...</p>
-      </div>
-    );
+    return <PropertyDetailSkeleton />;
   }
 
   if (!property) {

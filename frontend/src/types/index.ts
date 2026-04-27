@@ -97,6 +97,9 @@ export interface CreateReceiptData {
     payment_date: string;
     payment_method?: string;
     notes?: string;
+    period_type?: 'mois' | 'semaine' | 'jour';
+    start_date?: string;
+    end_date?: string;
 }
 
 export interface Receipt {
@@ -112,6 +115,9 @@ export interface Receipt {
     receipt_number: string;
     notes?: string;
     created_at: string;
+    period_type?: 'mois' | 'semaine' | 'jour';
+    start_date?: string;
+    end_date?: string;
     // Informations jointes
     tenant_name?: string;
     property_name?: string;

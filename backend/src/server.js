@@ -187,6 +187,11 @@ server.listen(PORT, async () => {
     try {
         await db.query('SELECT 1');
         console.log('  [DB] ✅ Connexion à la base de données établie.\n');
+        
+        // Run migrations
+        const Receipt = require('./models/receiptModel');
+        await Receipt.migrate();
+        console.log('  [DB] ✅ Migrations des reçus terminées.\n');
     } catch (err) {
         console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
     }

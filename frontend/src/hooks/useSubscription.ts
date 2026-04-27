@@ -52,7 +52,7 @@ export const useSubscription = () => {
             case 'inventory_contract':
                 return subscription.limits.inventory_contract;
             case 'signature':
-                return true; // Always available now
+                return subscription.limits.electronic_signature;
             case 'unlimited_receipts':
                 return subscription.limits.max_receipts_per_month === -1 || subscription.limits.max_receipts_per_month === Infinity;
             default:

@@ -436,10 +436,26 @@ export const OwnerSettings = () => {
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => setScannerOpen(true)}
-                      className="gap-2"
+                      onClick={() => {
+                        if (!hasFeature('signature')) {
+                          setUpgradeModal({
+                            open: true,
+                            title: t('settings.signature_premium_title', "Signature électronique Premium"),
+                            description: t('settings.signature_premium_desc', "La signature et le cachet numériques sont des fonctionnalités exclusives des plans Premium. Passez au niveau supérieur pour valider vos documents en un clic.")
+                          });
+                          return;
+                        }
+                        setScannerOpen(true);
+                      }}
+                      className="gap-2 relative"
                     >
-                      <Scan className="h-4 w-4" /> {t('settings.scan_signature_stamp')}
+                      <Scan className="h-4 w-4" /> 
+                      {t('settings.scan_signature_stamp')}
+                      {!hasFeature('signature') && (
+                        <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-700 border-amber-200 text-[10px] h-5 px-1.5 gap-1">
+                          <Crown className="h-3 w-3" /> Premium
+                        </Badge>
+                      )}
                     </Button>
 
                     <SignatureScanner

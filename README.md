@@ -18,10 +18,11 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 ## ✨ Fonctionnalités Clés
 
 ### 👤 Pour les Locataires
-- **Recherche Intelligente :** Filtres avancés par quartier, prix, type de bien et équipements.
+- **Recherche Intelligente :** Filtres avancés par quartier, prix, type de bien, équipements, nombre de chambres **et nombre de pièces**.
 - **Carte Interactive :** Visualisation des biens via une carte intégrée (Leaflet).
 - **Messagerie Temps-Réel :** Chat direct avec les propriétaires pour poser des questions et organiser des visites.
 - **Candidature Simplifiée :** Postulez aux annonces en un clic.
+- **Expérience Premium :** Chargement fluide avec des **Skeleton UI** pour une navigation sans scintillement.
 - **Espace Personnel :** Suivi des locations actives, téléchargement de quittances et gestion des demandes de maintenance.
 -**Signature électronique :** Signature électronique des contrats de location.
 
@@ -42,6 +43,7 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 
 ### 🛡️ Sécurité & IA
 - **Anti-Bot :** Protection des formulaires via Cloudflare Turnstile.
+- **Sécurité Serveur :** Configuration durcie via Nginx (CSP, HSTS, X-Frame-Options, X-Content-Type-Options).
 - **Recherche Smart :** Analyse du langage naturel pour la recherche de biens via l'IA.
 - **Authentification :** Sécurisée par JWT (JSON Web Tokens) et hachage de mots de passe (bcrypt).
 
@@ -98,32 +100,24 @@ samalocation/
 ### Prérequis
 - Node.js (v18+)
 - PostgreSQL
-- Comptes : Cloudinary, Google AI Studio (Gemini), Cloudflare (Turnstile)
+- Comptes : Cloudinary, Google AI Studio (Gemini)
 
-### Backend
+### Option 1 : Docker (Recommandé pour la production)
+1. Assurez-vous que Docker et Docker Compose sont installés.
+2. Lancez tout le projet : `docker-compose up -d --build`
+3. L'application sera accessible sur `http://localhost:8080`.
+
+### Option 2 : Développement local
+#### Backend
 1. `cd backend`
 2. `npm install`
-3. Copiez le fichier `.env.example` en `.env` et remplissez les variables :
-   ```env
-   DB_HOST=localhost
-   DB_USER=root
-   DB_PASS=votre_mot_de_passe
-   DB_NAME=samalocation
-   JWT_SECRET=votre_secret
-   CLOUDINARY_URL=...
-   GEMINI_API_KEY=...
-   TURNSTILE_SECRET_KEY=...
-   ```
+3. Copiez le fichier `.env.example` en `.env` et remplissez les variables.
 4. Lancez le serveur : `npm run dev`
 
-### Frontend
+#### Frontend
 1. `cd frontend`
 2. `npm install`
-3. Configurez le fichier `.env` :
-   ```env
-   VITE_API_URL=http://localhost:5000/api
-   VITE_TURNSTILE_SITE_KEY=...
-   ```
+3. Configurez le fichier `.env`.
 4. Lancez l'application : `npm run dev`
 
 ---

@@ -12,7 +12,10 @@ const Receipt = {
             amount,
             payment_date,
             payment_method = 'virement',
-            notes = null
+            notes = null,
+            period_type = 'mois',
+            start_date = null,
+            end_date = null
         } = data;
 
         const id = uuidv4();
@@ -40,9 +43,9 @@ const Receipt = {
 
         await db.query(
             `INSERT INTO receipts 
-            (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-            [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo]
+            (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+            [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date]
         );
 
         return this.findById(id);
@@ -82,6 +85,8 @@ const Receipt = {
                 p.name as property_name,
                 p.address as property_address,
                 pu.unit_number,
+                pu.rent_period,
+                pu.monthly_rent as unit_base_rent,
                 t.monthly_rent as tenant_rent,
                 t.move_in_date
             FROM receipts r
@@ -116,10 +121,13 @@ const Receipt = {
                 r.*,
                 p.name as property_name,
                 p.address as property_address,
+                pu.rent_period,
+                pu.monthly_rent as unit_base_rent,
                 owner.full_name as owner_name
             FROM receipts r
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles owner ON p.owner_id = owner.id
+            LEFT JOIN property_units pu ON r.unit_id = pu.id
             WHERE r.tenant_id = $1
             ORDER BY r.created_at DESC`,
             [tenantId]
@@ -134,10 +142,13 @@ const Receipt = {
                 r.*,
                 tenant.full_name as tenant_name,
                 p.name as property_name,
-                p.address as property_address
+                p.address as property_address,
+                pu.rent_period,
+                pu.monthly_rent as unit_base_rent
             FROM receipts r
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles tenant ON r.tenant_id = tenant.id
+            LEFT JOIN property_units pu ON r.unit_id = pu.id
             WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $2)
             ORDER BY r.created_at DESC`,
             [ownerId, ownerId]
@@ -148,6 +159,23 @@ const Receipt = {
 
     async delete(id) {
         await db.query('DELETE FROM receipts WHERE id = $1', [id]);
+        return true;
+    },
+
+    async migrate() {
+        const queries = [
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS period_type VARCHAR(20) DEFAULT 'mois'",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS start_date DATE NULL",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS end_date DATE NULL"
+        ];
+
+        for (const sql of queries) {
+            try {
+                await db.query(sql);
+            } catch (err) {
+                console.error('Migration error (receipts):', err.message);
+            }
+        }
         return true;
     }
 };
