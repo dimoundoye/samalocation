@@ -17,7 +17,7 @@ const Privacy = () => {
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold mb-4">Politique de Confidentialité</h1>
-            <p className="text-muted-foreground italic">Dernière mise à jour : 27 Février 2026</p>
+            <p className="text-muted-foreground italic">Dernière mise à jour : 04 Mai 2026</p>
           </div>
 
           <div className="mb-10 bg-secondary/30 rounded-2xl p-6 md:p-8 text-center sm:text-left border border-secondary">
@@ -58,8 +58,8 @@ const Privacy = () => {
                     <p className="text-sm text-muted-foreground">Nom, prénom, email, numéro de téléphone (WhatsApp), et informations de profil.</p>
                   </div>
                   <div className="bg-secondary/10 p-6 rounded-2xl">
-                    <h3 className="font-bold text-lg mb-2 text-foreground">Documents de Vérification (Propriétaires)</h3>
-                    <p className="text-sm text-muted-foreground">Pièce d'identité, preuve de propriété (Titre foncier/Facture), et selfie de contrôle (Liveness check).</p>
+                    <h3 className="font-bold text-lg mb-2 text-foreground">Documents de Vérification et Signature</h3>
+                    <p className="text-sm text-muted-foreground">Pièce d'identité, preuve de propriété (Titre foncier/Facture), selfie de contrôle (Liveness check) et signature électronique scannée.</p>
                   </div>
                   <div className="bg-secondary/10 p-6 rounded-2xl">
                     <h3 className="font-bold text-lg mb-2 text-foreground">Données Immobilières et de Gestion</h3>

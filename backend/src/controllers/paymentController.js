@@ -2,25 +2,24 @@ const axios = require('axios');
 const PLANS = require('../config/plans');
 const Subscription = require('../models/subscriptionModel');
 const response = require('../utils/response');
-const db = require('../config/db');
 
-const PAYTECH_BASE_URL = 'https://paytech.sn/api/payment/request-payment';
+const PAYDUNYA_BASE_URL = 'https://app.paydunya.com/api/v1/checkout-invoice/create';
 
 const paymentController = {
     /**
-     * Initialise une demande de paiement auprès de PayTech
+     * Initialise une demande de paiement auprès de PayDunya
      */
     async initializePayment(req, res, next) {
         try {
-            const { planId, period } = req.body; // period: 'monthly' or 'annual'
+            const { planId, period } = req.body;
             const userId = req.user.id;
 
             // 1. Trouver le plan et calculer le prix
             const planKey = planId.toUpperCase();
             const plan = PLANS[planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : planKey];
 
-            const backendUrl = process.env.BACKEND_URL || process.env.URL_BACKEND || process.env.API_URL;
-            const frontendUrl = process.env.FRONTEND_URL || process.env.URL_FRONTEND;
+            const backendUrl = process.env.BACKEND_URL || process.env.URL_BACKEND || process.env.API_URL || `https://${process.env.APP_DOMAIN}`;
+            const frontendUrl = process.env.FRONTEND_URL || process.env.URL_FRONTEND || `https://${process.env.APP_DOMAIN}`;
 
             if (!plan || planId.toLowerCase() === 'free') {
                 return response.error(res, 'Plan invalide', 400);
@@ -29,46 +28,60 @@ const paymentController = {
             const price = period === 'annual' ? plan.price_annual : plan.price_monthly;
             const durationDays = period === 'annual' ? 365 : 30;
             
-            // 2. Générer une référence unique
-            const refCommand = `SUB-${Date.now()}-${userId}`;
-
-            // 3. Préparer les données
+            // 2. Préparer les données pour PayDunya
             const payload = {
-                item_name: `Abonnement ${plan.name} (${period === 'annual' ? 'Annuel' : 'Mensuel'})`,
-                item_price: price,
-                currency: 'XOF',
-                ref_command: refCommand,
-                command_name: `Paiement abonnement ${plan.name} SamaLocation`,
-                env: process.env.PAYTECH_ENV || (process.env.NODE_ENV === 'production' ? 'prod' : 'test'),
-                success_url: `${frontendUrl}/owner-dashboard?payment=success`,
-                cancel_url: `${frontendUrl}/pricing?payment=cancel`,
-                ipn_url: `${backendUrl}/api/payment/ipn`,
-                custom_field: JSON.stringify({
+                invoice: {
+                    items: [
+                        {
+                            name: `Abonnement ${plan.name} (${period === 'annual' ? 'Annuel' : 'Mensuel'})`,
+                            quantity: 1,
+                            unit_price: price,
+                            total_price: price,
+                            description: `Accès complet au plan ${plan.name} SamaLocation`
+                        }
+                    ],
+                    total_amount: price,
+                    description: `Paiement abonnement ${plan.name} SamaLocation`
+                },
+                store: {
+                    name: "SamaLocation",
+                    tagline: "Votre partenaire immobilier au Sénégal",
+                    postal_address: "Dakar, Sénégal",
+                    phone: "761629529",
+                    logo_url: `${frontendUrl}/logo.png`
+                },
+                actions: {
+                    cancel_url: `${frontendUrl}/pricing?payment=cancel`,
+                    return_url: `${frontendUrl}/owner-dashboard?payment=success`,
+                    callback_url: `${backendUrl}/api/payment/callback`
+                },
+                custom_data: {
                     userId: userId,
                     planId: planId,
                     durationDays: durationDays,
                     price: price
-                })
+                }
             };
 
-            // 4. Appeler PayTech
-            const paytechResponse = await axios.post(PAYTECH_BASE_URL, payload, {
+            // 3. Appeler PayDunya
+            const paydunyaResponse = await axios.post(PAYDUNYA_BASE_URL, payload, {
                 headers: {
-                    'Accept': 'application/json',
                     'Content-Type': 'application/json',
-                    'API_KEY': process.env.PAYTECH_API_KEY,
-                    'API_SECRET': process.env.PAYTECH_API_SECRET
+                    'PAYDUNYA-MASTER-KEY': process.env.PAYDUNYA_MASTER_KEY,
+                    'PAYDUNYA-PRIVATE-KEY': process.env.PAYDUNYA_PRIVATE_KEY,
+                    'PAYDUNYA-PUBLIC-KEY': process.env.PAYDUNYA_PUBLIC_KEY,
+                    'PAYDUNYA-TOKEN': process.env.PAYDUNYA_TOKEN
                 }
             });
 
-            if (paytechResponse.data.success === 1) {
+            if (paydunyaResponse.data.response_code === "00") {
                 return response.success(res, {
-                    redirect_url: paytechResponse.data.redirect_url,
-                    token: paytechResponse.data.token
-                }, 'Lien de paiement généré');
+                    redirect_url: paydunyaResponse.data.response_url,
+                    token: paydunyaResponse.data.token
+                }, 'Lien de paiement PayDunya généré');
             } else {
-                console.error('PayTech API Error:', paytechResponse.data);
-                return response.error(res, paytechResponse.data.message || 'Erreur lors de la génération du lien de paiement', 400);
+                console.error('PayDunya API Error:', paydunyaResponse.data);
+                return response.error(res, paydunyaResponse.data.response_text || 'Erreur PayDunya', 400);
             }
 
         } catch (error) {
@@ -78,46 +91,45 @@ const paymentController = {
     },
 
     /**
-     * Reçoit la notification de PayTech (IPN)
+     * Reçoit la notification de PayDunya (Callback/IPN)
      */
-    async handleIPN(req, res, next) {
+    async handleCallback(req, res, next) {
         try {
-            const {
-                type_event,
-                ref_command,
-                item_price,
-                custom_field,
-                token,
-            } = req.body;
+            const { token } = req.body;
 
-            if (type_event !== 'sale_complete') {
-                return res.status(200).send('Event ignored');
+            if (!token) {
+                return res.status(400).send('Token missing');
             }
 
-            let userData = {};
-            try {
-                userData = JSON.parse(custom_field);
-            } catch (e) {
-                console.error('Error parsing custom_field:', e);
-                return res.status(400).send('Invalid custom_field');
-            }
-
-            const { userId, planId, durationDays, price } = userData;
-
-            await Subscription.createSubscription(userId, {
-                planName: planId.toUpperCase(),
-                price: price,
-                paymentMethod: 'paytech',
-                transactionId: token || ref_command,
-                durationDays: durationDays
+            // Vérifier le statut du paiement auprès de PayDunya (Sécurité)
+            const verifyUrl = `https://app.paydunya.com/api/v1/checkout-invoice/confirm/${token}`;
+            const verifyRes = await axios.get(verifyUrl, {
+                headers: {
+                    'PAYDUNYA-MASTER-KEY': process.env.PAYDUNYA_MASTER_KEY,
+                    'PAYDUNYA-PRIVATE-KEY': process.env.PAYDUNYA_PRIVATE_KEY,
+                    'PAYDUNYA-PUBLIC-KEY': process.env.PAYDUNYA_PUBLIC_KEY,
+                    'PAYDUNYA-TOKEN': process.env.PAYDUNYA_TOKEN
+                }
             });
 
-            // 4. Répondre à PayTech 200 OK
-            return res.status(200).json({ success: 1 });
+            if (verifyRes.data.status === 'completed') {
+                const { userId, planId, durationDays, price } = verifyRes.data.custom_data;
+
+                await Subscription.createSubscription(userId, {
+                    planName: planId.toUpperCase(),
+                    price: price,
+                    paymentMethod: 'paydunya',
+                    transactionId: token,
+                    durationDays: durationDays
+                });
+
+                return res.status(200).send('OK');
+            }
+
+            return res.status(200).send('Payment not completed');
 
         } catch (error) {
-            console.error('IPN Error:', error.message);
-            // On renvoie quand même 200 ou 500 selon si on veut que PayTech réessaye
+            console.error('PayDunya Callback Error:', error.message);
             res.status(500).send('Internal Server Error');
         }
     }

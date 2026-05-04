@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, QrCode, Smartphone, Info, ExternalLink, Phone, Zap } from "lucide-react";
-import { notifyPayment, initializePaytechPayment } from "@/api/subscription";
+import { notifyPayment, initializeOnlinePayment } from "@/api/subscription";
 import { useToast } from "@/hooks/use-toast";
 
 interface ManualPaymentModalProps {
@@ -36,29 +36,28 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
         return `https://pay.wave.com/m/M_sn_JG5-cxcdVaME/c/sn/?amount=${price}`;
     };
 
-    const handlePaytechPayment = async () => {
+    const handleOnlinePayment = async () => {
         setLoading(true);
         try {
             const period = plan.id === 'premium' || plan.id === 'professional' ? (plan.price > 15000 ? 'annual' : 'monthly') : 'monthly';
-            const res = await initializePaytechPayment({
+            const res = await initializeOnlinePayment({
                 planId: plan.id,
                 period: period as 'monthly' | 'annual'
             });
 
             // baseClient returns data.data directly if status is success
-            // But sometimes it returns the whole object. Let's handle both.
             const url = res?.redirect_url || res?.data?.redirect_url;
             
             if (url) {
-                window.location.assign(url); // Plus robuste que .href
+                window.location.assign(url);
             } else {
-                throw new Error("Lien de paiement non trouvé dans la réponse du serveur");
+                throw new Error("Lien de paiement non trouvé");
             }
         } catch (error: any) {
-            console.error("PayTech error:", error);
+            console.error("Payment error:", error);
             toast({
                 title: "Erreur",
-                description: "Impossible d'initialiser le paiement automatique.",
+                description: "Impossible d'initialiser le paiement sécurisé PayDunya.",
                 variant: "destructive",
             });
             setLoading(false);
@@ -138,7 +137,7 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                         <div className="space-y-4 pt-2">
                             {/* Option Automatique */}
                             <button
-                                onClick={handlePaytechPayment}
+                                onClick={handleOnlinePayment}
                                 disabled={loading}
                                 className="w-full relative group p-6 rounded-[2rem] border-2 border-primary/10 hover:border-accent bg-white transition-all duration-300 text-left hover:shadow-xl hover:-translate-y-1 active:scale-[0.98]"
                             >

@@ -191,7 +191,7 @@ const resources = {
                     "title": "Support",
                     "contact": "Contactez-nous"
                 },
-                "copyright": "© 2026 Samalocation. Tous droits réservés au Sénégal"
+                "copyright": "© 2026 Samalocation. Tous droits réservés."
             },
             "contact": {
                 "title": "Contactez-nous",
@@ -656,7 +656,7 @@ const resources = {
                     "title": "Support",
                     "contact": "Contact Us"
                 },
-                "copyright": "© 2026 Samalocation. All rights reserved in Senegal"
+                "copyright": "© 2026 Samalocation. All rights reserved."
             },
             "contact": {
                 "title": "Contact Us",

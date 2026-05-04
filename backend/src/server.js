@@ -173,7 +173,7 @@ app.use(errorHandler);
 
 server.listen(PORT, async () => {
     const env = process.env.NODE_ENV || 'development';
-    const dbType = process.env.DATABASE_URL ? 'Supabase (PostgreSQL)' : 'PostgreSQL Local';
+    const dbType = process.env.DB_HOST && process.env.DB_HOST.includes('supabase') ? 'Supabase (PostgreSQL)' : 'Docker Local (PostgreSQL)';
     console.log('\n╔═════════════════════════════════════════════╗');
     console.log(`║       🚀 SamaLocation Backend — DÉMARRÉ     ║`);
     console.log('╠═════════════════════════════════════════════╣');
@@ -187,7 +187,7 @@ server.listen(PORT, async () => {
     try {
         await db.query('SELECT 1');
         console.log('  [DB] ✅ Connexion à la base de données établie.\n');
-        
+
         // Run migrations
         const Receipt = require('./models/receiptModel');
         await Receipt.migrate();

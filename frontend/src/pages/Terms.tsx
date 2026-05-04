@@ -17,7 +17,7 @@ const Terms = () => {
                 <div className="container mx-auto max-w-4xl">
                     <div className="text-center mb-12">
                         <h1 className="text-4xl font-bold mb-4">Conditions d'Utilisation</h1>
-                        <p className="text-muted-foreground italic">Dernière mise à jour : 27 Février 2026</p>
+                        <p className="text-muted-foreground italic">Dernière mise à jour : 04 Mai 2026</p>
                     </div>
 
                     {/* Alerte Vigilance */}
@@ -72,7 +72,7 @@ const Terms = () => {
                                     Nature de la Plateforme
                                 </h2>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Samalocation est un intermédiaire technologique facilitant la gestion immobilière au Sénégal. Nous ne sommes pas partie prenante aux contrats de bail conclus entre les utilisateurs. Samalocation n'est ni propriétaire, ni gestionnaire, ni courtier des biens publiés, sauf indication contraire.
+                                    Samalocation est un intermédiaire technologique facilitant la gestion immobilière au Sénégal. Nous ne sommes pas partie prenante aux contrats de bail conclus entre les utilisateurs. Samalocation n'est ni propriétaire, ni gestionnaire, ni courtier des biens publiés, sauf indication contraire. La plateforme permet la génération et la signature électronique de quittances de loyer, lesquelles ont une valeur probante entre les parties conformément à la législation sur le commerce électronique.
                                 </p>
                             </section>
 
