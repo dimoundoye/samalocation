@@ -75,12 +75,13 @@ const paymentController = {
             });
 
             if (paydunyaResponse.data.response_code === "00") {
+                console.log('PayDunya Success - URL:', paydunyaResponse.data.response_url);
                 return response.success(res, {
                     redirect_url: paydunyaResponse.data.response_url,
                     token: paydunyaResponse.data.token
                 }, 'Lien de paiement PayDunya généré');
             } else {
-                console.error('PayDunya API Error:', paydunyaResponse.data);
+                console.error('PayDunya API Error Details:', paydunyaResponse.data);
                 return response.error(res, paydunyaResponse.data.response_text || 'Erreur PayDunya', 400);
             }
 
