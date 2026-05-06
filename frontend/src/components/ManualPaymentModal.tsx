@@ -45,8 +45,6 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                 period: period as 'monthly' | 'annual'
             });
 
-            console.log("Payment initialization response:", res);
-
             // baseClient returns data.data directly if status is success
             const url = res?.redirect_url || res?.data?.redirect_url;
             

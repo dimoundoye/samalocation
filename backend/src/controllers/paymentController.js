@@ -75,13 +75,16 @@ const paymentController = {
             });
 
             if (paydunyaResponse.data.response_code === "00") {
-                console.log('PayDunya Success - URL:', paydunyaResponse.data.response_url);
+                const token = paydunyaResponse.data.token;
+                // Si PayDunya ne renvoie pas l'URL, on la construit manuellement
+                const redirectUrl = paydunyaResponse.data.response_url || `https://app.paydunya.com/checkout/invoice/${token}`;
+                
                 return response.success(res, {
-                    redirect_url: paydunyaResponse.data.response_url,
-                    token: paydunyaResponse.data.token
+                    redirect_url: redirectUrl,
+                    token: token
                 }, 'Lien de paiement PayDunya généré');
             } else {
-                console.error('PayDunya API Error Details:', paydunyaResponse.data);
+                console.error('PayDunya API Error:', paydunyaResponse.data);
                 return response.error(res, paydunyaResponse.data.response_text || 'Erreur PayDunya', 400);
             }
 
