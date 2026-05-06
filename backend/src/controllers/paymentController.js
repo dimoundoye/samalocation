@@ -75,10 +75,10 @@ const paymentController = {
             });
 
             if (paydunyaResponse.data.response_code === "00") {
-                console.log('DEBUG PayDunya Full Response:', JSON.stringify(paydunyaResponse.data, null, 2));
                 const token = paydunyaResponse.data.token;
-                // Si PayDunya ne renvoie pas l'URL, on la construit manuellement
-                const redirectUrl = paydunyaResponse.data.response_url || `https://app.paydunya.com/checkout/invoice/${token}`;
+                // Selon les logs, PayDunya met l'URL dans response_text
+                const redirectUrl = paydunyaResponse.data.response_url || 
+                                  (paydunyaResponse.data.response_text.startsWith('http') ? paydunyaResponse.data.response_text : `https://paydunya.com/checkout/invoice/${token}`);
                 
                 return response.success(res, {
                     redirect_url: redirectUrl,
