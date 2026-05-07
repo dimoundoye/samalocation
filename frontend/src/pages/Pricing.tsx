@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 import { useToast } from "@/hooks/use-toast";
+import { initializeOnlinePayment } from "@/api/subscription";
 import SEO from "@/components/SEO";
 
 const Pricing = () => {
@@ -17,10 +18,11 @@ const Pricing = () => {
     const [isAnnual, setIsAnnual] = useState(false);
     const [selectedPlanDetails, setSelectedPlanDetails] = useState<any>(null);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
     const { toast } = useToast();
     const isAgent = user?.parentId != null;
 
-    const handlePlanSelect = (plan: any) => {
+    const handlePlanSelect = async (plan: any) => {
         if (plan.id === 'free') {
             if (user) {
                 navigate("/dashboard-proprietaire");
@@ -40,8 +42,30 @@ const Pricing = () => {
         }
 
         if (user) {
-            setSelectedPlanDetails(plan);
-            setPaymentModalOpen(true);
+            try {
+                setLoading(true);
+                const period = isAnnual ? 'annual' : 'monthly';
+                const response = await initializeOnlinePayment({ 
+                    planId: plan.id, 
+                    period 
+                });
+
+                const url = response?.redirect_url || response?.data?.redirect_url;
+                if (url) {
+                    window.location.href = url;
+                } else {
+                    throw new Error("URL de redirection manquante");
+                }
+            } catch (error: any) {
+                console.error("Payment error:", error);
+                toast({
+                    title: "Erreur de paiement",
+                    description: error.message || "Impossible d'initialiser le paiement. Veuillez réessayer.",
+                    variant: "destructive"
+                });
+            } finally {
+                setLoading(false);
+            }
         } else {
             navigate(`/auth?mode=signup&plan=${plan.id}`);
         }
@@ -216,12 +240,13 @@ const Pricing = () => {
 
                                 <Button
                                     onClick={() => handlePlanSelect(plan)}
+                                    disabled={loading || isDisabled}
                                     className={`w-full h-12 rounded-xl text-base font-bold transition-all hover:scale-105 ${plan.highlight
                                         ? "gradient-primary shadow-medium text-white"
                                         : "bg-white border-2 border-primary text-primary hover:bg-primary hover:text-white dark:bg-card"
                                         }`}
                                 >
-                                    {plan.cta}
+                                    {loading ? "Chargement..." : plan.cta}
                                 </Button>
 
                                 <hr className="my-8 border-border/50" />
@@ -280,20 +305,7 @@ const Pricing = () => {
 
             <Footer />
 
-            {selectedPlanDetails && (
-                <ManualPaymentModal
-                    open={paymentModalOpen}
-                    onOpenChange={setPaymentModalOpen}
-                    plan={selectedPlanDetails}
-                    onSuccess={() => {
-                        toast({
-                            title: "Demande enregistrée",
-                            description: "Votre abonnement passera en mode vérification.",
-                        });
-                        navigate("/owner-dashboard?tab=subscription");
-                    }}
-                />
-            )}
+            {/* Manuel via Wave est désactivé pour l'instant */}
         </div>
     );
 };

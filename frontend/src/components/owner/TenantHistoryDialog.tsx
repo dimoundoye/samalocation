@@ -14,7 +14,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Calendar, Send } from "lucide-react";
+import { Download, FileText, Calendar, Send, Share2 } from "lucide-react";
 import { Receipt, Tenant } from "@/types";
 import { downloadReceipt } from "@/lib/api";
 import { format } from "date-fns";
@@ -62,7 +62,7 @@ export const TenantHistoryDialog = ({
         }
     };
 
-    const shareOnWhatsApp = (receipt: Receipt) => {
+    const shareReceipt = async (receipt: Receipt) => {
         if (!tenant) return;
         
         const phone = tenant.phone?.replace(/[\s\(\)\-\+]/g, '') || '';
@@ -70,6 +70,18 @@ export const TenantHistoryDialog = ({
         const amount = formatCurrency(receipt.amount);
         
         const text = `Bonjour ${tenant.full_name}, votre quittance de loyer pour le mois de ${monthLabel} ${receipt.year} (${amount}) est maintenant disponible sur votre compte Samalocation. Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com. Merci pour votre confiance !`;
+        
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Quittance Samalocation',
+                    text: text,
+                });
+                return;
+            } catch (err) {
+                console.error("Error sharing:", err);
+            }
+        }
         
         const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
         window.open(waUrl, '_blank');
@@ -125,11 +137,11 @@ export const TenantHistoryDialog = ({
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="h-8 w-8 text-[#25D366] hover:text-[#128C7E] hover:bg-[#25D366]/10 border border-[#25D366]/20 bg-[#25D366]/5"
-                                                        onClick={() => shareOnWhatsApp(receipt)}
-                                                        title="Partager via WhatsApp"
+                                                        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 border border-primary/20 bg-primary/5"
+                                                        onClick={() => shareReceipt(receipt)}
+                                                        title="Partager la quittance"
                                                     >
-                                                        <Send className="h-4 w-4" />
+                                                        <Share2 className="h-4 w-4" />
                                                     </Button>
                                                     <Button
                                                         variant="outline"

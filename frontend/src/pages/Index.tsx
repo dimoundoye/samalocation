@@ -34,6 +34,7 @@ import { getProperties, getMessages } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import SEO from "@/components/SEO";
+import { isRecent } from "@/lib/dateUtils";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -283,7 +284,7 @@ const Index = () => {
                         ownerPhone={ownerPhone}
                         isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
                         ownerLogo={ownerProfile?.logo_url}
-                        isNew={property.published_at ? (new Date().getTime() - new Date(property.published_at).getTime()) < 7 * 24 * 60 * 60 * 1000 : false}
+                        isNew={isRecent(property.published_at)}
                       />
                     </CarouselItem>
                   );

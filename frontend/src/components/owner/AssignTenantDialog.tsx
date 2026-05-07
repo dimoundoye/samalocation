@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, UserPlus, CheckCircle, ArrowLeft, Users, ChevronRight } from "lucide-react";
+import { Search, UserPlus, CheckCircle, ArrowLeft, Users, ChevronRight, Share2 } from "lucide-react";
 import { searchUsers, assignTenant, createNotification, createTenantAccount } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -358,6 +358,54 @@ export const AssignTenantDialog = ({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const getCredentialMessage = () => {
+    if (!tempCredentials) return "";
+    const authUrl = `${window.location.origin}/auth`;
+    return `Bonjour, voici vos identifiants pour Samalocation :\n\nIdentifiant (ID) : ${tempCredentials.customId}\nMot de passe : ${tempCredentials.tempPassword}\n\nLien de connexion :\n${authUrl}`;
+  };
+
+  const handleCopyAll = () => {
+    const message = getCredentialMessage();
+    if (!message) return;
+    navigator.clipboard.writeText(message);
+    toast({
+      title: "Copié !",
+      description: "Le message complet a été copié dans le presse-papier.",
+    });
+  };
+
+  const handleShare = async () => {
+    const message = getCredentialMessage();
+    if (!message) return;
+
+    if (navigator.share) {
+      try {
+        // We strip the link from the text for navigator.share to avoid duplication
+        const shareText = `Bonjour, voici vos identifiants pour Samalocation :\n\nIdentifiant (ID) : ${tempCredentials?.customId}\nMot de passe : ${tempCredentials?.tempPassword}\n\nLien de connexion :`;
+        
+        await navigator.share({
+          title: 'Identifiants Samalocation',
+          text: shareText,
+          url: `${window.location.origin}/auth`
+        });
+      } catch (error) {
+        console.error('Error sharing:', error);
+        // Fallback to WhatsApp if share is cancelled or fails
+        handleShareWhatsAppFallback(message);
+      }
+    } else {
+      handleShareWhatsAppFallback(message);
+    }
+  };
+
+  const handleShareWhatsAppFallback = (message: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const url = cleanPhone 
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
   };
 
   // Si erreur de rendu, afficher un message
@@ -748,6 +796,50 @@ export const AssignTenantDialog = ({
                     className="h-10 w-10 rounded-xl"
                   >
                     <Copy className="h-5 w-5" />
+                  </Button>
+                </div>
+                
+                <div className="p-4 bg-muted/30 rounded-2xl flex items-center justify-between border-2 border-dashed border-muted">
+                  <div className="text-left overflow-hidden flex-1 mr-2">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Lien de connexion</p>
+                    <a 
+                      href={`${window.location.origin}/auth`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-primary hover:underline underline-offset-4 truncate block mt-1"
+                    >
+                      {window.location.origin}/auth
+                    </a>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/auth`);
+                      toast({ title: "Lien copié !" });
+                    }}
+                    className="h-10 w-10 rounded-xl shrink-0"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 gap-2 rounded-xl h-12 border-primary/20 text-primary hover:bg-primary/5"
+                    onClick={handleCopyAll}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copier tout
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 gap-2 rounded-xl h-12 border-primary/20 text-primary hover:bg-primary/5 shadow-sm"
+                    onClick={handleShare}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Partager
                   </Button>
                 </div>
               </div>

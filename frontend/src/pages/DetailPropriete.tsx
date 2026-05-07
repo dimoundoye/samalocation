@@ -21,6 +21,7 @@ import PropertyCard from "@/components/PropertyCard";
 import { getPropertyById, getProperties, sendMessage, createNotification, getMessages, getSimilarProperties } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import SEO from "@/components/SEO";
+import { isRecent } from "@/lib/dateUtils";
 import PropertyDetailSkeleton from "@/components/PropertyDetailSkeleton";
 
 const DetailPropriete = () => {
@@ -289,7 +290,18 @@ const DetailPropriete = () => {
 
     switch (platform) {
       case 'whatsapp':
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
+        if (navigator.share) {
+          navigator.share({
+            title: shareTitle,
+            text: shareText,
+            url: shareUrl,
+          }).catch(() => {
+            // Fallback to WhatsApp if share fails
+            window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
+          });
+        } else {
+          window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
+        }
         break;
       case 'facebook':
         window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
@@ -619,8 +631,8 @@ const DetailPropriete = () => {
                         className="flex flex-col h-auto py-3 gap-1 hover:text-green-600 hover:border-green-200 hover:bg-green-50 transition-all"
                         onClick={() => handleShare('whatsapp')}
                       >
-                        <Send className="h-4 w-4" />
-                        <span className="text-[10px]">WhatsApp</span>
+                        <Share2 className="h-4 w-4" />
+                        <span className="text-[10px]">Partager</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -700,6 +712,7 @@ const DetailPropriete = () => {
                           ownerPhone={ownerPhone}
                           isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
                           ownerLogo={ownerProfile?.logo_url}
+                          isNew={isRecent(suggestion.published_at || suggestion.created_at)}
                         />
                       </CarouselItem>
                     );

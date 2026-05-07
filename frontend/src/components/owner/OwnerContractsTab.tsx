@@ -25,15 +25,27 @@ export const OwnerContractsTab = () => {
         loadContracts();
     }, []);
 
-    const shareOnWhatsApp = (contract: RentalContract) => {
+    const shareContract = async (contract: RentalContract) => {
         const verifyUrl = `https://samalocation.com/verify/contract/${contract.id}`;
 
         let message = `Bonjour ${contract.tenant_name}, voici votre contrat de location pour ${contract.property_name} (Unité ${contract.unit_number}). `;
 
         if (contract.status === 'pending_signature') {
-            message += `Il est en attente de votre signature numérique.Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com dans la section mes contrats.`;
+            message += `Il est en attente de votre signature numérique. Vous pouvez le consulter et le signer sur https://samalocation.com dans votre espace locataire.`;
         } else {
-            message += `Vous pouvez consulter et vérifier sa validité ici : ${verifyUrl} . Merci d'utiliser Samalocation.com !`;
+            message += `Vous pouvez consulter et vérifier sa validité ici : ${verifyUrl}. Merci d'utiliser Samalocation.com !`;
+        }
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Contrat de location Samalocation',
+                    text: message,
+                });
+                return;
+            } catch (err) {
+                console.error("Error sharing:", err);
+            }
         }
 
         const encodedMessage = encodeURIComponent(message);
@@ -165,10 +177,10 @@ export const OwnerContractsTab = () => {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={() => shareOnWhatsApp(contract)}
-                                                    className="gap-2 h-8 text-green-600 border-green-200 hover:bg-green-50"
+                                                    onClick={() => shareContract(contract)}
+                                                    className="gap-2 h-8 text-primary border-primary/20 hover:bg-primary/5"
                                                 >
-                                                    <Send className="h-3.5 w-3.5" /> Partager
+                                                    <Share2 className="h-3.5 w-3.5" /> Partager
                                                 </Button>
                                                 <Button
                                                     variant="outline"
@@ -233,11 +245,11 @@ export const OwnerContractsTab = () => {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => shareOnWhatsApp(contract)}
-                                                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                        title="Partager sur WhatsApp"
+                                                        onClick={() => shareContract(contract)}
+                                                        className="text-primary hover:text-primary hover:bg-primary/5"
+                                                        title="Partager le contrat"
                                                     >
-                                                        <Send className="h-4 w-4" />
+                                                        <Share2 className="h-4 w-4" />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"

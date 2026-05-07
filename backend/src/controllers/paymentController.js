@@ -27,7 +27,7 @@ const paymentController = {
 
             const price = period === 'annual' ? plan.price_annual : plan.price_monthly;
             const durationDays = period === 'annual' ? 365 : 30;
-            
+
             // 2. Préparer les données pour PayDunya
             const payload = {
                 invoice: {
@@ -37,11 +37,11 @@ const paymentController = {
                             quantity: 1,
                             unit_price: price,
                             total_price: price,
-                            description: `Accès complet au plan ${plan.name} SamaLocation`
+                            description: `Accès complet au plan ${plan.name} Samalocation`
                         }
                     ],
                     total_amount: price,
-                    description: `Paiement abonnement ${plan.name} SamaLocation`
+                    description: `Paiement abonnement ${plan.name} Samalocation`
                 },
                 store: {
                     name: "SamaLocation",
@@ -77,9 +77,9 @@ const paymentController = {
             if (paydunyaResponse.data.response_code === "00") {
                 const token = paydunyaResponse.data.token;
                 // Selon les logs, PayDunya met l'URL dans response_text
-                const redirectUrl = paydunyaResponse.data.response_url || 
-                                  (paydunyaResponse.data.response_text.startsWith('http') ? paydunyaResponse.data.response_text : `https://paydunya.com/checkout/invoice/${token}`);
-                
+                const redirectUrl = paydunyaResponse.data.response_url ||
+                    (paydunyaResponse.data.response_text.startsWith('http') ? paydunyaResponse.data.response_text : `https://paydunya.com/checkout/invoice/${token}`);
+
                 return response.success(res, {
                     redirect_url: redirectUrl,
                     token: token

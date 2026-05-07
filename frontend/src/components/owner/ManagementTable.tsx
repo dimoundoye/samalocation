@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X, ChevronDown, ChevronRight, Folder, FolderOpen, ArrowLeft, Home, Info, HelpCircle, Lightbulb, Lock, Send } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X, ChevronDown, ChevronRight, Folder, FolderOpen, ArrowLeft, Home, Info, HelpCircle, Lightbulb, Lock, Send, Share2 } from "lucide-react";
 import {
     Popover,
     PopoverContent,
@@ -219,26 +219,37 @@ export const ManagementTable = ({
     ];
 
 
-    const shareOnWhatsApp = (tenant: Tenant, receipt: Receipt) => {
-        if (!tenant.phone) {
-            toast({
-                title: "Numéro manquant",
-                description: "Le locataire n'a pas de numéro de téléphone renseigné.",
-                variant: "destructive"
-            });
-            return;
-        }
-
-        const cleanPhone = tenant.phone.replace(/\D/g, '');
-        // Si le numéro ne commence pas par un indicatif pays, on ajoute 221 par défaut (Sénégal)
-        const finalPhone = cleanPhone.length === 9 ? `221${cleanPhone}` : cleanPhone;
-        
+    const shareReceipt = async (tenant: Tenant, receipt: Receipt) => {
         const monthLabel = months.find(m => m.id === Number(receipt.month))?.label || receipt.month;
         const amount = formatCurrency(Number(receipt.amount));
         
         // Texte du message
         const text = `Bonjour ${tenant.full_name}, votre quittance de loyer pour le mois de ${monthLabel} ${receipt.year} (${amount}) est maintenant disponible sur votre compte Samalocation. Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com. Merci pour votre confiance !`;
         
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Quittance Samalocation',
+                    text: text,
+                });
+                return;
+            } catch (err) {
+                console.error("Error sharing:", err);
+            }
+        }
+
+        // Fallback WhatsApp
+        if (!tenant.phone) {
+            toast({
+                title: "Numéro manquant",
+                description: "Le locataire n'a pas de numéro de téléphone renseigné (nécessaire pour WhatsApp).",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        const cleanPhone = tenant.phone.replace(/\D/g, '');
+        const finalPhone = cleanPhone.length === 9 ? `221${cleanPhone}` : cleanPhone;
         const waUrl = `https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`;
         window.open(waUrl, '_blank');
     };
@@ -721,12 +732,12 @@ export const ManagementTable = ({
                                                                                         {/* Action Buttons */}
                                                                                         <div className="hidden group-hover:flex absolute -top-10 left-1/2 -translate-x-1/2 bg-white border border-border shadow-strong rounded-lg p-1.5 z-50 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
                                                                                             <button 
-                                                                                                onClick={() => shareOnWhatsApp(u.tenant, nodeReceipts[0])}
-                                                                                                className="p-1 px-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-md flex items-center gap-1.5 transition-all border border-green-200 shadow-sm"
-                                                                                                title="Partager sur WhatsApp"
+                                                                                                onClick={() => shareReceipt(u.tenant, nodeReceipts[0])}
+                                                                                                className="p-1 px-2 bg-primary/5 text-primary hover:bg-primary/10 rounded-md flex items-center gap-1.5 transition-all border border-primary/10 shadow-sm"
+                                                                                                title="Partager la quittance"
                                                                                             >
-                                                                                                <Send className="h-3.5 w-3.5" />
-                                                                                                <span className="text-[10px] font-black uppercase tracking-wider">WhatsApp</span>
+                                                                                                <Share2 className="h-3.5 w-3.5" />
+                                                                                                <span className="text-[10px] font-black uppercase tracking-wider">Partager</span>
                                                                                             </button>
                                                                                             <div className="w-[1px] h-3 bg-border mx-1"></div>
                                                                                             <span className="text-[10px] font-bold text-primary px-1">

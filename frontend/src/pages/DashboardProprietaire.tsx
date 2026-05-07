@@ -1188,13 +1188,27 @@ const DashboardProprietaire = () => {
                           </div>
                           <Button
                             className="bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold gap-2 px-5 py-2 h-auto flex-1 lg:flex-none rounded-xl"
-                            onClick={() => {
+                            onClick={async () => {
                               const text = `Inscris-toi sur Samalocation.com avec mon code ${user?.customId} pour gérer tes biens immobiliers et profite d'un mois Premium offert !`;
-                              window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                              const shareData = {
+                                title: 'Invitation Samalocation',
+                                text: text,
+                                url: 'https://samalocation.com'
+                              };
+                              
+                              if (navigator.share) {
+                                try {
+                                  await navigator.share(shareData);
+                                } catch (err) {
+                                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                }
+                              } else {
+                                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                              }
                             }}
                           >
                             <Share2 className="h-4 w-4" />
-                            Inviter via WhatsApp
+                            Partager l'invitation
                           </Button>
                         </div>
                       </div>

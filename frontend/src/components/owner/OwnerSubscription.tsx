@@ -29,8 +29,22 @@ export const OwnerSubscription = () => {
         });
     };
 
-    const shareReferralWA = () => {
+    const shareReferral = async () => {
         const text = `Inscris-toi sur Samalocation.com avec mon code ${user?.customId} pour gérer tes biens immobiliers et profite d'un mois Premium offert !`;
+        
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Invitation Samalocation',
+                    text: text,
+                    url: 'https://samalocation.com'
+                });
+                return;
+            } catch (err) {
+                console.error("Error sharing:", err);
+            }
+        }
+        
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
@@ -201,8 +215,8 @@ export const OwnerSubscription = () => {
                             </div>
                         </div>
                         <Button 
-                            onClick={shareReferralWA}
-                            className="w-full sm:w-auto font-bold h-11 px-6 rounded-xl flex items-center gap-2 shadow-sm bg-[#25D366] hover:bg-[#20bd5a] text-white"
+                            onClick={shareReferral}
+                            className="w-full sm:w-auto font-bold h-11 px-6 rounded-xl flex items-center gap-2 shadow-sm gradient-primary text-white"
                         >
                             <Share2 className="h-4 w-4" /> Partager l'invitation
                         </Button>

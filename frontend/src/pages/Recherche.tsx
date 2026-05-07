@@ -18,6 +18,7 @@ import MapComponent from "@/components/MapComponent";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import SEO from "@/components/SEO";
+import { isRecent } from "@/lib/dateUtils";
 
 const Recherche = () => {
   const { toast } = useToast();
@@ -354,7 +355,7 @@ const Recherche = () => {
                               ownerPhone={ownerProfile?.phone}
                               isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
                               ownerLogo={ownerProfile?.logo_url}
-                              isNew={(property.published_at || property.created_at) ? (new Date().getTime() - new Date(property.published_at || property.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000 : false}
+                              isNew={isRecent(property.published_at || property.created_at)}
                             />
                           );
                         })}
