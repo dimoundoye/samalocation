@@ -123,8 +123,13 @@ const authController = {
 
                 if (parrainReferralCount < 5) {
                     await db.query('UPDATE users SET referral_count = referral_count + 1 WHERE id = $1', [parrain.id]);
+                    
+                    // Trouver le plan actuel du parrain pour l'étendre plutôt que de forcer du "PREMIUM"
+                    const currentParrainSub = await Subscription.findActiveByUserId(parrain.id);
+                    const planToExtend = currentParrainSub?.plan_name || 'PREMIUM';
+
                     await Subscription.manualUpdate(parrain.id, {
-                        planName: 'PREMIUM',
+                        planName: planToExtend,
                         status: 'active',
                         durationDays: 30,
                         price: 0
@@ -132,11 +137,11 @@ const authController = {
 
                     // Notification de succès pour le parrain
                     await Notification.create({
-                        id: require('uuid').v4(),
+                        id: uuidv4(),
                         user_id: parrain.id,
                         type: 'system',
                         title: 'Nouveau parrainage réussi !',
-                        message: `Félicitations ! Un ami s'est inscrit avec votre code. Vous profitez d'un mois de plan Premium supplémentaire.`,
+                        message: `Félicitations ! Un ami s'est inscrit avec votre code. Vous profitez d'un mois de plan ${planToExtend === 'PROFESSIONAL' ? 'Professionnel' : 'Premium'} supplémentaire.`,
                         link: '/owner-dashboard?tab=subscription'
                     });
                 } else {
