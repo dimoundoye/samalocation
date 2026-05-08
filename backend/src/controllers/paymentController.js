@@ -3,7 +3,10 @@ const PLANS = require('../config/plans');
 const Subscription = require('../models/subscriptionModel');
 const response = require('../utils/response');
 
-const PAYDUNYA_BASE_URL = 'https://app.paydunya.com/api/v1/checkout-invoice/create';
+const IS_TEST_MODE = process.env.PAYDUNYA_MODE === 'test';
+const PAYDUNYA_BASE_URL = IS_TEST_MODE 
+    ? 'https://app.paydunya.com/sandbox-api/v1/checkout-invoice/create'
+    : 'https://app.paydunya.com/api/v1/checkout-invoice/create';
 
 const paymentController = {
     /**
@@ -113,7 +116,11 @@ const paymentController = {
             }
 
             // Vérifier le statut du paiement auprès de PayDunya (Sécurité)
-            const verifyUrl = `https://app.paydunya.com/api/v1/checkout-invoice/confirm/${token}`;
+            const confirmBaseUrl = process.env.PAYDUNYA_MODE === 'test'
+                ? 'https://app.paydunya.com/sandbox-api/v1/checkout-invoice/confirm/'
+                : 'https://app.paydunya.com/api/v1/checkout-invoice/confirm/';
+            
+            const verifyUrl = `${confirmBaseUrl}${token}`;
             console.log('Verifying payment with URL:', verifyUrl);
             
             const verifyRes = await axios.get(verifyUrl, {
