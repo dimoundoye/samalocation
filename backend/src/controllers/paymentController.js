@@ -104,14 +104,24 @@ const paymentController = {
     async handleCallback(req, res, next) {
         try {
             console.log('--- PAYDUNYA CALLBACK RECEIVED ---');
-            console.log('Headers:', JSON.stringify(req.headers));
-            console.log('Body:', JSON.stringify(req.body));
-            console.log('Query:', JSON.stringify(req.query));
+            
+            let payload = req.body;
+            
+            // PayDunya envoie souvent les données dans un champ "data" sous forme de string JSON
+            if (req.body.data && typeof req.body.data === 'string') {
+                try {
+                    payload = JSON.parse(req.body.data);
+                    console.log('Parsed PayDunya Payload:', JSON.stringify(payload));
+                } catch (e) {
+                    console.error('Failed to parse PayDunya data field:', e.message);
+                }
+            }
 
-            const token = req.body.token || req.query.token;
+            // Le token peut être à la racine ou dans invoice.token
+            const token = payload.token || (payload.invoice && payload.invoice.token) || req.query.token;
 
             if (!token) {
-                console.error('PayDunya Callback Error: Token missing');
+                console.error('PayDunya Callback Error: Token missing in payload', JSON.stringify(req.body));
                 return res.status(400).send('Token missing');
             }
 
@@ -132,13 +142,16 @@ const paymentController = {
                 }
             });
 
-            console.log('PayDunya Verification Response:', JSON.stringify(verifyRes.data));
+            const result = verifyRes.data;
+            console.log('PayDunya Verification Response:', JSON.stringify(result));
 
-            if (verifyRes.data.status === 'completed') {
-                const { userId, planId, durationDays, price } = verifyRes.data.custom_data || {};
+            if (result.status === 'completed') {
+                // Les données peuvent être dans result.custom_data ou payload.custom_data
+                const customData = result.custom_data || payload.custom_data || {};
+                const { userId, planId, durationDays, price } = customData;
                 
                 if (!userId) {
-                    console.error('PayDunya Callback Error: custom_data missing or incomplete', verifyRes.data.custom_data);
+                    console.error('PayDunya Callback Error: userId missing in custom_data', JSON.stringify(customData));
                     return res.status(400).send('Incomplete custom_data');
                 }
 
@@ -146,17 +159,17 @@ const paymentController = {
 
                 await Subscription.createSubscription(userId, {
                     planName: planId.toUpperCase(),
-                    price: price,
+                    price: price || (result.invoice && result.invoice.total_amount),
                     paymentMethod: 'paydunya',
                     transactionId: token,
-                    durationDays: durationDays
+                    durationDays: durationDays || 30
                 });
 
                 console.log('Subscription activated successfully');
                 return res.status(200).send('OK');
             }
 
-            console.log(`Payment status is not completed: ${verifyRes.data.status}`);
+            console.log(`Payment status is not completed: ${result.status}`);
             return res.status(200).send('Payment not completed');
 
         } catch (error) {
