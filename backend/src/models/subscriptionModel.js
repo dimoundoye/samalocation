@@ -89,6 +89,9 @@ const Subscription = {
      */
     async createSubscription(userId, data) {
         const {
+            planName,
+            price,
+            paymentMethod,
             transactionId,
             durationDays,
             receiptUrl
