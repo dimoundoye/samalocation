@@ -107,21 +107,29 @@ const paymentController = {
             
             let payload = req.body;
             
-            // PayDunya envoie souvent les données dans un champ "data" sous forme de string JSON
-            if (req.body.data && typeof req.body.data === 'string') {
-                try {
-                    payload = JSON.parse(req.body.data);
-                    console.log('Parsed PayDunya Payload:', JSON.stringify(payload));
-                } catch (e) {
-                    console.error('Failed to parse PayDunya data field:', e.message);
+            // Si PayDunya envoie les infos dans un champ "data" (Objet ou String)
+            if (req.body.data) {
+                if (typeof req.body.data === 'string') {
+                    try {
+                        payload = JSON.parse(req.body.data);
+                    } catch (e) {
+                        console.error('Failed to parse PayDunya data string:', e.message);
+                    }
+                } else if (typeof req.body.data === 'object') {
+                    payload = req.body.data;
                 }
             }
 
-            // Le token peut être à la racine ou dans invoice.token
-            const token = payload.token || (payload.invoice && payload.invoice.token) || req.query.token;
+            console.log('Working Payload:', JSON.stringify(payload));
+
+            // Chercher le token partout (racine, invoice, ou query)
+            const token = payload.token || 
+                          (payload.invoice && payload.invoice.token) || 
+                          req.body.token || 
+                          req.query.token;
 
             if (!token) {
-                console.error('PayDunya Callback Error: Token missing in payload', JSON.stringify(req.body));
+                console.error('PayDunya Callback Error: Token not found in any expected field');
                 return res.status(400).send('Token missing');
             }
 
@@ -131,7 +139,7 @@ const paymentController = {
                 : 'https://app.paydunya.com/api/v1/checkout-invoice/confirm/';
             
             const verifyUrl = `${confirmBaseUrl}${token}`;
-            console.log('Verifying payment with URL:', verifyUrl);
+            console.log('Verifying with PayDunya:', verifyUrl);
             
             const verifyRes = await axios.get(verifyUrl, {
                 headers: {
@@ -143,41 +151,66 @@ const paymentController = {
             });
 
             const result = verifyRes.data;
-            console.log('PayDunya Verification Response:', JSON.stringify(result));
+            console.log('PayDunya Verification Result:', result.status);
 
             if (result.status === 'completed') {
-                // Les données peuvent être dans result.custom_data ou payload.custom_data
                 const customData = result.custom_data || payload.custom_data || {};
                 const { userId, planId, durationDays, price } = customData;
                 
                 if (!userId) {
-                    console.error('PayDunya Callback Error: userId missing in custom_data', JSON.stringify(customData));
+                    console.error('PayDunya Error: No userId in custom_data');
                     return res.status(400).send('Incomplete custom_data');
                 }
 
-                console.log(`Activating subscription for User: ${userId}, Plan: ${planId}`);
+                const subPlan = (planId || 'PREMIUM').toUpperCase();
+                const receiptUrl = result.receipt_url || payload.receipt_url;
+                console.log(`Activating ${subPlan} for User ${userId}. Receipt: ${receiptUrl}`);
 
                 await Subscription.createSubscription(userId, {
-                    planName: planId.toUpperCase(),
-                    price: price || (result.invoice && result.invoice.total_amount),
+                    planName: subPlan,
+                    price: price || (result.invoice && result.invoice.total_amount) || 0,
                     paymentMethod: 'paydunya',
                     transactionId: token,
-                    durationDays: durationDays || 30
+                    durationDays: durationDays || 30,
+                    receiptUrl: receiptUrl
                 });
 
-                console.log('Subscription activated successfully');
+                // Envoyer un mail de confirmation avec le lien du reçu
+                try {
+                    const emailService = require('../utils/emailService');
+                    const User = require('../models/userModel');
+                    const user = await User.findById(userId);
+                    if (user && user.email) {
+                        const receiptHtml = receiptUrl 
+                            ? `<p>Vous pouvez télécharger votre reçu ici : <a href="${receiptUrl}">${receiptUrl}</a></p>`
+                            : '';
+                        
+                        await emailService.sendEmail(
+                            user.email, 
+                            'Abonnement activé - SamaLocation', 
+                            `<div style="font-family: sans-serif;">
+                                <h2>Félicitations !</h2>
+                                <p>Votre abonnement <strong>${subPlan}</strong> est désormais actif sur SamaLocation.</p>
+                                <p>Durée : 30 jours</p>
+                                ${receiptHtml}
+                                <p>Merci de votre confiance !</p>
+                             </div>`
+                        );
+                    }
+                } catch (emailError) {
+                    console.error('Email notification failed:', emailError.message);
+                }
+
+                console.log('--- SUCCESS: Subscription Activated ---');
                 return res.status(200).send('OK');
             }
 
-            console.log(`Payment status is not completed: ${result.status}`);
-            return res.status(200).send('Payment not completed');
+            console.log('Payment not completed. Status:', result.status);
+            return res.status(200).send('Payment pending');
 
         } catch (error) {
-            console.error('PayDunya Callback Error:', error.message);
-            if (error.response) {
-                console.error('Error Details:', JSON.stringify(error.response.data));
-            }
-            res.status(500).send('Internal Server Error');
+            console.error('PayDunya Callback Global Error:', error.message);
+            res.status(500).send('Error');
         }
     }
 };

@@ -89,11 +89,9 @@ const Subscription = {
      */
     async createSubscription(userId, data) {
         const {
-            planName,
-            price,
-            paymentMethod,
             transactionId,
-            durationDays
+            durationDays,
+            receiptUrl
         } = data;
 
         // On cherche la date d'expiration la plus lointaine parmi TOUS les abonnements actifs
@@ -126,9 +124,9 @@ const Subscription = {
         const { rows } = await db.query(`
             INSERT INTO subscriptions (
                 user_id, plan_name, status, price, 
-                payment_method, transaction_id, expires_at
+                payment_method, transaction_id, expires_at, receipt_url
             ) 
-            VALUES ($1, $2, 'active', $3, $4, $5, $6) 
+            VALUES ($1, $2, 'active', $3, $4, $5, $6, $7) 
             RETURNING *
         `, [
             userId,
@@ -136,7 +134,8 @@ const Subscription = {
             price,
             paymentMethod,
             transactionId,
-            expiresAt
+            expiresAt,
+            receiptUrl
         ]);
 
         return rows[0];
@@ -330,7 +329,8 @@ const Subscription = {
     async migrate() {
         try {
             await db.query("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS admin_notes TEXT NULL");
-            console.log('✅ Migration: admin_notes column added to subscriptions table');
+            await db.query("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS receipt_url TEXT NULL");
+            console.log('✅ Migration: admin_notes and receipt_url columns added to subscriptions table');
         } catch (err) {
             console.error('Migration error (subscriptions):', err.message);
         }
