@@ -100,14 +100,22 @@ const paymentController = {
      */
     async handleCallback(req, res, next) {
         try {
-            const { token } = req.body;
+            console.log('--- PAYDUNYA CALLBACK RECEIVED ---');
+            console.log('Headers:', JSON.stringify(req.headers));
+            console.log('Body:', JSON.stringify(req.body));
+            console.log('Query:', JSON.stringify(req.query));
+
+            const token = req.body.token || req.query.token;
 
             if (!token) {
+                console.error('PayDunya Callback Error: Token missing');
                 return res.status(400).send('Token missing');
             }
 
             // Vérifier le statut du paiement auprès de PayDunya (Sécurité)
             const verifyUrl = `https://app.paydunya.com/api/v1/checkout-invoice/confirm/${token}`;
+            console.log('Verifying payment with URL:', verifyUrl);
+            
             const verifyRes = await axios.get(verifyUrl, {
                 headers: {
                     'PAYDUNYA-MASTER-KEY': process.env.PAYDUNYA_MASTER_KEY,
@@ -117,8 +125,17 @@ const paymentController = {
                 }
             });
 
+            console.log('PayDunya Verification Response:', JSON.stringify(verifyRes.data));
+
             if (verifyRes.data.status === 'completed') {
-                const { userId, planId, durationDays, price } = verifyRes.data.custom_data;
+                const { userId, planId, durationDays, price } = verifyRes.data.custom_data || {};
+                
+                if (!userId) {
+                    console.error('PayDunya Callback Error: custom_data missing or incomplete', verifyRes.data.custom_data);
+                    return res.status(400).send('Incomplete custom_data');
+                }
+
+                console.log(`Activating subscription for User: ${userId}, Plan: ${planId}`);
 
                 await Subscription.createSubscription(userId, {
                     planName: planId.toUpperCase(),
@@ -128,13 +145,18 @@ const paymentController = {
                     durationDays: durationDays
                 });
 
+                console.log('Subscription activated successfully');
                 return res.status(200).send('OK');
             }
 
+            console.log(`Payment status is not completed: ${verifyRes.data.status}`);
             return res.status(200).send('Payment not completed');
 
         } catch (error) {
             console.error('PayDunya Callback Error:', error.message);
+            if (error.response) {
+                console.error('Error Details:', JSON.stringify(error.response.data));
+            }
             res.status(500).send('Internal Server Error');
         }
     }

@@ -62,8 +62,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error: any) {
         if (error.status === 503) {
           navigate("/maintenance");
-        } else if (token) {
+        } else if (error.status === 401 && token) {
           localStorage.removeItem("auth_token");
+          setUser(null);
+          setUserRole(null);
         }
       }
       setLoading(false);
