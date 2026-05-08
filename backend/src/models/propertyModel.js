@@ -61,6 +61,11 @@ const Property = {
             params.push(filters.type);
         }
 
+        if (filters.listingType && filters.listingType !== 'all') {
+            query += ` AND p.listing_type = $${idx++}`;
+            params.push(filters.listingType);
+        }
+
         if (filters.search) {
             const searchTerms = filters.search.trim().split(/\s+/);
             searchTerms.forEach(term => {

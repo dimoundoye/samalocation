@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search as SearchIcon, SlidersHorizontal, ArrowLeft, Home, ChevronRight, Map as MapIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import property1 from "@/assets/property-1.jpg";
 import { transformProperty, FormattedProperty } from "@/lib/property";
 import { getProperties, getMessages } from "@/lib/api";
@@ -186,7 +187,7 @@ const Recherche = () => {
                   />
                 </div>
 
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 hidden lg:block">
                   <Select value={listingType} onValueChange={setListingType}>
                     <SelectTrigger className="h-12 bg-background border border-primary/20 rounded-xl focus:border-primary/50 transition-all shadow-sm">
                       <SelectValue placeholder="Transaction" />
@@ -199,7 +200,7 @@ const Recherche = () => {
                   </Select>
                 </div>
 
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 hidden lg:block">
                   <Select value={propertyType} onValueChange={setPropertyType}>
                     <SelectTrigger className="h-12 bg-background border border-primary/20 rounded-xl focus:border-primary/50 transition-all shadow-sm">
                       <SelectValue placeholder={t('search.property_type')} />
@@ -216,15 +217,185 @@ const Recherche = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Mobile Filter Button */}
+                <div className="lg:hidden flex gap-2">
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="outline" className="flex-1 h-12 border-primary/20 rounded-xl flex items-center gap-2">
+                        <SlidersHorizontal className="h-4 w-4" />
+                        Filtres {listingType !== 'all' || propertyType !== 'all' ? '(Actifs)' : ''}
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl p-6">
+                      <SheetHeader className="mb-6">
+                        <SheetTitle className="text-2xl font-bold flex items-center gap-2">
+                          <SlidersHorizontal className="h-6 w-6 text-primary" />
+                          Affiner votre recherche
+                        </SheetTitle>
+                      </SheetHeader>
+                      
+                      <div className="space-y-6 pb-20 overflow-y-auto max-h-[calc(85vh-150px)] px-1">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">Transaction</Label>
+                            <Select value={listingType} onValueChange={setListingType}>
+                              <SelectTrigger className="h-11 rounded-xl">
+                                <SelectValue placeholder="Transaction" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Toutes</SelectItem>
+                                <SelectItem value="location">Location</SelectItem>
+                                <SelectItem value="vente">Vente</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">Type de bien</Label>
+                            <Select value={propertyType} onValueChange={setPropertyType}>
+                              <SelectTrigger className="h-11 rounded-xl">
+                                <SelectValue placeholder="Type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">{t('search.types.all')}</SelectItem>
+                                <SelectItem value="maison">{t('search.types.house')}</SelectItem>
+                                <SelectItem value="villa">{t('search.types.villa')}</SelectItem>
+                                <SelectItem value="appartement">{t('search.types.apartment')}</SelectItem>
+                                <SelectItem value="studio">{t('search.types.studio')}</SelectItem>
+                                <SelectItem value="chambre">{t('search.types.room')}</SelectItem>
+                                <SelectItem value="garage">{t('search.types.garage')}</SelectItem>
+                                <SelectItem value="locale">{t('search.types.office')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">{listingType === 'vente' ? 'Prix Min' : 'Loyer Min'}</Label>
+                            <Input
+                              type="number"
+                              placeholder="Min"
+                              value={minPrice}
+                              onChange={(e) => setMinPrice(e.target.value)}
+                              className="h-11 rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">{listingType === 'vente' ? 'Prix Max' : 'Loyer Max'}</Label>
+                            <Input
+                              type="number"
+                              placeholder="Max"
+                              value={maxPrice}
+                              onChange={(e) => setMaxPrice(e.target.value)}
+                              className="h-11 rounded-xl"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">Surface Min (m²)</Label>
+                            <Input
+                              type="number"
+                              placeholder="Min"
+                              value={minArea}
+                              onChange={(e) => setMinArea(e.target.value)}
+                              className="h-11 rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">Surface Max (m²)</Label>
+                            <Input
+                              type="number"
+                              placeholder="Max"
+                              value={maxArea}
+                              onChange={(e) => setMaxArea(e.target.value)}
+                              className="h-11 rounded-xl"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">Chambres Min</Label>
+                            <Input
+                              type="number"
+                              placeholder="Min"
+                              value={minBedrooms}
+                              onChange={(e) => setMinBedrooms(e.target.value)}
+                              className="h-11 rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">Chambres Max</Label>
+                            <Input
+                              type="number"
+                              placeholder="Max"
+                              value={maxBedrooms}
+                              onChange={(e) => setMaxBedrooms(e.target.value)}
+                              className="h-11 rounded-xl"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">Pièces Min</Label>
+                            <Input
+                              type="number"
+                              placeholder="Min"
+                              value={minRooms}
+                              onChange={(e) => setMinRooms(e.target.value)}
+                              className="h-11 rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">Pièces Max</Label>
+                            <Input
+                              type="number"
+                              placeholder="Max"
+                              value={maxRooms}
+                              onChange={(e) => setMaxRooms(e.target.value)}
+                              className="h-11 rounded-xl"
+                            />
+                          </div>
+                        </div>
+
+                        <SheetClose asChild>
+                          <Button 
+                            className="w-full h-12 rounded-xl text-lg font-bold"
+                          >
+                            Appliquer les filtres
+                          </Button>
+                        </SheetClose>
+                        
+                        <Button
+                          variant="ghost"
+                          className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => {
+                            setMinPrice(""); setMaxPrice(""); setMinArea(""); setMaxArea("");
+                            setMinRooms(""); setMaxRooms(""); setMinBedrooms(""); setMaxBedrooms("");
+                            setPropertyType("all"); setListingType("all");
+                          }}
+                        >
+                          Réinitialiser tout
+                        </Button>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
               </div>
 
               {/* Advanced Range Filters (Only visible when search is not active on mobile or always on desktop) */}
               <div className={cn(
-                "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 transition-all duration-300 overflow-hidden",
+                "hidden lg:grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 transition-all duration-300 overflow-hidden",
                 isSearchActive ? "max-h-0 sm:max-h-96 opacity-0 sm:opacity-100 mt-0 pointer-events-none sm:pointer-events-auto" : "max-h-96 opacity-100"
               )}>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Loyer Min</Label>
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">
+                    {listingType === 'vente' ? 'Prix Min' : 'Loyer Min'}
+                  </Label>
                   <Input
                     type="number"
                     placeholder="Min"
@@ -234,7 +405,9 @@ const Recherche = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Loyer Max</Label>
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">
+                    {listingType === 'vente' ? 'Prix Max' : 'Loyer Max'}
+                  </Label>
                   <Input
                     type="number"
                     placeholder="Max"

@@ -30,7 +30,8 @@ const propertyController = {
                 minRooms: req.query.minRooms || null,
                 maxRooms: req.query.maxRooms || null,
                 minBedrooms: req.query.minBedrooms || null,
-                maxBedrooms: req.query.maxBedrooms || null
+                maxBedrooms: req.query.maxBedrooms || null,
+                listingType: req.query.listingType || 'all'
             };
 
             // Check cache
