@@ -7,9 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Upload, Sparkles, Loader2, Home, Layers, Building2, Building, BedDouble, Warehouse, Store } from "lucide-react";
+import { X, Upload, Sparkles, Loader2, Home, Layers, Building2, Building, BedDouble, Warehouse, Store, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { updateProperty, uploadPhotos, generateAIDescription } from "@/lib/api";
+import { updateProperty, uploadPhotos, generateAIDescription, getOwnerProperties } from "@/lib/api";
 import { compressImage } from "@/lib/imageCompression";
 import { Property } from "@/types";
 import LocationPicker from "./LocationPicker";
@@ -30,6 +30,8 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
         description: "",
         latitude: "",
         longitude: "",
+        listing_type: "location",
+        sale_price: "",
     });
 
     // For single property units (since current UI handles them as one)
@@ -50,6 +52,23 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
     const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
     const [uploading, setUploading] = useState(false);
     const [generatingAI, setGeneratingAI] = useState(false);
+    const [myProperties, setMyProperties] = useState<Property[]>([]);
+    const [nameConflict, setNameConflict] = useState(false);
+
+    useEffect(() => {
+        if (open) {
+            loadMyProperties();
+        }
+    }, [open]);
+
+    const loadMyProperties = async () => {
+        try {
+            const props = await getOwnerProperties();
+            setMyProperties(props || []);
+        } catch (error) {
+            console.error("Failed to load properties:", error);
+        }
+    };
 
     useEffect(() => {
         if (property) {
@@ -60,11 +79,14 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                 description: property.description || "",
                 latitude: property.latitude?.toString() || "",
                 longitude: property.longitude?.toString() || "",
+                listing_type: property.listing_type || "location",
+                sale_price: property.sale_price?.toString() || "",
             });
             setPropertyEquipments(property.equipments || []);
             setExistingPhotos(property.photos || []);
             setPropertyPhotos([]);
             setPropertyPhotosPreviews([]);
+            setNameConflict(false);
 
             // Load unit data (assuming one unit for now, as in AddPropertyModal)
             const unit = property.property_units && property.property_units.length > 0
@@ -141,11 +163,13 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                 equipments: propertyEquipments.length > 0 ? propertyEquipments : null,
                 latitude: propertyData.latitude ? parseFloat(propertyData.latitude) : 14.7167,
                 longitude: propertyData.longitude ? parseFloat(propertyData.longitude) : -17.4677,
+                listing_type: propertyData.listing_type,
+                sale_price: propertyData.listing_type === 'vente' ? parseFloat(propertyData.sale_price) : null,
                 units: [
                     {
                         id: unitData.id || undefined,
                         unit_type: propertyType,
-                        monthly_rent: unitData.monthly_rent ? parseInt(unitData.monthly_rent) : 0,
+                        monthly_rent: propertyData.listing_type === 'location' && unitData.monthly_rent ? parseInt(unitData.monthly_rent) : 0,
                         area_sqm: unitData.area_sqm ? parseFloat(unitData.area_sqm) : null,
                         bedrooms: unitData.bedrooms ? parseInt(unitData.bedrooms) : 0,
                         bathrooms: unitData.bathrooms ? parseInt(unitData.bathrooms) : 0,
@@ -236,9 +260,11 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
         { value: "chambre", label: "Chambre", icon: BedDouble },
         { value: "garage", label: "Garage", icon: Warehouse },
         { value: "locale", label: "Local", icon: Store },
+        { value: "terrain", label: "Terrain", icon: Layers },
     ];
 
     const needsDetailedFields = ["maison", "villa", "appartement", "studio", "chambre"].includes(propertyType);
+    const isSimpleProperty = ["maison", "villa", "appartement", "studio", "chambre", "garage", "locale", "terrain"].includes(propertyType);
 
     const rentPeriodOptions = [
         { value: "jour", label: "Jour" },
@@ -273,7 +299,12 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                                         ? "border-primary bg-primary/5 ring-1 ring-primary"
                                         : "hover:border-primary/50"
                                         }`}
-                                    onClick={() => setPropertyType(type.value)}
+                                    onClick={() => {
+                                        setPropertyType(type.value);
+                                        if (type.value === 'terrain' && propertyData.listing_type !== 'vente') {
+                                            setPropertyData(prev => ({ ...prev, listing_type: 'vente' }));
+                                        }
+                                    }}
                                 >
                                     <type.icon className={`h-5 w-5 mx-auto mb-1 ${propertyType === type.value ? "text-primary" : "text-muted-foreground"}`} />
                                     <p className={`text-[10px] font-medium ${propertyType === type.value ? "text-primary" : ""}`}>{type.label}</p>
@@ -293,8 +324,22 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                                     <Input
                                         id="edit-name"
                                         value={propertyData.name}
-                                        onChange={(e) => setPropertyData({ ...propertyData, name: e.target.value })}
+                                        onChange={(e) => {
+                                            const newName = e.target.value;
+                                            setPropertyData({ ...propertyData, name: newName });
+                                            setNameConflict(myProperties.some(p => 
+                                                p.id !== property?.id && 
+                                                p.name?.toLowerCase() === newName.toLowerCase().trim()
+                                            ));
+                                        }}
+                                        className={nameConflict ? "border-orange-400 focus-visible:ring-orange-400" : ""}
                                     />
+                                    {nameConflict && (
+                                        <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
+                                            <AlertCircle className="h-3 w-3" />
+                                            Vous avez déjà un autre bien avec ce nom.
+                                        </p>
+                                    )}
                                 </div>
                                 <div>
                                     <Label htmlFor="edit-address">Adresse complète *</Label>
@@ -500,38 +545,83 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
 
                     <Card className="shadow-soft">
                         <CardHeader>
-                            <CardTitle>Informations de location</CardTitle>
+                            <CardTitle>Type de transaction</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <Label>Durée du loyer *</Label>
+                                    <Label>Transaction *</Label>
                                     <Select
-                                        value={unitData.rent_period}
-                                        onValueChange={(value) => setUnitData({ ...unitData, rent_period: value })}
+                                        value={propertyData.listing_type}
+                                        onValueChange={(value) => setPropertyData({ ...propertyData, listing_type: value })}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Sélectionnez la durée" />
+                                            <SelectValue placeholder="Choisir le type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {rentPeriodOptions.map((option) => (
-                                                <SelectItem key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </SelectItem>
-                                            ))}
+                                            <SelectItem value="location">Location</SelectItem>
+                                            <SelectItem value="vente">Vente</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
 
-                                <div>
-                                    <Label htmlFor="edit-rent">Montant du loyer (F CFA) *</Label>
-                                    <Input
-                                        id="edit-rent"
-                                        type="number"
-                                        value={unitData.monthly_rent}
-                                        onChange={(e) => setUnitData({ ...unitData, monthly_rent: e.target.value })}
-                                    />
-                                </div>
+                                {propertyData.listing_type === 'vente' && (
+                                    <div className="animate-in fade-in slide-in-from-top-1">
+                                        <Label htmlFor="edit-sale-price">Prix de vente (F CFA) *</Label>
+                                        <Input
+                                            id="edit-sale-price"
+                                            type="number"
+                                            value={propertyData.sale_price}
+                                            onChange={(e) => setPropertyData({ ...propertyData, sale_price: e.target.value })}
+                                            placeholder="Ex: 50000000"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {isSimpleProperty && (
+                        <Card className="shadow-soft">
+                            <CardHeader>
+                                <CardTitle>
+                                    {propertyData.listing_type === 'vente' ? 'Informations du bien' : 'Informations de location'}
+                                </CardTitle>
+                            </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {propertyData.listing_type === 'location' && (
+                                    <>
+                                        <div>
+                                            <Label>Durée du loyer *</Label>
+                                            <Select
+                                                value={unitData.rent_period}
+                                                onValueChange={(value) => setUnitData({ ...unitData, rent_period: value })}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Sélectionnez la durée" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {rentPeriodOptions.map((option) => (
+                                                        <SelectItem key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="edit-rent">Montant du loyer (F CFA) *</Label>
+                                            <Input
+                                                id="edit-rent"
+                                                type="number"
+                                                value={unitData.monthly_rent}
+                                                onChange={(e) => setUnitData({ ...unitData, monthly_rent: e.target.value })}
+                                            />
+                                        </div>
+                                    </>
+                                )}
 
                                 <div>
                                     <Label htmlFor="edit-area">Surface (m²)</Label>
@@ -579,6 +669,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                             </div>
                         </CardContent>
                     </Card>
+                    )}
 
                     <div className="flex justify-end gap-3">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

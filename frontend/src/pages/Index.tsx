@@ -285,6 +285,8 @@ const Index = () => {
                         isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
                         ownerLogo={ownerProfile?.logo_url}
                         isNew={isRecent(property.published_at)}
+                        listingType={property.listing_type as any}
+                        salePrice={property.sale_price}
                       />
                     </CarouselItem>
                   );

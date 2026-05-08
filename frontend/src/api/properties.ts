@@ -13,6 +13,7 @@ export const getProperties = async (params: {
     maxRooms?: number | string | null;
     minBedrooms?: number | string | null;
     maxBedrooms?: number | string | null;
+    listingType?: string;
 } = {}) => {
     try {
         return await baseClient("/properties", { params });

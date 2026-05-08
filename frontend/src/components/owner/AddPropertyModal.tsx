@@ -19,10 +19,11 @@ import {
   Upload,
   Layers,
   Sparkles,
+  AlertCircle,
   Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { createProperty, createPropertyUnits, uploadPhotos, generateAIDescription, getMySubscription } from "@/lib/api";
+import { createProperty, createPropertyUnits, uploadPhotos, generateAIDescription, getMySubscription, getOwnerProperties } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { compressImage } from "@/lib/imageCompression";
 import LocationPicker from "./LocationPicker";
@@ -45,6 +46,8 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     description: "",
     latitude: "",
     longitude: "",
+    listing_type: "location",
+    sale_price: "",
   });
   const [propertyEquipments, setPropertyEquipments] = useState<string[]>([]);
   const [equipmentInput, setEquipmentInput] = useState("");
@@ -53,6 +56,8 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
   const [uploading, setUploading] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
+  const [myProperties, setMyProperties] = useState<any[]>([]);
+  const [nameConflict, setNameConflict] = useState(false);
   const [upgradeModal, setUpgradeModal] = useState({
     open: false,
     title: "",
@@ -69,10 +74,14 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
   const loadSubscription = async () => {
     try {
-      const sub = await getMySubscription();
+      const [sub, props] = await Promise.all([
+        getMySubscription(),
+        getOwnerProperties()
+      ]);
       setSubscription(sub);
+      setMyProperties(props || []);
     } catch (error) {
-      console.error("Failed to load subscription check:", error);
+      console.error("Failed to load initial data:", error);
     }
   };
 
@@ -118,6 +127,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     studio: { singular: "studio", plural: "studios" },
     chambre: { singular: "chambre", plural: "chambres" },
     locale: { singular: "locale", plural: "locales" },
+    terrain: { singular: "terrain", plural: "terrains" },
   };
 
   const propertyTypes = [
@@ -128,10 +138,11 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     { value: "chambre", label: "Chambre", icon: BedDouble },
     { value: "garage", label: "Garage", icon: Warehouse },
     { value: "locale", label: "Local", icon: Store },
+    { value: "terrain", label: "Terrain", icon: Layers },
   ];
 
   // Types de biens simples (un seul bien) - tous les types sont maintenant simples
-  const isSimpleProperty = ["maison", "villa", "appartement", "studio", "chambre", "garage", "locale"].includes(propertyType);
+  const isSimpleProperty = ["maison", "villa", "appartement", "studio", "chambre", "garage", "locale", "terrain"].includes(propertyType);
 
   // Types qui nécessitent des champs supplémentaires (étages, chambres, salles de bain)
   const needsDetailedFields = ["maison", "villa", "appartement", "studio", "chambre"].includes(propertyType);
@@ -168,13 +179,24 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
     // Pour les biens simples, vérifier que les champs requis sont remplis
     if (isSimpleProperty) {
-      if (!simplePropertyData.monthly_rent || parseFloat(simplePropertyData.monthly_rent) <= 0) {
-        toast({
-          title: "Loyer requis",
-          description: "Veuillez renseigner le montant du loyer.",
-          variant: "destructive",
-        });
-        return;
+      if (propertyData.listing_type === 'location') {
+        if (!simplePropertyData.monthly_rent || parseFloat(simplePropertyData.monthly_rent) <= 0) {
+          toast({
+            title: "Loyer requis",
+            description: "Veuillez renseigner le montant du loyer.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        if (!propertyData.sale_price || parseFloat(propertyData.sale_price) <= 0) {
+          toast({
+            title: "Prix de vente requis",
+            description: "Veuillez renseigner le prix de vente.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
     }
 
@@ -203,10 +225,13 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
       let preparedUnits: any[] = [];
 
       if (isSimpleProperty) {
-        const monthlyRentValue = parseInt(simplePropertyData.monthly_rent, 10);
+        let monthlyRentValue = 0;
+        if (propertyData.listing_type === 'location') {
+          monthlyRentValue = parseInt(simplePropertyData.monthly_rent, 10);
 
-        if (Number.isNaN(monthlyRentValue) || monthlyRentValue <= 0) {
-          throw new Error("Le loyer doit être un nombre positif.");
+          if (Number.isNaN(monthlyRentValue) || monthlyRentValue <= 0) {
+            throw new Error("Le loyer doit être un nombre positif.");
+          }
         }
 
         const unitLabels: Record<string, string> = {
@@ -221,7 +246,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         preparedUnits = [{
           unit_type: propertyType,
           unit_number: unitLabels[propertyType] || propertyType,
-          monthly_rent: monthlyRentValue,
+          monthly_rent: propertyData.listing_type === 'location' ? monthlyRentValue : 0,
           area_sqm: simplePropertyData.area_sqm ? parseFloat(simplePropertyData.area_sqm) : null,
           bedrooms: needsDetailedFields && simplePropertyData.bedrooms
             ? parseInt(simplePropertyData.bedrooms, 10) : 0,
@@ -254,6 +279,8 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         equipments: propertyEquipments.length > 0 ? propertyEquipments : null,
         latitude: propertyData.latitude ? parseFloat(propertyData.latitude) : 14.7167,
         longitude: propertyData.longitude ? parseFloat(propertyData.longitude) : -17.4677,
+        listing_type: propertyData.listing_type,
+        sale_price: propertyData.listing_type === 'vente' ? parseFloat(propertyData.sale_price) : null,
         units: preparedUnits // Ajout des unités ici
       };
 
@@ -361,6 +388,8 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
       description: "",
       latitude: "",
       longitude: "",
+      listing_type: "location",
+      sale_price: "",
     });
     setPropertyEquipments([]);
     setEquipmentInput("");
@@ -419,6 +448,15 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                     if (propertyType !== type.value) {
                       const prevType = propertyType;
                       setPropertyType(type.value);
+                      
+                      // Auto-set listing type for terrain
+                      const newListingType = type.value === 'terrain' ? 'vente' : 'location';
+
+                      setPropertyData(prev => ({
+                        ...prev,
+                        listing_type: newListingType
+                      }));
+
                       setSimplePropertyData({
                         monthly_rent: "",
                         area_sqm: "",
@@ -460,9 +498,20 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                       <Input
                         id="name"
                         value={propertyData.name}
-                        onChange={(e) => setPropertyData({ ...propertyData, name: e.target.value })}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          setPropertyData({ ...propertyData, name: newName });
+                          setNameConflict(myProperties.some(p => p.name?.toLowerCase() === newName.toLowerCase().trim()));
+                        }}
                         placeholder="Ex: Villa Almadies"
+                        className={nameConflict ? "border-orange-400 focus-visible:ring-orange-400" : ""}
                       />
+                      {nameConflict && (
+                        <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Vous avez déjà un bien avec ce nom.
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="address">Adresse complète *</Label>
@@ -680,43 +729,87 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                 </CardContent>
               </Card>
 
-              {/* Formulaire pour les biens simples (appartement, chambre, garage, local) */}
+              <Card className="shadow-soft">
+                <CardHeader>
+                  <CardTitle>Type de transaction</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Transaction *</Label>
+                      <Select
+                        value={propertyData.listing_type}
+                        onValueChange={(value) => setPropertyData({ ...propertyData, listing_type: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choisir le type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="location">Location</SelectItem>
+                          <SelectItem value="vente">Vente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {propertyData.listing_type === 'vente' && (
+                      <div className="animate-in fade-in slide-in-from-top-1">
+                        <Label htmlFor="sale_price">Prix de vente (F CFA) *</Label>
+                        <Input
+                          id="sale_price"
+                          type="number"
+                          value={propertyData.sale_price}
+                          onChange={(e) => setPropertyData({ ...propertyData, sale_price: e.target.value })}
+                          placeholder="Ex: 50000000"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Formulaire pour les biens (appartement, chambre, garage, local, maison, villa, terrain) */}
               {isSimpleProperty && (
                 <Card className="shadow-soft">
                   <CardHeader>
-                    <CardTitle>Informations de location</CardTitle>
+                    <CardTitle>
+                      {propertyData.listing_type === 'vente' ? 'Informations du bien' : 'Informations de location'}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="simple_rent_period">Durée du loyer *</Label>
-                        <Select
-                          value={simplePropertyData.rent_period}
-                          onValueChange={(value) => setSimplePropertyData({ ...simplePropertyData, rent_period: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionnez la durée" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {rentPeriodOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {capitalize(option.label)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {propertyData.listing_type === 'location' && (
+                        <>
+                          <div>
+                            <Label htmlFor="simple_rent_period">Durée du loyer *</Label>
+                            <Select
+                              value={simplePropertyData.rent_period}
+                              onValueChange={(value) => setSimplePropertyData({ ...simplePropertyData, rent_period: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionnez la durée" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {rentPeriodOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {capitalize(option.label)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                      <div>
-                        <Label htmlFor="simple_monthly_rent">Montant du loyer (F CFA) *</Label>
-                        <Input
-                          id="simple_monthly_rent"
-                          type="number"
-                          value={simplePropertyData.monthly_rent}
-                          onChange={(e) => setSimplePropertyData({ ...simplePropertyData, monthly_rent: e.target.value })}
-                          placeholder="Ex: 150000"
-                        />
-                      </div>
+                          <div>
+                            <Label htmlFor="simple_monthly_rent">Montant du loyer (F CFA) *</Label>
+                            <Input
+                              id="simple_monthly_rent"
+                              type="number"
+                              value={simplePropertyData.monthly_rent}
+                              onChange={(e) => setSimplePropertyData({ ...simplePropertyData, monthly_rent: e.target.value })}
+                              placeholder="Ex: 150000"
+                            />
+                          </div>
+                        </>
+                      )}
 
                       <div>
                         <Label htmlFor="simple_area_sqm">Surface (m²)</Label>
@@ -799,7 +892,8 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                     !propertyType ||
                     !propertyData.name ||
                     !propertyData.address ||
-                    (isSimpleProperty && (!simplePropertyData.monthly_rent || parseFloat(simplePropertyData.monthly_rent) <= 0))
+                    (propertyData.listing_type === 'location' && isSimpleProperty && (!simplePropertyData.monthly_rent || parseFloat(simplePropertyData.monthly_rent) <= 0)) ||
+                    (propertyData.listing_type === 'vente' && (!propertyData.sale_price || parseFloat(propertyData.sale_price) <= 0))
                   }
                 >
                   {uploading

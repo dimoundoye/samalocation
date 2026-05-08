@@ -195,6 +195,8 @@ const DashboardProprietaire = () => {
       id: property.id,
       name: property.name,
       type: 'property' as const,
+      listing_type: property.listing_type,
+      sale_price: property.sale_price,
       units: (property.property_units || []).map(unit => {
         const tenant = tenants.find(t => t.unit_id === unit.id);
         return { unit, tenant };
@@ -666,8 +668,13 @@ const DashboardProprietaire = () => {
     return new Date(date).toLocaleDateString('fr-FR');
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(amount).replace('XOF', 'F CFA');
+  const formatCurrency = (amount: any) => {
+    const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat("fr-FR", {
+        style: "decimal",
+        useGrouping: true,
+        maximumFractionDigits: 0,
+    }).format(numericValue || 0) + " F CFA";
   };
 
   const renderSidebarContent = (isMobile = false) => {
@@ -1409,7 +1416,14 @@ const DashboardProprietaire = () => {
                           <CardHeader>
                             <CardTitle className="flex items-center justify-between">
                               <span>{property.name}</span>
-                              <Badge>{property.property_type}</Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="capitalize">{property.property_type}</Badge>
+                                {property.listing_type === 'vente' ? (
+                                  <Badge variant="destructive" className="animate-pulse shadow-sm">À VENDRE</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm">À LOUER</Badge>
+                                )}
+                              </div>
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
@@ -1438,53 +1452,64 @@ const DashboardProprietaire = () => {
                               ) : null;
                             })()}
                             <div className="space-y-2 mb-4">
-                              <div className="flex justify-between text-sm">
-                                <span>{t('owner.total_units')}:</span>
-                                <span className="font-semibold">
-                                  {property.property_units?.length || 0}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span>{t('owner.available_units')}:</span>
-                                <span className="font-semibold text-green-600">
-                                  {property.property_units?.filter(
-                                    (u) => u.is_available
-                                  ).length || 0}
-                                </span>
-                              </div>
-                              {property.property_type === "maison" &&
-                                property.property_units &&
-                                property.property_units.length > 0 && (
-                                  <div className="mt-2 pt-2 border-t">
-                                    <p className="text-xs text-muted-foreground mb-1">
-                                      {t('owner.unit_types')}:
-                                    </p>
-                                    <div className="flex flex-wrap gap-1">
-                                      {Array.from(
-                                        new Set(
-                                          property.property_units.map(
-                                            (u) => u.unit_type
-                                          )
-                                        )
-                                      ).map((type) => {
-                                        const count =
-                                          property.property_units.filter(
-                                            (u) => u.unit_type === type
-                                          ).length;
-                                        return (
-                                          <Badge
-                                            key={type}
-                                            variant="outline"
-                                            className="text-xs"
-                                          >
-                                            {count} {type}
-                                            {count > 1 ? "s" : ""}
-                                          </Badge>
-                                        );
-                                      })}
-                                    </div>
+                              {property.listing_type === 'vente' ? (
+                                <div className="flex flex-col gap-1 p-3 bg-primary/5 rounded-xl border border-primary/10 shadow-inner">
+                                  <span className="text-[10px] text-primary/70 uppercase font-bold tracking-widest">{property.property_type === 'terrain' ? 'Prix du terrain' : 'Prix de vente'}</span>
+                                  <span className="text-xl font-black text-primary tracking-tight">
+                                    {property.sale_price ? formatCurrency(property.sale_price) : 'Prix sur demande'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex justify-between text-sm">
+                                    <span>{t('owner.total_units')}:</span>
+                                    <span className="font-semibold">
+                                      {property.property_units?.length || 0}
+                                    </span>
                                   </div>
-                                )}
+                                  <div className="flex justify-between text-sm">
+                                    <span>{t('owner.available_units')}:</span>
+                                    <span className="font-semibold text-green-600">
+                                      {property.property_units?.filter(
+                                        (u) => u.is_available
+                                      ).length || 0}
+                                    </span>
+                                  </div>
+                                  {property.property_type === "maison" &&
+                                    property.property_units &&
+                                    property.property_units.length > 0 && (
+                                      <div className="mt-2 pt-2 border-t">
+                                        <p className="text-xs text-muted-foreground mb-1">
+                                          {t('owner.unit_types')}:
+                                        </p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {Array.from(
+                                            new Set(
+                                              property.property_units.map(
+                                                (u) => u.unit_type
+                                              )
+                                            )
+                                          ).map((type) => {
+                                            const count =
+                                              property.property_units.filter(
+                                                (u) => u.unit_type === type
+                                              ).length;
+                                            return (
+                                              <Badge
+                                                key={type}
+                                                variant="outline"
+                                                className="text-xs"
+                                              >
+                                                {count} {type}
+                                                {count > 1 ? "s" : ""}
+                                              </Badge>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                </>
+                              )}
                             </div>
 
                             <div className="flex items-center justify-between pt-4 border-t">

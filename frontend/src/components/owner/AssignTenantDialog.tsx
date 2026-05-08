@@ -636,11 +636,13 @@ export const AssignTenantDialog = ({
                                 <SelectValue placeholder="Choisir un bien" />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl">
-                                {properties.map((property) => (
-                                  <SelectItem key={property.id} value={property.id}>
-                                    {property.name}
-                                  </SelectItem>
-                                ))}
+                                {properties
+                                  .filter(p => !p.listing_type || p.listing_type === 'location')
+                                  .map((property) => (
+                                    <SelectItem key={property.id} value={property.id}>
+                                      {property.name}
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                           </div>

@@ -255,8 +255,13 @@ const DetailPropriete = () => {
     );
   }
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString()} F CFA`;
+  const formatCurrency = (amount: any) => {
+    const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(numericValue)) return "Prix sur demande";
+    return new Intl.NumberFormat('fr-FR', {
+      maximumFractionDigits: 0,
+      useGrouping: true
+    }).format(numericValue) + " F CFA";
   };
 
   const openGallery = (index: number) => {
@@ -277,7 +282,12 @@ const DetailPropriete = () => {
   const handleShare = (platform?: 'whatsapp' | 'facebook' | 'copy') => {
     const shareUrl = window.location.href;
     const shareTitle = `${property.name} | SamaLocation`;
-    const shareText = `Découvrez ce bien sur SamaLocation : ${property.name} à ${property.address}. ${property.rent_amount ? `${property.rent_amount.toLocaleString()} F CFA` : "Prix sur demande"}`;
+    
+    const displayPrice = property.listing_type === 'vente' 
+      ? (property.sale_price ? formatCurrency(property.sale_price) : "Prix sur demande")
+      : (property.rent_amount ? `${formatCurrency(property.rent_amount)}/${propertyRentPeriod}` : "Prix sur demande");
+
+    const shareText = `Découvrez ce bien sur SamaLocation : ${property.name} à ${property.address}. ${displayPrice}`;
 
     if (!platform && navigator.share) {
       navigator.share({
@@ -347,7 +357,7 @@ const DetailPropriete = () => {
     <div className="min-h-screen bg-background">
       <SEO 
         title={`${property.name} à ${property.address}`}
-        description={`${property.property_type} à louer à ${property.address}. ${property.aggregated_area || property.property_units?.[0]?.area_sqm || ""} m², ${property.aggregated_bedrooms || property.property_units?.[0]?.bedrooms || ""} chambres. ${property.description?.substring(0, 100)}...`}
+        description={`${property.property_type} ${property.listing_type === 'vente' ? 'à vendre' : 'à louer'} à ${property.address}. ${property.aggregated_area || property.property_units?.[0]?.area_sqm || ""} m², ${property.aggregated_bedrooms || property.property_units?.[0]?.bedrooms || ""} chambres. ${property.description?.substring(0, 100)}...`}
         image={property.cover_photo || property.photo_url}
         type="article"
       />
@@ -421,7 +431,25 @@ const DetailPropriete = () => {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle className="text-xl md:text-3xl mb-2">{property.name}</CardTitle>
+                      <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <CardTitle className="text-xl md:text-3xl mb-0">{property.name}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          {property.listing_type === 'vente' ? (
+                            <Badge className="bg-primary text-white border-none text-[10px] sm:text-xs px-2.5 py-0.5 shadow-sm font-black uppercase tracking-wider">
+                              À Vendre
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-emerald-600 text-white border-none text-[10px] sm:text-xs px-2.5 py-0.5 shadow-sm font-black uppercase tracking-wider">
+                              À Louer
+                            </Badge>
+                          )}
+                          {isRecent(property.published_at) && (
+                            <Badge className="bg-orange-500 text-white border-none text-[10px] sm:text-xs px-2.5 py-0.5 shadow-sm animate-pulse uppercase font-black tracking-wider">
+                              Nouveau
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <MapPin className="h-5 w-5" />
                         <span>{property.address}</span>
@@ -432,11 +460,13 @@ const DetailPropriete = () => {
                 <CardContent className="space-y-6">
                   <div>
                     <span className="text-2xl md:text-4xl font-bold text-primary">
-                      {property.rent_amount && property.rent_amount > 0
-                        ? formatCurrency(property.rent_amount)
-                        : "Prix sur demande"}
+                      {property.listing_type === 'vente'
+                        ? (property.sale_price ? formatCurrency(property.sale_price) : "Prix sur demande")
+                        : (property.rent_amount && property.rent_amount > 0
+                          ? formatCurrency(property.rent_amount)
+                          : "Prix sur demande")}
                     </span>
-                    {property.rent_amount && property.rent_amount > 0 && (
+                    {property.listing_type === 'location' && property.rent_amount && property.rent_amount > 0 && (
                       <span className="text-muted-foreground text-lg">/{propertyRentPeriod}</span>
                     )}
                   </div>
@@ -534,7 +564,9 @@ const DetailPropriete = () => {
                   {property.display_status === "available" ? (
                     <>
                       <p className="text-sm text-muted-foreground">
-                        Envoyez votre candidature au propriétaire. Il vous répondra par message. Après avoir postulé, consultez régulièrement votre messagerie dans votre tableau de bord.
+                        {property.listing_type === 'vente'
+                          ? "Vous êtes intéressé par l'achat de ce bien ? Envoyez une demande d'information au propriétaire pour discuter des modalités de vente."
+                          : "Envoyez votre candidature au propriétaire. Il vous répondra par message. Après avoir postulé, consultez régulièrement votre messagerie dans votre tableau de bord."}
                       </p>
                       <Button
                         onClick={handleApply}
@@ -542,12 +574,14 @@ const DetailPropriete = () => {
                         size="lg"
                         disabled={hasApplied}
                       >
-                        {hasApplied ? "Candidature envoyée" : "Candidater"}
+                        {hasApplied 
+                          ? (property.listing_type === 'vente' ? "Demande envoyée" : "Candidature envoyée") 
+                          : (property.listing_type === 'vente' ? "Contacter le vendeur" : "Demander à louer")}
                       </Button>
                       {hasApplied && (
                         <div className="flex items-center gap-2 text-sm text-green-600">
                           <CheckCircle className="h-4 w-4" />
-                          <span>Vous avez déjà candidaté à ce bien.</span>
+                          <span>Vous avez déjà envoyé une demande pour ce bien.</span>
                         </div>
                       )}
                     </>
@@ -557,7 +591,7 @@ const DetailPropriete = () => {
                       <div>
                         <p className="font-semibold text-sm">Non disponible</p>
                         <p className="text-sm text-muted-foreground">
-                          Ce bien n'est actuellement pas disponible à la location.
+                          Ce bien n'est actuellement plus disponible sur la plateforme.
                         </p>
                       </div>
                     </div>
@@ -713,6 +747,8 @@ const DetailPropriete = () => {
                           isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
                           ownerLogo={ownerProfile?.logo_url}
                           isNew={isRecent(suggestion.published_at || suggestion.created_at)}
+                          listingType={suggestion.listing_type as any}
+                          salePrice={suggestion.sale_price}
                         />
                       </CarouselItem>
                     );
@@ -740,7 +776,9 @@ const DetailPropriete = () => {
           <DialogHeader>
             <DialogTitle>Connexion requise</DialogTitle>
             <DialogDescription>
-              Vous devez créer un compte locataire pour pouvoir candidater à ce bien.
+              {property.listing_type === 'vente' 
+                ? "Vous devez être connecté pour contacter le vendeur." 
+                : "Vous devez être connecté pour pouvoir candidater à ce bien."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -764,16 +802,21 @@ const DetailPropriete = () => {
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmer votre candidature</DialogTitle>
+            <DialogTitle>
+              {property.listing_type === 'vente' ? "Confirmer votre demande" : "Confirmer votre candidature"}
+            </DialogTitle>
             <DialogDescription>
-              Le message suivant sera envoyé au propriétaire :
+              Le message suivant sera envoyé au {property.listing_type === 'vente' ? "vendeur" : "propriétaire"} :
             </DialogDescription>
           </DialogHeader>
           <div className="p-4 bg-muted rounded-lg">
             <p className="text-sm whitespace-pre-line">
               Bonjour,{"\n\n"}
-              Je suis candidat(e) pour le bien "{property.name}" situé à {property.address}.{"\n\n"}
-              Merci de me répondre.{"\n\n"}
+              {property.listing_type === 'vente' 
+                ? `Je suis vivement intéressé(e) par l'achat du bien "${property.name}" situé à ${property.address}.`
+                : `Je suis candidat(e) pour le bien "${property.name}" situé à ${property.address}.`
+              }{"\n\n"}
+              Merci de me recontacter pour plus de détails.{"\n\n"}
               Cordialement.
             </p>
           </div>
@@ -788,7 +831,7 @@ const DetailPropriete = () => {
               onClick={sendApplication}
               className="gradient-accent text-white"
             >
-              Envoyer ma candidature
+              {property.listing_type === 'vente' ? "Envoyer ma demande" : "Envoyer ma candidature"}
             </Button>
           </DialogFooter>
         </DialogContent>

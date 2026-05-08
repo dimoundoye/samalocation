@@ -190,8 +190,12 @@ server.listen(PORT, async () => {
 
         // Run migrations
         const Receipt = require('./models/receiptModel');
+        const Property = require('./models/propertyModel');
+        const Subscription = require('./models/subscriptionModel');
         await Receipt.migrate();
-        console.log('  [DB] ✅ Migrations des reçus terminées.\n');
+        await Property.migrate();
+        await Subscription.migrate();
+        console.log('  [DB] ✅ Migrations (reçus, propriétés, abonnements) terminées.\n');
     } catch (err) {
         console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
     }

@@ -141,11 +141,11 @@ const Property = {
     },
 
     async create(data) {
-        const { id, owner_id, property_type, name, address, latitude, longitude, description, photos, photo_url, equipments, units } = data;
+        const { id, owner_id, property_type, name, address, latitude, longitude, description, photos, photo_url, equipments, units, listing_type, sale_price } = data;
 
         await db.query(
-            'INSERT INTO properties (id, owner_id, property_type, name, address, latitude, longitude, description, photos, photo_url, is_published, equipments) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, $11)',
-            [id, owner_id, property_type, name, address, latitude || null, longitude || null, description, JSON.stringify(photos || []), photo_url, JSON.stringify(equipments || [])]
+            'INSERT INTO properties (id, owner_id, property_type, name, address, latitude, longitude, description, photos, photo_url, is_published, equipments, listing_type, sale_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, $11, $12, $13)',
+            [id, owner_id, property_type, name, address, latitude || null, longitude || null, description, JSON.stringify(photos || []), photo_url, JSON.stringify(equipments || []), listing_type || 'location', sale_price || null]
         );
 
         // Handle units creation if provided
@@ -306,7 +306,7 @@ const Property = {
         const { rows: properties } = await db.query('SELECT id FROM properties WHERE id = $1 AND owner_id = $2', [id, ownerId]);
         if (properties.length === 0) return null;
 
-        const { name, address, latitude, longitude, description, photos, photo_url, equipments, property_type, units } = data;
+        const { name, address, latitude, longitude, description, photos, photo_url, equipments, property_type, units, listing_type, sale_price } = data;
 
         const updateFields = [];
         const params = [];
@@ -321,6 +321,8 @@ const Property = {
         if (photo_url) { updateFields.push(`photo_url = $${idx++}`); params.push(photo_url); }
         if (equipments) { updateFields.push(`equipments = $${idx++}`); params.push(JSON.stringify(equipments)); }
         if (property_type) { updateFields.push(`property_type = $${idx++}`); params.push(property_type); }
+        if (listing_type) { updateFields.push(`listing_type = $${idx++}`); params.push(listing_type); }
+        if (sale_price !== undefined) { updateFields.push(`sale_price = $${idx++}`); params.push(sale_price); }
 
         if (updateFields.length > 0) {
             params.push(id);
@@ -352,7 +354,26 @@ const Property = {
             "ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8) NULL",
             "ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8) NULL",
             "ALTER TABLE properties ADD COLUMN IF NOT EXISTS equipments JSONB NULL",
-            "ALTER TABLE property_units ADD COLUMN IF NOT EXISTS rooms_count INTEGER DEFAULT 0"
+            "ALTER TABLE properties ADD COLUMN IF NOT EXISTS listing_type VARCHAR(20) DEFAULT 'location'",
+            "ALTER TABLE properties ADD COLUMN IF NOT EXISTS sale_price DECIMAL(15, 2) NULL",
+            "ALTER TABLE property_units ADD COLUMN IF NOT EXISTS rooms_count INTEGER DEFAULT 0",
+            // Supprimer dynamiquement toute contrainte UNIQUE sur le nom (quel que soit son nom)
+            `DO $$
+             DECLARE
+                 r RECORD;
+             BEGIN
+                 FOR r IN
+                     SELECT c.conname
+                     FROM pg_constraint c
+                     JOIN pg_class t ON t.oid = c.conrelid
+                     JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+                     WHERE t.relname = 'properties'
+                       AND c.contype = 'u'
+                       AND a.attname = 'name'
+                 LOOP
+                     EXECUTE 'ALTER TABLE properties DROP CONSTRAINT IF EXISTS ' || quote_ident(r.conname);
+                 END LOOP;
+             END $$;`
         ];
 
         for (const sql of queries) {

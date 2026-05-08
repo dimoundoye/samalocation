@@ -9,7 +9,7 @@ const Subscription = {
             SELECT * FROM subscriptions 
             WHERE user_id = $1 
             AND status = 'active'
-            AND (expires_at > (NOW() - INTERVAL '3 days') OR expires_at IS NULL)
+            AND (expires_at > NOW() OR expires_at IS NULL)
             ORDER BY created_at DESC 
             LIMIT 1
         `, [userId]);
@@ -23,7 +23,6 @@ const Subscription = {
         const { rows } = await db.query(`
             SELECT * FROM subscriptions 
             WHERE user_id = $1 
-            AND status IN ('active', 'pending')
             ORDER BY created_at DESC 
             LIMIT 1
         `, [userId]);
@@ -162,15 +161,22 @@ const Subscription = {
         const maxExpiration = maxRows[0]?.max_expiration;
         
         if (status === 'active' && maxExpiration && new Date(maxExpiration) > new Date()) {
-            const activeSub = await this.findActiveByUserId(userId); // Juste pour connaître l'ancien plan
+            const activeSub = await this.findActiveByUserId(userId);
             const oldPlanKey = activeSub?.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE';
             const newPlanKey = planName ? planName.toUpperCase() : 'FREE';
             
             const oldPlan = PLANS[oldPlanKey === 'PROFESSIONNEL' || oldPlanKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : oldPlanKey] || PLANS.FREE;
             const newPlan = PLANS[newPlanKey === 'PROFESSIONNEL' || newPlanKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : newPlanKey] || PLANS.FREE;
  
-            // Si c'est un upgrade (nouveau plan plus cher), on commence AUJOURD'HUI
-            // Si c'est le même plan ou un downgrade (moins cher), on CUMULE à la fin
+            // Sécurité : Empêcher le downgrade si le plan actuel est encore valide et supérieur
+            if (newPlan.price_monthly < oldPlan.price_monthly) {
+                const error = new Error(`Downgrade impossible : L'utilisateur a déjà un plan ${oldPlan.name} actif jusqu'au ${new Date(maxExpiration).toLocaleDateString('fr-FR')}.`);
+                error.status = 400;
+                throw error;
+            }
+
+            // Si c'est le même plan ou un renouvellement, on commence AU DÉBUT (cumul)
+            // Si c'est un upgrade (plus cher), on commence AUJOURD'HUI
             if (newPlan.price_monthly <= oldPlan.price_monthly) {
                 startDate = new Date(maxExpiration);
             }
@@ -196,11 +202,11 @@ const Subscription = {
                     WHERE id = $3 AND user_id = $4
                 `, [targetStatus, reason || null, subscriptionId, userId]);
             } else {
-                // Sinon on rejette toutes les demandes en attente
+                // Sinon on expire l'abonnement actif ET les demandes en attente
                 await db.query(`
                     UPDATE subscriptions 
                     SET status = $1, admin_notes = $2, updated_at = NOW() 
-                    WHERE user_id = $3 AND status = 'pending'
+                    WHERE user_id = $3 AND status IN ('pending', 'active')
                 `, [targetStatus, reason || null, userId]);
             }
             return { status: targetStatus };

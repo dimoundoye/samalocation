@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -9,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 import { useToast } from "@/hooks/use-toast";
-import { initializeOnlinePayment } from "@/api/subscription";
+import { initializeOnlinePayment, getMySubscription } from "@/api/subscription";
 import SEO from "@/components/SEO";
 
 const Pricing = () => {
@@ -19,8 +20,24 @@ const Pricing = () => {
     const [selectedPlanDetails, setSelectedPlanDetails] = useState<any>(null);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [subscription, setSubscription] = useState<any>(null);
     const { toast } = useToast();
     const isAgent = user?.parentId != null;
+
+    useEffect(() => {
+        if (user) {
+            loadSubscription();
+        }
+    }, [user]);
+
+    const loadSubscription = async () => {
+        try {
+            const sub = await getMySubscription();
+            setSubscription(sub);
+        } catch (error) {
+            console.error("Failed to load subscription:", error);
+        }
+    };
 
     const handlePlanSelect = async (plan: any) => {
         if (plan.id === 'free') {
@@ -143,6 +160,20 @@ const Pricing = () => {
         }
     ];
 
+    // Mapping des noms de plans pour la comparaison
+    const planWeights: Record<string, number> = {
+        'FREE': 0,
+        'GRATUIT': 0,
+        'PREMIUM': 1,
+        'PROFESSIONAL': 2,
+        'PROFESSIONNEL': 2
+    };
+
+    const currentPlanKey = (subscription?.plan_name || 'FREE').toUpperCase();
+    const currentWeight = planWeights[currentPlanKey] || 0;
+    const isSubscriptionActive = subscription?.status === 'active' && 
+        (subscription.expires_at ? new Date(subscription.expires_at) > new Date() : true);
+
     return (
         <div className="min-h-screen bg-background">
             <SEO
@@ -209,6 +240,17 @@ const Pricing = () => {
                                     : "bg-card/50 border-border/50 hover:border-primary/20"
                                     } ${isDisabled ? "opacity-60 grayscale-[0.5]" : ""}`}
                             >
+                                {isSubscriptionActive && currentPlanKey === plan.id.toUpperCase() && (
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-medium whitespace-nowrap flex items-center gap-1">
+                                        <Check className="w-3 h-3" />
+                                        PLAN ACTUEL
+                                    </div>
+                                )}
+                                {!plan.highlight && isSubscriptionActive && currentPlanKey !== plan.id.toUpperCase() && (
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-[10px] font-bold px-3 py-1 rounded-full border border-border whitespace-nowrap">
+                                        {planWeights[plan.id.toUpperCase()] < currentWeight ? "INDISPONIBLE" : "UPGRADE"}
+                                    </div>
+                                )}
                                 {isDisabled && (
                                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/40 backdrop-blur-[2px] rounded-[2.5rem] text-center p-6">
                                         <Building2 className="w-12 h-12 text-muted-foreground mb-4 opacity-50" />
@@ -240,13 +282,14 @@ const Pricing = () => {
 
                                 <Button
                                     onClick={() => handlePlanSelect(plan)}
-                                    disabled={loading || isDisabled}
+                                    disabled={loading || isDisabled || (isSubscriptionActive && planWeights[plan.id.toUpperCase()] < currentWeight)}
                                     className={`w-full h-12 rounded-xl text-base font-bold transition-all hover:scale-105 ${plan.highlight
                                         ? "gradient-primary shadow-medium text-white"
                                         : "bg-white border-2 border-primary text-primary hover:bg-primary hover:text-white dark:bg-card"
-                                        }`}
+                                        } ${(isSubscriptionActive && planWeights[plan.id.toUpperCase()] < currentWeight) ? "opacity-50 grayscale cursor-not-allowed border-muted text-muted-foreground" : ""}`}
                                 >
-                                    {loading ? "Chargement..." : plan.cta}
+                                    {loading ? "Chargement..." : 
+                                     (isSubscriptionActive && currentPlanKey === plan.id.toUpperCase() ? "Prolonger l'abonnement" : plan.cta)}
                                 </Button>
 
                                 <hr className="my-8 border-border/50" />

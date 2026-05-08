@@ -1,4 +1,5 @@
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, BedDouble, Home, CheckCircle2, Phone, ArrowRight, Square, Bath, Shield, Layers, Share2 } from "lucide-react";
@@ -31,6 +32,8 @@ interface PropertyCardProps {
   isNew?: boolean;
   initialIsFavorite?: boolean;
   ownerLogo?: string;
+  listingType?: 'location' | 'vente';
+  salePrice?: number;
 }
 
 const PropertyCard = ({
@@ -53,6 +56,8 @@ const PropertyCard = ({
   isNew = false,
   initialIsFavorite = false,
   ownerLogo,
+  listingType = 'location',
+  salePrice,
 }: PropertyCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -111,11 +116,25 @@ const PropertyCard = ({
     }
   };
   
+  const formatCurrency = (amount: any) => {
+    const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(numericValue) || numericValue <= 0) return t('property.on_request');
+    return new Intl.NumberFormat('fr-FR', {
+      maximumFractionDigits: 0,
+      useGrouping: true
+    }).format(numericValue) + " F";
+  };
+  
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}/property/${id}`;
     const shareTitle = `${title} | SamaLocation`;
-    const shareText = `${t('common.type')}: ${type} à ${location}. ${price > 0 ? `${price.toLocaleString()} F CFA` : t('property.on_request')}`;
+    
+    const displayPrice = listingType === 'vente' 
+      ? (salePrice ? formatCurrency(salePrice) : t('property.on_request'))
+      : (price > 0 ? `${formatCurrency(price)}/${resolvedPeriod}` : t('property.on_request'));
+
+    const shareText = `${t('common.type')}: ${type} à ${location}. ${displayPrice}`;
 
     if (navigator.share) {
       navigator.share({
@@ -181,15 +200,30 @@ const PropertyCard = ({
             {status === "available" ? t('property.available') : t('property.occupied')}
           </Badge>
         )}
-        {isApplied && (
-          <Badge className={`absolute ${isNew ? 'top-8 sm:top-10' : 'top-2 sm:top-3'} left-2 sm:left-3 z-20 bg-white/90 text-green-600 border border-green-200 text-[10px] px-1 shadow-sm`}>
-            <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
-            {t('property.applied')}
+        {listingType === 'vente' ? (
+          <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 bg-primary text-white border-none text-[10px] sm:text-xs px-2 py-0.5 shadow-md font-black uppercase">
+            À Vendre
+          </Badge>
+        ) : (
+          <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 bg-emerald-600 text-white border-none text-[10px] sm:text-xs px-2 py-0.5 shadow-md font-black uppercase">
+            À Louer
           </Badge>
         )}
         {isNew && (
-          <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 bg-orange-500 text-white border-none text-[10px] sm:text-xs px-2 py-0.5 shadow-md animate-pulse">
+          <Badge className={cn(
+            "absolute left-2 sm:left-3 z-20 bg-orange-500 text-white border-none text-[10px] sm:text-xs px-2 py-0.5 shadow-md animate-pulse",
+            "top-8 sm:top-10"
+          )}>
             {t('property.new') || "Nouveau"}
+          </Badge>
+        )}
+        {isApplied && (
+          <Badge className={cn(
+            "absolute left-2 sm:left-3 z-20 bg-white/90 text-green-600 border border-green-200 text-[10px] px-1 shadow-sm",
+            isNew ? "top-[56px] sm:top-[68px]" : "top-8 sm:top-10"
+          )}>
+            <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+            {t('property.applied')}
           </Badge>
         )}
         
@@ -281,9 +315,12 @@ const PropertyCard = ({
           <div className="flex items-end justify-between mt-1 sm:mt-2">
             <div>
               <span className="text-base sm:text-xl font-bold text-primary">
-                {price > 0 ? `${price.toLocaleString()} F` : t('property.on_request')}
+                {listingType === 'vente' 
+                  ? (salePrice ? formatCurrency(salePrice) : t('property.on_request'))
+                  : (price > 0 ? formatCurrency(price) : t('property.on_request'))
+                }
               </span>
-              {price > 0 && (
+              {listingType === 'location' && price > 0 && (
                 <span className="text-muted-foreground text-[10px] sm:text-sm ml-0.5">/{resolvedPeriod}</span>
               )}
             </div>

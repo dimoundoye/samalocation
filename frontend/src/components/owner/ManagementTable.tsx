@@ -254,14 +254,12 @@ export const ManagementTable = ({
         window.open(waUrl, '_blank');
     };
 
-    const formatCurrency = (amount: number) => {
+    const formatCurrency = (amount: any) => {
+        const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
         return new Intl.NumberFormat("fr-FR", {
-            style: "currency",
-            currency: "XOF",
+            style: "decimal",
             maximumFractionDigits: 0,
-        })
-            .format(amount)
-            .replace("XOF", "F CFA");
+        }).format(numericValue || 0) + " F CFA";
     };
 
     const getReceiptsForMonth = (unitId: string, tenant: Tenant | null | undefined, monthId: number) => {
@@ -672,6 +670,9 @@ export const ManagementTable = ({
                                                                             <Building2 className="h-3.5 w-3.5 text-primary" />
                                                                         </div>
                                                                         <span className="text-xs uppercase tracking-tight">{node.name}</span>
+                                                                        {node.listing_type === 'vente' && (
+                                                                            <Badge variant="destructive" className="ml-2 text-[8px] h-3.5 px-1.5 uppercase font-black">Vente</Badge>
+                                                                        )}
                                                                     </div>
                                                                     <div className="text-[10px] font-bold text-muted-foreground">
                                                                         {formatCurrency(stats.total)}

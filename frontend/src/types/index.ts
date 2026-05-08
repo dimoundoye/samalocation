@@ -36,6 +36,8 @@ export interface Property {
     bathrooms?: number;
     rooms_count?: number;
     area_sqm?: number;
+    listing_type?: 'location' | 'vente';
+    sale_price?: number;
     created_at: string;
     property_units?: PropertyUnit[];
     owner_profiles?: any; // To be refined if needed

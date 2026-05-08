@@ -34,6 +34,7 @@ const Recherche = () => {
   const [maxRooms, setMaxRooms] = useState("");
   const [minBedrooms, setMinBedrooms] = useState("");
   const [maxBedrooms, setMaxBedrooms] = useState("");
+  const [listingType, setListingType] = useState("all");
   const [properties, setProperties] = useState<FormattedProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [appliedPropertyIds, setAppliedPropertyIds] = useState<string[]>([]);
@@ -70,7 +71,7 @@ const Recherche = () => {
     if (user) {
       loadAppliedProperties();
     }
-  }, [user, currentPage, searchTerm, propertyType, minPrice, maxPrice, minArea, maxArea, minRooms, maxRooms, minBedrooms, maxBedrooms]);
+  }, [user, currentPage, searchTerm, propertyType, minPrice, maxPrice, minArea, maxArea, minRooms, maxRooms, minBedrooms, maxBedrooms, listingType]);
 
   const isAuthenticated = !!user;
   const currentUserId = user?.id || null;
@@ -88,7 +89,8 @@ const Recherche = () => {
         minRooms,
         maxRooms,
         minBedrooms,
-        maxBedrooms
+        maxBedrooms,
+        listingType: listingType === 'all' ? undefined : listingType
       });
 
       const propertiesList = data.properties || [];
@@ -184,7 +186,20 @@ const Recherche = () => {
                   />
                 </div>
 
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-1">
+                  <Select value={listingType} onValueChange={setListingType}>
+                    <SelectTrigger className="h-12 bg-background border border-primary/20 rounded-xl focus:border-primary/50 transition-all shadow-sm">
+                      <SelectValue placeholder="Transaction" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes</SelectItem>
+                      <SelectItem value="location">Location</SelectItem>
+                      <SelectItem value="vente">Vente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="lg:col-span-1">
                   <Select value={propertyType} onValueChange={setPropertyType}>
                     <SelectTrigger className="h-12 bg-background border border-primary/20 rounded-xl focus:border-primary/50 transition-all shadow-sm">
                       <SelectValue placeholder={t('search.property_type')} />
@@ -302,7 +317,7 @@ const Recherche = () => {
                     onClick={() => {
                       setMinPrice(""); setMaxPrice(""); setMinArea(""); setMaxArea("");
                       setMinRooms(""); setMaxRooms(""); setMinBedrooms(""); setMaxBedrooms("");
-                      setPropertyType("all"); setSearchTerm("");
+                      setPropertyType("all"); setSearchTerm(""); setListingType("all");
                     }}
                   >
                     Réinitialiser
@@ -356,6 +371,8 @@ const Recherche = () => {
                               isVerifiedOwner={ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified'}
                               ownerLogo={ownerProfile?.logo_url}
                               isNew={isRecent(property.published_at || property.created_at)}
+                              listingType={property.listing_type as any}
+                              salePrice={property.sale_price}
                             />
                           );
                         })}
