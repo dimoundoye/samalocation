@@ -179,7 +179,7 @@ const paymentController = {
                 try {
                     const emailService = require('../utils/emailService');
                     const User = require('../models/userModel');
-                    const user = await User.findById(userId);
+                    const user = await User.findProfileById(userId);
                     if (user && user.email) {
                         const receiptHtml = receiptUrl 
                             ? `<p>Vous pouvez télécharger votre reçu ici : <a href="${receiptUrl}">${receiptUrl}</a></p>`
