@@ -191,7 +191,7 @@ const paymentController = {
                             `<div style="font-family: sans-serif;">
                                 <h2>Félicitations !</h2>
                                 <p>Votre abonnement <strong>${subPlan}</strong> est désormais actif sur SamaLocation.</p>
-                                <p>Durée : 30 jours</p>
+                                <p>Durée : ${durationDays || 30} jours</p>
                                 ${receiptHtml}
                                 <p>Merci de votre confiance !</p>
                              </div>`

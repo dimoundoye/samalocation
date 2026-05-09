@@ -131,7 +131,7 @@ const Index = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-32 pb-20 md:pt-32 md:pb-24">
+      <section className="relative overflow-visible pt-32 pb-20 md:pt-32 md:pb-24">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent hidden md:block" />
         <div className="container mx-auto px-6 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-center">
@@ -169,7 +169,7 @@ const Index = () => {
               </div>
 
               {/* Quick Search */}
-              <div className="max-w-xl p-2 bg-card dark:bg-card rounded-2xl shadow-strong flex flex-col sm:flex-row items-center gap-2 border border-border/50 transition-all">
+              <div className="relative z-20 max-w-xl p-2 bg-card dark:bg-card rounded-2xl shadow-strong flex flex-col sm:flex-row items-center gap-2 border border-border/50 transition-all">
                 <SearchAutocomplete 
                   placeholder={t('hero.search_placeholder')}
                   initialValue={searchQuery}
@@ -187,7 +187,7 @@ const Index = () => {
 
             </div>
 
-            <div className="relative animate-fade-in md:block md:-mt-16 lg:-mt-20">
+            <div className="relative animate-fade-in hidden md:block md:-mt-16 lg:-mt-20">
               <div className="absolute -inset-10 bg-accent/5 blur-3xl rounded-full" />
               <div className="relative rounded-[2.5rem] border-[8px] border-white/50 backdrop-blur-sm shadow-strong overflow-hidden animate-float max-h-[550px] aspect-[4/5] md:aspect-auto">
                 <img

@@ -61,7 +61,7 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
         tenant_birthplace: "",
         // Property details
         detailed_address: "",
-        occupancy_limit: "4",
+        occupancy_limit: "",
         charges_description: "Eau, Électricité, Charges communes",
         // Inventory
         inventory: {} as Record<string, string>
