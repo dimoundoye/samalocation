@@ -334,18 +334,13 @@ const DashboardLocataire = () => {
       const conversationMessages = messages.filter(
         (m) => (m.sender_id === selectedChat.user_id || m.receiver_id === selectedChat.user_id)
       );
-      const propertyId = conversationMessages.length > 0 ? conversationMessages[0].property_id : null;
+      
+      // On cherche un message qui contient un property_id
+      const messageWithProperty = conversationMessages.find(m => m.property_id);
+      const propertyId = messageWithProperty ? messageWithProperty.property_id : null;
 
-      if (!propertyId) {
-        toast({
-          title: "Erreur",
-          description: "Impossible d'identifier le bien associé à cette discussion.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      await shareDossier(propertyId);
+      // On partage soit via le bien, soit directement via l'ID du destinataire
+      await shareDossier(propertyId, selectedChat.user_id);
 
       // Envoyer un message automatique pour prévenir le propriétaire
       await sendMessage({

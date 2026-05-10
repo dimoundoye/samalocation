@@ -33,10 +33,10 @@ export const saveDossier = async (data: Partial<TenantDossier>) => {
     });
 };
 
-export const shareDossier = async (propertyId: string) => {
+export const shareDossier = async (propertyId?: string | null, ownerId?: string | null) => {
     return await baseClient('/dossier/share', {
         method: 'POST',
-        body: JSON.stringify({ propertyId })
+        body: JSON.stringify({ propertyId, ownerId })
     });
 };
 

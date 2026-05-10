@@ -38,28 +38,38 @@ const dossierController = {
     async shareDossier(req, res, next) {
         try {
             const userId = req.user.id;
-            const { propertyId } = req.body;
+            const { propertyId, ownerId } = req.body;
 
             const dossier = await Dossier.findByUserId(userId);
             if (!dossier) {
                 return response.error(res, 'Veuillez d\'abord créer votre dossier', 400);
             }
 
-            const property = await Property.findById(propertyId);
-            if (!property) {
-                return response.error(res, 'Bien non trouvé', 404);
+            let finalOwnerId = ownerId;
+            let propertyName = "un bien (général)";
+
+            if (propertyId) {
+                const property = await Property.findById(propertyId);
+                if (property) {
+                    finalOwnerId = property.owner_id;
+                    propertyName = property.name;
+                }
             }
 
-            const share = await Dossier.share(dossier.id, property.owner_id, propertyId);
+            if (!finalOwnerId) {
+                return response.error(res, 'Propriétaire non identifié', 400);
+            }
+
+            const share = await Dossier.share(dossier.id, finalOwnerId, propertyId || null);
 
             // Créer une notification pour le propriétaire
             await Notification.create({
                 id: uuidv4(),
-                user_id: property.owner_id,
+                user_id: finalOwnerId,
                 type: 'dossier_shared',
                 title: 'Nouveau dossier partagé',
-                message: `Un candidat a partagé son dossier pour le bien : ${property.name}`,
-                link: '/owner-dashboard/dossiers'
+                message: `Un candidat a partagé son dossier${propertyId ? ` pour le bien : ${propertyName}` : ' avec vous.'}`,
+                link: '/owner-dashboard/shared-dossiers'
             });
 
             return response.success(res, share, 'Dossier partagé avec succès');
