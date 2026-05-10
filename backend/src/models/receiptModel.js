@@ -114,7 +114,7 @@ const Receipt = {
         return receipts[0] || null;
     },
 
-    async findByTenantId(userId) {
+    async findByTenantId(userId, limit = 100, offset = 0) {
         // Find all tenant records (stays) for this user to include legacy user_id links and new stay_id links
         const { rows: tenantRecords } = await db.query('SELECT id FROM tenants WHERE user_id = $1', [userId]);
         const stayIds = tenantRecords.map(r => r.id);
@@ -132,14 +132,15 @@ const Receipt = {
             LEFT JOIN user_profiles owner ON p.owner_id = owner.id
             LEFT JOIN property_units pu ON r.unit_id = pu.id
             WHERE r.tenant_id = $1 OR r.tenant_id = ANY($2)
-            ORDER BY r.created_at DESC`,
-            [userId, stayIds]
+            ORDER BY r.created_at DESC
+            LIMIT $3 OFFSET $4`,
+            [userId, stayIds, limit, offset]
         );
 
         return receipts;
     },
 
-    async findByOwnerId(ownerId) {
+    async findByOwnerId(ownerId, limit = 200, offset = 0) {
         const { rows: receipts } = await db.query(
             `SELECT 
                 r.*,
@@ -153,8 +154,9 @@ const Receipt = {
             LEFT JOIN user_profiles tenant ON r.tenant_id = tenant.id
             LEFT JOIN property_units pu ON r.unit_id = pu.id
             WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $2)
-            ORDER BY r.created_at DESC`,
-            [ownerId, ownerId]
+            ORDER BY r.created_at DESC
+            LIMIT $3 OFFSET $4`,
+            [ownerId, ownerId, limit, offset]
         );
 
         return receipts;

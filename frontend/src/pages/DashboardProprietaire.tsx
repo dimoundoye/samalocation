@@ -353,7 +353,6 @@ const DashboardProprietaire = () => {
   useEffect(() => {
     if (user) {
       loadData();
-      loadReceipts();
     }
   }, [user]);
 
@@ -517,27 +516,16 @@ const DashboardProprietaire = () => {
       if (!user) return;
       setCurrentUserId(user.id);
 
-      // Fetch all data in parallel to avoid waterfall (much faster)
-      console.log("[DASHBOARD] Parallel load started");
-      const [
-        propsData,
-        tenantsData,
-        messagesData,
-        maintenanceData,
-        profileData,
-        receiptsData,
-        notifsData
-      ] = await Promise.all([
+      // --- PHASE 1: Données prioritaires (Dashboard & Navigation) ---
+      console.log("[DASHBOARD] Phase 1 loading started");
+      const [propsData, tenantsData, profileData, notifsData] = await Promise.all([
         getOwnerProperties().catch(e => { console.error(e); return []; }),
         getOwnerTenants().catch(e => { console.error(e); return []; }),
-        getMessages().catch(e => { console.error(e); return []; }),
-        getOwnerMaintenanceRequests().catch(e => { console.error(e); return []; }),
         getOwnerProfile().catch(e => { console.error(e); return null; }),
-        getOwnerReceipts().catch(e => { console.error(e); return []; }),
         getNotifications().catch(e => { console.error(e); return []; })
       ]);
 
-      // 1. Properties & Units
+      // Mise à jour immédiate de l'UI
       const transformedProps = (propsData || []).map((p: any) => transformProperty(p));
       setProperties(transformedProps);
       const allUnits = transformedProps.flatMap((p: any) =>
@@ -548,16 +536,11 @@ const DashboardProprietaire = () => {
         }))
       );
       setUnits(allUnits);
-
-      // 2. Set individual states
       setTenants(tenantsData || []);
-      setMessages(messagesData || []);
-      setMaintenanceRequests(maintenanceData || []);
       setOwnerProfile(profileData);
-      setReceipts(receiptsData || []);
       setNotifications(notifsData || []);
 
-      // 3. Stats Calculation (based on freshly fetched data)
+      // Calcul des stats de base
       const occupied = allUnits.filter((u: any) => !u.is_available).length;
       setStats({
         totalProperties: (propsData || []).length,
@@ -565,13 +548,35 @@ const DashboardProprietaire = () => {
         activeTenants: (tenantsData || []).filter((t: any) => t.status === 'active').length || 0,
       });
 
-      console.log("[DASHBOARD] Parallel load complete");
       setIsInitialLoading(false);
+      console.log("[DASHBOARD] Phase 1 complete - UI is ready");
+
+      // --- PHASE 2: Données secondaires (Background) ---
+      // On charge le reste sans bloquer l'utilisateur
+      setTimeout(async () => {
+        try {
+          console.log("[DASHBOARD] Phase 2 background loading started");
+          const [messagesData, maintenanceData, receiptsData] = await Promise.all([
+            getMessages().catch(e => { console.error(e); return []; }),
+            getOwnerMaintenanceRequests().catch(e => { console.error(e); return []; }),
+            getOwnerReceipts().catch(e => { console.error(e); return []; })
+          ]);
+
+          setMessages(messagesData || []);
+          setMaintenanceRequests(maintenanceData || []);
+          setReceipts(receiptsData || []);
+          console.log("[DASHBOARD] Phase 2 complete - All data loaded");
+        } catch (bgError) {
+          console.error("[DASHBOARD] Phase 2 background error:", bgError);
+        }
+      }, 100);
+
     } catch (error: any) {
       setIsInitialLoading(false);
+      console.error("[DASHBOARD] Critical load error:", error);
       toast({
         title: t('common.error'),
-        description: "Une erreur est survenue lors du chargement des données.",
+        description: "Une erreur est survenue lors du chargement des données prioritaires.",
         variant: "destructive",
       });
     }
@@ -926,7 +931,9 @@ const DashboardProprietaire = () => {
                                   ? "Équipe"
                                   : activeTab === "guide"
                                     ? "Guide d'utilisation"
-                                    : "Paramètres"}
+                                    : activeTab === "shared-dossiers"
+                                      ? "Dossiers partagés"
+                                      : "Paramètres"}
               </h2>
             </div>
 

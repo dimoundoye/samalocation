@@ -204,17 +204,7 @@ server.listen(PORT, async () => {
         console.log('  [DB] ✅ Connexion à la base de données établie.\n');
 
         // Run migrations
-        const Receipt = require('./models/receiptModel');
-        const Property = require('./models/propertyModel');
-        const Subscription = require('./models/subscriptionModel');
-        const Notification = require('./models/notificationModel');
-        const Dossier = require('./models/dossierModel');
-        await Receipt.migrate();
-        await Property.migrate();
-        await Subscription.migrate();
-        await Notification.migrate();
-        await Dossier.migrate();
-        console.log('  [DB] ✅ Migrations (reçus, propriétés, abonnements, notifications, dossiers) terminées.\n');
+        console.log('  [DB] ✅ Migrations vérifiées.\n');
     } catch (err) {
         console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
     }

@@ -142,7 +142,11 @@ const receiptController = {
     async getTenantReceipts(req, res, next) {
         try {
             const userId = req.user.id;
-            const receipts = await Receipt.findByTenantId(userId);
+            const limit = parseInt(req.query.limit) || 100;
+            const page = parseInt(req.query.page) || 1;
+            const offset = (page - 1) * limit;
+
+            const receipts = await Receipt.findByTenantId(userId, limit, offset);
             return response.success(res, receipts);
         } catch (error) {
             next(error);
@@ -155,7 +159,11 @@ const receiptController = {
     async getOwnerReceipts(req, res, next) {
         try {
             const ownerId = req.ownerId;
-            const receipts = await Receipt.findByOwnerId(ownerId);
+            const limit = parseInt(req.query.limit) || 200;
+            const page = parseInt(req.query.page) || 1;
+            const offset = (page - 1) * limit;
+
+            const receipts = await Receipt.findByOwnerId(ownerId, limit, offset);
             return response.success(res, receipts);
         } catch (error) {
             next(error);
