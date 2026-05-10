@@ -30,7 +30,9 @@ import {
   deleteProperty,
   updateProperty,
   getOwnerMaintenanceRequests,
-  getOwnerProfile
+  getOwnerProfile,
+  getNotifications,
+  markAllNotificationsAsRead
 } from "@/lib/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PenTool, ArrowRight } from "lucide-react";
@@ -61,6 +63,7 @@ import { OnboardingChecklist } from "@/components/owner/OnboardingChecklist";
 import { useSubscription } from "@/hooks/useSubscription";
 import { OwnerPublicProfileEditor } from "@/components/owner/OwnerPublicProfileEditor";
 import { OwnerDocumentationTab } from "@/components/owner/OwnerDocumentationTab";
+import OwnerSharedDossiersTab from "@/components/owner/OwnerSharedDossiersTab";
 
 const DashboardProprietaire = () => {
   const navigate = useNavigate();
@@ -93,6 +96,7 @@ const DashboardProprietaire = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<any>(null); // Contact unique (locataire ou candidat)
   const [newMessage, setNewMessage] = useState("");
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalProperties: 0,
     occupiedUnits: 0,
@@ -449,6 +453,17 @@ const DashboardProprietaire = () => {
       loadMaintenanceOnly();
     }
 
+    if (activeTab === "shared-dossiers") {
+      loadNotifications();
+      // Mark all dossier notifications as read
+      const unreadDossierNotifs = notifications.filter(n => n.type === 'dossier_shared' && !n.is_read);
+      if (unreadDossierNotifs.length > 0) {
+        markAllNotificationsAsRead('dossier_shared').then(() => {
+          setNotifications(prev => prev.map(n => n.type === 'dossier_shared' ? { ...n, is_read: true } : n));
+        }).catch(err => console.error("Error marking dossier notifs as read:", err));
+      }
+    }
+
     // Garder le polling pour la maintenance car non encore en temps réel
     const interval = setInterval(() => {
       if (activeTab === "maintenance" || activeTab === "dashboard") {
@@ -488,6 +503,15 @@ const DashboardProprietaire = () => {
     }
   };
 
+  const loadNotifications = async () => {
+    try {
+      const data = await getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error("Error loading notifications:", error);
+    }
+  };
+
   const loadData = async () => {
     try {
       if (!user) return;
@@ -501,14 +525,16 @@ const DashboardProprietaire = () => {
         messagesData,
         maintenanceData,
         profileData,
-        receiptsData
+        receiptsData,
+        notifsData
       ] = await Promise.all([
-        getOwnerProperties(),
-        getOwnerTenants(),
-        getMessages(),
-        getOwnerMaintenanceRequests(),
-        getOwnerProfile(),
-        getOwnerReceipts()
+        getOwnerProperties().catch(e => { console.error(e); return []; }),
+        getOwnerTenants().catch(e => { console.error(e); return []; }),
+        getMessages().catch(e => { console.error(e); return []; }),
+        getOwnerMaintenanceRequests().catch(e => { console.error(e); return []; }),
+        getOwnerProfile().catch(e => { console.error(e); return null; }),
+        getOwnerReceipts().catch(e => { console.error(e); return []; }),
+        getNotifications().catch(e => { console.error(e); return []; })
       ]);
 
       // 1. Properties & Units
@@ -529,6 +555,7 @@ const DashboardProprietaire = () => {
       setMaintenanceRequests(maintenanceData || []);
       setOwnerProfile(profileData);
       setReceipts(receiptsData || []);
+      setNotifications(notifsData || []);
 
       // 3. Stats Calculation (based on freshly fetched data)
       const occupied = allUnits.filter((u: any) => !u.is_available).length;
@@ -544,7 +571,7 @@ const DashboardProprietaire = () => {
       setIsInitialLoading(false);
       toast({
         title: t('common.error'),
-        description: "Une erreur est survenue lors du chargement des données.", // This specific error message was not requested for translation, keeping it as is.
+        description: "Une erreur est survenue lors du chargement des données.",
         variant: "destructive",
       });
     }
@@ -658,7 +685,7 @@ const DashboardProprietaire = () => {
     } catch (error: any) {
       toast({
         title: t('dashboard.common.send_failed'),
-        description: "Le message n'a pas pu être envoyé.", // This specific error message was not requested for translation, keeping it as is.
+        description: "Le message n'a pas pu être envoyé.",
         variant: "destructive",
       });
     }
@@ -671,9 +698,9 @@ const DashboardProprietaire = () => {
   const formatCurrency = (amount: any) => {
     const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat("fr-FR", {
-        style: "decimal",
-        useGrouping: true,
-        maximumFractionDigits: 0,
+      style: "decimal",
+      useGrouping: true,
+      maximumFractionDigits: 0,
     }).format(numericValue || 0) + " F CFA";
   };
 
@@ -739,6 +766,7 @@ const DashboardProprietaire = () => {
             { id: "dashboard", label: t('dashboard.sidebar.home'), icon: TrendingUp },
             { id: "properties", label: t('dashboard.sidebar.properties'), icon: Building2 },
             { id: "tenants", label: t('dashboard.sidebar.tenants'), icon: Users },
+            { id: "shared-dossiers", label: "Dossiers Partagés", icon: FolderOpen },
             { id: "management", label: t('dashboard.sidebar.management'), icon: PieChart },
             { id: "maintenance", label: t('dashboard.sidebar.maintenance'), icon: Wrench },
             { id: "messages", label: t('dashboard.sidebar.messages'), icon: MessageSquare },
@@ -762,7 +790,11 @@ const DashboardProprietaire = () => {
                   ? maintenanceRequests.filter(
                     (req) => req.status === 'pending'
                   ).length
-                  : 0;
+                  : item.id === "shared-dossiers"
+                    ? notifications.filter(
+                      (n) => n.type === 'dossier_shared' && !n.is_read
+                    ).length
+                    : 0;
 
             return (
               <button
@@ -786,7 +818,7 @@ const DashboardProprietaire = () => {
                     }`}
                 >
                   <item.icon className={`h-5 w-5 shrink-0`} />
-                  {showLabels && <span className="truncate">{item.label}</span>}
+                  {showLabels && <span className={`truncate ${item.id === "shared-dossiers" ? "text-[11px] sm:text-xs" : ""}`}>{item.label}</span>}
                 </div>
                 {unreadCount > 0 && (
                   <Badge
@@ -1202,7 +1234,7 @@ const DashboardProprietaire = () => {
                                 text: text,
                                 url: 'https://samalocation.com'
                               };
-                              
+
                               if (navigator.share) {
                                 try {
                                   await navigator.share(shareData);
@@ -1224,43 +1256,9 @@ const DashboardProprietaire = () => {
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Recent Activity */}
-                  <Card className="lg:col-span-2 shadow-soft">
-                    <CardHeader>
-                      <CardTitle>{t('dashboard.common.recent_activity')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {receipts.length === 0 ? (
-                          <div className="text-center py-8 text-muted-foreground">
-                            {t('dashboard.common.no_activity')}
-                          </div>
-                        ) : (
-                          receipts.slice(0, 5).map((activity: any) => (
-                            <div key={activity.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-                              <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10">
-                                  <FileText className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                  <p className="font-medium">{t('owner.stats.payment_received')}</p>
-                                  <p className="text-sm text-muted-foreground">{activity.tenant_name} - {activity.property_name}</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-bold text-primary">{activity.amount.toLocaleString()} F</p>
-                                <p className="text-xs text-muted-foreground">{format(new Date(activity.payment_date), 'dd MMM yyyy', { locale: dateLocale })}</p>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
                   {/* Revenue Growth Chart */}
                   {canSeeRevenue && (
-                    <Card className="shadow-soft">
+                    <Card className="shadow-soft order-1 lg:order-2">
                       <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-lg font-bold">
                           {t('owner.stats.revenue_growth')} ({selectedYear})
@@ -1344,6 +1342,40 @@ const DashboardProprietaire = () => {
                       </CardContent>
                     </Card>
                   )}
+
+                  {/* Recent Activity */}
+                  <Card className="lg:col-span-2 shadow-soft order-2 lg:order-1">
+                    <CardHeader>
+                      <CardTitle>{t('dashboard.common.recent_activity')}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {receipts.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            {t('dashboard.common.no_activity')}
+                          </div>
+                        ) : (
+                          receipts.slice(0, 5).map((activity: any) => (
+                            <div key={activity.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10">
+                                  <FileText className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">{t('owner.stats.payment_received')}</p>
+                                  <p className="text-sm text-muted-foreground">{activity.tenant_name} - {activity.property_name}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-primary">{activity.amount.toLocaleString()} F</p>
+                                <p className="text-xs text-muted-foreground">{format(new Date(activity.payment_date), 'dd MMM yyyy', { locale: dateLocale })}</p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             )}
@@ -2118,6 +2150,11 @@ const DashboardProprietaire = () => {
                   </Card>
                 </div>
               </div>
+            )}
+
+            {/* Shared Dossiers Tab */}
+            {activeTab === "shared-dossiers" && (
+              <OwnerSharedDossiersTab />
             )}
 
             {/* Gérance Tab */}

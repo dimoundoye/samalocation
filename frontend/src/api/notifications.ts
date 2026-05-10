@@ -32,10 +32,11 @@ export const markNotificationAsRead = async (id: string) => {
     }
 };
 
-export const markAllNotificationsAsRead = async () => {
+export const markAllNotificationsAsRead = async (type?: string) => {
     try {
         return await baseClient("/notifications/read-all", {
             method: "PATCH",
+            body: JSON.stringify({ type }),
         });
     } catch (error) {
         console.error("MarkAllNotificationsAsRead error:", error);

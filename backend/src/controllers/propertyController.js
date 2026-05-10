@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 
 // Simple in-memory cache for public properties
 const propertyCache = new Map();
-const CACHE_DURATION = 1 * 60 * 1000; // 1 minute pour un ressenti plus "direct"
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes pour un meilleur équilibre performance/fraîcheur
 
 const clearPropertyCache = () => {
     propertyCache.clear();

@@ -58,7 +58,7 @@ const tenantController = {
             if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
             const planConfig = PLANS[planKey] || PLANS.FREE;
 
-            const maxAssignments = planConfig.limits.max_properties; 
+            const maxAssignments = planConfig.limits.max_properties;
 
             // On compte les affectations ACTIVES (tenants déjà assignés)
             const db = require('../config/db');
@@ -74,7 +74,7 @@ const tenantController = {
 
             // On vérifie si on n'est pas déjà en train de remplacer un locataire sur CETTE unité spécifique
             const existingInUnit = await Tenant.findActiveByUnitId(unit_id);
-            
+
             // Si l'unité n'a pas de locataire et qu'on veut en ajouter un nouveau, on vérifie le quota global
             if (!existingInUnit && maxAssignments !== Infinity && maxAssignments !== -1 && activeAssignments >= maxAssignments) {
                 return res.status(403).json({
@@ -97,9 +97,10 @@ const tenantController = {
             // check if unit is already occupied and replace if necessary
             const existingTenant = await Tenant.findActiveByUnitId(unit_id);
             if (existingTenant) {
-                console.log(`Replacing existing tenant ${existingTenant.id} for unit ${unit_id}`);
-                // Instead of a hard delete, we could mark as inactive, but the user asked to "remove" (supprime)
-                await Tenant.delete(existingTenant.id);
+                console.log(`Soft-deleting existing tenant ${existingTenant.id} for unit ${unit_id}`);
+                // Soft delete : marquer l'ancien comme inactif pour garder l'historique
+                await Tenant.update(existingTenant.id, { status: 'inactive' });
+                await db.query('UPDATE property_units SET is_available = true WHERE id = $1', [unit_id]);
             }
 
             const tenantId = uuidv4();
@@ -178,34 +179,61 @@ const tenantController = {
     },
 
     /**
-     * Update current tenant's own profile
+     * Update current tenant's own profile (name, phone, address)
      */
     async updateMyProfile(req, res, next) {
         try {
             const userId = req.user.id;
-            const { full_name, email, phone } = req.body;
+            const { name, phone, address } = req.body;
 
-            // Trouver les locations associées à cet utilisateur
+            // 1. Mettre à jour user_profiles (source de vérité pour le profil)
+            const updates = [];
+            const values = [];
+            let idx = 1;
+
+            if (name !== undefined) { updates.push(`full_name = $${idx++}`); values.push(name); }
+            if (phone !== undefined) { updates.push(`phone = $${idx++}`); values.push(phone); }
+            if (address !== undefined) { updates.push(`address = $${idx++}`); values.push(address); }
+
+            if (updates.length > 0) {
+                values.push(userId);
+                const db = require('../config/db');
+                await db.query(
+                    `UPDATE user_profiles SET ${updates.join(', ')} WHERE id = $${idx}`,
+                    values
+                );
+            }
+
+            // 2. Synchroniser aussi dans la table 'tenants' si une location est active
             const leases = await Tenant.findActiveLeasesByUserId(userId);
-            if (leases.length === 0) {
-                return response.error(res, 'No active lease found for this user', 404);
+            if (leases.length > 0) {
+                const tenantUpdate = {};
+                if (name !== undefined) tenantUpdate.full_name = name;
+                if (phone !== undefined) tenantUpdate.phone = phone;
+
+                for (const lease of leases) {
+                    if (Object.keys(tenantUpdate).length > 0) {
+                        await Tenant.update(lease.id, tenantUpdate);
+                    }
+                }
             }
 
-            // Mettre à jour les informations du locataire (on met à jour le premier trouvé ou tous?)
-            // En général le profil est lié au user_id, donc on met à jour tous les records 'tenants' liés?
-            // Le but ici est surtout de synchroniser le nom/email dans la table 'tenants'
-            const updateData = {};
-            if (full_name !== undefined) updateData.full_name = full_name;
-            if (email !== undefined) updateData.email = email;
-            if (phone !== undefined) updateData.phone = phone;
-
-            for (const lease of leases) {
-                await Tenant.update(lease.id, updateData);
-            }
-
-            return response.success(res, null, 'Profile updated successfully for all leases');
+            return response.success(res, null, 'Profil mis à jour avec succès');
         } catch (error) {
             console.error('Error in updateMyProfile:', error);
+            next(error);
+        }
+    },
+    /**
+     * Get all leases (active + inactive) for the current tenant
+     */
+    async getMyAllLeases(req, res, next) {
+        try {
+            const userId = req.user.id;
+            const leases = await Tenant.findAllLeasesByUserId(userId);
+            return response.success(res, leases);
+        } catch (error) {
+            console.error('Error in getMyAllLeases:', error);
             next(error);
         }
     }

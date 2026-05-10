@@ -36,7 +36,10 @@ export const TenantHistoryDialog = ({
     if (!tenant) return null;
 
     const tenantReceipts = receipts
-        .filter((r) => r.tenant_id === tenant.user_id || r.tenant_id === tenant.id)
+        .filter((r) => 
+            r.tenant_id === tenant.id || 
+            (r.tenant_id === tenant.user_id && r.property_id === tenant.property_id && r.unit_id === tenant.unit_id)
+        )
         .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime());
 
     const formatCurrency = (amount: number) => {

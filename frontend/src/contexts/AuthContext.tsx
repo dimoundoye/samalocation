@@ -7,6 +7,8 @@ interface User {
   customId?: string;
   email: string;
   name: string;
+  phone?: string;
+  address?: string;
   role: string;
   parentId?: string;
   setupRequired?: boolean;
@@ -25,6 +27,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   setUser: (user: User | null) => void;
   setUserRole: (role: string | null) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -34,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => { },
   setUser: () => { },
   setUserRole: () => { },
+  refreshUser: async () => { },
 });
 
 export const useAuth = () => {
@@ -50,15 +54,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const loadUser = async () => {
+    const data = await getMe();
+    if (data?.user) {
+      setUser(data.user);
+      setUserRole(data.user.role);
+    }
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem("auth_token");
       try {
-        const data = await getMe();
-        if (data?.user) {
-          setUser(data.user);
-          setUserRole(data.user.role);
-        }
+        await loadUser();
       } catch (error: any) {
         if (error.status === 503) {
           navigate("/maintenance");
@@ -88,8 +96,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      await loadUser();
+    } catch (error) {
+      console.error("Error refreshing user:", error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, userRole, loading, signOut, setUser, setUserRole }}>
+    <AuthContext.Provider value={{ user, userRole, loading, signOut, setUser, setUserRole, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

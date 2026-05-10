@@ -105,6 +105,7 @@ const Pricing = () => {
                 "Support communautaire"
             ],
             notIncluded: [
+                "Consultation dossiers digitaux",
                 "Signature électronique",
                 "Assistant IA Gemini",
                 "Import Excel de masse",
@@ -121,6 +122,7 @@ const Pricing = () => {
             description: "Pour les propriétaires indépendants voulant automatiser leur gérance.",
             icon: <Zap className="w-8 h-8 text-accent" />,
             features: [
+                "Consultation dossiers digitaux",
                 "Logements ILLIMITÉS (Publication)",
                 "Gestion de 15 locataires (Gérance)",
                 "Reçus illimités & PDF",
@@ -146,6 +148,7 @@ const Pricing = () => {
             description: "La solution complète pour les agences et grands patrimoines.",
             icon: <Crown className="w-8 h-8 text-yellow-500" />,
             features: [
+                "Consultation dossiers digitaux",
                 "Logements ILLIMITÉS",
                 "Gérance de locataires ILLIMITÉE",
                 "Import de fichier Excel (Biens)",

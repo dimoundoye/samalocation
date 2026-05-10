@@ -2,8 +2,17 @@ const db = require('../config/db');
 
 const Tenant = {
     async findActiveLeasesByUserId(userId) {
+        return this.findLeasesByUserId(userId, ['active', 'pending']);
+    },
+
+    async findAllLeasesByUserId(userId) {
+        return this.findLeasesByUserId(userId, ['active', 'pending', 'inactive']);
+    },
+
+    async findLeasesByUserId(userId, statuses) {
         const { rows: profiles } = await db.query('SELECT email FROM user_profiles WHERE id = $1', [userId]);
         const userEmail = profiles[0]?.email;
+        const statusPlaceholders = statuses.map((_, i) => `$${i + 3}`).join(', ');
 
         const { rows: tenants } = await db.query(`
             SELECT t.*, 
@@ -19,8 +28,9 @@ const Tenant = {
             LEFT JOIN owner_profiles op_direct ON p.owner_id = op_direct.id
             LEFT JOIN user_profiles owner_prof ON COALESCE(op_direct.user_profile_id, p.owner_id) = owner_prof.id
             WHERE (t.user_id = $1 OR (t.email = $2 AND t.email IS NOT NULL AND t.email != '')) 
-            AND t.status IN ('active', 'pending')
-        `, [userId, userEmail]);
+            AND t.status IN (${statusPlaceholders})
+            ORDER BY t.created_at DESC
+        `, [userId, userEmail, ...statuses]);
 
         const enrichedLeases = [];
         for (const tenant of tenants) {
@@ -103,27 +113,33 @@ const Tenant = {
 
         if (!tenant) throw new Error('Tenant not found');
 
-        // Supprimer toutes les données liées au locataire
-        // 1. Messages
-        await db.query('DELETE FROM messages WHERE receiver_id = $1 OR sender_id = $1', [tenant.user_id]);
+        // Soft delete : marquer comme inactif au lieu de supprimer
+        // Cela permet de garder l'historique (reçus, contrats, etc.)
+        await db.query(
+            "UPDATE tenants SET status = 'inactive', updated_at = NOW() WHERE id = $1",
+            [id]
+        );
 
-        // 2. Signalements de maintenance
-        await db.query('DELETE FROM maintenance_requests WHERE tenant_id = $1', [id]);
-
-        // 3. Contrats
-        await db.query('DELETE FROM rental_contracts WHERE tenant_id = $1', [id]);
-
-        // 4. Reçus
-        await db.query('DELETE FROM receipts WHERE tenant_id = $1', [id]);
-
-        // 5. Notifications (optionnel mais recommandé)
-        await db.query('DELETE FROM notifications WHERE user_id = $1', [tenant.user_id]);
-
-        // Enfin supprimer le locataire
-        await db.query('DELETE FROM tenants WHERE id = $1', [id]);
-
+        // Libérer l'unité pour qu'elle soit disponible à nouveau
         if (tenant.unit_id) {
             await db.query('UPDATE property_units SET is_available = true WHERE id = $1', [tenant.unit_id]);
+        }
+
+        // Vérifier si on peut republier le logement
+        const Property = require('./propertyModel');
+        if (tenant.property_id) {
+            try {
+                // Remettre is_available sur l'unité et republier si possible
+                const { rows: propRows } = await db.query(
+                    'SELECT property_id FROM property_units WHERE id = $1',
+                    [tenant.unit_id]
+                );
+                if (propRows[0]) {
+                    await Property.checkAndUnpublish(propRows[0].property_id);
+                }
+            } catch (e) {
+                console.warn('Could not republish property after soft delete:', e.message);
+            }
         }
 
         return tenant;

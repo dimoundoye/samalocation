@@ -22,13 +22,13 @@ const generateCustomId = async () => {
 
     while (!isUnique) {
         attemptsForCurrentCount++;
-        
+
         // Si on échoue trop souvent avec le nombre actuel de chiffres, on passe au cran au-dessus
         // On augmente le nombre de chiffres tous les 10 échecs
         if (attemptsForCurrentCount > 10) {
             digitCount++;
             attemptsForCurrentCount = 0; // On reset les tentatives pour le nouveau palier
-            
+
             // Sécurité pour ne pas dépasser la taille de la colonne en base (2 lettres + 8 chiffres = 10)
             if (digitCount > 8) {
                 console.error('[ID-GEN] Alerte ! Le nombre de chiffres dépasse les capacités de la base.');
@@ -90,11 +90,11 @@ const authController = {
             let parrain = null;
             if (referralCode) {
                 parrain = await User.findByEmailOrId(referralCode);
-                
+
                 if (!parrain) {
                     return response.error(res, 'Code de parrainage invalide.', 400);
                 }
-                
+
                 referredBy = parrain.custom_id;
             }
 
@@ -117,13 +117,13 @@ const authController = {
             if (parrain && referredBy) {
                 const Subscription = require('../models/subscriptionModel');
                 const Notification = require('../models/notificationModel');
-                
+
                 // 1. Offrir 1 mois au Parrain (Max 5)
                 const parrainReferralCount = parseInt(parrain.referral_count || 0);
 
                 if (parrainReferralCount < 5) {
                     await db.query('UPDATE users SET referral_count = referral_count + 1 WHERE id = $1', [parrain.id]);
-                    
+
                     // Trouver le plan actuel du parrain pour l'étendre plutôt que de forcer du "PREMIUM"
                     const currentParrainSub = await Subscription.findActiveByUserId(parrain.id);
                     const planToExtend = currentParrainSub?.plan_name || 'PREMIUM';
@@ -261,6 +261,8 @@ const authController = {
                     customId: profile.custom_id,
                     email: profile.email,
                     name: profile.full_name,
+                    phone: profile.phone || '',
+                    address: profile.address || '',
                     role: profile.role,
                     parentId: profile.parent_id,
                     setupRequired: !profile.is_setup_complete,
@@ -345,7 +347,7 @@ const authController = {
             const customId = await generateCustomId();
 
             // Default email if none provided (placeholder)
-            const userEmail = email || `${customId.toLowerCase()}@samalocation.sn`;
+            const userEmail = email || `${customId.toLowerCase()}@samalocation.com`;
 
             await User.create({
                 id,
@@ -446,7 +448,7 @@ const authController = {
             expires.setHours(expires.getHours() + 1); // Expire dans 1 heure
 
             await User.saveResetToken(user.id, resetToken, expires);
-            
+
             // On envoie l'e-mail en arrière-plan pour ne pas bloquer l'utilisateur
             sendResetPasswordEmail(user.email, resetToken).catch(err => {
                 console.error('❌ Erreur d\'envoi d\'e-mail en arrière-plan:', err);

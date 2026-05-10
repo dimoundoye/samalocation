@@ -23,6 +23,7 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const dossierRoutes = require('./routes/dossierRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const contractRoutes = require('./routes/contractRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
@@ -60,7 +61,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(trackVisit);
+// app.use(trackVisit);
 app.use(maintenanceMiddleware);
 
 // Security - Custom middleware
@@ -150,6 +151,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/dossier', dossierRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/contracts', contractRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
@@ -167,6 +169,19 @@ cron.schedule('*/14 * * * *', async () => {
         console.error(`[Keep-Alive] ❌ Échec du ping DB: ${err.message}`);
     }
 });
+
+/*
+// ─── Analytics Cleanup Job (Every day at 03:00 AM) ───────
+cron.schedule('0 3 * * *', async () => {
+    try {
+        console.log('[Cleanup] 🧹 Nettoyage des anciennes visites (site_visits)...');
+        const result = await db.query("DELETE FROM site_visits WHERE created_at < NOW() - INTERVAL '90 days'");
+        console.log(`[Cleanup] ✅ ${result.rowCount} anciennes visites supprimées.`);
+    } catch (err) {
+        console.error(`[Cleanup] ❌ Échec du nettoyage: ${err.message}`);
+    }
+});
+*/
 
 // Error handler MUST be last
 app.use(errorHandler);
@@ -192,10 +207,14 @@ server.listen(PORT, async () => {
         const Receipt = require('./models/receiptModel');
         const Property = require('./models/propertyModel');
         const Subscription = require('./models/subscriptionModel');
+        const Notification = require('./models/notificationModel');
+        const Dossier = require('./models/dossierModel');
         await Receipt.migrate();
         await Property.migrate();
         await Subscription.migrate();
-        console.log('  [DB] ✅ Migrations (reçus, propriétés, abonnements) terminées.\n');
+        await Notification.migrate();
+        await Dossier.migrate();
+        console.log('  [DB] ✅ Migrations (reçus, propriétés, abonnements, notifications, dossiers) terminées.\n');
     } catch (err) {
         console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
     }

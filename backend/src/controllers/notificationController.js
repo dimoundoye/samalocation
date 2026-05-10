@@ -58,7 +58,8 @@ const notificationController = {
     async markAllAsRead(req, res, next) {
         try {
             const userId = req.ownerId;
-            await Notification.markAllAsRead(userId);
+            const { type } = req.body;
+            await Notification.markAllAsRead(userId, type);
             return response.success(res, null);
         } catch (error) {
             next(error);

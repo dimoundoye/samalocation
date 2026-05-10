@@ -72,9 +72,9 @@ const Receipt = {
         const { rows: receipts } = await db.query(
             `SELECT 
                 r.*,
-                tenant.full_name as tenant_name,
-                tenant.email as tenant_email,
-                tenant.phone as tenant_phone,
+                COALESCE(up_direct.full_name, up_via_t.full_name) as tenant_name,
+                COALESCE(up_direct.email, up_via_t.email) as tenant_email,
+                COALESCE(up_direct.phone, up_via_t.phone) as tenant_phone,
                 owner.full_name as owner_name,
                 owner.email as owner_email,
                 owner.phone as owner_phone,
@@ -90,14 +90,13 @@ const Receipt = {
                 t.monthly_rent as tenant_rent,
                 t.move_in_date
             FROM receipts r
-            LEFT JOIN user_profiles tenant ON r.tenant_id = tenant.id
+            LEFT JOIN user_profiles up_direct ON r.tenant_id = up_direct.id
+            LEFT JOIN tenants t ON (r.tenant_id = t.id OR r.tenant_id = t.user_id)
+            LEFT JOIN user_profiles up_via_t ON t.user_id = up_via_t.id
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles owner ON p.owner_id = owner.id
             LEFT JOIN owner_profiles owner_prof ON p.owner_id = owner_prof.user_profile_id
-            LEFT JOIN property_units pu ON r.property_id = pu.property_id AND (
-                EXISTS (SELECT 1 FROM tenants t2 WHERE t2.user_id = r.tenant_id AND t2.unit_id = pu.id)
-            )
-            LEFT JOIN tenants t ON t.user_id = r.tenant_id
+            LEFT JOIN property_units pu ON r.unit_id = pu.id
             WHERE r.id = $1`,
             [id]
         );
@@ -115,7 +114,11 @@ const Receipt = {
         return receipts[0] || null;
     },
 
-    async findByTenantId(tenantId) {
+    async findByTenantId(userId) {
+        // Find all tenant records (stays) for this user to include legacy user_id links and new stay_id links
+        const { rows: tenantRecords } = await db.query('SELECT id FROM tenants WHERE user_id = $1', [userId]);
+        const stayIds = tenantRecords.map(r => r.id);
+
         const { rows: receipts } = await db.query(
             `SELECT 
                 r.*,
@@ -128,9 +131,9 @@ const Receipt = {
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles owner ON p.owner_id = owner.id
             LEFT JOIN property_units pu ON r.unit_id = pu.id
-            WHERE r.tenant_id = $1
+            WHERE r.tenant_id = $1 OR r.tenant_id = ANY($2)
             ORDER BY r.created_at DESC`,
-            [tenantId]
+            [userId, stayIds]
         );
 
         return receipts;

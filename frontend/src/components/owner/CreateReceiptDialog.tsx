@@ -67,7 +67,7 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
     useEffect(() => {
         if (!formData.tenant_id) return;
 
-        const selectedTenant = tenants.find(t => t.user_id === formData.tenant_id);
+        const selectedTenant = tenants.find(t => t.id === formData.tenant_id);
 
         // Update amount and period type if tenant has a defined rent
         if (selectedTenant) {
@@ -80,7 +80,7 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
 
         // Suggest next month based on history
         if (receipts && receipts.length > 0) {
-            const tenantReceipts = receipts.filter(r => r.tenant_id === formData.tenant_id);
+            const tenantReceipts = receipts.filter(r => r.tenant_id === formData.tenant_id || r.tenant_id === selectedTenant?.user_id);
             if (tenantReceipts.length > 0) {
                 // Find most recent receipt
                 const latest = tenantReceipts.reduce((prev, curr) => {
@@ -158,7 +158,7 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
             setLoading(true);
 
             // Trouver le unit_id pour ce locataire (si non fourni en prop)
-            const selectedTenant = tenants.find(t => t.user_id === formData.tenant_id);
+            const selectedTenant = tenants.find(t => t.id === formData.tenant_id);
             const final_unit_id = unitId || selectedTenant?.unit_id;
 
             await createReceipt({
@@ -259,7 +259,7 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                                         </SelectTrigger>
                                         <SelectContent>
                                             {tenants.map((tenant) => (
-                                                <SelectItem key={tenant.id} value={tenant.user_id}>
+                                                <SelectItem key={tenant.id} value={tenant.id}>
                                                     {tenant.full_name}
                                                 </SelectItem>
                                             ))}

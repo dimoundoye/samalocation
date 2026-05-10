@@ -11,16 +11,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, Wrench, HelpCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfile } from "@/components/UserProfile";
+import DossierDigitalTab from "@/components/tenant/DossierDigitalTab";
 import { AccountSettings } from "@/components/shared/AccountSettings";
 import { ReportOwnerDialog } from "@/components/tenant/ReportOwnerDialog";
 import { MaintenanceTab } from "@/components/tenant/MaintenanceTab";
 import { TenantContractsTab } from "@/components/tenant/TenantContractsTab";
 import { TenantDocumentationTab } from "@/components/tenant/TenantDocumentationTab";
+import { TenantProfileSettings } from "@/components/tenant/TenantProfileSettings";
+import TenantLeasesTab from "@/components/tenant/TenantLeasesTab";
+import { LeaseDetailModal } from "@/components/tenant/LeaseDetailModal";
 import { format } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +32,7 @@ import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, getMessag
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSocket } from "@/contexts/SocketContext";
 import { useTranslation } from "react-i18next";
+import { getMyDossier, shareDossier } from "@/api/dossier";
 
 const DashboardLocataire = () => {
   const navigate = useNavigate();
@@ -37,11 +42,12 @@ const DashboardLocataire = () => {
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState(urlTab || "dashboard");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [selectedLease, setSelectedLease] = useState<any>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({
     title: "",
     description: "",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const dateLocale = i18n.language === 'en' ? enUS : fr;
@@ -59,6 +65,7 @@ const DashboardLocataire = () => {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [leases, setLeases] = useState<any[]>([]);
+  const [sharingDossier, setSharingDossier] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -77,7 +84,7 @@ const DashboardLocataire = () => {
   useEffect(() => {
     // Si on se reconnecte (ou première connexion) et qu'on est sur l'onglet messages, rafraîchir pour ne rien rater
     if (connected && activeTab === "messages") {
-        loadMessages();
+      loadMessages();
     }
   }, [connected, activeTab, socket]);
 
@@ -305,6 +312,66 @@ const DashboardLocataire = () => {
       });
     }
   };
+  const handleShareDossierInChat = async () => {
+    if (!selectedChat?.user_id) return;
+
+    try {
+      setSharingDossier(true);
+
+      // Vérifier si le dossier existe
+      const dossier = await getMyDossier();
+      if (!dossier) {
+        toast({
+          title: "Dossier incomplet",
+          description: "Veuillez d'abord remplir votre dossier digital.",
+          variant: "default",
+        });
+        navigate("/tenant-dashboard/dossier");
+        return;
+      }
+
+      // Trouver le property_id associé à cette conversation si possible
+      const conversationMessages = messages.filter(
+        (m) => (m.sender_id === selectedChat.user_id || m.receiver_id === selectedChat.user_id)
+      );
+      const propertyId = conversationMessages.length > 0 ? conversationMessages[0].property_id : null;
+
+      if (!propertyId) {
+        toast({
+          title: "Erreur",
+          description: "Impossible d'identifier le bien associé à cette discussion.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await shareDossier(propertyId);
+
+      // Envoyer un message automatique pour prévenir le propriétaire
+      await sendMessage({
+        receiver_id: selectedChat.user_id,
+        message: "Je viens de vous partager mon dossier digital complet via SamaLocation.",
+        property_id: propertyId
+      });
+
+      toast({
+        title: "Dossier partagé",
+        description: "Le propriétaire a maintenant accès à votre dossier.",
+      });
+
+      loadMessages();
+    } catch (error) {
+      console.error("Error sharing dossier in chat:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de partager le dossier.",
+        variant: "destructive",
+      });
+    } finally {
+      setSharingDossier(false);
+    }
+  };
+
   const handleDownloadReceipt = async (receiptId: string) => {
     try {
       const receipt = receipts.find(r => r.id === receiptId);
@@ -342,6 +409,8 @@ const DashboardLocataire = () => {
       <nav className="space-y-2">
         {[
           { id: "dashboard", label: t('dashboard.sidebar.home'), icon: TrendingUp },
+          { id: "dossier", label: "Mon Dossier", icon: Shield },
+          { id: "logements", label: "Mes Logements", icon: Building2 },
           { id: "search", label: t('dashboard.sidebar.search'), icon: Search },
           { id: "messages", label: t('dashboard.sidebar.messages'), icon: MessageSquare },
           { id: "contracts", label: t('dashboard.sidebar.contracts'), icon: FileText },
@@ -403,7 +472,7 @@ const DashboardLocataire = () => {
   return (
     <div className="h-screen bg-background flex overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside 
+      <aside
         className={`${isSidebarCollapsed ? "w-20" : "w-64"} bg-card border-r shadow-soft hidden md:block h-screen sticky top-0 transition-all duration-300 ease-in-out z-20`}
       >
         <div className={`p-4 h-full flex flex-col ${isSidebarCollapsed ? "items-center" : ""}`}>
@@ -440,9 +509,9 @@ const DashboardLocataire = () => {
             </Sheet>
 
             <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="text-muted-foreground hover:text-primary transition-colors"
                 onClick={() => setActiveTab("guide")}
                 title="Guide d'utilisation"
@@ -499,73 +568,89 @@ const DashboardLocataire = () => {
                   </Button>
                 </div>
 
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <Card className="shadow-soft hover:shadow-md transition-all">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-primary" />
+                        Mes reçus
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-black text-foreground">{receipts.length}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
                 {/* Current Rental(s) */}
                 <div className="space-y-4">
                   <h2 className="text-xl font-bold px-1">{t('tenant.my_rentals')}</h2>
                   {leases.length > 0 ? (
-                    leases.map((lease) => (
-                      <Card key={lease.id} className="group shadow-soft hover:shadow-lg transition-all duration-300 overflow-hidden border-l-4 border-l-primary relative">
-                        <CardHeader className="pb-3 pr-20 sm:pr-6">
-                          <div className="flex flex-col gap-1">
-                            <Badge
-                              variant={lease.status === "active" ? "default" : "secondary"}
-                              className="w-fit absolute top-4 right-4 sm:static mb-2"
-                            >
-                              {lease.status === "active" ? t('common.active') : lease.status}
-                            </Badge>
-                            <CardTitle className="text-base sm:text-xl font-bold leading-tight line-clamp-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {leases.map((lease) => (
+                        <Card
+                          key={lease.id}
+                          className="group shadow-soft hover:shadow-lg transition-all duration-300 overflow-hidden border-t-4 border-t-primary relative h-full flex flex-col cursor-pointer"
+                          onClick={() => setSelectedLease(lease)}
+                        >
+                          <CardHeader className="pb-2">
+                            <div className="flex justify-between items-start mb-2">
+                              <Badge
+                                variant={lease.status === "active" ? "default" : "secondary"}
+                                className="text-[10px] h-5 px-2"
+                              >
+                                {lease.status === "active" ? t('common.active') : lease.status}
+                              </Badge>
+                            </div>
+                            <CardTitle className="text-sm font-bold leading-tight line-clamp-1">
                               {lease.property_name}
                             </CardTitle>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
+                          </CardHeader>
+                          <CardContent className="flex-1 flex flex-col gap-3">
                             {lease.photo_url && (
-                              <div className="relative shrink-0">
+                              <div className="relative aspect-video w-full overflow-hidden rounded-lg">
                                 <img
                                   src={lease.photo_url}
                                   alt="Location"
-                                  className="w-full md:w-40 h-32 md:h-28 object-cover rounded-xl shadow-sm"
+                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl md:hidden" />
                               </div>
                             )}
-                            <div className="flex-1 space-y-4">
-                              <p className="text-muted-foreground text-xs sm:text-sm flex items-center gap-2 bg-secondary/30 w-fit px-2 py-1 rounded-md">
-                                <Search className="h-3 w-3" /> {lease.property_address}
-                              </p>
+                            <p className="text-muted-foreground text-[11px] flex items-center gap-1.5 bg-secondary/30 w-full px-2 py-1 rounded-md line-clamp-1">
+                              <MapPin className="h-3 w-3 shrink-0" /> {lease.property_address}
+                            </p>
 
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-                                <div className="space-y-1">
-                                  <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.rent')}</p>
-                                  <p className="text-sm sm:text-base font-bold text-primary">
-                                    {formatCurrency(lease.monthly_rent)}
-                                  </p>
-                                </div>
-                                <div className="space-y-1">
-                                  <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.unit')}</p>
-                                  <p className="text-sm sm:text-base font-semibold">
-                                    {lease.unit_number || "N/A"}
-                                  </p>
-                                </div>
-                                <div className="space-y-1">
-                                  <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.move_in')}</p>
-                                  <p className="text-xs sm:text-sm font-medium">
-                                    {lease.move_in_date ? formatDate(lease.move_in_date) : t('tenant.not_defined')}
-                                  </p>
-                                </div>
-                                <div className="space-y-1">
-                                  <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">{t('tenant.owner')}</p>
-                                  <p className="text-xs sm:text-sm font-medium">
-                                    {lease.owner_name || "N/A"}
-                                  </p>
-                                </div>
+                            <div className="grid grid-cols-2 gap-3 mt-auto">
+                              <div className="space-y-0.5">
+                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">{t('tenant.rent')}</p>
+                                <p className="text-xs font-bold text-primary">
+                                  {formatCurrency(lease.monthly_rent)}
+                                </p>
+                              </div>
+                              <div className="space-y-0.5 text-right">
+                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">{t('tenant.unit')}</p>
+                                <p className="text-xs font-semibold">
+                                  {lease.unit_number || "Villa"}
+                                </p>
+                              </div>
+                              <div className="space-y-0.5">
+                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">Arrivée</p>
+                                <p className="text-[11px] font-medium">
+                                  {lease.move_in_date ? formatDate(lease.move_in_date) : t('tenant.not_defined')}
+                                </p>
+                              </div>
+                              <div className="space-y-0.5 text-right">
+                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">Propriétaire</p>
+                                <p className="text-[11px] font-medium truncate">
+                                  {lease.owner_name || "N/A"}
+                                </p>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   ) : (
                     <Card className="shadow-soft border-l-4 border-l-blue-500">
                       <CardContent className="p-6">
@@ -583,20 +668,18 @@ const DashboardLocataire = () => {
                   )}
                 </div>
 
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">{t('dashboard.sidebar.documents')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">{receipts.length}</p>
-                    </CardContent>
-                  </Card>
-                </div>
               </div>
             )}
 
+            {/* Dossier Tab */}
+            {activeTab === "dossier" && (
+              <DossierDigitalTab />
+            )}
+
+            {/* Logements Tab */}
+            {activeTab === "logements" && (
+              <TenantLeasesTab />
+            )}
 
             {/* Messages Tab */}
             {activeTab === "messages" && (
@@ -749,26 +832,41 @@ const DashboardLocataire = () => {
                     {selectedChat ? (
                       <>
                         <CardHeader className="border-b py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="lg:hidden"
-                              onClick={() => setSelectedChat(null)}
-                            >
-                              <ArrowLeft className="h-5 w-5" />
-                            </Button>
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback>{selectedChat.full_name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <CardTitle>{selectedChat.full_name}</CardTitle>
-                              <p className="text-sm text-muted-foreground">
-                                {selectedChat.company_name && selectedChat.email
-                                  ? `${selectedChat.company_name} • ${selectedChat.email}`
-                                  : selectedChat.email || selectedChat.company_name || ""}
-                              </p>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="lg:hidden"
+                                onClick={() => setSelectedChat(null)}
+                              >
+                                <ArrowLeft className="h-5 w-5" />
+                              </Button>
+                              <Avatar className="h-9 w-9">
+                                <AvatarFallback>{selectedChat.full_name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <CardTitle className="truncate">{selectedChat.full_name}</CardTitle>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {selectedChat.subtitle || selectedChat.email}
+                                </p>
+                              </div>
                             </div>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleShareDossierInChat}
+                              disabled={sharingDossier}
+                              className="h-9 px-4 border-primary text-primary hover:bg-primary/5 flex items-center gap-2 font-semibold shadow-sm shrink-0"
+                            >
+                              {sharingDossier ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Shield className="w-4 h-4" />
+                              )}
+                              <span>Partager mon dossier</span>
+                            </Button>
                           </div>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -954,14 +1052,7 @@ const DashboardLocataire = () => {
                   </TabsList>
 
                   <TabsContent value="profile" className="space-y-6">
-                    <Card className="shadow-soft">
-                      <CardHeader>
-                        <CardTitle>{t('dashboard.common.personal_info')}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <UserProfile />
-                      </CardContent>
-                    </Card>
+                    <TenantProfileSettings />
                   </TabsContent>
 
                   <TabsContent value="account">
@@ -990,6 +1081,13 @@ const DashboardLocataire = () => {
         title={confirmConfig.title}
         description={confirmConfig.description}
         onConfirm={confirmConfig.onConfirm}
+      />
+
+      {/* Detail Modal */}
+      <LeaseDetailModal 
+        lease={selectedLease}
+        open={!!selectedLease}
+        onClose={() => setSelectedLease(null)}
       />
     </div>
   );

@@ -53,7 +53,7 @@ export const baseClient = async (endpoint: string, options: RequestOptions = {})
 
     // Adapt to new standardized response format
     // If the backend returns { status: 'success', data: ... }, we return data
-    if (data.status === 'success') {
+    if (data.status === 'success' && data.data !== undefined) {
         return data.data;
     }
 

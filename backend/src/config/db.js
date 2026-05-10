@@ -17,7 +17,7 @@ const pool = new Pool(process.env.DATABASE_URL ? {
   max: 20,
   idleTimeoutMillis: 60000,
   connectionTimeoutMillis: 10000,
-  ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('supabase.co')
+  ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('supabase.com') || process.env.DB_HOST?.includes('supabase.co')
     ? { rejectUnauthorized: false }
     : false
 });

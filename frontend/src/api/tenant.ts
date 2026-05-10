@@ -21,6 +21,15 @@ export const updateTenantProfile = async (data: any) => {
     }
 };
 
+export const getAllMyLeases = async () => {
+    try {
+        return await baseClient("/tenants/me/all");
+    } catch (error) {
+        console.error("GetAllMyLeases error:", error);
+        return [];
+    }
+};
+
 export const getOwnerTenants = async () => {
     try {
         return await baseClient("/tenants/owner");

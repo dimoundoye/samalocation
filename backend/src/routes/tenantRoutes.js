@@ -6,6 +6,9 @@ const authMiddleware = require('../middleware/authMiddleware');
 // Get current tenant lease info
 router.get('/me', authMiddleware, tenantController.getMyLease);
 
+// Get ALL leases (including inactive/historical) for the current tenant
+router.get('/me/all', authMiddleware, tenantController.getMyAllLeases);
+
 // Update current tenant's profile
 router.patch('/me/profile', authMiddleware, tenantController.updateMyProfile);
 

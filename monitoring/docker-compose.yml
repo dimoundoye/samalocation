@@ -1,29 +1,6 @@
 version: '3.8'
 
 services:
-  # --- 1. PERFORMANCE MONITORING (RAM, CPU, STOCKAGE) ---
-  netdata:
-    image: netdata/netdata:latest
-    container_name: netdata
-    hostname: monitoring-sama
-    ports:
-      - "19999:19999"
-    cap_add:
-      - SYS_PTRACE
-      - SYS_ADMIN
-    security_opt:
-      - apparmor:unconfined
-    volumes:
-      - netdataconfig:/etc/netdata
-      - netdatalib:/var/lib/netdata
-      - netdatacache:/var/cache/netdata
-      - /etc/passwd:/etc/passwd:ro
-      - /etc/group:/etc/group:ro
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /etc/os-release:/host/etc/os-release:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    restart: always
 
   # --- 2. DOCKER LOGS VISUALIZER (LOGS EN DIRECT) ---
   dozzle:
@@ -89,9 +66,6 @@ services:
     restart: always
 
 volumes:
-  netdataconfig:
-  netdatalib:
-  netdatacache:
   uptime-kuma:
   umami-db-data:
   crowdsec-db:

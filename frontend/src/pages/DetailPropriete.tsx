@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X, Building2, Layers, Share2, Facebook, Link as LinkIcon, Send } from "lucide-react";
+import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X, Building2, Layers, Share2, Facebook, Link as LinkIcon, Send, Loader2 } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import SEO from "@/components/SEO";
 import { isRecent } from "@/lib/dateUtils";
 import PropertyDetailSkeleton from "@/components/PropertyDetailSkeleton";
+import { getMyDossier, shareDossier } from "@/api/dossier";
 
 const DetailPropriete = () => {
   const { t } = useTranslation();
@@ -39,6 +40,8 @@ const DetailPropriete = () => {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [hasDossier, setHasDossier] = useState(false);
+  const [sharingDossier, setSharingDossier] = useState(false);
 
   useEffect(() => {
     loadPropertyData();
@@ -68,6 +71,11 @@ const DetailPropriete = () => {
         }
       } else {
         setHasApplied(false);
+      }
+
+      if (user) {
+        const dossier = await getMyDossier();
+        setHasDossier(!!dossier);
       }
 
       setProperty(transformProperty(propertyData));
@@ -149,6 +157,7 @@ const DetailPropriete = () => {
       });
     }
   };
+
 
   useEffect(() => {
     if (!property?.id) {
