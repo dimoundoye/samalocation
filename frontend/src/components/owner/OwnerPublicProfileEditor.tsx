@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile, uploadPhotos } from "@/lib/api";
 import { X, FileText, Clock, Facebook, Instagram, Linkedin, Globe, MessageSquare, Mail, Building2 } from "lucide-react";
 
-export const OwnerPublicProfileEditor = () => {
+export const OwnerPublicProfileEditor = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [bannerLoading, setBannerLoading] = useState(false);
@@ -101,6 +101,7 @@ export const OwnerPublicProfileEditor = () => {
         title: "Succès",
         description: "Votre profil public a été mis à jour.",
       });
+      if (onSuccess) onSuccess();
     } catch (error: any) {
       toast({
         title: "Erreur",

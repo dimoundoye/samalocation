@@ -2201,10 +2201,10 @@ const DashboardProprietaire = () => {
             {activeTab === "team" && <OwnerTeamTab />}
 
             {/* Settings Tab */}
-            {activeTab === "settings" && <OwnerSettings />}
+            {activeTab === "settings" && <OwnerSettings onSuccess={loadData} />}
 
             {/* Public Profile Tab */}
-            {activeTab === "public-profile" && <OwnerPublicProfileEditor />}
+            {activeTab === "public-profile" && <OwnerPublicProfileEditor onSuccess={loadData} />}
 
             {/* Guide Tab */}
             {activeTab === "guide" && <OwnerDocumentationTab />}

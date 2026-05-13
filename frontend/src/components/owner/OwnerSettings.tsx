@@ -21,7 +21,7 @@ import modernImg from "@/assets/modern.png";
 import minimalImg from "@/assets/minimal.png";
 import agenceImg from "@/assets/agence.png";
 
-export const OwnerSettings = () => {
+export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -118,6 +118,7 @@ export const OwnerSettings = () => {
         title: t('common.success'),
         description: t('common.save_success'),
       });
+      if (onSuccess) onSuccess();
     } catch (error: any) {
       toast({
         title: t('common.error'),

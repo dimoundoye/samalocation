@@ -28,7 +28,7 @@ export const OnboardingChecklist = ({ stats, ownerProfile, onAction, onAddProper
                 ? "Ajoutez le nom de votre agence et votre logo pour personnaliser vos reçus."
                 : "Ajoutez le nom de votre structure pour personnaliser vos documents.",
             completed: canBranding 
-                ? !!(ownerProfile?.company_name && ownerProfile?.logo_url)
+                ? !!(ownerProfile?.company_name && (ownerProfile?.logo_url || ownerProfile?.receipt_logo_url))
                 : !!ownerProfile?.company_name,
             action: () => onAction("settings"),
             icon: Settings,
