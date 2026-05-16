@@ -701,17 +701,6 @@ const DashboardProprietaire = () => {
     return new Date(date).toLocaleDateString('fr-FR');
   };
 
-  const formatCurrency = (amount: any) => {
-    const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
-    const currency = ownerProfile?.currency || 'XOF';
-
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: currency,
-      maximumFractionDigits: 0,
-    }).format(numericValue || 0);
-  };
-
   const renderSidebarContent = (isMobile = false) => {
     const showLabels = isMobile || !isSidebarCollapsed;
     const itemAlignment = isMobile ? 'justify-start' : (isSidebarCollapsed ? 'justify-center border-r-0' : 'justify-start');

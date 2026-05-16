@@ -29,11 +29,11 @@ async function fetchImageSource(imageUrl) {
  */
 function formatCurrency(amount, currency = 'XOF') {
     if (amount === undefined || amount === null || isNaN(amount)) {
-        return `0 ${currency === 'XOF' || currency === 'XAF' ? 'FCFA' : currency}`;
+        return `0 ${currency === 'XOF' || currency === 'XAF' ? 'F CFA' : currency}`;
     }
     const formatted = Math.floor(Number(amount)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
     if (currency === 'XOF' || currency === 'XAF') {
-        return `${formatted} FCFA`;
+        return `${formatted} F CFA`;
     }
     return `${formatted} ${currency}`;
 }
