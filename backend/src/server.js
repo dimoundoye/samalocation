@@ -33,6 +33,14 @@ const securityMiddleware = require('./middleware/security');
 const { trackVisit } = require('./middleware/analyticsMiddleware');
 const { maintenanceMiddleware } = require('./middleware/maintenanceMiddleware');
 
+// Models for migrations
+const Property = require('./models/propertyModel');
+const Contract = require('./models/contractModel');
+const Receipt = require('./models/receiptModel');
+const Owner = require('./models/ownerModel');
+const User = require('./models/userModel');
+const Subscription = require('./models/subscriptionModel');
+
 const app = express();
 const server = require('http').createServer(app);
 const io = require('./utils/socket').init(server);
@@ -204,7 +212,14 @@ server.listen(PORT, async () => {
         console.log('  [DB] ✅ Connexion à la base de données établie.\n');
 
         // Run migrations
-        console.log('  [DB] ✅ Migrations vérifiées.\n');
+        console.log('  [DB] 🔄 Exécution des migrations...');
+        await Property.migrate();
+        await Contract.migrate();
+        await Receipt.migrate();
+        await Owner.migrate();
+        await User.migrate();
+        await Subscription.migrate();
+        console.log('  [DB] ✅ Migrations terminées.\n');
     } catch (err) {
         console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
     }

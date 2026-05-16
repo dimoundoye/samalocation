@@ -256,6 +256,24 @@ const User = {
         await db.query('DELETE FROM users WHERE id = $1', [userId]);
 
         return true;
+    },
+
+    async migrate() {
+        const queries = [
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP WITH TIME ZONE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires TIMESTAMP WITH TIME ZONE"
+        ];
+
+        for (const sql of queries) {
+            try {
+                await db.query(sql);
+            } catch (err) {
+                console.error('Migration error (users):', err.message);
+            }
+        }
+        return true;
     }
 };
 

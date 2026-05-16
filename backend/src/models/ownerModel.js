@@ -97,6 +97,21 @@ const Owner = {
 
         const { rows: updatedProfile } = await db.query('SELECT * FROM owner_profiles WHERE id = $1', [id]);
         return updatedProfile[0] || { id, ...data };
+    },
+
+    async migrate() {
+        const queries = [
+            "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'XOF'"
+        ];
+
+        for (const sql of queries) {
+            try {
+                await db.query(sql);
+            } catch (err) {
+                console.error('Migration error (owner_profiles):', err.message);
+            }
+        }
+        return true;
     }
 };
 

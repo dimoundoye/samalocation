@@ -211,7 +211,14 @@ const Receipt = {
         const queries = [
             "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS period_type VARCHAR(20) DEFAULT 'mois'",
             "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS start_date DATE NULL",
-            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS end_date DATE NULL"
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS end_date DATE NULL",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS owner_name VARCHAR(255)", 
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS tenant_name VARCHAR(255)",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'XOF'",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS owner_email VARCHAR(255)",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS owner_phone VARCHAR(50)",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS tenant_email VARCHAR(255)",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS tenant_phone VARCHAR(50)"
         ];
 
         for (const sql of queries) {

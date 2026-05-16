@@ -242,7 +242,9 @@ const Contract = {
             "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS owner_phone VARCHAR(50)",
             "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS owner_email VARCHAR(255)",
             "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_phone VARCHAR(50)",
-            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_email VARCHAR(255)"
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_email VARCHAR(255)",
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS owner_name VARCHAR(255)",
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_name VARCHAR(255)"
         ];
 
         for (const sql of queries) {
