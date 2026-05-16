@@ -61,6 +61,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSocket } from "@/contexts/SocketContext";
 import { useTranslation } from "react-i18next";
 import { OnboardingChecklist } from "@/components/owner/OnboardingChecklist";
+import { CurrencyOnboardingModal } from "@/components/owner/CurrencyOnboardingModal";
 import { useSubscription } from "@/hooks/useSubscription";
 import { OwnerPublicProfileEditor } from "@/components/owner/OwnerPublicProfileEditor";
 import { OwnerDocumentationTab } from "@/components/owner/OwnerDocumentationTab";
@@ -113,6 +114,7 @@ const DashboardProprietaire = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [createReceiptOpen, setCreateReceiptOpen] = useState(false);
+  const [showCurrencyOnboarding, setShowCurrencyOnboarding] = useState(false);
   const [selectedPropertyForReceipt, setSelectedPropertyForReceipt] = useState<Tenant | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [assignTenantOpen, setAssignTenantOpen] = useState(false);
@@ -548,6 +550,15 @@ const DashboardProprietaire = () => {
         occupiedUnits: occupied,
         activeTenants: (tenantsData || []).filter((t: any) => t.status === 'active').length || 0,
       });
+
+      // --- CHECK ONBOARDING ---
+      if (profileData && profileData.id) {
+        const onboardingSeen = localStorage.getItem(`onboarding_currency_seen_${profileData.id}`);
+        // Si l'utilisateur n'a pas de propriétés et n'a pas encore vu le modal, on lui demande sa devise
+        if (!onboardingSeen && (propsData || []).length === 0) {
+          setShowCurrencyOnboarding(true);
+        }
+      }
 
       setIsInitialLoading(false);
       console.log("[DASHBOARD] Phase 1 complete - UI is ready");
@@ -1170,7 +1181,7 @@ const DashboardProprietaire = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="text-xl sm:text-3xl font-bold truncate">
-                          {formatCurrency(totalYearlyRevenue)}
+                          {formatCurrency(totalYearlyRevenue, ownerProfile?.currency || 'XOF')}
                         </div>
                         <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 whitespace-nowrap">
                           Pour {selectedYear}
@@ -1814,7 +1825,7 @@ const DashboardProprietaire = () => {
                                     </TableCell>
                                     <TableCell>{tenant.property_name}</TableCell>
                                     <TableCell>
-                                      {formatCurrency(tenant.monthly_rent)}
+                                      {formatCurrency(tenant.monthly_rent, ownerProfile?.currency || 'XOF')}
                                     </TableCell>
                                     <TableCell>
                                       <Badge
@@ -2277,6 +2288,19 @@ const DashboardProprietaire = () => {
         title={confirmConfig.title}
         description={confirmConfig.description}
         onConfirm={confirmConfig.onConfirm}
+      />
+      <CurrencyOnboardingModal
+        open={showCurrencyOnboarding}
+        onSaved={(newCurrency) => {
+          setOwnerProfile((prev: any) => ({ ...prev, currency: newCurrency }));
+        }}
+        onClose={() => {
+          setShowCurrencyOnboarding(false);
+          if (ownerProfile?.id) {
+            localStorage.setItem(`onboarding_currency_seen_${ownerProfile.id}`, 'true');
+          }
+        }}
+        currentCurrency={ownerProfile?.currency}
       />
     </div>
   );

@@ -21,43 +21,47 @@ const Tenant = {
                    p.photo_url, 
                    COALESCE(op_direct.user_profile_id, p.owner_id) as owner_id,
                    owner_prof.full_name as owner_name, owner_prof.email as owner_email,
-                   owner_prof.phone as owner_phone
+                   owner_prof.phone as owner_phone,
+                   up_tenant.id as profile_id, up_tenant.email as profile_email,
+                   up_tenant.full_name as profile_full_name, up_tenant.phone as profile_phone,
+                   up_tenant.role as profile_role,
+                   own_op.currency as owner_currency, own_op.company_name as owner_company_name,
+                   own_op.logo_url as owner_logo_url, own_op.phone as owner_contact_phone
             FROM tenants t
             LEFT JOIN property_units pu ON t.unit_id = pu.id
             LEFT JOIN properties p ON pu.property_id = p.id
             LEFT JOIN owner_profiles op_direct ON p.owner_id = op_direct.id
             LEFT JOIN user_profiles owner_prof ON COALESCE(op_direct.user_profile_id, p.owner_id) = owner_prof.id
+            LEFT JOIN user_profiles up_tenant ON up_tenant.id = $1
+            LEFT JOIN owner_profiles own_op ON own_op.user_profile_id = owner_prof.id OR own_op.id = COALESCE(op_direct.user_profile_id, p.owner_id)
             WHERE (t.user_id = $1 OR (t.email = $2 AND t.email IS NOT NULL AND t.email != '')) 
             AND t.status IN (${statusPlaceholders})
             ORDER BY t.created_at DESC
         `, [userId, userEmail, ...statuses]);
 
-        const enrichedLeases = [];
-        for (const tenant of tenants) {
-            const { rows: userProfile } = await db.query(`
-                SELECT id, email, full_name, phone, role
-                FROM user_profiles
-                WHERE id = $1
-            `, [userId]);
-
+        // Assemble profile and ownerProfile inline from joined data (no N+1)
+        return tenants.map(tenant => {
+            const enriched = { ...tenant };
+            enriched.profile = {
+                id: tenant.profile_id,
+                email: tenant.profile_email,
+                full_name: tenant.profile_full_name,
+                phone: tenant.profile_phone,
+                role: tenant.profile_role,
+            };
             if (tenant.owner_id) {
-                const { rows: ownerProfiles } = await db.query(`
-                    SELECT op.currency, op.company_name, op.logo_url, op.phone as contact_phone, up.full_name, up.email, up.phone
-                    FROM owner_profiles op
-                    LEFT JOIN user_profiles up ON op.user_profile_id = up.id
-                    WHERE up.id = $1 OR op.id = $1
-                `, [tenant.owner_id]);
-
-                if (ownerProfiles[0]) {
-                    tenant.ownerProfile = ownerProfiles[0];
-                }
+                enriched.ownerProfile = {
+                    currency: tenant.owner_currency,
+                    company_name: tenant.owner_company_name,
+                    logo_url: tenant.owner_logo_url,
+                    contact_phone: tenant.owner_contact_phone,
+                    full_name: tenant.owner_name,
+                    email: tenant.owner_email,
+                    phone: tenant.owner_phone,
+                };
             }
-
-            tenant.profile = userProfile[0] || null;
-            enrichedLeases.push(tenant);
-        }
-
-        return enrichedLeases;
+            return enriched;
+        });
     },
 
     async findByOwnerId(ownerId) {

@@ -192,8 +192,9 @@ const Receipt = {
             LEFT JOIN user_profiles tenant ON r.tenant_id = tenant.id
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN owner_profiles owner_prof ON p.owner_id = owner_prof.user_profile_id
+                OR p.owner_id = owner_prof.id
             LEFT JOIN property_units pu ON r.unit_id = pu.id
-            WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $2)
+            WHERE p.owner_id = $1 OR owner_prof.user_profile_id = $2
             ORDER BY r.created_at DESC
             LIMIT $3 OFFSET $4`,
             [ownerId, ownerId, limit, offset]

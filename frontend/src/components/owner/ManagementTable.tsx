@@ -224,7 +224,7 @@ export const ManagementTable = ({
 
     const shareReceipt = async (tenant: Tenant, receipt: Receipt) => {
         const monthLabel = months.find(m => m.id === Number(receipt.month))?.label || receipt.month;
-        const amount = formatCurrency(Number(receipt.amount));
+        const amount = formatCurrency(Number(receipt.amount), currency);
         
         // Texte du message
         const text = `Bonjour ${tenant.full_name}, votre quittance de loyer pour le mois de ${monthLabel} ${receipt.year} (${amount}) est maintenant disponible sur votre compte Samalocation. Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com. Merci pour votre confiance !`;
@@ -643,7 +643,7 @@ export const ManagementTable = ({
                                                                 </div>
                                                                 <div className="flex items-center gap-6">
                                                                     <div className="text-sm font-bold text-primary bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
-                                                                        {formatCurrency(stats.total)}
+                                                                        {formatCurrency(stats.total, currency)}
                                                                     </div>
                                                                     <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0" />
                                                                 </div>

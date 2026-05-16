@@ -362,6 +362,17 @@ const Property = {
             "ALTER TABLE properties ADD COLUMN IF NOT EXISTS listing_type VARCHAR(20) DEFAULT 'location'",
             "ALTER TABLE properties ADD COLUMN IF NOT EXISTS sale_price DECIMAL(15, 2) NULL",
             "ALTER TABLE property_units ADD COLUMN IF NOT EXISTS rooms_count INTEGER DEFAULT 0",
+            // Performance indexes
+            "CREATE INDEX IF NOT EXISTS idx_properties_owner_id ON properties(owner_id)",
+            "CREATE INDEX IF NOT EXISTS idx_property_units_property_id ON property_units(property_id)",
+            "CREATE INDEX IF NOT EXISTS idx_property_units_is_available ON property_units(is_available)",
+            "CREATE INDEX IF NOT EXISTS idx_tenants_unit_id ON tenants(unit_id)",
+            "CREATE INDEX IF NOT EXISTS idx_tenants_user_id ON tenants(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(status)",
+            "CREATE INDEX IF NOT EXISTS idx_receipts_property_id ON receipts(property_id)",
+            "CREATE INDEX IF NOT EXISTS idx_receipts_tenant_id ON receipts(tenant_id)",
+            "CREATE INDEX IF NOT EXISTS idx_receipts_year ON receipts(year)",
+            "CREATE INDEX IF NOT EXISTS idx_owner_profiles_user_profile_id ON owner_profiles(user_profile_id)",
             // Supprimer dynamiquement toute contrainte UNIQUE sur le nom (quel que soit son nom)
             `DO $$
              DECLARE
