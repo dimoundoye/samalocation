@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ interface CreateReceiptDialogProps {
 
 export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId, propertyName, tenantId, tenantName, monthlyRent, unitId, receipts = [] }: CreateReceiptDialogProps) => {
     const { toast } = useToast();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [tenants, setTenants] = useState<any[]>([]);
     const [formData, setFormData] = useState({
@@ -117,13 +119,22 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         try {
             const data = await getOwnerTenants();
 
-            // Si un locataire est présélectionné et n'est pas dans la liste, on s'assure qu'il y soit
-            const allTenants = [...data];
-            if (tenantId && tenantName && !allTenants.find((t: any) => t.user_id === tenantId)) {
-                allTenants.push({ user_id: tenantId, full_name: tenantName, id: 'temp' });
+            // Dédoublonner par user_id pour éviter les répétitions
+            const uniqueTenants: any[] = [];
+            const seenUserIds = new Set();
+            
+            [...data].forEach(t => {
+                if (!seenUserIds.has(t.user_id)) {
+                    seenUserIds.add(t.user_id);
+                    uniqueTenants.push(t);
+                }
+            });
+
+            if (tenantId && tenantName && !uniqueTenants.find((t: any) => t.user_id === tenantId)) {
+                uniqueTenants.push({ user_id: tenantId, full_name: tenantName, id: 'temp' });
             }
 
-            setTenants(allTenants);
+            setTenants(uniqueTenants);
         } catch (error) {
             console.error("Error loading tenants:", error);
             // Fallback si on a les infos du locataire
@@ -360,7 +371,7 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                             )}
 
                             <div className="space-y-2">
-                                <Label htmlFor="amount">Montant (FCFA) *</Label>
+                                <Label htmlFor="amount">Montant ({user?.currency || 'XOF'}) *</Label>
                                 <Input
                                     id="amount"
                                     type="number"

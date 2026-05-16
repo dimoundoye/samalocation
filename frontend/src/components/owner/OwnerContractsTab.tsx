@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, FileText, Download, Share2, Loader2, Info, Eye, AlertCircle, AlertTriangle, Send } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import { ContractModelPreview } from "./ContractModelPreview";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import { fr } from "date-fns/locale";
 import { RentalContract } from "@/types";
 import { CreateContractDialog } from "./CreateContractDialog";
 
-export const OwnerContractsTab = () => {
+export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) => {
     const { toast } = useToast();
     const [contracts, setContracts] = useState<RentalContract[]>([]);
     const [loading, setLoading] = useState(true);
@@ -93,9 +94,9 @@ export const OwnerContractsTab = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Alert className="bg-blue-50 border-blue-200 text-blue-800">
                     <Info className="h-4 w-4 text-blue-600" />
-                    <AlertTitle className="font-bold text-xs">Rappel : Enregistrement DGID</AlertTitle>
+                    <AlertTitle className="font-bold text-xs">Rappel : Formalités administratives</AlertTitle>
                     <AlertDescription className="text-[10px] leading-tight">
-                        Pour être pleinement opposable, tout contrat de bail au Sénégal doit être enregistré auprès des services fiscaux (DGID) et les signatures légalisées à la mairie ou sous-préfecture.
+                        Pour être pleinement opposable, tout contrat de bail doit être enregistré auprès des services compétents de votre juridiction et les signatures légalisées si nécessaire.
                     </AlertDescription>
                 </Alert>
 
@@ -165,7 +166,7 @@ export const OwnerContractsTab = () => {
                                             </div>
                                             <div>
                                                 <div className="text-[10px] text-muted-foreground uppercase">Loyer</div>
-                                                <div className="text-sm font-medium text-primary">{Number(contract.rent_amount).toLocaleString('fr-FR')} F</div>
+                                                <div className="text-sm font-medium text-primary">{formatCurrency(contract.rent_amount, currency)}</div>
                                             </div>
                                         </div>
 
@@ -230,7 +231,7 @@ export const OwnerContractsTab = () => {
                                                 </TableCell>
                                                 <TableCell>{contract.tenant_name}</TableCell>
                                                 <TableCell>{format(new Date(contract.start_date), 'dd/MM/yyyy', { locale: fr })}</TableCell>
-                                                <TableCell>{Number(contract.rent_amount).toLocaleString('fr-FR')} F</TableCell>
+                                                <TableCell>{formatCurrency(contract.rent_amount, currency)}</TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col gap-1">
                                                         {getStatusBadge(contract.status)}

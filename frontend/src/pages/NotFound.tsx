@@ -106,7 +106,7 @@ const NotFound = () => {
 
       {/* Footer */}
       <p className="mt-16 text-xs text-muted-foreground/50 relative z-10">
-        © {new Date().getFullYear()} SamaLocation — La gestion immobilière simplifiée au Sénégal
+        © {new Date().getFullYear()} SamaLocation — La gestion immobilière simplifiée
       </p>
     </div>
   );

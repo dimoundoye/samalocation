@@ -12,6 +12,7 @@ import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 import { useToast } from "@/hooks/use-toast";
 import { initializeOnlinePayment, getMySubscription } from "@/api/subscription";
 import SEO from "@/components/SEO";
+import { formatCurrency } from "@/lib/utils";
 
 const Pricing = () => {
     const { user } = useAuth();
@@ -181,7 +182,7 @@ const Pricing = () => {
         <div className="min-h-screen bg-background">
             <SEO
                 title="Tarifs et Abonnements | Samalocation"
-                description="Découvrez nos offres pour propriétaires et agences immobilières au Sénégal. Gérez vos locataires à partir de 0 FCFA par mois."
+                description="Découvrez nos offres pour propriétaires et agences immobilières. Gérez vos locataires à partir de 0 par mois."
             />
             <Navbar />
 
@@ -204,7 +205,7 @@ const Pricing = () => {
                         transition={{ delay: 0.1 }}
                         className="text-xl text-muted-foreground"
                     >
-                        Que vous soyez un particulier ou une agence, nous avons une solution adaptée à vos besoins au Sénégal.
+                        Que vous soyez un particulier ou une agence, nous avons une solution adaptée à vos besoins.
                     </motion.p>
 
                     {/* Toggle Annual/Monthly */}
@@ -274,8 +275,7 @@ const Pricing = () => {
 
                                 <div className="mb-8">
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-4xl font-bold">{plan.price.toLocaleString('fr-FR')}</span>
-                                        <span className="text-xl font-bold">FCFA</span>
+                                        <span className="text-4xl font-bold">{formatCurrency(plan.price)}</span>
                                         <span className="text-muted-foreground ml-1">{plan.period}</span>
                                     </div>
                                     {isAnnual && plan.price > 0 && (
@@ -331,9 +331,9 @@ const Pricing = () => {
                             <div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
                                 <HelpCircle className="text-blue-500 w-6 h-6" />
                             </div>
-                            <h4 className="font-bold">Support 100% Local</h4>
+                            <h4 className="font-bold">Support Dédié</h4>
                             <p className="text-sm text-muted-foreground leading-relaxed">
-                                Une équipe basée au Sénégal pour vous accompagner sur WhatsApp et par téléphone.
+                                Une équipe dédiée pour vous accompagner sur WhatsApp et par téléphone.
                             </p>
                         </div>
                         <div className="space-y-3">

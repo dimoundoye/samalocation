@@ -29,6 +29,7 @@ export interface FormattedProperty extends RawProperty {
   aggregated_rooms_count: number;
   property_units: any[];
   primary_rent_period: "jour" | "semaine" | "mois";
+  currency: string;
 }
 
 const getSafePhotosArray = (photos: any) => {
@@ -192,6 +193,10 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
     });
   }
 
+  const ownerCurrency = property.owner_profiles && Array.isArray(property.owner_profiles) && property.owner_profiles.length > 0 
+    ? property.owner_profiles[0].currency 
+    : (property.owner_profiles?.currency || 'XOF');
+
   return {
     ...property,
     rent_amount: computedRent,
@@ -209,5 +214,6 @@ export const transformProperty = (property: RawProperty): FormattedProperty => {
     photos: photosArray,
     equipments: getSafeEquipmentsArray(property.equipments),
     primary_rent_period: primaryRentPeriod,
+    currency: ownerCurrency || 'XOF',
   };
 };

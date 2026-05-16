@@ -255,7 +255,7 @@ const DossierDigitalTab = () => {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Revenu Mensuel (FCFA)</Label>
+                                <Label>Revenu Mensuel</Label>
                                 <Input
                                     type="number"
                                     placeholder="Ex: 500000"

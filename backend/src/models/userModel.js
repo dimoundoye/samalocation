@@ -54,9 +54,10 @@ const User = {
 
     async findProfileById(id) {
         const { rows } = await db.query(`
-            SELECT up.*, u.is_setup_complete, u.parent_id, u.permissions
+            SELECT up.*, u.is_setup_complete, u.parent_id, u.permissions, op.currency
             FROM user_profiles up
             JOIN users u ON up.id = u.id
+            LEFT JOIN owner_profiles op ON up.id = op.id
             WHERE up.id = $1
         `, [id]);
         return rows[0] || null;

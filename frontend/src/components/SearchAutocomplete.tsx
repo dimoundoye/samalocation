@@ -7,11 +7,10 @@ import { getProperties } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
-const SENEGAL_LOCATIONS = [
-  "Dakar", "Almadies", "Mermoz", "Plateau", "Ngor", "Yoff", "Hann Bel-Air", 
-  "Parcelles Assainies", "Pikine", "Guédiawaye", "Rufisque", "Diamniadio",
-  "Thies", "Saly", "Mbour", "Saint-Louis", "Ziguinchor", "Touba", "Kaolack",
-  "Somone", "Popenguine"
+const SUGGESTED_LOCATIONS = [
+  "Centre-ville", "Zone Résidentielle", "Quartier d'affaires", "Bord de mer", "Zone Nord", 
+  "Zone Sud", "Zone Est", "Zone Ouest", "Proche Universités", "Banlieue calme",
+  "Nouveaux développements", "Quartier Historique"
 ];
 
 interface SearchAutocompleteProps {
@@ -93,7 +92,7 @@ export const SearchAutocomplete = ({ placeholder, className, initialValue = "", 
     localStorage.setItem("search_history", JSON.stringify(newHistory));
   };
 
-  const filteredLocations = SENEGAL_LOCATIONS.filter(loc => 
+  const filteredLocations = SUGGESTED_LOCATIONS.filter(loc => 
     loc.toLowerCase().includes(value.toLowerCase())
   ).slice(0, 5);
 

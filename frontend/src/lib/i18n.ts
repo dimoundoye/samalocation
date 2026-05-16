@@ -102,18 +102,18 @@ const resources = {
                 }
             },
             "hero": {
-                "badge": "La révolution locative au Sénégal",
+                "badge": "La révolution locative en ligne",
                 "title_part1": "Gérez & Trouvez un logement",
                 "title_part2": "en toute confiance.",
-                "description": "Samalocation simplifie la vie des propriétaires et des locataires. Une plateforme transparente, sécurisée et 100% digitale au Sénégal.",
+                "description": "Samalocation simplifie la vie des propriétaires et des locataires. Une plateforme transparente, sécurisée et 100% digitale.",
                 "list_property": "Mettre en location",
                 "search_property": "Chercher un logement",
-                "search_placeholder": "Quartier, ville (ex: Almadies, Thiès...)",
+                "search_placeholder": "Quartier, ville...",
                 "search_button": "Rechercher"
             },
             "features": {
                 "title": "Pourquoi choisir Samalocation\u00A0?",
-                "subtitle": "Nous avons construit la solution idéale pour le marché sénégalais, en combinant technologie moderne et simplicité d'utilisation.",
+                "subtitle": "Nous avons construit la solution idéale pour la gestion immobilière, en combinant technologie moderne et simplicité d'utilisation.",
                 "security": {
                     "title": "Sécurité",
                     "desc": "Vérification des profils et protection de vos documents et transactions."
@@ -140,7 +140,7 @@ const resources = {
                 "tenants": {
                     "title": "Pour les Locataires",
                     "desc": "Le logement de vos rêves est à portée de clic. Visites facilitées et échange direct avec les propriétaires.",
-                    "item1": "Annonces vérifiées au Sénégal",
+                    "item1": "Annonces vérifiées",
                     "item2": "Filtrage intelligent",
                     "item3": "Candidature en un clic",
                     "item4": "Discuter avec le propriétaire",
@@ -156,7 +156,7 @@ const resources = {
                 "title": "Comment ça marche\u00A0?",
                 "step1": {
                     "title": "Cherchez",
-                    "desc": "Explorez nos annonces vérifiées partout au Sénégal."
+                    "desc": "Explorez nos annonces vérifiées partout."
                 },
                 "step2": {
                     "title": "Candidature",
@@ -169,12 +169,12 @@ const resources = {
             },
             "cta": {
                 "title": "Prêt à simplifier votre expérience locative\u00A0?",
-                "desc": "Rejoignez des centaines de Sénégalais qui ont déjà choisi Samalocation pour une gestion transparente.",
+                "desc": "Rejoignez des centaines d'utilisateurs qui ont déjà choisi Samalocation pour une gestion transparente.",
                 "signup": "S'inscrire",
                 "contact": "Nous contacter"
             },
             "footer": {
-                "desc": "La plateforme de référence pour la location immobilière au Sénégal. Sécurité, simplicité, transparence.",
+                "desc": "La plateforme de référence pour la location immobilière. Sécurité, simplicité, transparence.",
                 "nav": {
                     "title": "Navigation",
                     "home": "Accueil",
@@ -198,7 +198,7 @@ const resources = {
                 "subtitle": "Vous avez une question, une suggestion ou besoin d'assistance ? Notre équipe est là pour vous aider.",
                 "info": {
                     "address_title": "Notre Adresse",
-                    "address_text": "Ouakam, Cité Batrain, Dakar, Sénégal",
+                    "address_text": "Siège Social, Samalocation",
                     "phone_title": "Téléphone",
                     "phone_sub": "Lun-Ven, 9h-18h",
                     "email_title": "Email",
@@ -262,7 +262,7 @@ const resources = {
             },
             "search": {
                 "title": "Trouvez votre logement idéal",
-                "placeholder": "Rechercher par ville, quartier... (ex: Villa à Dakar)",
+                "placeholder": "Rechercher par ville, quartier...",
                 "results_count_one": "{{count}} logement disponible",
                 "results_count_other": "{{count}} logements disponibles",
                 "filters": "Filtres",
@@ -400,12 +400,12 @@ const resources = {
                 "full_name": "Nom complet",
                 "full_name_placeholder": "Votre nom complet",
                 "company_name": "Nom de l'entreprise",
-                "company_placeholder": "Ex: Immobilier Dakar",
+                "company_placeholder": "Ex: Agence Immobilière",
                 "contact_phone": "Téléphone de contact",
-                "phone_placeholder": "Ex: +221 77 123 45 67",
+                "phone_placeholder": "Ex: +1 000 000 000",
                 "contact_email": "Email de contact",
-                "email_placeholder": "Ex: contact@immobilierdakar.com",
-                "address_placeholder": "Ex: Dakar, Sénégal",
+                "email_placeholder": "Ex: contact@votreagence.com",
+                "address_placeholder": "Ex: Ville, Pays",
                 "bio": "Bio",
                 "bio_placeholder": "Quelques mots sur vous...",
                 "identity_verification": "Demande de Badge Vérifié",
@@ -567,18 +567,18 @@ const resources = {
                 }
             },
             "hero": {
-                "badge": "The rental revolution in Senegal",
+                "badge": "The online rental revolution",
                 "title_part1": "Manage & Find a property",
                 "title_part2": "with confidence.",
-                "description": "Samalocation simplifies life for owners and tenants. A transparent, secure and 100% digital platform in Senegal.",
+                "description": "Samalocation simplifies life for owners and tenants. A transparent, secure and 100% digital platform.",
                 "list_property": "List property",
                 "search_property": "Search property",
-                "search_placeholder": "Neighborhood, city (ex: Almadies, Thies...)",
+                "search_placeholder": "Neighborhood, city...",
                 "search_button": "Search"
             },
             "features": {
                 "title": "Why choose Samalocation?",
-                "subtitle": "We built the ideal solution for the Senegalese market, combining modern technology and ease of use.",
+                "subtitle": "We built the ideal solution for real estate management, combining modern technology and ease of use.",
                 "security": {
                     "title": "Security",
                     "desc": "Profile verification and protection of your documents and transactions."
@@ -605,7 +605,7 @@ const resources = {
                 "tenants": {
                     "title": "For Tenants",
                     "desc": "The home of your dreams is just a click away. Easy visits and direct exchange with owners.",
-                    "item1": "Verified listings in Senegal",
+                    "item1": "Verified listings",
                     "item2": "Smart filtering",
                     "item3": "One-click application",
                     "item4": "Chat with the owner",
@@ -621,7 +621,7 @@ const resources = {
                 "title": "How it works?",
                 "step1": {
                     "title": "Search",
-                    "desc": "Explore our verified listings across Senegal."
+                    "desc": "Explore our verified listings everywhere."
                 },
                 "step2": {
                     "title": "Application",
@@ -634,12 +634,12 @@ const resources = {
             },
             "cta": {
                 "title": "Ready to simplify your rental experience?",
-                "desc": "Join hundreds of Senegalese who have already chosen Samalocation for transparent management.",
+                "desc": "Join hundreds of users who have already chosen Samalocation for transparent management.",
                 "signup": "Sign Up",
                 "contact": "Contact Us"
             },
             "footer": {
-                "desc": "The leading platform for real estate rentals in Senegal. Security, simplicity, transparency.",
+                "desc": "The leading platform for real estate rentals. Security, simplicity, transparency.",
                 "nav": {
                     "title": "Navigation",
                     "home": "Home",
@@ -663,7 +663,7 @@ const resources = {
                 "subtitle": "Do you have a question, a suggestion or need assistance? Our team is here to help.",
                 "info": {
                     "address_title": "Our Address",
-                    "address_text": "Ouakam, Cite Batrain, Dakar, Senegal",
+                    "address_text": "Headquarters, Samalocation",
                     "phone_title": "Phone",
                     "phone_sub": "Mon-Fri, 9am-6pm",
                     "email_title": "Email",
@@ -727,7 +727,7 @@ const resources = {
             },
             "search": {
                 "title": "Find your ideal home",
-                "placeholder": "Search by city, neighborhood... (ex: Villa in Dakar)",
+                "placeholder": "Search by city, neighborhood...",
                 "results_count_one": "{{count}} property available",
                 "results_count_other": "{{count}} properties available",
                 "filters": "Filters",
@@ -811,12 +811,12 @@ const resources = {
                     "full_name": "Full Name",
                     "full_name_placeholder": "Your full name",
                     "company_name": "Company Name",
-                    "company_placeholder": "Ex: Dakar Real Estate",
+                    "company_placeholder": "Ex: Global Real Estate",
                     "contact_phone": "Contact Phone",
-                    "phone_placeholder": "Ex: +221 77 123 45 67",
+                    "phone_placeholder": "Ex: +1 234 567 890",
                     "contact_email": "Contact Email",
-                    "email_placeholder": "Ex: contact@dakar-estate.com",
-                    "address_placeholder": "Ex: Dakar, Senegal",
+                    "email_placeholder": "Ex: contact@agency.com",
+                    "address_placeholder": "Ex: City, Country",
                     "bio": "Bio",
                     "bio_placeholder": "A few words about yourself...",
                     "identity_verification": "Verified Badge Request",

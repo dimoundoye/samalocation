@@ -86,8 +86,8 @@ const Index = () => {
   const fallbackProperties = [
     {
       image: property1,
-      title: "Appartement moderne à Almadies",
-      location: "Almadies, Dakar",
+      title: "Appartement moderne",
+      location: "Centre Ville",
       price: 350000,
       type: "Appartement",
       status: "available" as const,
@@ -98,8 +98,8 @@ const Index = () => {
     },
     {
       image: property2,
-      title: "Villa spacieuse à Fann",
-      location: "Fann, Dakar",
+      title: "Villa spacieuse",
+      location: "Quartier Résidentiel",
       price: 500000,
       type: "Maison",
       status: "available" as const,
@@ -110,8 +110,8 @@ const Index = () => {
     },
     {
       image: property1,
-      title: "Studio meublé à Mermoz",
-      location: "Mermoz, Dakar",
+      title: "Studio meublé",
+      location: "Quartier Calme",
       price: 150000,
       type: "Studio",
       status: "occupied" as const,
@@ -125,8 +125,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/10">
       <SEO 
-        title="Samalocation - Simplifiez la gestion locative au Sénégal"
-        description="Trouvez votre prochain logement ou gérez vos biens immobiliers en toute simplicité au Sénégal. Appartements, villas, studios et plus."
+        title="Samalocation - Simplifiez votre gestion locative en ligne"
+        description="Trouvez votre prochain logement ou gérez vos biens immobiliers en toute simplicité. Appartements, villas, studios et plus."
       />
       <Navbar />
 
@@ -287,6 +287,7 @@ const Index = () => {
                         isNew={isRecent(property.published_at)}
                         listingType={property.listing_type as any}
                         salePrice={property.sale_price}
+                        currency={property.currency}
                       />
                     </CarouselItem>
                   );

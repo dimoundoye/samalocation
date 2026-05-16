@@ -406,7 +406,7 @@ const Auth = () => {
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="+221 XX XXX XX XX"
+                      placeholder="+000 00 000 00 00"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       required

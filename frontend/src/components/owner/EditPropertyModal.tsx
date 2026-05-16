@@ -567,7 +567,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
 
                                 {propertyData.listing_type === 'vente' && (
                                     <div className="animate-in fade-in slide-in-from-top-1">
-                                        <Label htmlFor="edit-sale-price">Prix de vente (F CFA) *</Label>
+                                        <Label htmlFor="edit-sale-price">Prix de vente *</Label>
                                         <Input
                                             id="edit-sale-price"
                                             type="number"
@@ -612,7 +612,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                                         </div>
 
                                         <div>
-                                            <Label htmlFor="edit-rent">Montant du loyer (F CFA) *</Label>
+                                            <Label htmlFor="edit-rent">Montant du loyer *</Label>
                                             <Input
                                                 id="edit-rent"
                                                 type="number"

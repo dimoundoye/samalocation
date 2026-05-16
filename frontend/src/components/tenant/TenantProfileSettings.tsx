@@ -138,7 +138,7 @@ export const TenantProfileSettings = () => {
               id="address"
               value={profile.address}
               onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-              placeholder="Ex : Dakar, Plateau, Rue 10"
+              placeholder="Ex : 123 Rue de la Liberté, Quartier Central"
               className="h-11 rounded-xl"
             />
           </div>

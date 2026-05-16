@@ -43,7 +43,7 @@ const LocationPicker = ({ initialLat, initialLng, onChange }: LocationPickerProp
     useEffect(() => {
         if (!mapContainerRef.current) return;
 
-        // Dakar par défaut
+        // Localisation par défaut
         const defaultLat = initialLat || 14.7167;
         const defaultLng = initialLng || -17.4677;
 

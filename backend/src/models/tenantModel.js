@@ -42,10 +42,10 @@ const Tenant = {
 
             if (tenant.owner_id) {
                 const { rows: ownerProfiles } = await db.query(`
-                    SELECT op.*, up.full_name, up.email, up.phone
+                    SELECT op.currency, op.company_name, op.logo_url, op.phone as contact_phone, up.full_name, up.email, up.phone
                     FROM owner_profiles op
                     LEFT JOIN user_profiles up ON op.user_profile_id = up.id
-                    WHERE up.id = $1
+                    WHERE up.id = $1 OR op.id = $1
                 `, [tenant.owner_id]);
 
                 if (ownerProfiles[0]) {

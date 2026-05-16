@@ -1,5 +1,5 @@
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, BedDouble, Home, CheckCircle2, Phone, ArrowRight, Square, Bath, Shield, Layers, Share2 } from "lucide-react";
@@ -34,6 +34,7 @@ interface PropertyCardProps {
   ownerLogo?: string;
   listingType?: 'location' | 'vente';
   salePrice?: number;
+  currency?: string;
 }
 
 const PropertyCard = ({
@@ -58,6 +59,7 @@ const PropertyCard = ({
   ownerLogo,
   listingType = 'location',
   salePrice,
+  currency = 'XOF',
 }: PropertyCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -116,14 +118,6 @@ const PropertyCard = ({
     }
   };
   
-  const formatCurrency = (amount: any) => {
-    const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(numericValue) || numericValue <= 0) return t('property.on_request');
-    return new Intl.NumberFormat('fr-FR', {
-      maximumFractionDigits: 0,
-      useGrouping: true
-    }).format(numericValue) + " F";
-  };
   
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -316,8 +310,8 @@ const PropertyCard = ({
             <div>
               <span className="text-base sm:text-xl font-bold text-primary">
                 {listingType === 'vente' 
-                  ? (salePrice ? formatCurrency(salePrice) : t('property.on_request'))
-                  : (price > 0 ? formatCurrency(price) : t('property.on_request'))
+                  ? (salePrice ? formatCurrency(salePrice, currency) : t('property.on_request'))
+                  : (price > 0 ? formatCurrency(price, currency) : t('property.on_request'))
                 }
               </span>
               {listingType === 'location' && price > 0 && (

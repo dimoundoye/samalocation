@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, CheckCircle, Clock, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -19,7 +20,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RentalContract } from "@/types";
 
-export const TenantContractsTab = () => {
+export const TenantContractsTab = ({ currency = 'XOF' }: { currency?: string }) => {
     const { toast } = useToast();
     const [contracts, setContracts] = useState<RentalContract[]>([]);
     const [loading, setLoading] = useState(true);
@@ -137,11 +138,11 @@ export const TenantContractsTab = () => {
                                     </div>
                                     <div>
                                         <p className="text-[10px] text-muted-foreground uppercase mb-1">Loyer mensuel</p>
-                                        <p className="text-sm font-semibold">{Number(contract.rent_amount).toLocaleString()} F CFA</p>
+                                        <p className="text-sm font-semibold">{formatCurrency(contract.rent_amount, currency)}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] text-muted-foreground uppercase mb-1">Caution</p>
-                                        <p className="text-sm font-semibold">{Number(contract.deposit_amount).toLocaleString()} F CFA</p>
+                                        <p className="text-sm font-semibold">{formatCurrency(contract.deposit_amount, currency)}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] text-muted-foreground uppercase mb-1">Propriétaire</p>

@@ -205,7 +205,7 @@ const OwnerPublicProfile = () => {
     <div className="min-h-screen bg-neutral-50/50 flex flex-col">
       <SEO 
         title={`Agence ${profile.company_name || profile.full_name}`}
-        description={`Découvrez le catalogue immobilier de ${profile.company_name || profile.full_name} sur Samalocation. ${profile.bio?.substring(0, 150) || "Agence immobilière partenaire au Sénégal."}`}
+        description={`Découvrez le catalogue immobilier de ${profile.company_name || profile.full_name} sur Samalocation. ${profile.bio?.substring(0, 150) || "Agence immobilière partenaire sur Samalocation."}`}
         image={profile.logo_url}
         type="profile"
       />
@@ -271,7 +271,7 @@ const OwnerPublicProfile = () => {
               </div>
               <p className="text-white/90 flex items-center justify-center md:justify-start gap-2 text-lg font-medium">
                 <MapPin className="w-5 h-5 text-primary-light shrink-0" />
-                {profile.address || "Sénégal"}
+                {profile.address || "Adresse non renseignée"}
               </p>
             </div>
             
@@ -374,7 +374,7 @@ const OwnerPublicProfile = () => {
                           </p>
                           <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-100">
                              <p className="text-primary font-bold text-xl">
-                                {prop.property_units?.[0]?.monthly_rent.toLocaleString()} FCFA <span className="text-xs font-normal text-muted-foreground">/ mois</span>
+                                {prop.property_units?.[0]?.monthly_rent.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">/ mois</span>
                              </p>
                           </div>
                         </CardContent>

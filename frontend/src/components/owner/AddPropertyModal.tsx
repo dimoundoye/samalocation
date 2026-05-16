@@ -503,7 +503,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                           setPropertyData({ ...propertyData, name: newName });
                           setNameConflict(myProperties.some(p => p.name?.toLowerCase() === newName.toLowerCase().trim()));
                         }}
-                        placeholder="Ex: Villa Almadies"
+                        placeholder="Ex: Villa Fleurie"
                         className={nameConflict ? "border-orange-400 focus-visible:ring-orange-400" : ""}
                       />
                       {nameConflict && (
@@ -519,7 +519,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                         id="address"
                         value={propertyData.address}
                         onChange={(e) => setPropertyData({ ...propertyData, address: e.target.value })}
-                        placeholder="Ex: Rue 12, Almadies, Dakar"
+                        placeholder="Ex: 123 Rue de la Paix, Centre Ville"
                       />
                     </div>
                   </div>
@@ -753,7 +753,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
                     {propertyData.listing_type === 'vente' && (
                       <div className="animate-in fade-in slide-in-from-top-1">
-                        <Label htmlFor="sale_price">Prix de vente (F CFA) *</Label>
+                        <Label htmlFor="sale_price">Prix de vente ({user?.currency || 'XOF'}) *</Label>
                         <Input
                           id="sale_price"
                           type="number"
@@ -799,7 +799,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                           </div>
 
                           <div>
-                            <Label htmlFor="simple_monthly_rent">Montant du loyer (F CFA) *</Label>
+                            <Label htmlFor="simple_monthly_rent">Montant du loyer ({user?.currency || 'XOF'}) *</Label>
                             <Input
                               id="simple_monthly_rent"
                               type="number"

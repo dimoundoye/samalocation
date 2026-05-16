@@ -21,31 +21,65 @@ const Receipt = {
         const id = uuidv4();
         const receipt_number = await this.generateReceiptNumber();
 
-        // Fetch owner's current signature and template
+        // Fetch names, signature and template
         let owner_signature = null;
         let receipt_template = 'classic';
         let owner_logo = null;
+        let owner_name = null;
+        let owner_email = null;
+        let owner_phone = null;
+        let tenant_name = null;
+        let tenant_email = null;
+        let tenant_phone = null;
+        let currency = 'XOF';
+
         try {
-            // Find owner_id first from property
-            const { rows: propRows } = await db.query('SELECT owner_id FROM properties WHERE id = $1', [property_id]);
+            // Get owner info
+            const { rows: propRows } = await db.query(`
+                SELECT p.owner_id, up.full_name as owner_name, up.email as owner_email, up.phone as owner_phone,
+                       op.signature_url, op.receipt_template, op.receipt_logo_url, op.currency
+                FROM properties p
+                JOIN user_profiles up ON p.owner_id = up.id
+                LEFT JOIN owner_profiles op ON p.owner_id = op.user_profile_id
+                WHERE p.id = $1
+            `, [property_id]);
+
             if (propRows[0]) {
-                const { rows: ownerRows } = await db.query('SELECT signature_url, receipt_template, logo_url, receipt_logo_url FROM owner_profiles WHERE user_profile_id = $1', [propRows[0].owner_id]);
-                if (ownerRows[0]) {
-                    owner_signature = ownerRows[0].signature_url;
-                    receipt_template = ownerRows[0].receipt_template || 'classic';
-                    // Use receipt_logo_url for official documents
-                    owner_logo = ownerRows[0].receipt_logo_url;
-                }
+                owner_name = propRows[0].owner_name;
+                owner_email = propRows[0].owner_email;
+                owner_phone = propRows[0].owner_phone;
+                owner_signature = propRows[0].signature_url;
+                receipt_template = propRows[0].receipt_template || 'classic';
+                owner_logo = propRows[0].receipt_logo_url;
+                currency = propRows[0].currency || 'XOF';
+            }
+
+            // Get tenant info
+            const { rows: tenantRows } = await db.query(`
+                SELECT COALESCE(up.full_name, t_up.full_name) as tenant_name,
+                       COALESCE(up.email, t_up.email) as tenant_email,
+                       COALESCE(up.phone, t_up.phone) as tenant_phone
+                FROM user_profiles up
+                LEFT JOIN tenants t ON up.id = t.user_id
+                LEFT JOIN user_profiles t_up ON (t.user_id = t_up.id)
+                WHERE up.id = $1 OR t.id = $1
+                LIMIT 1
+            `, [tenant_id]);
+
+            if (tenantRows[0]) {
+                tenant_name = tenantRows[0].tenant_name;
+                tenant_email = tenantRows[0].tenant_email;
+                tenant_phone = tenantRows[0].tenant_phone;
             }
         } catch (error) {
-            console.error("Error fetching owner signature/logo for receipt creation:", error);
+            console.error("Error fetching details for receipt creation:", error);
         }
 
         await db.query(
             `INSERT INTO receipts 
-            (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-            [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date]
+            (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+            [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone]
         );
 
         return this.findById(id);
@@ -72,16 +106,18 @@ const Receipt = {
         const { rows: receipts } = await db.query(
             `SELECT 
                 r.*,
-                COALESCE(up_direct.full_name, up_via_t.full_name) as tenant_name,
-                COALESCE(up_direct.email, up_via_t.email) as tenant_email,
-                COALESCE(up_direct.phone, up_via_t.phone) as tenant_phone,
-                owner.full_name as owner_name,
-                owner.email as owner_email,
-                owner.phone as owner_phone,
+                COALESCE(r.tenant_name, up_direct.full_name, up_via_t.full_name) as tenant_name,
+                COALESCE(r.tenant_email, up_direct.email, up_via_t.email) as tenant_email,
+                COALESCE(r.tenant_phone, up_direct.phone, up_via_t.phone) as tenant_phone,
+                COALESCE(r.owner_name, owner.full_name) as owner_name,
+                COALESCE(r.owner_email, owner.email) as owner_email,
+                COALESCE(r.owner_phone, owner.phone) as owner_phone,
+                COALESCE(r.currency, owner_prof.currency, 'XOF') as currency,
                 owner_prof.signature_url as current_owner_signature,
                 owner_prof.receipt_template as current_receipt_template,
                 owner_prof.logo_url as current_owner_agency_logo,
                 owner_prof.receipt_logo_url as current_owner_receipt_logo,
+                owner_prof.currency,
                 p.name as property_name,
                 p.address as property_address,
                 pu.unit_number,
@@ -126,10 +162,12 @@ const Receipt = {
                 p.address as property_address,
                 pu.rent_period,
                 pu.monthly_rent as unit_base_rent,
-                owner.full_name as owner_name
+                owner.full_name as owner_name,
+                owner_prof.currency
             FROM receipts r
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles owner ON p.owner_id = owner.id
+            LEFT JOIN owner_profiles owner_prof ON p.owner_id = owner_prof.user_profile_id
             LEFT JOIN property_units pu ON r.unit_id = pu.id
             WHERE r.tenant_id = $1 OR r.tenant_id = ANY($2)
             ORDER BY r.created_at DESC
@@ -148,10 +186,12 @@ const Receipt = {
                 p.name as property_name,
                 p.address as property_address,
                 pu.rent_period,
-                pu.monthly_rent as unit_base_rent
+                pu.monthly_rent as unit_base_rent,
+                owner_prof.currency
             FROM receipts r
-            LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles tenant ON r.tenant_id = tenant.id
+            LEFT JOIN properties p ON r.property_id = p.id
+            LEFT JOIN owner_profiles owner_prof ON p.owner_id = owner_prof.user_profile_id
             LEFT JOIN property_units pu ON r.unit_id = pu.id
             WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $2)
             ORDER BY r.created_at DESC

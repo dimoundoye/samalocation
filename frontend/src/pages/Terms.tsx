@@ -9,7 +9,7 @@ const Terms = () => {
         <div className="min-h-screen bg-background pb-12">
             <SEO 
                 title="Conditions d'Utilisation | Samalocation"
-                description="Consultez les conditions d'utilisation de Samalocation. Apprenez-en plus sur nos règles de sécurité, de mise en relation et de gestion immobilière au Sénégal."
+                description="Consultez les conditions d'utilisation de Samalocation. Apprenez-en plus sur nos règles de sécurité, de mise en relation et de gestion immobilière en ligne."
             />
             <Navbar />
 
@@ -34,7 +34,7 @@ const Terms = () => {
                                 <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-red-700 font-semibold">
                                     <li className="flex items-center gap-2"> Ne payez JAMAIS avant d'avoir visité le bien.</li>
                                     <li className="flex items-center gap-2"> Exigez une visite physique en plein jour.</li>
-                                    <li className="flex items-center gap-2"> Ne transférez pas d'argent (Wave, Orange Money) à distance sans garantie.</li>
+                                    <li className="flex items-center gap-2"> Ne transférez pas d'argent à distance (mobile money, virement) sans garantie.</li>
                                     <li className="flex items-center gap-2"> Vérifiez physiquement l'identité de votre interlocuteur.</li>
                                 </ul>
                                 <p className="text-xs text-red-600/80 italic mt-2">
@@ -49,7 +49,7 @@ const Terms = () => {
                         <div className="space-y-4 text-center md:text-left">
                             <h2 className="text-2xl font-bold text-primary">Notre Engagement : Simplicité et Confiance</h2>
                             <p className="text-muted-foreground leading-relaxed">
-                                Samalocation a été conçu avec une mission claire : moderniser et sécuriser l'accès au logement au Sénégal. Derrière ces règles juridiques nécessaires, notre priorité absolue reste votre satisfaction et la protection de vos intérêts. Nous mettons tout en œuvre pour que chaque utilisateur, qu'il soit locataire ou propriétaire, puisse interagir dans un environnement sain, transparent et respectueux.
+                                Samalocation a été conçu avec une mission claire : moderniser et sécuriser l'accès au logement. Derrière ces règles juridiques nécessaires, notre priorité absolue reste votre satisfaction et la protection de vos intérêts. Nous mettons tout en œuvre pour que chaque utilisateur, qu'il soit locataire ou propriétaire, puisse interagir dans un environnement sain, transparent et respectueux.
                             </p>
                         </div>
                     </div>
@@ -72,7 +72,7 @@ const Terms = () => {
                                     Nature de la Plateforme
                                 </h2>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Samalocation est un intermédiaire technologique facilitant la gestion immobilière au Sénégal. Nous ne sommes pas partie prenante aux contrats de bail conclus entre les utilisateurs. Samalocation n'est ni propriétaire, ni gestionnaire, ni courtier des biens publiés, sauf indication contraire. La plateforme permet la génération et la signature électronique de quittances de loyer, lesquelles ont une valeur probante entre les parties conformément à la législation sur le commerce électronique.
+                                    Samalocation est un intermédiaire technologique facilitant la gestion immobilière. Nous ne sommes pas partie prenante aux contrats de bail conclus entre les utilisateurs. Samalocation n'est ni propriétaire, ni gestionnaire, ni courtier des biens publiés, sauf indication contraire. La plateforme permet la génération et la signature électronique de quittances de loyer, lesquelles ont une valeur probante entre les parties conformément à la législation sur le commerce électronique.
                                 </p>
                             </section>
 
@@ -153,7 +153,7 @@ const Terms = () => {
                                     Loi Applicable et Juridiction
                                 </h2>
                                 <p className="text-muted-foreground leading-relaxed">
-                                    Les présentes conditions sont régies par le droit sénégalais. Tout litige relatif à leur exécution sera porté devant les tribunaux compétents de Dakar, Sénégal.
+                                    Les présentes conditions sont régies par le droit applicable dans la juridiction de l'utilisateur. Tout litige relatif à leur exécution sera porté devant les tribunaux compétents.
                                 </p>
                             </section>
 
@@ -163,7 +163,7 @@ const Terms = () => {
                                     <div className="text-muted-foreground text-sm space-y-1">
                                         <p className="font-bold text-primary">Besoin d'aide ou signaler un abus ?</p>
                                         <p>Email: contact@samalocation.com</p>
-                                        <p>Ouakam, Dakar, Sénégal</p>
+                                        <p>Samalocation — Service en ligne</p>
                                     </div>
                                     <Button variant="outline" onClick={() => window.location.href = '/contact'}>
                                         Nous contacter

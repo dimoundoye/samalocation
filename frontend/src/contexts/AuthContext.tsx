@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getMe } from "@/lib/api";
 
 interface User {
+  currency: string;
   id: string;
   customId?: string;
   email: string;

@@ -68,7 +68,7 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
         if (!transactionId.trim()) {
             toast({
                 title: "ID manquant",
-                description: "Veuillez saisir l'ID de la transaction Wave.",
+                description: "Veuillez saisir l'ID de la transaction.",
                 variant: "destructive",
             });
             return;
@@ -125,7 +125,7 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                     </DialogTitle>
                     <DialogDescription className="text-base font-medium text-muted-foreground/80">
                         {view === 'choice'
-                            ? "Choisissez votre méthode de paiement préférée au Sénégal."
+                            ? "Choisissez votre méthode de paiement préférée."
                             : "Suivez les étapes pour valider votre paiement manuel."
                         }
                     </DialogDescription>
@@ -151,7 +151,7 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                                     <div className="space-y-1">
                                         <h4 className="text-xl font-black tracking-tight">Automatique (Instant)</h4>
                                         <p className="text-sm text-muted-foreground leading-snug">
-                                            Payez via <strong>Wave, Orange Money, Free Money</strong> ou <strong>Carte</strong>. Activation immédiate.
+                                            Payez via <strong>Mobile Money</strong> ou <strong>Carte</strong>. Activation immédiate.
                                         </p>
                                     </div>
                                 </div>
@@ -183,7 +183,7 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                                         <Smartphone className="h-8 w-8 opacity-70" />
                                     </div>
                                     <div className="space-y-1">
-                                        <h4 className="text-xl font-black tracking-tight">Manuel via Wave</h4>
+                                        <h4 className="text-xl font-black tracking-tight">Manuel via Mobile Money</h4>
                                         <p className="text-sm text-muted-foreground leading-snug">
                                             Transfert direct et envoi de l'ID de transaction. Validation sous 24h.
                                         </p>
@@ -217,10 +217,10 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                                 <div className="flex items-start gap-4">
                                     <div className="h-7 w-7 rounded-full bg-primary/40 text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">1</div>
                                     <div className="space-y-3 flex-1">
-                                        <p className="text-sm leading-relaxed">Cliquez ci-dessous pour payer via Wave :</p>
+                                        <p className="text-sm leading-relaxed">Cliquez ci-dessous pour payer via votre solution mobile :</p>
                                         <Button asChild variant="outline" className="w-full h-12 border-primary/20 hover:bg-primary/5 rounded-2xl font-bold group">
                                             <a href={getWaveLink(plan.price)} target="_blank" rel="noopener noreferrer">
-                                                Lien Wave Direct ({plan.price.toLocaleString()} F)
+                                                Lien de paiement direct ({plan.price.toLocaleString()} F)
                                                 <ExternalLink className="ml-2 h-4 w-4 opacity-70 group-hover:translate-x-1 transition-transform" />
                                             </a>
                                         </Button>
@@ -232,7 +232,7 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                                     <div className="text-sm space-y-2 flex-1">
                                         <p> Ou effectuez le transfert au numéro :</p>
                                         <div className="bg-white p-3 rounded-xl border-2 border-primary/20 w-fit">
-                                            <span className="text-xl font-black text-primary tracking-tighter">76 162 95 29</span>
+                                            <span className="text-xl font-black text-primary tracking-tighter">SERVICE CLIENT</span>
                                         </div>
                                     </div>
                                 </div>
@@ -247,9 +247,9 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="font-bold text-sm ml-1 uppercase text-muted-foreground tracking-wider">Votre numéro Wave</Label>
+                                    <Label className="font-bold text-sm ml-1 uppercase text-muted-foreground tracking-wider">Votre numéro de téléphone</Label>
                                     <Input
-                                        placeholder="Ex: 77 123 45 67"
+                                        placeholder="Ex: +221..."
                                         value={senderPhone}
                                         onChange={(e) => setSenderPhone(e.target.value)}
                                         className="h-14 rounded-2xl border-2 border-border/50 focus-visible:ring-primary pl-4"

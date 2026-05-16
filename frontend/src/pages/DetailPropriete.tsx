@@ -24,6 +24,7 @@ import SEO from "@/components/SEO";
 import { isRecent } from "@/lib/dateUtils";
 import PropertyDetailSkeleton from "@/components/PropertyDetailSkeleton";
 import { getMyDossier, shareDossier } from "@/api/dossier";
+import { formatCurrency } from "@/lib/utils";
 
 const DetailPropriete = () => {
   const { t } = useTranslation();
@@ -264,14 +265,6 @@ const DetailPropriete = () => {
     );
   }
 
-  const formatCurrency = (amount: any) => {
-    const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(numericValue)) return "Prix sur demande";
-    return new Intl.NumberFormat('fr-FR', {
-      maximumFractionDigits: 0,
-      useGrouping: true
-    }).format(numericValue) + " F CFA";
-  };
 
   const openGallery = (index: number) => {
     setSelectedImageIndex(index);
@@ -293,8 +286,8 @@ const DetailPropriete = () => {
     const shareTitle = `${property.name} | SamaLocation`;
     
     const displayPrice = property.listing_type === 'vente' 
-      ? (property.sale_price ? formatCurrency(property.sale_price) : "Prix sur demande")
-      : (property.rent_amount ? `${formatCurrency(property.rent_amount)}/${propertyRentPeriod}` : "Prix sur demande");
+      ? (property.sale_price ? formatCurrency(property.sale_price) : t('property.on_request'))
+      : (property.rent_amount ? `${formatCurrency(property.rent_amount)}/${propertyRentPeriod}` : t('property.on_request'));
 
     const shareText = `Découvrez ce bien sur SamaLocation : ${property.name} à ${property.address}. ${displayPrice}`;
 
@@ -470,10 +463,10 @@ const DetailPropriete = () => {
                   <div>
                     <span className="text-2xl md:text-4xl font-bold text-primary">
                       {property.listing_type === 'vente'
-                        ? (property.sale_price ? formatCurrency(property.sale_price) : "Prix sur demande")
+                        ? (property.sale_price ? formatCurrency(property.sale_price, property.currency) : t('property.on_request'))
                         : (property.rent_amount && property.rent_amount > 0
-                          ? formatCurrency(property.rent_amount)
-                          : "Prix sur demande")}
+                          ? formatCurrency(property.rent_amount, property.currency)
+                          : t('property.on_request'))}
                     </span>
                     {property.listing_type === 'location' && property.rent_amount && property.rent_amount > 0 && (
                       <span className="text-muted-foreground text-lg">/{propertyRentPeriod}</span>

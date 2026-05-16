@@ -3,6 +3,7 @@ const { format } = require('date-fns');
 const { fr } = require('date-fns/locale');
 const path = require('path');
 const fetch = require('node-fetch');
+const { formatAmountInWords } = require('./numberToWords');
 
 /**
  * Helper pour récupérer une source d'image (locale ou distance)
@@ -26,10 +27,15 @@ async function fetchImageSource(imageUrl) {
 /**
  * Formate un montant en FCFA avec des espaces pour les milliers
  */
-function formatCurrency(amount) {
-    if (amount === undefined || amount === null || isNaN(amount)) return '0 FCFA';
+function formatCurrency(amount, currency = 'XOF') {
+    if (amount === undefined || amount === null || isNaN(amount)) {
+        return `0 ${currency === 'XOF' || currency === 'XAF' ? 'FCFA' : currency}`;
+    }
     const formatted = Math.floor(Number(amount)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    return `${formatted} FCFA`;
+    if (currency === 'XOF' || currency === 'XAF') {
+        return `${formatted} FCFA`;
+    }
+    return `${formatted} ${currency}`;
 }
 
 /**
@@ -133,7 +139,7 @@ async function drawClassicTemplate(doc, receiptData) {
         .text(`Propriété : ${receiptData.property_name || 'N/A'}`)
         .text(`Adresse : ${receiptData.property_address || 'N/A'}`)
         .text(`Unité : ${receiptData.unit_number || 'N/A'}`)
-        .text(`${rentLabel} : ${formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent)}`)
+        .text(`${rentLabel} : ${formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent, receiptData.currency)}`)
         .moveDown(1.5);
 
     doc.strokeColor(grayColor).lineWidth(1).moveTo(50, doc.y).lineTo(550, doc.y).stroke().moveDown(1.5);
@@ -147,7 +153,8 @@ async function drawClassicTemplate(doc, receiptData) {
         .text(`Mode de paiement: ${receiptData.payment_method || 'Virement'}`)
         .moveDown(1);
 
-    doc.fontSize(16).fillColor(primaryColor).text(`MONTANT PAYÉ: ${formatCurrency(receiptData.amount)}`, { align: 'center', bold: true }).moveDown(2);
+    doc.fontSize(16).fillColor(primaryColor).text(`MONTANT PAYÉ: ${formatCurrency(receiptData.amount, receiptData.currency)}`, { align: 'center', bold: true });
+    doc.fontSize(10).fillColor(textColor).text(`Soit : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, { align: 'center', italic: true }).moveDown(2);
 
     if (receiptData.notes) {
         doc.fontSize(10).fillColor(grayColor).text(`Notes: ${receiptData.notes}`).moveDown(1);
@@ -233,16 +240,17 @@ async function drawModernTemplate(doc, receiptData) {
     doc.text(receiptData.property_name || 'N/A', col1 + 80, bienDetailsY);
     doc.text(receiptData.property_address || 'N/A', col1 + 80, bienDetailsY + 20);
     doc.text(receiptData.unit_number || 'N/A', col2 + 100, bienDetailsY);
-    doc.text(formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent), col2 + 100, bienDetailsY + 20);
+    doc.text(formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent, receiptData.currency), col2 + 100, bienDetailsY + 20);
 
     // Section Montant Total
     doc.moveDown(3);
     const totalBoxY = doc.y;
     doc.rect(50, totalBoxY, 512, 50).fill('#f8fafc');
     doc.fillColor('#64748b').fontSize(10).text('MONTANT TOTAL PAYÉ', 70, totalBoxY + 18);
-    doc.fillColor(accentColor).fontSize(18).text(formatCurrency(receiptData.amount), 300, totalBoxY + 15, { bold: true, align: 'right', width: 240 });
+    doc.fillColor(accentColor).fontSize(18).text(formatCurrency(receiptData.amount, receiptData.currency), 300, totalBoxY + 15, { bold: true, align: 'right', width: 240 });
 
-    doc.y = totalBoxY + 55;
+    doc.fillColor('#64748b').fontSize(8).text(`Arrêté la présente quittance à la somme de : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, totalBoxY + 55, { italic: true });
+    doc.y = totalBoxY + 70;
 
     if (receiptData.notes) {
         doc.moveDown(1);
@@ -299,7 +307,7 @@ async function drawMinimalTemplate(doc, receiptData) {
         .text(`Propriété : ${receiptData.property_name || 'N/A'}`)
         .text(`Adresse : ${receiptData.property_address || 'N/A'}`)
         .text(`Unité : ${receiptData.unit_number || 'N/A'}`)
-        .text(`${getRentLabel(receiptData.rent_period)} : ${formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent)}`)
+        .text(`${getRentLabel(receiptData.rent_period)} : ${formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent, receiptData.currency)}`)
         .moveDown(1.5);
 
     doc.rect(50, doc.y, 512, 0.5).fill('#eeeeee');
@@ -317,7 +325,7 @@ async function drawMinimalTemplate(doc, receiptData) {
 
     // Montant
     doc.strokeColor(textColor).lineWidth(1).rect(50, doc.y, 512, 35).stroke();
-    doc.fillColor(textColor).fontSize(12).text(`MONTANT PAYÉ : ${formatCurrency(receiptData.amount)}`, 65, doc.y + 11, { bold: true });
+    doc.fillColor(textColor).fontSize(12).text(`MONTANT PAYÉ : ${formatCurrency(receiptData.amount, receiptData.currency)}`, 65, doc.y + 11, { bold: true });
     doc.y += 35;
     doc.moveDown(1.5);
 
@@ -405,7 +413,7 @@ async function drawCorporateTemplate(doc, receiptData) {
     doc.strokeColor(primaryColor).lineWidth(1.5).rect(50, amountY, 512, 45).stroke();
     doc.fillColor('#f8fafc').rect(51, amountY + 1, 510, 43).fill();
     doc.fillColor(primaryColor).fontSize(14).text(`MONTANT NET PERÇU :`, 70, amountY + 15, { bold: true });
-    doc.fontSize(16).text(formatCurrency(receiptData.amount), 300, amountY + 14, { bold: true, align: 'right', width: 240 });
+    doc.fontSize(16).text(formatCurrency(receiptData.amount, receiptData.currency), 300, amountY + 14, { bold: true, align: 'right', width: 240 });
 
     doc.y = amountY + 70;
 

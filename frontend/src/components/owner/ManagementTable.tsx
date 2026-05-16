@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn, formatCurrency } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
     Table,
@@ -54,6 +55,7 @@ interface ManagementTableProps {
     onGroupsChange: (groups: any[] | ((prev: any[]) => any[])) => void;
     groupedData: any[];
     years: number[];
+    currency?: string;
 }
 
 export const ManagementTable = ({
@@ -68,7 +70,8 @@ export const ManagementTable = ({
     customGroups,
     onGroupsChange,
     groupedData,
-    years
+    years,
+    currency = 'XOF'
 }: ManagementTableProps) => {
     const { toast } = useToast();
     const { user } = useAuth();
@@ -249,18 +252,11 @@ export const ManagementTable = ({
         }
 
         const cleanPhone = tenant.phone.replace(/\D/g, '');
-        const finalPhone = cleanPhone.length === 9 ? `221${cleanPhone}` : cleanPhone;
+        const finalPhone = cleanPhone; // Use the phone as entered, assuming it has a country code or is local to the user's region
         const waUrl = `https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`;
         window.open(waUrl, '_blank');
     };
 
-    const formatCurrency = (amount: any) => {
-        const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
-        return new Intl.NumberFormat("fr-FR", {
-            style: "decimal",
-            maximumFractionDigits: 0,
-        }).format(numericValue || 0) + " F CFA";
-    };
 
     const getReceiptsForMonth = (unitId: string, tenant: Tenant | null | undefined, monthId: number) => {
         if (!receipts) return [];
@@ -503,7 +499,7 @@ export const ManagementTable = ({
                     <div className="flex items-center gap-2 font-mono text-[10px] bg-white/50 px-3 py-2 rounded border border-primary/5 shrink-0">
                         <div className="flex items-center gap-1">
                             <Folder className="h-3 w-3 text-amber-500 fill-amber-100" />
-                            <span className="font-bold">Maison Dakar 2</span>
+                            <span className="font-bold">Immeuble Horizon</span>
                         </div>
                         <ChevronRight className="h-3 w-3 text-slate-300" />
                         <div className="flex items-center gap-1">
@@ -675,7 +671,7 @@ export const ManagementTable = ({
                                                                         )}
                                                                     </div>
                                                                     <div className="text-[10px] font-bold text-muted-foreground">
-                                                                        {formatCurrency(stats.total)}
+                                                                        {formatCurrency(stats.total, currency)}
                                                                     </div>
                                                                 </div>
                                                             </TableCell>
@@ -742,7 +738,7 @@ export const ManagementTable = ({
                                                                                             </button>
                                                                                             <div className="w-[1px] h-3 bg-border mx-1"></div>
                                                                                             <span className="text-[10px] font-bold text-primary px-1">
-                                                                                                {formatCurrency(monthAmount)}
+                                                                                                {formatCurrency(monthAmount, currency)}
                                                                                             </span>
                                                                                         </div>
                                                                                     </div>
@@ -756,7 +752,7 @@ export const ManagementTable = ({
                                                                         );
                                                                     })}
                                                                     <TableCell className="text-right font-bold text-primary/80 text-xs">
-                                                                        {formatCurrency(tenantYearTotal)}
+                                                                        {formatCurrency(tenantYearTotal, currency)}
                                                                     </TableCell>
                                                                 </TableRow>
                                                             );
@@ -823,7 +819,7 @@ export const ManagementTable = ({
                                                     });
                                                     return total;
                                                 };
-                                                return formatCurrency(calculateGrandTotal(currentNodes));
+                                                return formatCurrency(calculateGrandTotal(currentNodes), currency);
                                             })()}
                                         </TableHead>
                                     </TableRow>

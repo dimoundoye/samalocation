@@ -4,6 +4,7 @@ const { fr } = require('date-fns/locale');
 const nodeFetch = require('node-fetch');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
+const { formatAmountInWords } = require('./numberToWords');
 
 /**
  * Génère le PDF du contrat de location optimisé juridiquement
@@ -22,9 +23,11 @@ async function generateContractPDF(contractData) {
     const lineHighlight = '#f1f5f9';
 
     // Helper: format currency properly
-    const formatFCFA = (amount) => {
-        if (!amount) return '0 FCFA';
-        return `${Number(amount).toLocaleString('fr-FR').replace(/\s/g, ' ')} FCFA`;
+    const formatCurrency = (amount, currencyCode = 'XOF') => {
+        if (!amount) return `0 ${currencyCode === 'XOF' || currencyCode === 'XAF' ? 'FCFA' : currencyCode}`;
+        const formatted = Number(amount).toLocaleString('fr-FR').replace(/\s/g, ' ');
+        if (currencyCode === 'XOF' || currencyCode === 'XAF') return `${formatted} FCFA`;
+        return `${formatted} ${currencyCode}`;
     };
 
     // Helper: Section titles
@@ -42,42 +45,46 @@ async function generateContractPDF(contractData) {
 
     doc.fontSize(9).fillColor(textColor).text(`Contrat n° : ${contractData.contract_number}`, { align: 'right' });
     doc.fontSize(7).fillColor(secondaryColor).text(`ID: ${contractData.id || contractData.contract_id || ''}`, { align: 'right' });
-    doc.fontSize(9).fillColor(textColor).text(`Établi à Dakar, le ${format(new Date(contractData.created_at || new Date()), 'dd MMMM yyyy', { locale: fr })}`, { align: 'right' });
+    doc.fontSize(9).fillColor(textColor).text(`Établi le ${format(new Date(contractData.created_at || new Date()), 'dd MMMM yyyy', { locale: fr })}`, { align: 'right' });
     doc.moveDown(1.5);
 
     // -- 1. DÉSIGNATION DES PARTIES --
     sectionTitle('1. DÉSIGNATION DES PARTIES');
-
     const startYParties = doc.y;
-
+ 
     // BAILLEUR
     doc.font('Helvetica-Bold').text('LE BAILLEUR (Propriétaire) :', 50, startYParties);
     doc.font('Helvetica').fontSize(9)
-        .text(`M./Mme : ${contractData.owner_name}`, 50, startYParties + 15)
+        .text(`M./Mme : ${contractData.owner_name || '_______'}`, 50, startYParties + 15)
         .text(`Identité : ${contractData.owner_id_type || 'CNI'} n° ${contractData.owner_id_number || '_______'} délivrée le ${contractData.owner_id_date ? format(new Date(contractData.owner_id_date), 'dd/MM/yyyy') : '_______'}`)
         .text(`Né(e) le : ${contractData.owner_dob ? format(new Date(contractData.owner_dob), 'dd/MM/yyyy') : '_______'} à ${contractData.owner_birthplace || '_______'}`)
-        .text(`Adresse : ${contractData.owner_address || contractData.owner_address_detailed || 'Dakar, Sénégal'}`)
-        .text(`Contact : ${contractData.owner_phone || 'N/A'} / ${contractData.owner_email || 'N/A'}`);
-
+        .text(`Adresse : ${contractData.owner_address || contractData.owner_address_detailed || '_______'}`)
+        .text(`Contact : ${contractData.owner_phone || '_______'} / ${contractData.owner_email || '_______'}`);
+ 
     // LOCATAIRE
     doc.font('Helvetica-Bold').fontSize(10).text('LE LOCATAIRE :', 300, startYParties);
     doc.font('Helvetica').fontSize(9)
-        .text(`M./Mme : ${contractData.tenant_name}`, 300, startYParties + 15)
+        .text(`M./Mme : ${contractData.tenant_name || '_______'}`, 300, startYParties + 15)
         .text(`Identité : ${contractData.tenant_id_type || 'CNI'} n° ${contractData.tenant_id_number || '_______'} délivrée le ${contractData.tenant_id_date ? format(new Date(contractData.tenant_id_date), 'dd/MM/yyyy') : '_______'}`)
         .text(`Né(e) le : ${contractData.tenant_dob ? format(new Date(contractData.tenant_dob), 'dd/MM/yyyy') : '_______'} à ${contractData.tenant_birthplace || '_______'}`)
-        .text(`Contact : ${contractData.tenant_phone} / ${contractData.tenant_email}`);
-
+        .text(`Contact : ${contractData.tenant_phone || '_______'} / ${contractData.tenant_email || '_______'}`);
+ 
     doc.moveDown(4);
 
     // -- 2. OBJET ET DESIGNATION --
     sectionTitle('2. OBJET ET DÉSIGNATION DES LIEUX');
     doc.text(`Le Bailleur donne en location au Locataire, qui accepte, les locaux désignés ci-après :`);
     doc.moveDown(0.5);
-    doc.rect(50, doc.y, 512, 40).fill(lineHighlight);
+    doc.rect(50, doc.y, 512, 45).fill(lineHighlight);
     doc.fillColor(textColor).fontSize(9)
-        .text(`Adresse : ${contractData.detailed_address || contractData.property_address || 'Non spécifiée'}`, 60, doc.y + 5)
-        .text(`Désignation : ${contractData.property_name} - ${contractData.unit_number || 'Logement entier'}`)
-        .text(`Usage : EXCLUSIVEMENT À USAGE D'HABITATION.`, { bold: true });
+        .text(`Type de bien : ${contractData.property_type || 'Appartement'}`, 60, doc.y + 5)
+        .text(`Adresse : ${contractData.detailed_address || contractData.property_address || 'Non spécifiée'}`);
+    
+    if (contractData.property_details) {
+        doc.text(`Détails : ${contractData.property_details}`);
+    }
+
+    doc.text(`Usage : EXCLUSIVEMENT À USAGE D'HABITATION.`, { bold: true });
 
     doc.moveDown(2);
 
@@ -90,8 +97,21 @@ async function generateContractPDF(contractData) {
 
     // -- 4. CONDITIONS FINANCIÈRES --
     sectionTitle('4. CONDITIONS FINANCIÈRES');
-    doc.text(`Loyer mensuel : ${formatFCFA(contractData.rent_amount)}`);
-    doc.text(`Dépôt de garantie : ${formatFCFA(contractData.deposit_amount)} (restitué en fin de bail sous réserve de l'état des lieux).`);
+    const currency = contractData.currency || 'XOF';
+    
+    doc.font('Helvetica-Bold').text(`Loyer mensuel : `, { continued: true })
+       .font('Helvetica').text(`${formatCurrency(contractData.rent_amount, currency)} `)
+       .fontSize(8).fillColor(secondaryColor).font('Helvetica-Oblique').text(`(soit ${formatAmountInWords(contractData.rent_amount, currency)})`);
+    
+    doc.moveDown(0.5);
+    
+    doc.fillColor(textColor).fontSize(10).font('Helvetica-Bold').text(`Dépôt de garantie : `, { continued: true })
+       .font('Helvetica').text(`${formatCurrency(contractData.deposit_amount, currency)} `)
+       .fontSize(8).fillColor(secondaryColor).font('Helvetica-Oblique').text(`(soit ${formatAmountInWords(contractData.deposit_amount, currency)})`);
+    
+    doc.fillColor(textColor).fontSize(10).font('Helvetica').text(`Ce dépôt sera restitué en fin de bail sous réserve de l'état des lieux.`);
+    
+    doc.moveDown(0.5);
     doc.text(`Date de paiement : Au plus tard le ${contractData.payment_day} de chaque mois.`);
     doc.text(`Mode de paiement : ${contractData.payment_method || 'Virement / Mobile Money'}.`);
 
@@ -182,7 +202,7 @@ async function generateContractPDF(contractData) {
             .text(`ID : ${safeId.substring(0, 13).toUpperCase()}`);
 
         doc.moveDown();
-        doc.fontSize(6).font('Helvetica-Oblique').text('Signature électronique simple conformément aux dispositions relatives aux transactions électroniques en vigueur au Sénégal.', { width: 220 });
+        doc.fontSize(6).font('Helvetica-Oblique').text('Signature électronique simple conformément aux dispositions relatives aux transactions électroniques en vigueur.', { width: 220 });
     } else {
         doc.fontSize(8).fillColor(secondaryColor).text('(En attente de signature du locataire)', 302, signatureY + 40);
     }
@@ -216,7 +236,7 @@ async function generateContractPDF(contractData) {
     doc.moveDown(4);
 
     // -- FOOTER & DISCLAIMER --
-    doc.fontSize(7).fillColor(secondaryColor).font('Helvetica-Oblique').text('AVIS DE NON-RESPONSABILITÉ : Ce document est un modèle généré automatiquement par Samalocation. Il a un caractère purement indicatif. Les parties sont seules responsables du contenu et de la légalité des clauses insérées. Il est recommandé de faire enregistrer tout contrat de bail auprès des services fiscaux (DGID) compétents.', 50, doc.y + 20, { align: 'justify', width: 512 });
+    doc.fontSize(7).fillColor(secondaryColor).font('Helvetica-Oblique').text('AVIS DE NON-RESPONSABILITÉ : Ce document est un modèle généré automatiquement par Samalocation. Il a un caractère purement indicatif. Les parties sont seules responsables du contenu et de la légalité des clauses insérées. Il est recommandé de faire enregistrer tout contrat de bail auprès des services fiscaux compétents.', 50, doc.y + 20, { align: 'justify', width: 512 });
 
     doc.moveDown();
     doc.fontSize(8).fillColor(secondaryColor).font('Helvetica').text(`Document généré par la plateforme Samalocation. Version ${isPremium ? 'Premium' : 'Standard'} 2.1`, { align: 'center' });

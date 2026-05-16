@@ -162,7 +162,7 @@ export const EditTenantDialog = ({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="edit-rent">Loyer mensuel (F CFA) *</Label>
+                            <Label htmlFor="edit-rent">Loyer mensuel *</Label>
                             <Input
                                 id="edit-rent"
                                 type="number"

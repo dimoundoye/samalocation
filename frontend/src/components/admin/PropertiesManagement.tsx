@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,10 +96,6 @@ const PropertiesManagement = ({ onViewProfile }: PropertiesManagementProps) => {
     return <Badge variant="secondary">Brouillon</Badge>;
   };
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (!amount) return "—";
-    return new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";
-  };
 
   if (loading) {
     return (

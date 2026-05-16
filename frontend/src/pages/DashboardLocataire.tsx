@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -233,8 +234,9 @@ const DashboardLocataire = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString()} F CFA`;
+  const formatCurrencyLocal = (amount: number, currency?: string) => {
+    const finalCurrency = currency || ownerProfile?.currency || 'XOF';
+    return formatCurrency(amount, finalCurrency);
   };
 
   const formatDate = (date: string) => {
@@ -620,7 +622,7 @@ const DashboardLocataire = () => {
                               <div className="space-y-0.5">
                                 <p className="text-[10px] text-muted-foreground uppercase font-semibold">{t('tenant.rent')}</p>
                                 <p className="text-xs font-bold text-primary">
-                                  {formatCurrency(lease.monthly_rent)}
+                                  {formatCurrencyLocal(lease.monthly_rent, lease.ownerProfile?.currency)}
                                 </p>
                               </div>
                               <div className="space-y-0.5 text-right">
@@ -673,7 +675,11 @@ const DashboardLocataire = () => {
 
             {/* Logements Tab */}
             {activeTab === "logements" && (
-              <TenantLeasesTab />
+              <TenantLeasesTab 
+                leases={leases} 
+                onSelectLease={setSelectedLease} 
+                currency={ownerProfile?.currency || 'XOF'}
+              />
             )}
 
             {/* Messages Tab */}
@@ -970,7 +976,12 @@ const DashboardLocataire = () => {
                   </TabsList>
 
                   <TabsContent value="leases" className="space-y-6">
-                    <TenantContractsTab />
+                    <TenantContractsTab 
+                      receipts={receipts} 
+                      leases={leases} 
+                      onDownloadReceipt={handleDownloadReceipt}
+                      currency={ownerProfile?.currency || 'XOF'}
+                    />
                   </TabsContent>
 
                   <TabsContent value="receipts" className="space-y-6">
@@ -999,7 +1010,7 @@ const DashboardLocataire = () => {
                                     <div>
                                       <p className="font-medium text-sm sm:text-base">{t('tenant.receipt_n')} {receipt.receipt_number}</p>
                                       <p className="text-xs sm:text-sm text-muted-foreground">
-                                        {monthName} - {Number(receipt.amount).toLocaleString(i18n.language === 'en' ? 'en-US' : 'fr-FR')} FCFA
+                                        {monthName} - {formatCurrencyLocal(receipt.amount, receipt.currency)}
                                       </p>
                                       <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                                         {receipt.property_name || t('hero.search_property')}

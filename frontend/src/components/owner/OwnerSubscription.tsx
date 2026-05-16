@@ -268,7 +268,7 @@ export const OwnerSubscription = () => {
                             <Zap size={200} />
                         </div>
                         <div className="relative z-10 space-y-4">
-                            <Badge className="bg-accent text-white border-none">OFFRE SÉNÉGAL</Badge>
+                            <Badge className="bg-accent text-white border-none">OFFRE DE LANCEMENT</Badge>
                             <h3 className="text-3xl font-bold">Passez au Plan Premium</h3>
                             <p className="text-white/80 leading-relaxed">
                                 Débloquez jusqu'à 15 logements et commencez à utiliser l'IA Gemini pour attirer plus de locataires.

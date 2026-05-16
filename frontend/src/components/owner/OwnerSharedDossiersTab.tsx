@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileText, Shield, Loader2, User, Eye, CheckCircle2, AlertCircle, Lock } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import { getSharedDossiers, getSharedDossierDetails, updateSharedDossierStatus } from "@/api/dossier";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -171,7 +172,7 @@ const OwnerSharedDossiersTab = () => {
                                     </div>
                                     <div className="space-y-1">
                                         <p className="text-[10px] uppercase font-bold text-muted-foreground">Revenus</p>
-                                        <p className="text-sm font-bold text-primary">{item.monthly_income?.toLocaleString()} F CFA</p>
+                                        <p className="text-sm font-bold text-primary">{formatCurrency(item.monthly_income || 0)}</p>
                                     </div>
                                 </div>
 

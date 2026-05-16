@@ -56,7 +56,7 @@ const Contact = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            <SEO 
+            <SEO
                 title="Contactez-nous | Samalocation"
                 description="Une question ou un besoin d'assistance ? Contactez l'équipe Samalocation. Nous sommes à votre écoute pour vous accompagner dans votre gestion immobilière."
             />
@@ -81,13 +81,13 @@ const Contact = () => {
                                     {
                                         icon: MapPin,
                                         title: t('contact.info.address_title'),
-                                        content: t('contact.info.address_text'),
+                                        content: "Dakar, Sénégal",
                                         color: "bg-blue-500/10 text-blue-600",
                                     },
                                     {
                                         icon: Phone,
                                         title: t('contact.info.phone_title'),
-                                        content: "+221 76 162 95 29",
+                                        content: "+221 76 162 95 29 (Disponible sur WhatsApp)",
                                         subContent: t('contact.info.phone_sub'),
                                         color: "bg-green-500/10 text-green-600",
                                     },

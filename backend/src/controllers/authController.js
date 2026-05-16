@@ -225,6 +225,7 @@ const authController = {
                     parentId: user.parent_id,
                     setupRequired: !user.is_setup_complete,
                     permissions: profile.permissions,
+                    currency: profile.currency,
                     referral_count: user.referral_count,
                     referred_by: user.referred_by
                 }
@@ -266,7 +267,8 @@ const authController = {
                     role: profile.role,
                     parentId: profile.parent_id,
                     setupRequired: !profile.is_setup_complete,
-                    permissions: profile.permissions
+                    permissions: profile.permissions,
+                    currency: profile.currency
                 }
             });
         } catch (error) {

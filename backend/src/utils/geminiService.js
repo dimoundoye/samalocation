@@ -21,10 +21,10 @@ const generatePropertyDescription = async (propertyData) => {
         const { name, type, address, equipments, bedrooms, bathrooms, area } = propertyData;
 
         const prompt = `
-            En tant qu'expert en immobilier au Sénégal, rédige une description attrayante, professionnelle et optimisée pour la location pour le bien suivant :
+            En tant qu'expert en immobilier, rédige une description attrayante, professionnelle et optimisée pour la location pour le bien suivant :
             - Nom du bien : ${name || 'Non spécifié'}
             - Type de bien : ${type || 'Non spécifié'}
-            - Emplacement : ${address || 'Sénégal'}
+            - Emplacement : ${address || 'Non précisé'}
             - Équipements : ${Array.isArray(equipments) ? equipments.join(', ') : 'Standards'}
             - Chambres : ${bedrooms || 'N/A'}
             - Salles de bain : ${bathrooms || 'N/A'}
@@ -49,7 +49,7 @@ const parseSearchQuery = async (query) => {
         const model = getModel();
 
         const prompt = `
-            Tu es un expert en immobilier au Sénégal. Analyse la phrase de recherche d'un utilisateur et extrais les filtres structurés en JSON.
+            Tu es un expert en immobilier. Analyse la phrase de recherche d'un utilisateur et extrais les filtres structurés en JSON.
             Phrase : "${query}"
 
             Format de sortie attendu (JSON uniquement, sans texte autour) :
@@ -64,7 +64,7 @@ const parseSearchQuery = async (query) => {
 
             Règles d'extraction :
             - type : Déduis le type (ex: "appt" -> "appartement", "ch" -> "chambre").
-            - location : Extrais les villes ou quartiers du Sénégal (ex: "Dakar", "Mbour", "Guédiawaye", "Ouakam", "Almadies").
+            - location : Extrais les villes ou quartiers mentionnés.
             - maxPrice : Convertis les montants comme "150k" en 150000.
             - keywords : Mots-clés restants qui ne sont pas des filtres (ex: "piscine", "moderne", "vue mer").
             - Réponds TOUJOURS uniquement en JSON valide.
@@ -82,18 +82,18 @@ const parseSearchQuery = async (query) => {
 const getChatResponse = async (message, history = []) => {
     try {
         const systemInstruction = `
-            Tu es l'assistant virtuel de "Samalocation", une plateforme de gestion locative au Sénégal.
+            Tu es l'assistant virtuel de "Samalocation", une plateforme de gestion locative.
             Ton but est d'aider les utilisateurs (locataires et propriétaires) avec courtoisie et professionnalisme.
             
             Informations clés :
-            - Samalocation permet de louer des appartements, villas, studios et chambres au Sénégal.
+            - Samalocation permet de louer des appartements, villas, studios et chambres.
             - Les propriétaires peuvent gérer leurs biens, générer des reçus et trouver des locataires.
             - Les locataires peuvent chercher des biens sur la carte et postuler.
             
             Directives STRICTES :
-            - RÉPONDS UNIQUEMENT aux questions concernant Samalocation, l'immobilier au Sénégal ou la gestion locative.
+            - RÉPONDS UNIQUEMENT aux questions concernant Samalocation, l'immobilier ou la gestion locative.
             - Si une question est HORS SUJET (ex: cuisine, sport, informatique générale, configuration de routeur, etc.), décline poliment en expliquant que ton expertise se limite à la plateforme Samalocation et à l'immobilier.
-            - Sois chaleureux et utilise un ton sénégalais accueillant ("Teranga").
+            - Sois chaleureux et professionnel.
             - CONCIS MAIS COMPLET : Donne des réponses complètes et informatives tout en restant direct.
             - TEXTE BRUT : N'utilise JAMAIS de balises HTML (<br>) ni de Markdown (**gras**, listes). Réponds en texte brut uniquement avec des sauts de ligne classiques.
             - GREETING : Si l'utilisateur dit simplement "Bonjour", "Salam" ou "Salut", réponds brièvement (ex: "Salam ! Comment puis-je vous aider aujourd'hui ?") sans réciter tes services.

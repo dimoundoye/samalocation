@@ -40,6 +40,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
     livenessSelfieUrl: "",
     verificationStatus: "none" as "none" | "pending" | "verified" | "rejected",
     receiptTemplate: "classic",
+    currency: "XOF",
   });
   const [scannerOpen, setScannerOpen] = useState(false);
   const { hasFeature } = useSubscription();
@@ -74,6 +75,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
           livenessSelfieUrl: data.liveness_selfie_url || "",
           verificationStatus: data.verification_status || "none",
           receiptTemplate: data.receipt_template || "classic",
+          currency: data.currency || "XOF",
         });
       }
     } catch (error: any) {
@@ -106,6 +108,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
         receipt_template: profile.receiptTemplate,
         logo_url: profile.logoUrl,
         receipt_logo_url: profile.receiptLogoUrl,
+        currency: profile.currency,
       };
 
       const result = await updateOwnerProfile(profileData);
@@ -268,6 +271,32 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                   onChange={(e) => setProfile({ ...profile, address: e.target.value })}
                   placeholder={t('settings.address_placeholder')}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                <div>
+                  <Label htmlFor="currency">Devise par défaut</Label>
+                  <Select
+                    value={profile.currency}
+                    onValueChange={(value) => setProfile({ ...profile, currency: value })}
+                  >
+                    <SelectTrigger id="currency">
+                      <SelectValue placeholder="Choisir une devise" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="XOF">Franc CFA (XOF)</SelectItem>
+                      <SelectItem value="XAF">Franc CFA (XAF)</SelectItem>
+                      <SelectItem value="EUR">Euro (€)</SelectItem>
+                      <SelectItem value="USD">Dollar US ($)</SelectItem>
+                      <SelectItem value="GNF">Franc Guinéen (FG)</SelectItem>
+                      <SelectItem value="MAD">Dirham Marocain (DH)</SelectItem>
+                      <SelectItem value="MRO">Ouguiya Mauritanien (UM)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Cette devise sera utilisée pour tous les prix et rapports.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-6 pt-6 border-t mt-6">
@@ -506,7 +535,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                       <div className="space-y-1">
                         <h4 className="font-bold">Branding Personnalisé</h4>
                         <p className="text-sm text-muted-foreground max-w-sm">
-                          Pour faire afficher votre propre logo sur vos reçus, vous devez passer à un format <strong>Entreprise</strong> (Plan Professionnel).
+                          Pour faire afficher votre propre logo sur vos reçus, vous devez passer à un plan supérieur (Plan Professionnel).
                         </p>
                       </div>
                       <Button 

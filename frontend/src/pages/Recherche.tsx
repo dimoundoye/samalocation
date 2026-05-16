@@ -139,8 +139,8 @@ const Recherche = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <SEO 
-        title="Recherche de biens immobiliers au Sénégal | Samalocation"
-        description="Parcourez nos annonces de location au Sénégal : appartements, maisons, villas, studios et terrains à Dakar, Thiès, Saly et plus."
+        title="Recherche de biens immobiliers | Samalocation"
+        description="Parcourez nos annonces immobilières : appartements, maisons, villas, studios et terrains."
       />
       <Navbar />
       <div className={cn("pt-32 px-4 transition-all duration-300", isSearchActive && "pt-20 sm:pt-32")}>
@@ -546,6 +546,7 @@ const Recherche = () => {
                               isNew={isRecent(property.published_at || property.created_at)}
                               listingType={property.listing_type as any}
                               salePrice={property.sale_price}
+                              currency={property.currency}
                             />
                           );
                         })}

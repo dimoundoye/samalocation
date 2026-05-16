@@ -9,7 +9,7 @@ const Privacy = () => {
     <div className="min-h-screen bg-background pb-12">
       <SEO 
         title="Politique de Confidentialité | Samalocation"
-        description="Découvrez comment Samalocation protège vos données personnelles. Nous nous engageons à respecter la confidentialité de nos utilisateurs au Sénégal."
+        description="Découvrez comment Samalocation protège vos données personnelles. Nous nous engageons à respecter la confidentialité de nos utilisateurs."
       />
       <Navbar />
 
@@ -31,10 +31,10 @@ const Privacy = () => {
             <CardContent className="p-8 space-y-10">
               <section>
                 <h2 className="text-2xl font-semibold mb-4 text-primary flex items-center gap-2">
-                  <Shield className="h-5 w-5" /> 1. Engagement et Conformité (CDP)
+                  <Shield className="h-5 w-5" /> 1. Engagement et Conformité
                 </h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Samalocation s'engage à traiter vos données personnelles conformément à la législation sénégalaise en vigueur, notamment la loi n° 2008-12 du 25 janvier 2008 portant sur la protection des données à caractère personnel. Nous agissons sous la supervision de la Commission de Protection des Données Personnelles (CDP).
+                  Samalocation s'engage à traiter vos données personnelles conformément à la législation en vigueur sur la protection des données à caractère personnel. Nous mettons en œuvre les mesures techniques et organisationnelles nécessaires pour garantir la sécurité de vos informations.
                 </p>
               </section>
 
@@ -133,7 +133,7 @@ const Privacy = () => {
               <section>
                 <h2 className="text-2xl font-semibold mb-4 text-primary">9. Vos Droits</h2>
                 <p className="text-muted-foreground mb-4">
-                  Conformément aux lois du Sénégal, vous disposez d'un droit :
+                  Conformément aux réglementations sur la protection des données, vous disposez d'un droit :
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-muted-foreground">
                   <div className="bg-card p-3 rounded-lg">D'accès et de rectification</div>

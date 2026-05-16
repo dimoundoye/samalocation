@@ -19,13 +19,19 @@ const Contract = {
             contract_type,
             owner_id_type, owner_id_number, owner_id_date,
             owner_dob, owner_birthplace,
+            owner_phone, owner_email,
             tenant_id_type, tenant_id_number, tenant_id_date,
             tenant_dob, tenant_birthplace,
+            tenant_phone, tenant_email,
             detailed_address,
+            property_type,
+            property_details,
             charges_info,
             occupancy_limit,
             inventory,
-            document_hash
+            document_hash,
+            owner_name,
+            tenant_name
         } = data;
 
         const contract_number = await this.generateContractNumber();
@@ -48,19 +54,22 @@ const Contract = {
             `INSERT INTO rental_contracts 
             (tenant_id, owner_id, property_id, unit_id, start_date, duration_months, rent_amount, deposit_amount, 
             payment_day, payment_method, notes, contract_number, status, contract_type,
-            owner_id_type, owner_id_number, owner_id_date, owner_dob, owner_birthplace,
-            tenant_id_type, tenant_id_number, tenant_id_date, tenant_dob, tenant_birthplace,
-            detailed_address, charges_info, occupancy_limit, inventory, document_hash, owner_signed, owner_signed_at, owner_signature) 
+            owner_id_type, owner_id_number, owner_id_date, owner_dob, owner_birthplace, owner_phone, owner_email,
+            tenant_id_type, tenant_id_number, tenant_id_date, tenant_dob, tenant_birthplace, tenant_phone, tenant_email,
+            detailed_address, property_type, property_details, charges_info, occupancy_limit, inventory, document_hash, owner_signed, owner_signed_at, owner_signature,
+            owner_name, tenant_name) 
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending_signature', $13, 
-            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, TRUE, CURRENT_TIMESTAMP, $29) 
+            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, TRUE, CURRENT_TIMESTAMP, $35,
+            $36, $37) 
             RETURNING *`,
             [
                 tenant_id, owner_id, property_id, unit_id, start_date, duration_months || 12, rent_amount, deposit_amount,
                 payment_day || 5, payment_method, notes, contract_number, contract_type || 'standard',
-                owner_id_type, owner_id_number, nullIfEmpty(owner_id_date), nullIfEmpty(owner_dob), owner_birthplace,
-                tenant_id_type, tenant_id_number, nullIfEmpty(tenant_id_date), nullIfEmpty(tenant_dob), tenant_birthplace,
-                detailed_address, charges_info || {}, nullIfEmpty(occupancy_limit), inventory || {}, document_hash,
-                owner_signature
+                owner_id_type, owner_id_number, nullIfEmpty(owner_id_date), nullIfEmpty(owner_dob), owner_birthplace, owner_phone, owner_email,
+                tenant_id_type, tenant_id_number, nullIfEmpty(tenant_id_date), nullIfEmpty(tenant_dob), tenant_birthplace, tenant_phone, tenant_email,
+                detailed_address, property_type || 'Appartement', property_details || '', charges_info || {}, nullIfEmpty(occupancy_limit), inventory || {}, document_hash,
+                owner_signature,
+                owner_name, tenant_name
             ]
         );
 
@@ -101,15 +110,22 @@ const Contract = {
         const { rows } = await db.query(`
             SELECT c.*, 
                    c.id as contract_id,
-                   t.full_name as tenant_name, t.email as tenant_email, t.phone as tenant_phone,
-                   up_owner.full_name as owner_name, up_owner.email as owner_email, up_owner.phone as owner_phone,
+                   t.full_name as live_tenant_name, t.email as live_tenant_email, t.phone as live_tenant_phone,
+                   up_owner.full_name as live_owner_name, up_owner.email as live_owner_email, up_owner.phone as live_owner_phone,
+                   COALESCE(NULLIF(c.owner_name, ''), up_owner.full_name) as owner_name,
+                   COALESCE(NULLIF(c.tenant_name, ''), t.full_name) as tenant_name,
+                   COALESCE(NULLIF(c.tenant_phone, ''), t.phone) as tenant_phone,
+                   COALESCE(NULLIF(c.tenant_email, ''), t.email) as tenant_email,
+                   COALESCE(NULLIF(c.owner_phone, ''), up_owner.phone) as owner_phone,
+                   COALESCE(NULLIF(c.owner_email, ''), up_owner.email) as owner_email,
                    op.company_name as owner_company, op.address as owner_address, 
                    c.owner_signature as archived_owner_signature,
                    op.signature_url as live_owner_signature,
                    COALESCE(NULLIF(c.owner_signature, ''), op.signature_url) as owner_signature,
                    COALESCE(c.tenant_signature, null) as tenant_signature,
                    p.name as property_name, p.address as property_address, p.property_type,
-                   pu.unit_number
+                   pu.unit_number,
+                   op.currency
             FROM rental_contracts c
             JOIN tenants t ON c.tenant_id = t.id
             JOIN user_profiles up_owner ON c.owner_id = up_owner.id
@@ -217,6 +233,26 @@ const Contract = {
             "UPDATE rental_contracts SET status = 'terminated', updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *",
             [id]
         );
+    },
+
+    async migrate() {
+        const queries = [
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS property_type VARCHAR(50) DEFAULT 'Appartement'",
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS property_details TEXT",
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS owner_phone VARCHAR(50)",
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS owner_email VARCHAR(255)",
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_phone VARCHAR(50)",
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_email VARCHAR(255)"
+        ];
+
+        for (const sql of queries) {
+            try {
+                await db.query(sql);
+            } catch (err) {
+                console.error('Migration error (rental_contracts):', err.message);
+            }
+        }
+        return true;
     }
 };
 

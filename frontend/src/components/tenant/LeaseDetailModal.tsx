@@ -13,6 +13,7 @@ import { fr } from "date-fns/locale";
 import { getTenantContracts } from "@/api/contracts";
 import { downloadReceipt } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/utils";
 
 export const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
@@ -43,9 +44,10 @@ interface LeaseDetailModalProps {
     lease: any;
     open: boolean;
     onClose: () => void;
+    currency?: string;
 }
 
-export const LeaseDetailModal = ({ lease, open, onClose }: LeaseDetailModalProps) => {
+export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: LeaseDetailModalProps) => {
     const { toast } = useToast();
     const [contracts, setContracts] = useState<any[]>([]);
     const [receipts, setReceipts] = useState<any[]>([]);
@@ -130,7 +132,7 @@ export const LeaseDetailModal = ({ lease, open, onClose }: LeaseDetailModalProps
                     <div className="flex items-center justify-between pt-2 border-t">
                         <span className="text-xs text-muted-foreground font-medium uppercase">Loyer mensuel</span>
                         <span className="text-base font-black text-primary">
-                            {(lease.monthly_rent || 0).toLocaleString()} F CFA
+                            {formatCurrency(lease.monthly_rent || 0, currency)}
                         </span>
                     </div>
                 </div>
@@ -174,7 +176,7 @@ export const LeaseDetailModal = ({ lease, open, onClose }: LeaseDetailModalProps
                                                         {r.period_label || format(new Date(r.created_at), "MMMM yyyy", { locale: fr })}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground">
-                                                        {(r.amount || r.monthly_rent || 0).toLocaleString()} F CFA
+                                                        {formatCurrency(r.amount || r.monthly_rent || 0, currency)}
                                                     </p>
                                                 </div>
                                                 <Button

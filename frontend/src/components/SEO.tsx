@@ -12,9 +12,9 @@ interface SEOProps {
 }
 
 const SEO = ({
-  title = "Samalocation - Simplifiez la gestion locative au Sénégal",
-  description = "Plateforme intelligente de gestion locative en ligne au Sénégal. Gérez vos biens, trouvez un logement facilement en ligne.",
-  keywords = "Samalocation, gestion locative, Sénégal, location, immobilier, dakar, appartement",
+  title = "Samalocation - Simplifiez votre gestion locative et vente en ligne",
+  description = "Plateforme intelligente de gestion locative et de vente en ligne. Gérez vos biens et trouvez un logement facilement.",
+  keywords = "Samalocation, gestion locative, location, vente, immobilier, appartement, maison, studio",
   image = "https://samalocation.com/logo-sl.png",
   url = "https://samalocation.com/",
   type = "website",
@@ -57,11 +57,6 @@ const SEO = ({
           "url": "https://samalocation.com",
           "logo": "https://samalocation.com/logo-sl.png",
           "description": description,
-          "address": {
-            "@type": "PostalAddress",
-            "addressCountry": "SN",
-            "addressLocality": "Dakar"
-          },
           "sameAs": [
             "https://facebook.com/samalocation",
             "https://twitter.com/samalocation",

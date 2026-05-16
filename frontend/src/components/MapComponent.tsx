@@ -102,7 +102,7 @@ const MapComponent = ({ properties, center = [14.7167, -17.4677], zoom = 12 }: M
           <h3 class="font-bold text-sm mb-1">${property.name}</h3>
           <p class="text-xs text-muted-foreground mb-2 line-clamp-2">${property.address}</p>
           <p class="font-bold text-primary mb-2 text-sm">
-            ${property.rent_amount?.toLocaleString()} FCFA / ${property.primary_rent_period || 'mois'}
+            ${property.rent_amount?.toLocaleString()} / ${property.primary_rent_period || 'mois'}
           </p>
           <button id="view-details-${property.id}" class="w-full py-1.5 bg-primary text-white text-xs rounded-md font-medium hover:bg-primary/90 transition-colors">
             Voir détails

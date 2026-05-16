@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -702,11 +703,13 @@ const DashboardProprietaire = () => {
 
   const formatCurrency = (amount: any) => {
     const numericValue = typeof amount === 'string' ? parseFloat(amount) : amount;
+    const currency = ownerProfile?.currency || 'XOF';
+
     return new Intl.NumberFormat("fr-FR", {
-      style: "decimal",
-      useGrouping: true,
+      style: "currency",
+      currency: currency,
       maximumFractionDigits: 0,
-    }).format(numericValue || 0) + " F CFA";
+    }).format(numericValue || 0);
   };
 
   const renderSidebarContent = (isMobile = false) => {
@@ -1178,7 +1181,7 @@ const DashboardProprietaire = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="text-xl sm:text-3xl font-bold truncate">
-                          {totalYearlyRevenue.toLocaleString()} F
+                          {formatCurrency(totalYearlyRevenue)}
                         </div>
                         <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 whitespace-nowrap">
                           Pour {selectedYear}
@@ -1331,7 +1334,7 @@ const DashboardProprietaire = () => {
                                   borderRadius: "8px",
                                 }}
                                 formatter={(value: number) => [
-                                  `${value.toLocaleString()} FCFA`,
+                                  formatCurrency(value, ownerProfile?.currency || 'XOF'),
                                   t('owner.stats.total_revenue'),
                                 ]}
                               />
@@ -1374,7 +1377,7 @@ const DashboardProprietaire = () => {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="font-bold text-primary">{activity.amount.toLocaleString()} F</p>
+                                <p className="font-bold text-primary">{formatCurrency(activity.amount, ownerProfile?.currency || 'XOF')}</p>
                                 <p className="text-xs text-muted-foreground">{format(new Date(activity.payment_date), 'dd MMM yyyy', { locale: dateLocale })}</p>
                               </div>
                             </div>
@@ -1495,7 +1498,7 @@ const DashboardProprietaire = () => {
                                 <div className="flex flex-col gap-1 p-3 bg-primary/5 rounded-xl border border-primary/10 shadow-inner">
                                   <span className="text-[10px] text-primary/70 uppercase font-bold tracking-widest">{property.property_type === 'terrain' ? 'Prix du terrain' : 'Prix de vente'}</span>
                                   <span className="text-xl font-black text-primary tracking-tight">
-                                    {property.sale_price ? formatCurrency(property.sale_price) : 'Prix sur demande'}
+                                    {property.sale_price ? formatCurrency(property.sale_price, ownerProfile?.currency || 'XOF') : 'Prix sur demande'}
                                   </span>
                                 </div>
                               ) : (
@@ -1716,7 +1719,7 @@ const DashboardProprietaire = () => {
                                       {t('common.rent')}
                                     </span>
                                     <span className="font-bold text-sm sm:text-base">
-                                      {formatCurrency(tenant.monthly_rent)}
+                                      {formatCurrency(tenant.monthly_rent, ownerProfile?.currency || 'XOF')}
                                     </span>
                                   </div>
                                   <div className="bg-secondary/30 border border-secondary p-2.5 rounded-xl">
@@ -2180,6 +2183,7 @@ const DashboardProprietaire = () => {
                   onGroupsChange={setCustomGroups}
                   groupedData={groupedData}
                   years={years}
+                  currency={ownerProfile?.currency}
                 />
               </div>
             )}
@@ -2192,7 +2196,7 @@ const DashboardProprietaire = () => {
             )}
 
             {/* Contracts Tab */}
-            {activeTab === "contracts" && <OwnerContractsTab />}
+            {activeTab === "contracts" && <OwnerContractsTab currency={ownerProfile?.currency || 'XOF'} />}
 
             {/* Subscription Tab */}
             {activeTab === "subscription" && <OwnerSubscription />}

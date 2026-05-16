@@ -4,12 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { 
-  Search, 
-  CreditCard, 
-  Wrench, 
-  MessageSquare, 
-  AlertTriangle, 
+import {
+  Search,
+  CreditCard,
+  Wrench,
+  MessageSquare,
+  AlertTriangle,
   Download,
   Smartphone,
   Monitor,
@@ -31,11 +31,11 @@ export const TenantDocumentationTab = () => {
       steps: [
         "Utilisez la barre de recherche pour filtrer par zone, prix ou type de bien.",
         "Cliquez sur un bien pour voir les détails et photos.",
-        "Cliquez sur le bouton 'Postuler'.",
-        "Remplissez votre profil locataire (cela servira pour toutes vos futures candidatures).",
+        "Cliquez sur le bouton 'Demander à louer'.",
+        "Remplissez votre dossier locataire (cela servira pour toutes vos futures candidatures).",
         "Attendez la réponse du propriétaire via la messagerie ou par email."
       ],
-      tip: "Complétez bien votre profil ! Un dossier complet a 5x plus de chances d'être accepté."
+      tip: "Complétez bien votre dossier! Un dossier complet a 5x plus de chances d'être accepté."
     },
     {
       id: "payments-receipts",
@@ -44,9 +44,9 @@ export const TenantDocumentationTab = () => {
       purpose: "Consultez l'historique de vos loyers payés et téléchargez vos quittances officielles à tout moment.",
       steps: [
         "Allez dans votre 'Tableau de bord'.",
-        "Consultez la section 'Mes Paiements'.",
+        "Consultez la section 'Documents'.",
         "Cliquez sur l'icône de téléchargement à côté d'un mois payé.",
-        "Votre quittance PDF est générée instantanément avec la signature du propriétaire."
+        "Votre quittance PDF est générée instantanément avec la signature du propriétaire (si disponible)."
       ]
     },
     {
@@ -56,7 +56,7 @@ export const TenantDocumentationTab = () => {
       purpose: "Une fuite d'eau ? Une panne d'électricité ? Informez votre propriétaire officiellement et suivez l'avancée des réparations.",
       steps: [
         "Allez dans l'onglet 'Maintenance'.",
-        "Cliquez sur 'Nouvelle demande'.",
+        "Cliquez sur 'Nouvelle signalement'.",
         "Décrivez le problème et prenez une photo (indispensable pour aider le propriétaire).",
         "Suivez le statut de votre demande (En attente, En cours, Résolu)."
       ]
@@ -68,8 +68,8 @@ export const TenantDocumentationTab = () => {
       purpose: "Votre assistant personnel pour vous aider à naviguer, répondre à vos questions sur un quartier ou vous expliquer vos droits.",
       steps: [
         "Cliquez sur l'icône de bulle en bas à droite de votre écran.",
-        "Posez votre question (ex: 'Comment télécharger ma quittance ?' ou 'Quelles sont les écoles à proximité de Mermoz ?').",
-        "L'IA vous répond instantanément en se basant sur les données de SamaLocation."
+        "Posez votre question (ex: 'Comment télécharger ma quittance ?').",
+        "L'IA vous répond instantanément en se basant sur les données de Samalocation."
       ]
     },
     {
@@ -112,17 +112,17 @@ export const TenantDocumentationTab = () => {
           <p className="text-muted-foreground mt-1">Tout ce qu'il faut savoir pour bien gérer votre location.</p>
         </div>
         <div className="flex bg-muted p-1 rounded-lg">
-          <Button 
-            variant={device === "desktop" ? "secondary" : "ghost"} 
-            size="sm" 
+          <Button
+            variant={device === "desktop" ? "secondary" : "ghost"}
+            size="sm"
             onClick={() => setDevice("desktop")}
             className="gap-2"
           >
             <Monitor className="h-4 w-4" /> Ordinateur
           </Button>
-          <Button 
-            variant={device === "mobile" ? "secondary" : "ghost"} 
-            size="sm" 
+          <Button
+            variant={device === "mobile" ? "secondary" : "ghost"}
+            size="sm"
             onClick={() => setDevice("mobile")}
             className="gap-2"
           >
@@ -211,9 +211,9 @@ export const TenantDocumentationTab = () => {
                       <div className="relative group">
                         <div className="aspect-video bg-muted rounded-xl overflow-hidden border-2 border-dashed border-muted-foreground/20 flex items-center justify-center relative">
                           <div className="text-center p-6">
-                             {device === "desktop" ? <Monitor className="h-12 w-12 mx-auto mb-2 text-muted-foreground/40" /> : <Smartphone className="h-12 w-12 mx-auto mb-2 text-muted-foreground/40" />}
-                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Capture {device}</p>
-                             <p className="text-[10px] text-muted-foreground/60 mt-1 italic">Simulation Locataire...</p>
+                            {device === "desktop" ? <Monitor className="h-12 w-12 mx-auto mb-2 text-muted-foreground/40" /> : <Smartphone className="h-12 w-12 mx-auto mb-2 text-muted-foreground/40" />}
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Capture {device}</p>
+                            <p className="text-[10px] text-muted-foreground/60 mt-1 italic">Simulation Locataire...</p>
                           </div>
                           <div className="absolute top-2 left-2 flex gap-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div>

@@ -74,7 +74,7 @@ export const ContractModelPreview = () => {
                                     <div className="p-4 bg-white border-b flex items-center justify-between">
                                         <div className="space-y-1">
                                             <h4 className="font-bold text-sm">Modèle Standard</h4>
-                                            <p className="text-xs text-muted-foreground">Idéal pour les locations résidentielles classiques au Sénégal. Sans états des lieux</p>
+                                            <p className="text-xs text-muted-foreground">Idéal pour les locations résidentielles classiques. Sans états des lieux</p>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Button size="sm" variant="outline" className="gap-2 border-primary/20 text-primary h-8" asChild>

@@ -16,12 +16,13 @@ import { downloadReceipt } from "@/lib/api";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/utils";
 
 import { LeaseDetailModal, StatusBadge } from "./LeaseDetailModal";
 
 type FilterStatus = "all" | "active" | "pending" | "inactive";
 
-const TenantLeasesTab = () => {
+const TenantLeasesTab = ({ currency = 'XOF' }: { currency?: string }) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [allLeases, setAllLeases] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -172,7 +173,7 @@ const TenantLeasesTab = () => {
                                     <div>
                                         <p className="text-[10px] text-muted-foreground uppercase font-semibold">Loyer</p>
                                         <p className="text-xs font-bold text-primary">
-                                            {(lease.monthly_rent || 0).toLocaleString()} F CFA
+                                            {formatCurrency(lease.monthly_rent || 0, currency)}
                                         </p>
                                     </div>
                                     <div>
@@ -201,6 +202,7 @@ const TenantLeasesTab = () => {
                 lease={selectedLease}
                 open={!!selectedLease}
                 onClose={() => setSelectedLease(null)}
+                currency={currency}
             />
         </div>
     );

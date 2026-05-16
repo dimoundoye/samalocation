@@ -219,7 +219,7 @@ const VerifyContract = () => {
                 )}
 
                 <div className="text-center text-slate-400 text-sm">
-                    © {new Date().getFullYear()} Samalocation. Platforme immobilière de confiance au Sénégal.
+                    © {new Date().getFullYear()} Samalocation. Plateforme immobilière de confiance.
                 </div>
             </div>
         </div>

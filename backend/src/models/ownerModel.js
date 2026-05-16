@@ -29,7 +29,8 @@ const Owner = {
             social_links = currentProfile?.social_links,
             banner_url = currentProfile?.banner_url,
             external_email = currentProfile?.external_email,
-            website = currentProfile?.website
+            website = currentProfile?.website,
+            currency = currentProfile?.currency || 'XOF'
         } = data;
 
         if (full_name) {
@@ -41,7 +42,7 @@ const Owner = {
 
         if (!currentProfile) {
             await db.query(
-                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio, signature_url, id_card_url, ownership_proof_url, liveness_selfie_url, verification_status, receipt_template, logo_url, receipt_logo_url, prestations, horaires, social_links, banner_url, external_email, website) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)',
+                'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone, address, bio, signature_url, id_card_url, ownership_proof_url, liveness_selfie_url, verification_status, receipt_template, logo_url, receipt_logo_url, prestations, horaires, social_links, banner_url, external_email, website, currency) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)',
                 [
                     id,
                     id,
@@ -62,12 +63,13 @@ const Owner = {
                     JSON.stringify(social_links || {}),
                     banner_url || null,
                     external_email || null,
-                    website || null
+                    website || null,
+                    currency || 'XOF'
                 ]
             );
         } else {
             await db.query(
-                'UPDATE owner_profiles SET company_name = $1, phone = $2, address = $3, bio = $4, signature_url = $5, id_card_url = $6, ownership_proof_url = $7, liveness_selfie_url = $8, verification_status = $9, receipt_template = $10, logo_url = $11, receipt_logo_url = $12, prestations = $13, horaires = $14, social_links = $15, banner_url = $16, external_email = $17, website = $18, updated_at = NOW() WHERE id = $19',
+                'UPDATE owner_profiles SET company_name = $1, phone = $2, address = $3, bio = $4, signature_url = $5, id_card_url = $6, ownership_proof_url = $7, liveness_selfie_url = $8, verification_status = $9, receipt_template = $10, logo_url = $11, receipt_logo_url = $12, prestations = $13, horaires = $14, social_links = $15, banner_url = $16, external_email = $17, website = $18, currency = $19, updated_at = NOW() WHERE id = $20',
                 [
                     company_name,
                     phone,
@@ -87,6 +89,7 @@ const Owner = {
                     banner_url,
                     external_email,
                     website,
+                    currency,
                     id
                 ]
             );

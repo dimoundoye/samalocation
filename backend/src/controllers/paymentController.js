@@ -48,8 +48,8 @@ const paymentController = {
                 },
                 store: {
                     name: "SamaLocation",
-                    tagline: "Votre partenaire immobilier au Sénégal",
-                    postal_address: "Dakar, Sénégal",
+                    tagline: "Votre partenaire de gestion immobilière",
+                    postal_address: "Siège Social, Samalocation",
                     phone: "761629529",
                     logo_url: `${frontendUrl}/logo.png`
                 },

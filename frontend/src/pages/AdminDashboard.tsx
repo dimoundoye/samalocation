@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { User, AdminStatistics } from "@/types";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { formatCurrency } from "@/lib/utils";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -177,13 +178,6 @@ const AdminDashboard = () => {
     return new Date(date).toLocaleDateString('fr-FR');
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      maximumFractionDigits: 0
-    }).format(amount).replace('XOF', 'F CFA');
-  };
 
   const sidebarContent = (
     <>

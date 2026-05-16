@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { createContract, getOwnerTenants } from "@/lib/api";
+import { createContract, getOwnerTenants, getOwnerProperties, getPropertyById } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck, User, MapPin, ClipboardList, Info, AlertTriangle, PlusCircle, X, FileText, CheckCircle2, Crown, Zap, Lock } from "lucide-react";
 import { ContractModelPreview } from "./ContractModelPreview";
@@ -36,6 +36,7 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [tenants, setTenants] = useState<any[]>([]);
+    const [properties, setProperties] = useState<any[]>([]);
     const [formData, setFormData] = useState<any>({
         tenant_id: "",
         property_id: propertyId,
@@ -54,17 +55,25 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
         owner_id_date: "",
         owner_dob: "",
         owner_birthplace: "",
+        owner_phone: "",
+        owner_email: "",
         tenant_id_type: "CNI",
         tenant_id_number: "",
         tenant_id_date: "",
         tenant_dob: "",
         tenant_birthplace: "",
+        tenant_phone: "",
+        tenant_email: "",
         // Property details
         detailed_address: "",
+        property_type: "Appartement",
+        property_details: "",
         occupancy_limit: "",
         charges_description: "Eau, Électricité, Charges communes",
         // Inventory
-        inventory: {} as Record<string, string>
+        inventory: {} as Record<string, string>,
+        owner_name: "",
+        tenant_name: tenantName || ""
     });
 
     const [activeTab, setActiveTab] = useState("general");
@@ -85,12 +94,38 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
     const isLastTab = activeTab === tabs[tabs.length - 1];
     const isFirstTab = activeTab === tabs[0];
 
+    useEffect(() => {
+        const loadPropertyDetails = async () => {
+            if (!formData.property_id) return;
+            try {
+                const prop = await getPropertyById(formData.property_id);
+                if (prop) {
+                    // Find active tenant for this property if any
+                    const propertyTenant = tenants.find(t => t.property_id === formData.property_id);
+
+                    setFormData(prev => ({
+                        ...prev,
+                        detailed_address: prop.address || prev.detailed_address,
+                        property_type: prop.type || prev.property_type,
+                        // Auto-select tenant if found and only one for this property
+                        tenant_id: propertyTenant ? propertyTenant.user_id : prev.tenant_id,
+                        rent_amount: propertyTenant ? String(propertyTenant.monthly_rent) : prev.rent_amount,
+                        deposit_amount: propertyTenant ? String(propertyTenant.monthly_rent * 2) : prev.deposit_amount
+                    }));
+                }
+            } catch (error) {
+                console.error("Error loading property details:", error);
+            }
+        };
+        loadPropertyDetails();
+    }, [formData.property_id, tenants]);
+
     const isTabValid = () => {
         switch (activeTab) {
             case "general":
                 return !!formData.tenant_id && !!formData.start_date && !!formData.rent_amount;
             case "parties":
-                return !!formData.owner_id_number && !!formData.tenant_id_number;
+                return !!formData.owner_id_number && !!formData.tenant_id_number && !!formData.owner_name && !!formData.tenant_name;
             case "property":
                 return !!formData.detailed_address;
             case "premium":
@@ -116,9 +151,19 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
         }
     };
 
+    const loadProperties = async () => {
+        try {
+            const data = await getOwnerProperties();
+            setProperties(data);
+        } catch (error) {
+            console.error("Error loading properties:", error);
+        }
+    };
+
     useEffect(() => {
         if (open) {
             loadTenants();
+            loadProperties();
             if (tenantId) {
                 setFormData(prev => ({
                     ...prev,
@@ -133,8 +178,20 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
     const loadTenants = async () => {
         try {
             const data = await getOwnerTenants();
-            const filtered = propertyId ? data.filter((t: any) => t.property_id === propertyId) : data;
-            setTenants(filtered);
+            let filtered = propertyId ? data.filter((t: any) => t.property_id === propertyId) : data;
+
+            // Deduplicate by user_id to avoid repeating the same person multiple times
+            const uniqueTenants = [];
+            const seenUserIds = new Set();
+
+            for (const tenant of filtered) {
+                if (!seenUserIds.has(tenant.user_id)) {
+                    seenUserIds.add(tenant.user_id);
+                    uniqueTenants.push(tenant);
+                }
+            }
+
+            setTenants(uniqueTenants);
 
             if (tenantId) {
                 const current = filtered.find((t: any) => t.user_id === tenantId);
@@ -143,7 +200,9 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                         ...prev,
                         unit_id: current.unit_id,
                         property_id: current.property_id,
-                        detailed_address: current.property_address || ""
+                        detailed_address: current.property_address || "",
+                        tenant_phone: current.tenant_phone || prev.tenant_phone || "",
+                        tenant_email: current.tenant_email || prev.tenant_email || ""
                     }));
                 }
             }
@@ -160,10 +219,35 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                 unit_id: selected.unit_id,
                 property_id: selected.property_id,
                 rent_amount: String(selected.monthly_rent || prev.rent_amount),
-                detailed_address: selected.property_address || prev.detailed_address
+                detailed_address: selected.property_address || prev.detailed_address,
+                property_type: selected.property_type || prev.property_type || "Appartement",
+                tenant_phone: selected.tenant_phone || prev.tenant_phone,
+                tenant_email: selected.tenant_email || prev.tenant_email,
+                tenant_name: selected.full_name || selected.tenant_name || prev.tenant_name
             }));
         }
     }, [formData.tenant_id, tenants]);
+
+    useEffect(() => {
+        // Load owner profile to pre-fill owner_name
+        const loadOwnerProfile = async () => {
+            try {
+                const { getMe } = await import("@/lib/api");
+                const user = await getMe();
+                if (user) {
+                    setFormData(prev => ({
+                        ...prev,
+                        owner_name: user.full_name || prev.owner_name,
+                        owner_email: user.email || prev.owner_email,
+                        owner_phone: user.phone || prev.owner_phone
+                    }));
+                }
+            } catch (err) {
+                console.error("Error loading owner info:", err);
+            }
+        };
+        if (open) loadOwnerProfile();
+    }, [open]);
 
     const toggleInventory = (item: string) => {
         setFormData(prev => {
@@ -259,7 +343,7 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                             </DialogTitle>
                         </div>
                         <DialogDescription>
-                            Établissez un contrat conforme à la législation sénégalaise pour <span className="font-semibold text-foreground">{propertyName}</span>.
+                            Établissez un contrat conforme à la législation en vigueur pour <span className="font-semibold text-foreground">{propertyName}</span>.
                         </DialogDescription>
                     </DialogHeader>
                 </div>
@@ -346,6 +430,19 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                     </div>
                                 </div>
 
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Bien Immobilier (Optionnel)</Label>
+                                        <Select value={formData.property_id} onValueChange={(v) => setFormData({ ...formData, property_id: v })}>
+                                            <SelectTrigger><SelectValue placeholder="Choisir un bien" /></SelectTrigger>
+                                            <SelectContent>
+                                                {properties.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-[10px] text-muted-foreground italic">Sélectionner un bien pour remplir l'adresse automatiquement.</p>
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Locataire *</Label>
@@ -359,11 +456,11 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                         <Input type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} required />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Loyer Mensuel (FCFA) *</Label>
+                                        <Label>Loyer Mensuel *</Label>
                                         <Input type="number" value={formData.rent_amount} onChange={(e) => setFormData({ ...formData, rent_amount: e.target.value })} required />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Dépôt de Garantie / Caution (FCFA)</Label>
+                                        <Label>Dépôt de Garantie / Caution</Label>
                                         <Input type="number" value={formData.deposit_amount} onChange={(e) => setFormData({ ...formData, deposit_amount: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
@@ -387,6 +484,10 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                 <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
                                     <h4 className="font-semibold text-sm flex items-center gap-2 border-b pb-2"><ShieldCheck className="h-4 w-4 text-primary" /> Identité du Bailleur</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2 col-span-1 sm:col-span-2">
+                                            <Label>Nom complet du Bailleur *</Label>
+                                            <Input value={formData.owner_name} onChange={(e) => setFormData({ ...formData, owner_name: e.target.value })} placeholder="Prénom et Nom du propriétaire" required />
+                                        </div>
                                         <div className="space-y-2">
                                             <Label>Type de pièce ID</Label>
                                             <Select value={formData.owner_id_type} onValueChange={(v) => setFormData({ ...formData, owner_id_type: v })}>
@@ -407,8 +508,12 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                 </div>
 
                                 <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
-                                    <h4 className="font-semibold text-sm flex items-center gap-2 border-b pb-2"><User className="h-4 w-4 text-primary" /> Identité du Locataire</h4>
+                                    <h4 className="font-semibold text-sm flex items-center gap-2 border-b pb-2 mt-4"><User className="h-4 w-4 text-primary" /> Identité du Locataire</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2 col-span-1 sm:col-span-2">
+                                            <Label>Nom complet du Locataire *</Label>
+                                            <Input value={formData.tenant_name} onChange={(e) => setFormData({ ...formData, tenant_name: e.target.value })} placeholder="Prénom et Nom du locataire" required />
+                                        </div>
                                         <div className="space-y-2">
                                             <Label>Type de pièce ID</Label>
                                             <Select value={formData.tenant_id_type} onValueChange={(v) => setFormData({ ...formData, tenant_id_type: v })}>
@@ -423,27 +528,55 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                         <div className="space-y-2"><Label>Date de délivrance ID</Label><Input type="date" value={formData.tenant_id_date} onChange={(e) => setFormData({ ...formData, tenant_id_date: e.target.value })} /></div>
                                         <div className="space-y-2"><Label>Né(e) le</Label><Input type="date" value={formData.tenant_dob} onChange={(e) => setFormData({ ...formData, tenant_dob: e.target.value })} /></div>
                                         <div className="space-y-2"><Label>Lieu de naissance</Label><Input value={formData.tenant_birthplace} onChange={(e) => setFormData({ ...formData, tenant_birthplace: e.target.value })} placeholder="Ville" /></div>
+                                        <div className="space-y-2"><Label>Téléphone Locataire</Label><Input value={formData.tenant_phone} onChange={(e) => setFormData({ ...formData, tenant_phone: e.target.value })} placeholder="77..." /></div>
+                                        <div className="space-y-2"><Label>Email Locataire</Label><Input value={formData.tenant_email} onChange={(e) => setFormData({ ...formData, tenant_email: e.target.value })} placeholder="locataire@exemple.com" /></div>
                                     </div>
                                 </div>
                             </TabsContent>
 
                             {/* TAB 3: LIEU & USAGE */}
                             <TabsContent value="property" className="space-y-4 focus-visible:outline-none">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Type de bien *</Label>
+                                        <Select value={formData.property_type} onValueChange={(v) => setFormData({ ...formData, property_type: v })}>
+                                            <SelectTrigger><SelectValue placeholder="Type de bien" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Appartement">Appartement</SelectItem>
+                                                <SelectItem value="Villa">Villa</SelectItem>
+                                                <SelectItem value="Maison">Maison</SelectItem>
+                                                <SelectItem value="Studio">Studio</SelectItem>
+                                                <SelectItem value="Chambre">Chambre</SelectItem>
+                                                <SelectItem value="Bureau">Bureau</SelectItem>
+                                                <SelectItem value="Local Commercial">Local Commercial</SelectItem>
+                                                <SelectItem value="Entrepôt">Entrepôt</SelectItem>
+                                                <SelectItem value="Autre">Autre</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2"><Label>Limite d'occupation (pers.)</Label><Input type="number" value={formData.occupancy_limit} onChange={(e) => setFormData({ ...formData, occupancy_limit: e.target.value })} /></div>
+                                </div>
+
                                 <div className="space-y-2">
                                     <Label>Adresse complète du bien *</Label>
-                                    <Textarea value={formData.detailed_address} onChange={(e) => setFormData({ ...formData, detailed_address: e.target.value })} placeholder="Ex: Dakar Plateau, Rue Vincens, Immeuble X, Appartement 4B" rows={3} required />
+                                    <Textarea value={formData.detailed_address} onChange={(e) => setFormData({ ...formData, detailed_address: e.target.value })} placeholder="Ex: 123 Rue de la Paix, Immeuble Horizon, Appartement 4B" rows={2} required />
                                     <p className="text-[10px] text-muted-foreground italic">Soyez le plus précis possible pour la solidité juridique.</p>
                                 </div>
+
+                                <div className="space-y-2">
+                                    <Label>Détails du bien (Nombre de pièces, surface, etc.)</Label>
+                                    <Textarea value={formData.property_details} onChange={(e) => setFormData({ ...formData, property_details: e.target.value })} placeholder="Ex: F4 de 120m², 3 chambres, 1 salon, 2 salles de bain..." rows={2} />
+                                </div>
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2"><Label>Limite d'occupation (pers.)</Label><Input type="number" value={formData.occupancy_limit} onChange={(e) => setFormData({ ...formData, occupancy_limit: e.target.value })} /></div>
                                     <div className="space-y-2">
                                         <Label>Usage exclusif</Label>
                                         <div className="flex items-center h-10 px-3 border rounded-md bg-muted/10 text-xs font-semibold text-primary">HABITATION</div>
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Charges à la charge du locataire</Label>
-                                    <Input value={formData.charges_description} onChange={(e) => setFormData({ ...formData, charges_description: e.target.value })} placeholder="Ex: Eau, Électricité, Internet, Ordures" />
+                                    <div className="space-y-2">
+                                        <Label>Charges à la charge du locataire</Label>
+                                        <Input value={formData.charges_description} onChange={(e) => setFormData({ ...formData, charges_description: e.target.value })} placeholder="Ex: Eau, Électricité, Internet, Ordures" />
+                                    </div>
                                 </div>
                             </TabsContent>
 
@@ -518,7 +651,7 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                             </button>
                             <div className="flex items-center gap-1.5 font-bold mb-1"><AlertTriangle className="h-3 w-3" /> Rappel Juridique Important :</div>
                             <p>• Ce contrat inclut une clause de préavis d'un mois pour protéger les deux parties d'une reconduction tacite non souhaitée.</p>
-                            <p>• Pour une pleine validité, le bail doit être légalisé à la mairie et enregistré à la DGID.</p>
+                            <p>• Pour une pleine validité, tout contrat de bail doit être enregistré auprès des services compétents de votre juridiction et les signatures légalisées si nécessaire.</p>
                         </div>
                     )}
 

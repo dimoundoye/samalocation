@@ -23,7 +23,7 @@ const About = () => {
     <div className="min-h-screen bg-background pb-12">
       <SEO 
         title="À Propos de nous | Samalocation"
-        description="Découvrez l'histoire de Samalocation, notre mission de digitaliser l'immobilier au Sénégal et nos valeurs de transparence et d'innovation."
+        description="Découvrez l'histoire de Samalocation, notre mission de digitaliser l'immobilier et nos valeurs de transparence et d'innovation."
       />
       <Navbar />
 
@@ -35,7 +35,7 @@ const About = () => {
               À Propos de Samalocation
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              La solution moderne pour digitaliser et simplifier la gestion immobilière au Sénégal.
+              La solution moderne pour digitaliser et simplifier la gestion immobilière.
               Nous connectons propriétaires et locataires en toute transparence.
             </p>
           </div>
@@ -56,7 +56,7 @@ const About = () => {
                 <p>
                   Que vous soyez un propriétaire gérant un vaste patrimoine ou un étudiant à la recherche de son
                   premier studio, Samalocation est conçu pour vous offrir une expérience fluide, sans tracas et
-                  totalement transparente, adaptée aux réalités du marché sénégalais.
+                  totalement transparente, adaptée aux réalités du marché local.
                 </p>
                 <p>
                   Notre mission est de restaurer la confiance entre les acteurs du secteur en utilisant
@@ -77,7 +77,7 @@ const About = () => {
                   <div className="bg-primary/10 p-2 rounded-lg">
                     <Globe className="h-5 w-5 text-primary" />
                   </div>
-                  <span className="font-semibold text-sm">Vision Locale, <br/>Standards Globaux</span>
+                  <span className="font-semibold text-sm">Vision Innovante, <br/>Standards Globaux</span>
                 </div>
                 <div className="flex items-center gap-3 p-4 bg-background rounded-2xl border border-border/50">
                   <div className="bg-primary/10 p-2 rounded-lg">
@@ -108,7 +108,7 @@ const About = () => {
                 </div>
                 <h3 className="text-xl font-bold font-heading">Innovation</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Nous utilisons les meilleures technologies pour digitaliser l'immobilier sénégalais et simplifier votre quotidien.
+                  Nous utilisons les meilleures technologies pour digitaliser l'immobilier et simplifier votre quotidien.
                 </p>
               </div>
               <div className="flex flex-col items-center text-center p-6 space-y-4">
@@ -180,7 +180,7 @@ const About = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg mb-2">Paiements Sécurisés (Prochainement)</h3>
-                  <p className="text-muted-foreground">Nous travaillons à l'intégration des solutions locales (Wave, Orange Money) pour automatiser vos transactions en toute sécurité.</p>
+                  <p className="text-muted-foreground">Nous travaillons à l'intégration des solutions de paiement pour automatiser vos transactions en toute sécurité.</p>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -376,7 +376,7 @@ const About = () => {
               <div className="space-y-2">
                 <h3 className="font-bold text-lg">Puis-je payer mon loyer via l'application ?</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  Cette fonctionnalité est actuellement en cours de développement. Bientôt, vous pourrez régler vos loyers via Wave ou Orange Money directement depuis votre tableau de bord et recevoir vos quittances numériques.
+                  Cette fonctionnalité est actuellement en cours de développement. Bientôt, vous pourrez régler vos loyers via des solutions de paiement mobile directement depuis votre tableau de bord et recevoir vos quittances numériques.
                 </p>
               </div>
               <div className="space-y-2">

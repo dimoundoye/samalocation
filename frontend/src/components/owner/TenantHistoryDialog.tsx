@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Calendar, Send, Share2 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import { Receipt, Tenant } from "@/types";
 import { downloadReceipt } from "@/lib/api";
 import { format } from "date-fns";
@@ -42,15 +43,6 @@ export const TenantHistoryDialog = ({
         )
         .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime());
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("fr-FR", {
-            style: "currency",
-            currency: "XOF",
-            maximumFractionDigits: 0,
-        })
-            .format(amount)
-            .replace("XOF", "F CFA");
-    };
 
     const getMonthName = (month: number) => {
         const date = new Date(2000, month - 1, 1);
