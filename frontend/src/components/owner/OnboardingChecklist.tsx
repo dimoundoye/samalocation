@@ -24,10 +24,10 @@ export const OnboardingChecklist = ({ stats, ownerProfile, onAction, onAddProper
         {
             id: "profile",
             title: canBranding ? "Compléter votre profil d'agence" : "Compléter votre profil",
-            description: canBranding 
+            description: canBranding
                 ? "Ajoutez le nom de votre agence et votre logo pour personnaliser vos reçus."
                 : "Ajoutez le nom de votre structure pour personnaliser vos documents.",
-            completed: canBranding 
+            completed: canBranding
                 ? !!(ownerProfile?.company_name && (ownerProfile?.logo_url || ownerProfile?.receipt_logo_url))
                 : !!ownerProfile?.company_name,
             action: () => onAction("settings"),
@@ -46,16 +46,16 @@ export const OnboardingChecklist = ({ stats, ownerProfile, onAction, onAddProper
             title: "Enregistrer un locataire",
             description: "Attribuez un locataire à une unité pour générer vos premiers contrats.",
             completed: stats.activeTenants > 0,
-            action: () => onAction("properties"),
+            action: () => onAction("tenants"),
             icon: Users,
         },
         {
             id: "signature",
             title: (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center ">
                     Configurer votre signature
                     {!hasFeature('signature') && (
-                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200 text-[9px] h-4 px-1 leading-none uppercase">
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200 text-[7px] h-4 px-1 leading-none uppercase">
                             Premium
                         </Badge>
                     )}
@@ -105,8 +105,8 @@ export const OnboardingChecklist = ({ stats, ownerProfile, onAction, onAddProper
                         <div
                             key={step.id}
                             className={`relative group p-4 rounded-xl border transition-all duration-300 ${step.completed
-                                    ? "bg-emerald-50/50 border-emerald-100"
-                                    : "bg-white border-slate-100 hover:border-primary/30 hover:shadow-md cursor-pointer"
+                                ? "bg-emerald-50/50 border-emerald-100"
+                                : "bg-white border-slate-100 hover:border-primary/30 hover:shadow-md cursor-pointer"
                                 }`}
                             onClick={() => !step.completed && step.action()}
                         >
@@ -133,7 +133,7 @@ export const OnboardingChecklist = ({ stats, ownerProfile, onAction, onAddProper
 
                             {step.completed && (
                                 <div className="absolute top-2 right-2">
-                                    <div className="bg-emerald-500/10 text-emerald-600 p-1 rounded-full">
+                                    <div className="bg-emerald-100/10 text-emerald-600 p-1 rounded-full">
                                         <CheckCircle2 className="h-3 w-3" />
                                     </div>
                                 </div>

@@ -1180,7 +1180,7 @@ const DashboardProprietaire = () => {
                         <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-xl sm:text-3xl font-bold truncate">
+                        <div className="text-[15px] xs:text-lg sm:text-2xl md:text-3xl font-bold tracking-tight break-words">
                           {formatCurrency(totalYearlyRevenue, ownerProfile?.currency || 'XOF')}
                         </div>
                         <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 whitespace-nowrap">
@@ -1662,16 +1662,16 @@ const DashboardProprietaire = () => {
                   <CardContent>
                     {(() => {
                       const filteredTenants = tenants.filter(
-                        (t) =>
-                          t.full_name
-                            .toLowerCase()
-                            .includes(tenantSearch.toLowerCase()) ||
-                          t.email
-                            .toLowerCase()
-                            .includes(tenantSearch.toLowerCase()) ||
-                          (t.property_name || "")
-                            .toLowerCase()
-                            .includes(tenantSearch.toLowerCase())
+                        (t) => {
+                          const search = tenantSearch.toLowerCase();
+                          return (
+                            (t.full_name ?? "").toLowerCase().includes(search) ||
+                            (t.email ?? "").toLowerCase().includes(search) ||
+                            (t.phone ?? "").toLowerCase().includes(search) ||
+                            (t.property_name ?? "").toLowerCase().includes(search) ||
+                            (t.unit_number ?? "").toLowerCase().includes(search)
+                          );
+                        }
                       );
 
                       if (filteredTenants.length === 0) {

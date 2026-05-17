@@ -150,7 +150,7 @@ export const TenantDocumentationTab = () => {
         </div>
 
         <div className="lg:col-span-3 space-y-8">
-          <Accordion type="single" collapsible className="w-full space-y-4 border-none" defaultValue="search-apply">
+          <Accordion type="single" collapsible className="w-full space-y-4 border-none">
             {sections.map((section) => (
               <AccordionItem key={section.id} value={section.id} id={section.id} className="border rounded-xl bg-card shadow-sm px-2">
                 <AccordionTrigger className="hover:no-underline py-4 px-4">

@@ -14,14 +14,14 @@ interface Message {
 const Chatbot = () => {
     const { user } = useAuth();
     const isMessagingTab = typeof window !== 'undefined' && (
-        window.location.pathname.includes('/messages') || 
+        window.location.pathname.includes('/messages') ||
         window.location.hash.includes('/messages')
     );
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<Message[]>([
-        { role: "model", text: "Bonjour ! 👋 \n\nJe suis l'assistant Samalocation. Comment puis-je vous aider aujourd'hui ? \n\nQue vous cherchiez un logement ou que vous souhaitiez gérer vos biens, je suis là pour vous accompagner ! 🇸🇳" }
+        { role: "model", text: "Bonjour ! 👋 \n\nJe suis l'assistant Samalocation. Comment puis-je vous aider aujourd'hui ? \n\nQue vous cherchiez un logement ou que vous souhaitiez gérer vos biens, je suis là pour vous accompagner !" }
     ]);
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);

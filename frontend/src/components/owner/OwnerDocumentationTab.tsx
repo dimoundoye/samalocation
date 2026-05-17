@@ -114,7 +114,7 @@ export const OwnerDocumentationTab = () => {
       purpose: "La quittance est la preuve légale du paiement. Sur SamaLocation, elle est générée en 2 secondes, éliminant les carnets de quittances papier.",
       steps: [
         "Allez sur la fiche du locataire.",
-        "Cliquez sur 'Générer Quittance'.",
+        "Cliquez sur 'Reçu'.",
         "Vérifiez le montant et la période.",
         "Validez. Le locataire reçoit une notification et le PDF est archivé."
       ]
@@ -125,7 +125,7 @@ export const OwnerDocumentationTab = () => {
       icon: <Briefcase className="h-5 w-5 text-slate-500" />,
       purpose: "Déléguez la gestion quotidienne (quittances, maintenance) à un gérant ou une secrétaire, tout en gardant un œil sur les finances.",
       steps: [
-        "Allez dans 'Abonnement' > 'Équipe' (selon votre plan).",
+        "Allez dans 'Équipe' (selon votre plan).",
         "Ajoutez l'email de votre collaborateur.",
         "Définissez ses droits (lecture seule, gestion quittances, etc.)."
       ]
@@ -173,17 +173,17 @@ export const OwnerDocumentationTab = () => {
           <p className="text-muted-foreground mt-1">Apprenez à maîtriser SamaLocation pour simplifier votre gestion.</p>
         </div>
         <div className="flex bg-muted p-1 rounded-lg">
-          <Button 
-            variant={device === "desktop" ? "secondary" : "ghost"} 
-            size="sm" 
+          <Button
+            variant={device === "desktop" ? "secondary" : "ghost"}
+            size="sm"
             onClick={() => setDevice("desktop")}
             className="gap-2"
           >
             <Monitor className="h-4 w-4" /> Ordinateur
           </Button>
-          <Button 
-            variant={device === "mobile" ? "secondary" : "ghost"} 
-            size="sm" 
+          <Button
+            variant={device === "mobile" ? "secondary" : "ghost"}
+            size="sm"
             onClick={() => setDevice("mobile")}
             className="gap-2"
           >
@@ -225,7 +225,7 @@ export const OwnerDocumentationTab = () => {
         </div>
 
         <div className="lg:col-span-3 space-y-8">
-          <Accordion type="single" collapsible className="w-full space-y-4 border-none" defaultValue="add-property">
+          <Accordion type="single" collapsible className="w-full space-y-4 border-none">
             {sections.map((section) => (
               <AccordionItem key={section.id} value={section.id} id={section.id} className="border rounded-xl bg-card shadow-sm px-2">
                 <AccordionTrigger className="hover:no-underline py-4 px-4">
