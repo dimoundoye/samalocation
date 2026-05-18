@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
@@ -142,6 +143,7 @@ const DashboardProprietaire = () => {
     return localStorage.getItem("sidebarCollapsed") === "true";
   });
   const [tenantSearch, setTenantSearch] = useState("");
+  const [tenantStatusFilter, setTenantStatusFilter] = useState<"active" | "inactive">("active");
   const [createContractOpen, setCreateContractOpen] = useState(false);
   const [selectedTenantForContract, setSelectedTenantForContract] = useState<Tenant | null>(null);
 
@@ -1655,32 +1657,68 @@ const DashboardProprietaire = () => {
                   </div>
                 </div>
 
-                <Card className="shadow-soft">
-                  <CardHeader>
-                    <CardTitle>{t('owner.tenants_list')}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                 <Card className="shadow-soft overflow-hidden border border-border/40">
+                  <div className="border-b border-border/40 bg-card px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <CardTitle className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('owner.tenants_list')}</CardTitle>
+                    <div className="flex bg-muted p-1 rounded-xl w-full sm:w-[260px] shrink-0">
+                      <Button
+                        variant={tenantStatusFilter === "active" ? "default" : "ghost"}
+                        size="sm"
+                        className={`flex-1 rounded-lg font-bold text-xs h-8 transition-all ${
+                          tenantStatusFilter === "active"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                        }`}
+                        onClick={() => setTenantStatusFilter("active")}
+                      >
+                        Actifs ({tenants.filter(t => t.status === 'active').length})
+                      </Button>
+                      <Button
+                        variant={tenantStatusFilter === "inactive" ? "default" : "ghost"}
+                        size="sm"
+                        className={`flex-1 rounded-lg font-bold text-xs h-8 transition-all ${
+                          tenantStatusFilter === "inactive"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                        }`}
+                        onClick={() => setTenantStatusFilter("inactive")}
+                      >
+                        Inactifs ({tenants.filter(t => t.status !== 'active').length})
+                      </Button>
+                    </div>
+                  </div>
+                  <CardContent className="p-6">
                     {(() => {
                       const filteredTenants = tenants.filter(
                         (t) => {
                           const search = tenantSearch.toLowerCase();
-                          return (
+                          const matchesSearch = (
                             (t.full_name ?? "").toLowerCase().includes(search) ||
                             (t.email ?? "").toLowerCase().includes(search) ||
                             (t.phone ?? "").toLowerCase().includes(search) ||
                             (t.property_name ?? "").toLowerCase().includes(search) ||
                             (t.unit_number ?? "").toLowerCase().includes(search)
                           );
+                          
+                          const matchesStatus = tenantStatusFilter === "active"
+                            ? t.status === "active"
+                            : t.status !== "active";
+
+                          return matchesSearch && matchesStatus;
                         }
                       );
 
                       if (filteredTenants.length === 0) {
                         return (
-                          <p className="text-center text-muted-foreground py-8">
-                            {tenantSearch
-                              ? t('owner.no_tenant_found')
-                              : t('owner.no_tenants')}
-                          </p>
+                          <div className="text-center py-12">
+                            <p className="text-muted-foreground text-sm">
+                              {tenantSearch
+                                ? t('owner.no_tenant_found')
+                                : tenantStatusFilter === "active"
+                                  ? "Aucun locataire actif pour le moment."
+                                  : "Aucun locataire inactif enregistré."}
+                            </p>
+                          </div>
                         );
                       }
 
@@ -1732,65 +1770,82 @@ const DashboardProprietaire = () => {
                                   </div>
                                 </div>
 
-                                <div className="flex flex-wrap gap-2 pt-4 border-t border-dashed">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 h-10 text-xs font-bold bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                    onClick={() => {
-                                      setSelectedChat(tenant);
-                                      setActiveTab("messages");
-                                    }}
-                                  >
-                                    <MessageSquare className="h-4 w-4 mr-1.5" />
-                                    Chat
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 h-10 text-xs font-bold bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                    onClick={() => {
-                                      setSelectedPropertyForReceipt(tenant);
-                                      setCreateReceiptOpen(true);
-                                    }}
-                                  >
-                                    <ReceiptIcon className="h-4 w-4 mr-1.5" />
-                                    {t('common.receipt')}
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 h-10 text-xs font-bold bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                    onClick={() => {
-                                      setSelectedTenantForContract(tenant);
-                                      setCreateContractOpen(true);
-                                    }}
-                                  >
-                                    <FileSignature className="h-4 w-4 mr-1.5" />
-                                    Bail
-                                  </Button>
-                                  <div className="flex gap-2 w-full mt-1">
+                                <div className="flex flex-wrap gap-2 pt-4 border-t border-dashed w-full">
+                                  {tenant.status === "active" ? (
+                                    <>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 h-10 text-xs font-bold bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                        onClick={() => {
+                                          setSelectedChat(tenant);
+                                          setActiveTab("messages");
+                                        }}
+                                      >
+                                        <MessageSquare className="h-4 w-4 mr-1.5" />
+                                        Chat
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 h-10 text-xs font-bold bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                        onClick={() => {
+                                          setSelectedPropertyForReceipt(tenant);
+                                          setCreateReceiptOpen(true);
+                                        }}
+                                      >
+                                        <ReceiptIcon className="h-4 w-4 mr-1.5" />
+                                        {t('common.receipt')}
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 h-10 text-xs font-bold bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                        onClick={() => {
+                                          setSelectedTenantForContract(tenant);
+                                          setCreateContractOpen(true);
+                                        }}
+                                      >
+                                        <FileSignature className="h-4 w-4 mr-1.5" />
+                                        Bail
+                                      </Button>
+                                      <div className="flex gap-2 w-full mt-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="flex-1 h-10 text-xs font-bold bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                          onClick={() => {
+                                            setSelectedTenantForHistory(tenant);
+                                            setHistoryDialogOpen(true);
+                                          }}
+                                        >
+                                          <History className="h-4 w-4 mr-1.5" />
+                                          Historique
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10 border"
+                                          onClick={() => handleDeleteTenant(tenant.id)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </>
+                                  ) : (
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      className="flex-1 h-10 text-xs font-bold bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                      className="w-full h-10 text-xs font-bold bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
                                       onClick={() => {
                                         setSelectedTenantForHistory(tenant);
                                         setHistoryDialogOpen(true);
                                       }}
                                     >
                                       <History className="h-4 w-4 mr-1.5" />
-                                      Historique
+                                      Voir l'historique
                                     </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10 border"
-                                      onClick={() => handleDeleteTenant(tenant.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
+                                  )}
                                 </div>
                               </Card>
                             ))}
@@ -1842,63 +1897,80 @@ const DashboardProprietaire = () => {
                                     </TableCell>
                                     <TableCell>
                                       <div className="flex gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-9 w-9 p-0 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700 shadow-sm transition-all hover:scale-105"
-                                          onClick={() => {
-                                            setSelectedChat(tenant);
-                                            setActiveTab("messages");
-                                          }}
-                                          title="Chat"
-                                        >
-                                          <MessageSquare className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-9 gap-1.5 bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 shadow-sm transition-all hover:scale-105"
-                                          onClick={() => {
-                                            setSelectedPropertyForReceipt(tenant);
-                                            setCreateReceiptOpen(true);
-                                          }}
-                                        >
-                                          <ReceiptIcon className="h-4 w-4" />
-                                          <span className="hidden lg:inline font-bold">{t('common.receipt')}</span>
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-9 w-9 p-0 bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-700 shadow-sm transition-all hover:scale-105"
-                                          onClick={() => {
-                                            setSelectedTenantForHistory(tenant);
-                                            setHistoryDialogOpen(true);
-                                          }}
-                                          title="Historique"
-                                        >
-                                          <History className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-9 gap-1.5 bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700 shadow-sm transition-all hover:scale-105"
-                                          onClick={() => {
-                                            setSelectedTenantForContract(tenant);
-                                            setCreateContractOpen(true);
-                                          }}
-                                          title="Contrat de bail"
-                                        >
-                                          <FileSignature className="h-4 w-4" />
-                                          <span className="hidden lg:inline font-bold">Bail</span>
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                          onClick={() => handleDeleteTenant(tenant.id)}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        {tenant.status === "active" ? (
+                                          <>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-9 w-9 p-0 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700 shadow-sm transition-all hover:scale-105"
+                                              onClick={() => {
+                                                setSelectedChat(tenant);
+                                                setActiveTab("messages");
+                                              }}
+                                              title="Chat"
+                                            >
+                                              <MessageSquare className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-9 gap-1.5 bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 shadow-sm transition-all hover:scale-105"
+                                              onClick={() => {
+                                                setSelectedPropertyForReceipt(tenant);
+                                                setCreateReceiptOpen(true);
+                                              }}
+                                            >
+                                              <ReceiptIcon className="h-4 w-4" />
+                                              <span className="hidden lg:inline font-bold">{t('common.receipt')}</span>
+                                            </Button>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-9 w-9 p-0 bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-700 shadow-sm transition-all hover:scale-105"
+                                              onClick={() => {
+                                                setSelectedTenantForHistory(tenant);
+                                                setHistoryDialogOpen(true);
+                                              }}
+                                              title="Historique"
+                                            >
+                                              <History className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-9 gap-1.5 bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 hover:text-purple-700 shadow-sm transition-all hover:scale-105"
+                                              onClick={() => {
+                                                setSelectedTenantForContract(tenant);
+                                                setCreateContractOpen(true);
+                                              }}
+                                              title="Contrat de bail"
+                                            >
+                                              <FileSignature className="h-4 w-4" />
+                                              <span className="hidden lg:inline font-bold">Bail</span>
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                              onClick={() => handleDeleteTenant(tenant.id)}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </>
+                                        ) : (
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 gap-1.5 bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-700 shadow-sm transition-all hover:scale-105 font-bold text-xs"
+                                            onClick={() => {
+                                              setSelectedTenantForHistory(tenant);
+                                              setHistoryDialogOpen(true);
+                                            }}
+                                          >
+                                            <History className="h-4 w-4" />
+                                            Historique
+                                          </Button>
+                                        )}
                                       </div>
                                     </TableCell>
                                   </TableRow>

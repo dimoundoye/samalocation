@@ -348,8 +348,8 @@ const resources = {
                 "receipt_n": "Reçu N°",
                 "download_pdf": "Télécharger PDF",
                 "no_receipts": "Aucun reçu disponible",
-                "delete_confirm": "Êtes-vous sûr de vouloir supprimer ce message ?",
-                "delete_success": "Le message a été supprimé avec succès."
+                "delete_confirm": "Êtes-vous sûr de vouloir supprimer ce locataire ?",
+                "delete_success": "Le locataire a été supprimé avec succès."
             },
             "owner": {
                 "incomplete_config": "Configuration incomplète",
@@ -415,7 +415,7 @@ const resources = {
                 "verification_desc": "Obtenez le badge de confiance pour rassurer vos locataires et valoriser vos annonces.",
                 "verification_docs_desc": "Pour être certifié, vous devez fournir les 3 documents suivants :",
                 "ownership_proof": "Preuve de propriété",
-                "proof_desc": "Titre Foncier ou facture (Eau/Élec) à votre nom.",
+                "proof_desc": "Facture (Eau/Élec) à votre nom.",
                 "liveness_check": "Liveness Check",
                 "selfie_desc": "Un selfie de vous tenant votre pièce d'identité.",
                 "id_card": "Pièce d'identité",
