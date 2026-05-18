@@ -676,8 +676,6 @@ const DashboardLocataire = () => {
             {/* Logements Tab */}
             {activeTab === "logements" && (
               <TenantLeasesTab 
-                leases={leases} 
-                onSelectLease={setSelectedLease} 
                 currency={ownerProfile?.currency || 'XOF'}
               />
             )}
@@ -970,16 +968,23 @@ const DashboardLocataire = () => {
                 <h2 className="text-2xl font-bold">{t('dashboard.sidebar.contracts')}</h2>
 
                 <Tabs defaultValue="leases" className="w-full">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="leases">Contract</TabsTrigger>
-                    <TabsTrigger value="receipts">{t('dashboard.sidebar.documents')}</TabsTrigger>
+                  <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[260px] shrink-0 mb-6 border border-border/40">
+                    <TabsTrigger 
+                      value="leases"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+                    >
+                      Contract
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="receipts"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+                    >
+                      {t('dashboard.sidebar.documents')}
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="leases" className="space-y-6">
                     <TenantContractsTab 
-                      receipts={receipts} 
-                      leases={leases} 
-                      onDownloadReceipt={handleDownloadReceipt}
                       currency={ownerProfile?.currency || 'XOF'}
                     />
                   </TabsContent>
@@ -1052,9 +1057,19 @@ const DashboardLocataire = () => {
                 <h2 className="text-2xl font-bold">{t('dashboard.sidebar.settings')}</h2>
 
                 <Tabs defaultValue="profile" className="w-full">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="profile">{t('dashboard.common.profile')}</TabsTrigger>
-                    <TabsTrigger value="account">{t('dashboard.common.account')}</TabsTrigger>
+                  <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[260px] shrink-0 mb-6 border border-border/40">
+                    <TabsTrigger 
+                      value="profile"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+                    >
+                      {t('dashboard.common.profile')}
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="account"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+                    >
+                      {t('dashboard.common.account')}
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="profile" className="space-y-6">

@@ -206,9 +206,19 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList>
-          <TabsTrigger value="profile">{t('settings.profile_tab')}</TabsTrigger>
-          <TabsTrigger value="account">{t('settings.account_tab')}</TabsTrigger>
+        <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[260px] shrink-0 mb-6 border border-border/40">
+          <TabsTrigger 
+            value="profile"
+            className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+          >
+            {t('settings.profile_tab')}
+          </TabsTrigger>
+          <TabsTrigger 
+            value="account"
+            className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+          >
+            {t('settings.account_tab')}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
