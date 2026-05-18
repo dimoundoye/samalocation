@@ -56,7 +56,7 @@ export const TenantDocumentationTab = () => {
       purpose: "Une fuite d'eau ? Une panne d'électricité ? Informez votre propriétaire officiellement et suivez l'avancée des réparations.",
       steps: [
         "Allez dans l'onglet 'Maintenance'.",
-        "Cliquez sur 'Nouvelle signalement'.",
+        "Cliquez sur 'Nouveau signalement'.",
         "Décrivez le problème et prenez une photo (indispensable pour aider le propriétaire).",
         "Suivez le statut de votre demande (En attente, En cours, Résolu)."
       ]

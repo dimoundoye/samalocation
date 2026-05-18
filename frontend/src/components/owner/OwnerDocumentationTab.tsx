@@ -33,8 +33,8 @@ export const OwnerDocumentationTab = () => {
       icon: <Home className="h-5 w-5 text-blue-500" />,
       purpose: "Cette fonctionnalité vous permet de numériser votre patrimoine immobilier. Une fois ajouté, votre bien devient une entité gérable : vous pouvez y affecter des locataires, suivre les paiements et, si vous le souhaitez, le publier pour attirer de nouveaux candidats.",
       steps: [
-        "Allez dans l'onglet 'Mes logements'.",
-        "Cliquez sur le bouton '+ Ajouter un logement'.",
+        "Allez dans l'onglet 'Mes biens'.",
+        "Cliquez sur le bouton '+ Ajouter un bien'.",
         "Remplissez les informations de base (Nom, Adresse, Type de bien).",
         "Ajoutez des photos de haute qualité (le système les optimisera automatiquement).",
         "Configurez les unités (ex: Appartement A1, Studio B2) avec leurs loyers respectifs."
@@ -47,6 +47,10 @@ export const OwnerDocumentationTab = () => {
       icon: <Users className="h-5 w-5 text-purple-500" />,
       purpose: "L'enregistrement lie un locataire à une unité spécifique. C'est l'étape indispensable pour générer des quittances automatiques et suivre l'historique des paiements.",
       subSections: [
+        {
+          title: "Dans l'onglet 'Locataires'.",
+          content: "Cliquez sur '+ Affecter un locataire' pour faire apparaitre le formulaire d'ajout."
+        },
         {
           title: "Avec compte SamaLocation",
           content: "Recherchez le locataire par son ID (ex: SL12345) ou son email. Cela lui permet de recevoir ses quittances directement dans son espace et de communiquer avec vous via la messagerie intégrée."
@@ -77,9 +81,10 @@ export const OwnerDocumentationTab = () => {
       icon: <FileText className="h-5 w-5 text-emerald-500" />,
       purpose: "Le contrat digitalisé sécurise votre location. Il définit les règles, le loyer et les charges, tout en étant consultable à tout moment par les deux parties.",
       steps: [
-        "Sélectionnez un locataire actif.",
-        "Allez dans l'onglet 'Documents' ou 'Contrats'.",
+        "Allez dans l'onglet 'Documents'.",
+        "Cliquez sur '+ Nouveau contrat'.",
         "Choisissez un modèle de contrat (Premium ou Standard).",
+        "Sélectionnez un locataire actif.",
         "Remplissez les dates et conditions spécifiques.",
         "Générez le PDF. Si vous avez configuré votre signature, il sera déjà signé !"
       ]
@@ -92,7 +97,6 @@ export const OwnerDocumentationTab = () => {
       steps: [
         "Consultez les demandes entrantes dans 'Maintenance'.",
         "Changez le statut en 'En cours' une fois le technicien dépêché.",
-        "Ajoutez des notes ou des photos de la réparation terminée.",
         "Marquez comme 'Résolu' pour archiver la demande."
       ]
     },
@@ -137,7 +141,7 @@ export const OwnerDocumentationTab = () => {
       purpose: "Le badge 'Vérifié' est un gage de confiance ultime. Il rassure les locataires sur le fait que vous êtes un propriétaire réel et sérieux.",
       steps: [
         "Allez dans vos Paramètres.",
-        "Téléchargez votre pièce d'identité et un justificatif de propriété (facture eau/élec ou titre foncier).",
+        "Téléchargez votre pièce d'identité et un justificatif de propriété (facture eau/électricité).",
         "Prenez un selfie de vérification.",
         "Notre équipe valide votre dossier sous 24/48h."
       ]
