@@ -898,7 +898,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                 >
                   {uploading
                     ? "Création en cours..."
-                    : `Créer le ${propertyType === "maison" ? "bien" : propertyType === "villa" ? "bien" : propertyType}`}
+                    : `Créer ${propertyType === "maison" ? "bien" : propertyType === "villa" ? "bien" : propertyType}`}
                 </Button>
               </div>
             </>
