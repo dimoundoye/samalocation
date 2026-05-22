@@ -405,6 +405,7 @@ const DashboardLocataire = () => {
 
       <nav className="space-y-2">
         {[
+          { id: "back-to-site", label: "Retour au site", icon: Home },
           { id: "dashboard", label: t('dashboard.sidebar.home'), icon: TrendingUp },
           { id: "dossier", label: "Mon Dossier", icon: Shield },
           { id: "logements", label: "Mes Logements", icon: Building2 },
@@ -426,7 +427,9 @@ const DashboardLocataire = () => {
             <button
               key={item.id}
               onClick={() => {
-                if (item.id === "search") {
+                if (item.id === "back-to-site") {
+                  navigate("/");
+                } else if (item.id === "search") {
                   navigate("/search");
                 } else {
                   navigate(`/tenant-dashboard/${item.id}`);

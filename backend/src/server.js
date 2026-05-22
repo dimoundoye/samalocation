@@ -120,6 +120,7 @@ const response = require('./utils/response');
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 3000, // Très large pour le confort des utilisateurs
+    validate: false,
     handler: (req, res) => {
         return response.error(res, "Trop de requêtes. Veuillez patienter 15 minutes.", 429);
     }
@@ -128,6 +129,7 @@ const limiter = rateLimit({
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100, // Sécurité contre le brute-force mais confortable
+    validate: false,
     handler: (req, res) => {
         return response.error(res, "Trop de tentatives. Veuillez réessayer dans 15 minutes.", 429);
     }

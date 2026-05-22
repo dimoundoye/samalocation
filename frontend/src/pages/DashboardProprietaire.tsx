@@ -819,6 +819,7 @@ const DashboardProprietaire = () => {
 
         <nav className="space-y-2">
           {[
+            { id: "back-to-site", label: "Retour au site", icon: Home },
             { id: "dashboard", label: t('dashboard.sidebar.home'), icon: TrendingUp },
             { id: "properties", label: t('dashboard.sidebar.properties'), icon: Building2 },
             { id: "tenants", label: t('dashboard.sidebar.tenants'), icon: Users },
@@ -856,7 +857,11 @@ const DashboardProprietaire = () => {
               <button
                 key={item.id}
                 onClick={() => {
-                  navigate(`/owner-dashboard/${item.id}`);
+                  if (item.id === "back-to-site") {
+                    navigate("/");
+                  } else {
+                    navigate(`/owner-dashboard/${item.id}`);
+                  }
                   if (isMobile) setMobileMenuOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 relative group/nav ${activeTab === item.id
