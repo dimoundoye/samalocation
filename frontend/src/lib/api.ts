@@ -10,6 +10,7 @@ import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOve
 import { getContactMessages, updateContactMessageStatus } from "../api/contact";
 import { createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract } from "../api/contracts";
 import { getMySubscription, notifyPayment } from "../api/subscription";
+import { getPropertyGroups, syncPropertyGroups } from "../api/propertyGroups";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -26,7 +27,8 @@ export {
     getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting,
     getContactMessages, updateContactMessageStatus,
     createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract,
-    getMySubscription, notifyPayment
+    getMySubscription, notifyPayment,
+    getPropertyGroups, syncPropertyGroups
 };
 
 

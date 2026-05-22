@@ -10,7 +10,9 @@ const subscriptionController = {
      */
     async getMySubscription(req, res, next) {
         try {
-            const userId = req.user.id;
+            // Si l'agent travaille dans le contexte de l'agence (req.ownerId = ID de l'agence),
+            // on récupère l'abonnement de l'agence pour qu'il hérite des fonctionnalités du plan.
+            const userId = req.ownerId || req.user.id;
             const activeSub = await Subscription.findActiveByUserId(userId);
             const latestSub = await Subscription.findLatestByUserId(userId);
             

@@ -138,12 +138,7 @@ const TenantLeasesTab = ({ currency = 'XOF' }: { currency?: string }) => {
                     {filteredLeases.map((lease) => (
                         <Card
                             key={lease.id}
-                            className={`group cursor-pointer hover:shadow-lg transition-all duration-300 overflow-hidden border-t-4 ${lease.status === "active"
-                                ? "border-t-green-500"
-                                : lease.status === "pending"
-                                    ? "border-t-amber-500"
-                                    : "border-t-muted-foreground/30 opacity-75"
-                                }`}
+                            className={`group cursor-pointer shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden ${lease.status !== "active" && lease.status !== "pending" ? "opacity-75" : ""}`}
                             onClick={() => setSelectedLease(lease)}
                         >
                             <CardHeader className="pb-2">

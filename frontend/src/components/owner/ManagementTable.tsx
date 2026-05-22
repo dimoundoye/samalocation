@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X, ChevronDown, ChevronRight, Folder, FolderOpen, ArrowLeft, Home, Info, HelpCircle, Lightbulb, Lock, Send, Share2 } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Download, Building2, Plus, Trash2, Users, Save, X, ChevronDown, ChevronRight, Folder, FolderOpen, ArrowLeft, Home, Info, HelpCircle, Lightbulb, Lock, Send, Share2, Check, Edit } from "lucide-react";
 import {
     Popover,
     PopoverContent,
@@ -41,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Tenant, Receipt, Property, PropertyUnit } from "@/types";
+import { syncPropertyGroups } from "@/lib/api";
 
 interface ManagementTableProps {
     tenants: Tenant[];
@@ -56,6 +57,7 @@ interface ManagementTableProps {
     groupedData: any[];
     years: number[];
     currency?: string;
+    userGroupsKey?: string;
 }
 
 export const ManagementTable = ({
@@ -71,18 +73,22 @@ export const ManagementTable = ({
     onGroupsChange,
     groupedData,
     years,
-    currency = 'XOF'
+    currency = 'XOF',
+    userGroupsKey: propUserGroupsKey
 }: ManagementTableProps) => {
     const { toast } = useToast();
     const { user } = useAuth();
     const { hasFeature, subscription } = useSubscription();
     const canExport = hasFeature('excel');
-    const userGroupsKey = useMemo(() => user?.id ? `owner_property_groups_v1_${user.id}` : "owner_property_groups_v1_guest", [user?.id]);
+    const defaultGroupsKey = useMemo(() => user?.id ? `owner_property_groups_v1_${user.id}` : "owner_property_groups_v1_guest", [user?.id]);
+    const userGroupsKey = propUserGroupsKey || defaultGroupsKey;
 
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
     const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
     const [newGroupParentId, setNewGroupParentId] = useState<string>("root");
+    const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+    const [editingGroupName, setEditingGroupName] = useState("");
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmConfig, setConfirmConfig] = useState({
         title: "",
@@ -124,9 +130,19 @@ export const ManagementTable = ({
         });
     });
 
-    const saveGroups = (newGroups: any) => {
+    const saveGroups = async (newGroups: any) => {
         onGroupsChange(newGroups);
         localStorage.setItem(userGroupsKey, JSON.stringify(newGroups));
+        try {
+            await syncPropertyGroups(newGroups);
+        } catch (error) {
+            console.error("Failed to synchronize groups with backend:", error);
+            toast({
+                title: "Erreur de synchronisation",
+                description: "Impossible de synchroniser vos dossiers avec le serveur. Les modifications sont enregistrées localement.",
+                variant: "destructive",
+            });
+        }
     };
 
     const handleCreateGroup = () => {
@@ -149,6 +165,28 @@ export const ManagementTable = ({
             .filter(g => g.id !== groupId)
             .map(g => g.parentId === groupId ? { ...g, parentId: groupToDelete?.parentId } : g);
         saveGroups(newGroups);
+    };
+
+    const handleRenameGroup = (groupId: string, newName: string) => {
+        if (!newName.trim()) return;
+        saveGroups(customGroups.map(g => g.id === groupId ? { ...g, name: newName.trim() } : g));
+    };
+
+    const isDescendant = (parentGroupId: string, childGroupId: string): boolean => {
+        let current = customGroups.find(g => g.id === childGroupId);
+        while (current) {
+            if (current.parentId === parentGroupId) return true;
+            current = current.parentId ? customGroups.find(g => g.id === current.parentId) : undefined;
+        }
+        return false;
+    };
+
+    const handleMoveGroup = (groupId: string, parentId: string) => {
+        saveGroups(customGroups.map(g => 
+            g.id === groupId 
+                ? { ...g, parentId: parentId === "root" ? undefined : parentId } 
+                : g
+        ));
     };
 
     const findNodeRecursive = (nodes: any[], targetId: string): any => {
@@ -418,34 +456,102 @@ export const ManagementTable = ({
                                             customGroups.map(group => (
                                                 <Card key={group.id} className="p-4 bg-muted/30">
                                                     <div className="flex items-center justify-between mb-4">
-                                                        <div>
-                                                            <h3 className="font-bold">{group.name}</h3>
-                                                            {group.parentId && (
-                                                                <p className="text-[10px] text-muted-foreground">
-                                                                    Parent: {customGroups.find(g => g.id === group.parentId)?.name || 'Inconnu'}
-                                                                </p>
-                                                            )}
-                                                        </div>
+                                                        {editingGroupId === group.id ? (
+                                                            <div className="flex items-center gap-2 flex-1 mr-2">
+                                                                <Input
+                                                                    className="h-8 py-1 text-sm font-medium"
+                                                                    value={editingGroupName}
+                                                                    onChange={(e) => setEditingGroupName(e.target.value)}
+                                                                    onBlur={() => {
+                                                                        handleRenameGroup(group.id, editingGroupName);
+                                                                        setEditingGroupId(null);
+                                                                    }}
+                                                                    onKeyPress={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            handleRenameGroup(group.id, editingGroupName);
+                                                                            setEditingGroupId(null);
+                                                                        }
+                                                                    }}
+                                                                    autoFocus
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex-1 mr-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h3 className="font-bold">{group.name}</h3>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-6 w-6 text-muted-foreground hover:text-primary"
+                                                                        onClick={() => {
+                                                                            setEditingGroupId(group.id);
+                                                                            setEditingGroupName(group.name);
+                                                                        }}
+                                                                    >
+                                                                        <Edit className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5 mt-1.5">
+                                                                    <span className="text-[10px] text-muted-foreground font-medium">Déplacer dans :</span>
+                                                                    <Select
+                                                                        value={group.parentId || "root"}
+                                                                        onValueChange={(val) => handleMoveGroup(group.id, val)}
+                                                                    >
+                                                                        <SelectTrigger className="h-5 px-1.5 py-0 text-[10px] w-auto border border-input bg-background/50 hover:bg-background shadow-none">
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="root" className="text-xs">Aucun (Racine)</SelectItem>
+                                                                            {customGroups
+                                                                                .filter(g => g.id !== group.id && !isDescendant(group.id, g.id))
+                                                                                .map(g => (
+                                                                                    <SelectItem key={g.id} value={g.id} className="text-xs">
+                                                                                        {g.name}
+                                                                                    </SelectItem>
+                                                                                ))
+                                                                            }
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                         <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group.id)}>
                                                             <Trash2 className="h-4 w-4 text-destructive" />
                                                         </Button>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-2">
-                                                        {properties.map(property => (
-                                                            <div key={property.id} className="flex items-center space-x-2">
-                                                                <Checkbox
-                                                                    id={`${group.id}-${property.id}`}
-                                                                    checked={(group.propertyIds || []).includes(property.id)}
-                                                                    onCheckedChange={() => togglePropertyInGroup(group.id, property.id)}
-                                                                />
-                                                                <label
-                                                                    htmlFor={`${group.id}-${property.id}`}
-                                                                    className="text-sm font-medium leading-none cursor-pointer truncate"
-                                                                >
-                                                                    {property.name}
-                                                                </label>
-                                                            </div>
-                                                        ))}
+                                                        {(() => {
+                                                            const filteredProperties = properties.filter(property => {
+                                                                const isInCurrentGroup = (group.propertyIds || []).includes(property.id);
+                                                                const isInOtherGroup = customGroups.some(g => g.id !== group.id && (g.propertyIds || []).includes(property.id));
+                                                                return isInCurrentGroup || !isInOtherGroup;
+                                                            });
+
+                                                            if (filteredProperties.length === 0) {
+                                                                return (
+                                                                    <p className="text-xs text-muted-foreground italic col-span-2">
+                                                                        Aucun bien disponible à ajouter.
+                                                                    </p>
+                                                                );
+                                                            }
+
+                                                            return filteredProperties.map(property => (
+                                                                <div key={property.id} className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`${group.id}-${property.id}`}
+                                                                        checked={(group.propertyIds || []).includes(property.id)}
+                                                                        onCheckedChange={() => togglePropertyInGroup(group.id, property.id)}
+                                                                    />
+                                                                    <label
+                                                                        htmlFor={`${group.id}-${property.id}`}
+                                                                        className="text-sm font-medium leading-none cursor-pointer truncate"
+                                                                        title={property.name}
+                                                                    >
+                                                                        {property.name}
+                                                                    </label>
+                                                                </div>
+                                                            ));
+                                                        })()}
                                                     </div>
                                                 </Card>
                                             ))

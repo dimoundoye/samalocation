@@ -24,7 +24,8 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 - **Candidature Simplifiée :** Postulez aux annonces en un clic.
 - **Expérience Premium :** Chargement fluide avec des **Skeleton UI** pour une navigation sans scintillement.
 - **Espace Personnel :** Suivi des locations actives, téléchargement de quittances et gestion des demandes de maintenance.
--**Signature électronique :** Signature électronique des contrats de location.
+- **Signature électronique :** Signature électronique des contrats de location.
+- **Dossiers de candidature :** Création et gestion de dossiers de candidature pour les annonces.
 
 
 
@@ -38,11 +39,12 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 - **Suivi de Maintenance :** Système de tickets pour gérer les réparations et demandes d'entretien.
 - **Gestion des Contrats :** Génération automatique de contrats de location au format PDF.
 - **Gestion des États des lieux :** Génération automatique d'états des lieux au format PDF.
-- **Gestion des Reçus :** Génération automatique de reçus de loyer au format PDF.
 - **Multi-collaborateur :** Gestion de plusieurs collaborateurs pour les agences immobilières.
+- **Signature électronique :** Signature électronique des contrats et reçus de location.
+- **Statistiques & Rapports :** Visualisation des performances de vos annonces et de votre portefeuille immobilier.
+- **Dossiers partagés :** Partage sécurisé des dossiers de candidature avec les locataires.
 
 ### 🛡️ Sécurité & IA
-- **Anti-Bot :** Protection des formulaires via Cloudflare Turnstile.
 - **Sécurité Serveur :** Configuration durcie via Nginx (CSP, HSTS, X-Frame-Options, X-Content-Type-Options).
 - **Recherche Smart :** Analyse du langage naturel pour la recherche de biens via l'IA.
 - **Authentification :** Sécurisée par JWT (JSON Web Tokens) et hachage de mots de passe (bcrypt).

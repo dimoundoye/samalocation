@@ -19,7 +19,7 @@ import ContactsManagement from "@/components/admin/ContactsManagement";
 import AdminSettings from "@/components/admin/AdminSettings";
 import VerificationsManagement from "@/components/admin/VerificationsManagement";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { History } from "lucide-react";
+import { History, ExternalLink } from "lucide-react";
 import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getLiveAnalytics } from "@/lib/api";
 import { CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -463,13 +463,14 @@ const AdminDashboard = () => {
                         <TableHead>Statut</TableHead>
                         <TableHead>ID Transaction</TableHead>
                         <TableHead>Téléphone</TableHead>
+                        <TableHead>Reçu</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loadingTransactions ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-10">Chargement...</TableCell>
+                          <TableCell colSpan={9} className="text-center py-10">Chargement...</TableCell>
                         </TableRow>
                       ) : transactions.length > 0 ? (
                         transactions.map((t) => (
@@ -496,6 +497,21 @@ const AdminDashboard = () => {
                             </TableCell>
                             <TableCell className="text-xs font-mono opacity-60">{t.transaction_id || '-'}</TableCell>
                             <TableCell className="text-sm font-medium">{t.sender_phone || '-'}</TableCell>
+                            <TableCell>
+                              {t.receipt_url ? (
+                                <a
+                                  href={t.receipt_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80 hover:underline font-semibold text-xs transition-colors"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                  Voir reçu
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground opacity-50">-</span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-right">
                               {t.status === 'pending' && (
                                 <Button
@@ -511,7 +527,7 @@ const AdminDashboard = () => {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Aucune transaction trouvée.</TableCell>
+                          <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Aucune transaction trouvée.</TableCell>
                         </TableRow>
                       )}
                     </TableBody>

@@ -588,7 +588,7 @@ const DashboardLocataire = () => {
                       {leases.map((lease) => (
                         <Card
                           key={lease.id}
-                          className="group shadow-soft hover:shadow-lg transition-all duration-300 overflow-hidden border-t-4 border-t-primary relative h-full flex flex-col cursor-pointer"
+                          className="group shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden relative h-full flex flex-col cursor-pointer"
                           onClick={() => setSelectedLease(lease)}
                         >
                           <CardHeader className="pb-2">

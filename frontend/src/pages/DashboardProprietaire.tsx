@@ -34,7 +34,8 @@ import {
   getOwnerMaintenanceRequests,
   getOwnerProfile,
   getNotifications,
-  markAllNotificationsAsRead
+  markAllNotificationsAsRead,
+  getPropertyGroups
 } from "@/lib/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PenTool, ArrowRight } from "lucide-react";
@@ -158,8 +159,16 @@ const DashboardProprietaire = () => {
     localStorage.setItem("show_onboarding_guide", String(newValue));
   };
 
-  const userGroupsKey = useMemo(() => user?.id ? `owner_property_groups_v1_${user.id}` : "owner_property_groups_v1_guest", [user?.id]);
+  const activeOwnerId = useMemo(() => {
+    if (user?.parentId && activeContext !== "personal") {
+      return user.parentId;
+    }
+    return user?.id;
+  }, [user?.id, user?.parentId, activeContext]);
+
+  const userGroupsKey = useMemo(() => activeOwnerId ? `owner_property_groups_v1_${activeOwnerId}` : "owner_property_groups_v1_guest", [activeOwnerId]);
   const [customGroups, setCustomGroups] = useState<{ id: string; name: string; propertyIds: string[]; parentId?: string }[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const years = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -183,18 +192,55 @@ const DashboardProprietaire = () => {
 
   const [navigationPath, setNavigationPath] = useState<string[]>([]); // Array of group IDs
 
-  // Sync groups when user changes
+  // Sync groups when user or context changes
   useEffect(() => {
-    if (!user?.id) return;
-    const saved = localStorage.getItem(userGroupsKey);
-    if (saved) {
-      try {
-        setCustomGroups(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse custom groups", e);
+    let active = true;
+    const loadGroups = async () => {
+      if (!activeOwnerId) {
+        setLoadingGroups(false);
+        return;
       }
-    }
-  }, [userGroupsKey, user?.id]);
+      setLoadingGroups(true);
+      try {
+        const groups = await getPropertyGroups();
+        if (active) {
+          if (Array.isArray(groups)) {
+            setCustomGroups(groups);
+            localStorage.setItem(userGroupsKey, JSON.stringify(groups));
+          } else {
+            const saved = localStorage.getItem(userGroupsKey);
+            if (saved) {
+              setCustomGroups(JSON.parse(saved));
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch custom groups from backend, trying cache", e);
+        if (active) {
+          const saved = localStorage.getItem(userGroupsKey);
+          if (saved) {
+            try {
+              setCustomGroups(JSON.parse(saved));
+            } catch (err) {
+              setCustomGroups([]);
+            }
+          } else {
+            setCustomGroups([]);
+          }
+        }
+      } finally {
+        if (active) {
+          setLoadingGroups(false);
+        }
+      }
+    };
+
+    loadGroups();
+
+    return () => {
+      active = false;
+    };
+  }, [userGroupsKey, activeOwnerId]);
 
   const canSeeRevenue = !user?.parentId || activeContext === 'personal' || user?.permissions?.can_view_revenue;
 
@@ -2242,21 +2288,29 @@ const DashboardProprietaire = () => {
             {/* Gérance Tab */}
             {activeTab === "management" && (
               <div className="space-y-6">
-                <ManagementTable
-                  tenants={tenants}
-                  receipts={receipts}
-                  properties={properties}
-                  onDeleteTenant={handleDeleteTenant}
-                  selectedYear={selectedYear}
-                  onYearChange={setSelectedYear}
-                  navigationPath={navigationPath}
-                  onNavigationChange={setNavigationPath}
-                  customGroups={customGroups}
-                  onGroupsChange={setCustomGroups}
-                  groupedData={groupedData}
-                  years={years}
-                  currency={ownerProfile?.currency}
-                />
+                {loadingGroups ? (
+                  <div className="flex flex-col items-center justify-center min-h-[400px] bg-card rounded-xl border p-8 space-y-4">
+                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-muted-foreground text-sm">Chargement de vos dossiers de gérance...</p>
+                  </div>
+                ) : (
+                  <ManagementTable
+                    tenants={tenants}
+                    receipts={receipts}
+                    properties={properties}
+                    onDeleteTenant={handleDeleteTenant}
+                    selectedYear={selectedYear}
+                    onYearChange={setSelectedYear}
+                    navigationPath={navigationPath}
+                    onNavigationChange={setNavigationPath}
+                    customGroups={customGroups}
+                    onGroupsChange={setCustomGroups}
+                    groupedData={groupedData}
+                    years={years}
+                    currency={ownerProfile?.currency}
+                    userGroupsKey={userGroupsKey}
+                  />
+                )}
               </div>
             )}
 

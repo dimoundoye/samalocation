@@ -28,6 +28,7 @@ const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const contractRoutes = require('./routes/contractRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const favoriteRoutes = require('./routes/favoriteRoutes');
+const propertyGroupRoutes = require('./routes/propertyGroupRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const securityMiddleware = require('./middleware/security');
 const { trackVisit } = require('./middleware/analyticsMiddleware');
@@ -40,6 +41,7 @@ const Receipt = require('./models/receiptModel');
 const Owner = require('./models/ownerModel');
 const User = require('./models/userModel');
 const Subscription = require('./models/subscriptionModel');
+const PropertyGroup = require('./models/propertyGroupModel');
 
 const app = express();
 const server = require('http').createServer(app);
@@ -165,6 +167,7 @@ app.use('/api/contracts', contractRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/properties', propertiesRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/property-groups', propertyGroupRoutes);
 
 // ─── Keep-alive Cron Job (Every 14 minutes to prevent Supabase pausing) ───────
 cron.schedule('*/14 * * * *', async () => {
@@ -219,6 +222,7 @@ server.listen(PORT, async () => {
         await Owner.migrate();
         await User.migrate();
         await Subscription.migrate();
+        await PropertyGroup.migrate();
         console.log('  [DB] ✅ Migrations terminées.\n');
     } catch (err) {
         console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
