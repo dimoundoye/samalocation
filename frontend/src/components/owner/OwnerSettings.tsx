@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountSettings } from "@/components/shared/AccountSettings";
-import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown, Facebook, Instagram, Linkedin } from "lucide-react";
+import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown, Facebook, Instagram, Linkedin, Save, Loader2 } from "lucide-react";
 import { SignatureScanner } from "./SignatureScanner";
 import { uploadPhotos, getMySubscription } from "@/lib/api";
 import { useTranslation } from "react-i18next";
@@ -49,6 +49,12 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
     title: "",
     description: ""
   });
+  const initialProfileRef = useRef<string>("");
+
+  const hasChanges = useMemo(() => {
+    if (!initialProfileRef.current) return false;
+    return JSON.stringify(profile) !== initialProfileRef.current;
+  }, [profile]);
 
   useEffect(() => {
     loadProfile();
@@ -61,6 +67,23 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
 
       if (data) {
         setProfile({
+          fullName: data.full_name || "",
+          contactPhone: data.contact_phone || "",
+          phone: data.phone || "",
+          companyName: data.company_name || "",
+          contactEmail: data.contact_email || "",
+          address: data.address || "",
+          signatureUrl: data.signature_url || "",
+          logoUrl: data.logo_url || "",
+          receiptLogoUrl: data.receipt_logo_url || "",
+          idCardUrl: data.id_card_url || "",
+          ownershipProofUrl: data.ownership_proof_url || "",
+          livenessSelfieUrl: data.liveness_selfie_url || "",
+          verificationStatus: data.verification_status || "none",
+          receiptTemplate: data.receipt_template || "classic",
+          currency: data.currency || "XOF",
+        });
+        initialProfileRef.current = JSON.stringify({
           fullName: data.full_name || "",
           contactPhone: data.contact_phone || "",
           phone: data.phone || "",
@@ -117,6 +140,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
         throw new Error("Erreur lors de la mise à jour du profil");
       }
 
+      initialProfileRef.current = JSON.stringify(profile);
       toast({
         title: t('common.success'),
         description: t('common.save_success'),
@@ -144,10 +168,6 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
         setProfile({
           ...profile,
           [field]: urls[0],
-        });
-        toast({
-          title: t('common.upload_success'),
-          description: t('common.save_success'),
         });
       }
     } catch (error) {
@@ -181,10 +201,6 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
         setProfile({
           ...profile,
           receiptLogoUrl: urls[0],
-        });
-        toast({
-          title: t('common.upload_success'),
-          description: t('common.save_success'),
         });
       }
     } catch (error) {
@@ -508,10 +524,6 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                           const urls = await uploadPhotos([file]);
                           if (urls && urls.length > 0) {
                             setProfile({ ...profile, signatureUrl: urls[0] });
-                            toast({
-                              title: t('common.success'),
-                              description: t('common.save_success'),
-                            });
                           }
                         } catch (error) {
                           toast({
@@ -664,9 +676,41 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                 </div>
               </div>
 
-              <Button onClick={handleUpdateProfile} disabled={loading} className="w-full sm:w-auto">
-                {loading ? t('settings.saving') : t('settings.save_changes')}
-              </Button>
+              {/* Sticky floating save bar - visible when changes are detected */}
+              {hasChanges && (
+                <div className="fixed bottom-16 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t shadow-[0_-4px_20px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-4 duration-300">
+                  <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+                    <p className="text-sm text-muted-foreground hidden sm:block">
+                      ⚠️ Vous avez des modifications non enregistrées
+                    </p>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (initialProfileRef.current) {
+                            setProfile(JSON.parse(initialProfileRef.current));
+                          }
+                        }}
+                        disabled={loading}
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        onClick={handleUpdateProfile}
+                        disabled={loading}
+                        className="gap-2 gradient-primary text-white font-bold shadow-soft hover:shadow-medium transition-all px-6"
+                      >
+                        {loading ? (
+                          <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement...</>
+                        ) : (
+                          <><Save className="h-4 w-4" /> {t('settings.save_changes')}</>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

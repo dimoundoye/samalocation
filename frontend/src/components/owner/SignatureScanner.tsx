@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Camera, Upload, Check, X, RotateCw, Contrast, Image as ImageIcon } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
 interface SignatureScannerProps {
@@ -21,7 +20,6 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
     onOpenChange,
     onSave,
 }) => {
-    const { toast } = useToast();
     const { t } = useTranslation();
     const [image, setImage] = useState<HTMLImageElement | null>(null);
     const [threshold, setThreshold] = useState(200);
@@ -99,10 +97,6 @@ export const SignatureScanner: React.FC<SignatureScannerProps> = ({
                 if (blob) {
                     onSave(blob);
                     onOpenChange(false);
-                    toast({
-                        title: t('signature_scanner.processed_title'),
-                        description: t('signature_scanner.processed_desc'),
-                    });
                 }
             }, "image/png");
         }
