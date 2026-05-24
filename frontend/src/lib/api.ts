@@ -11,6 +11,7 @@ import { getContactMessages, updateContactMessageStatus } from "../api/contact";
 import { createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract } from "../api/contracts";
 import { getMySubscription, notifyPayment } from "../api/subscription";
 import { getPropertyGroups, syncPropertyGroups } from "../api/propertyGroups";
+import { baseClient } from "../api/baseClient";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -193,73 +194,25 @@ export const getAIChatResponse = async (message: string, history: any[] = []) =>
 // --- Maintenance Requests ---
 
 export const getTenantMaintenanceRequests = async () => {
-    const token = localStorage.getItem("auth_token");
-    try {
-        const response = await fetch(`${API_BASE_URL}/maintenance/tenant`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || "Failed to fetch maintenance requests");
-        return data.data;
-    } catch (error) {
-        console.error("GetTenantMaintenanceRequests error:", error);
-        throw error;
-    }
+    return baseClient("/maintenance/tenant");
 };
 
 export const getOwnerMaintenanceRequests = async () => {
-    const token = localStorage.getItem("auth_token");
-    try {
-        const response = await fetch(`${API_BASE_URL}/maintenance/owner`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || "Failed to fetch maintenance requests");
-        return data.data;
-    } catch (error) {
-        console.error("GetOwnerMaintenanceRequests error:", error);
-        throw error;
-    }
+    return baseClient("/maintenance/owner");
 };
 
 export const createMaintenanceRequest = async (requestData: any) => {
-    const token = localStorage.getItem("auth_token");
-    try {
-        const response = await fetch(`${API_BASE_URL}/maintenance`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(requestData),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || "Failed to create maintenance request");
-        return data.data;
-    } catch (error) {
-        console.error("CreateMaintenanceRequest error:", error);
-        throw error;
-    }
+    return baseClient("/maintenance", {
+        method: "POST",
+        body: JSON.stringify(requestData),
+    });
 };
 
 export const updateMaintenanceRequestStatus = async (id: string, status: string) => {
-    const token = localStorage.getItem("auth_token");
-    try {
-        const response = await fetch(`${API_BASE_URL}/maintenance/${id}/status`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ status }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || "Failed to update maintenance status");
-        return data.data;
-    } catch (error) {
-        console.error("UpdateMaintenanceRequestStatus error:", error);
-        throw error;
-    }
+    return baseClient(`/maintenance/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+    });
 };
 
 

@@ -95,6 +95,17 @@ export const AssignTenantDialog = ({
     }
   }, [open, properties, units]);
 
+  const occupiedPropertyIds = useMemo(() => {
+    if (!units || units.length === 0) return new Set<string>();
+    const occupied = new Set<string>();
+    for (const unit of units) {
+      if (unit.property_id && (unit.is_available === false || unit.is_available === 0 || unit.is_available === "0" || unit.is_available === "false")) {
+        occupied.add(unit.property_id);
+      }
+    }
+    return occupied;
+  }, [units]);
+
   const availableUnits = useMemo(() => {
     console.log('Computing availableUnits', {
       selectedPropertyId,
@@ -638,11 +649,18 @@ export const AssignTenantDialog = ({
                               <SelectContent className="rounded-xl">
                                 {properties
                                   .filter(p => !p.listing_type || p.listing_type === 'location')
-                                  .map((property) => (
-                                    <SelectItem key={property.id} value={property.id}>
-                                      {property.name}
-                                    </SelectItem>
-                                  ))}
+                                  .map((property) => {
+                                    const hasTenant = occupiedPropertyIds.has(property.id);
+                                    return (
+                                      <SelectItem key={property.id} value={property.id} className={hasTenant ? "text-green-600 font-medium" : ""}>
+                                        <span className="flex items-center gap-2">
+                                          {hasTenant && <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />}
+                                          {property.name}
+                                          {hasTenant && <span className="text-xs text-green-500 font-normal">(Occupé)</span>}
+                                        </span>
+                                      </SelectItem>
+                                    );
+                                  })}
                               </SelectContent>
                             </Select>
                           </div>
