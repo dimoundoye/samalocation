@@ -26,6 +26,19 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import heroLuxuryImage from "@/assets/hero-luxury-villa.png";
 import property1 from "@/assets/property-1.jpg";
 import property2 from "@/assets/property-2.jpg";
@@ -131,65 +144,94 @@ const Index = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative overflow-visible pt-32 pb-20 md:pt-32 md:pb-24">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent hidden md:block" />
+      <section className="relative overflow-visible pt-36 pb-20 md:pt-40 md:pb-28">
+        {/* Soft Background Ambient Light Glows */}
+        <div className="absolute top-1/4 left-[10%] w-[350px] h-[350px] bg-primary/10 dark:bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute top-1/3 right-[10%] w-[400px] h-[400px] bg-accent/5 dark:bg-accent/10 blur-[120px] rounded-full pointer-events-none animate-pulse-slow" />
+        
         <div className="container mx-auto px-6 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div className="space-y-6 md:space-y-8 animate-slide-up">
-              <h1 className="text-4xl xs:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] sm:leading-tight">
-                <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient">
-                  {t('hero.title_part1')}
-                </span>
+              <h1 className="text-4xl xs:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] sm:leading-tight text-primary dark:text-white">
+                {t('hero.title_part1')}
                 <br />
-                <span className="text-accent">{t('hero.title_part2')}</span>
+                {t('hero.title_part2')}
               </h1>
 
-              <p className="text-lg md:text-xl text-foreground/90 max-w-lg leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground max-w-lg leading-relaxed">
                 {t('hero.description')}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-4 w-full max-w-xl">
-                <Button
-                  size="lg"
-                  onClick={() => navigate("/auth?mode=signup&type=owner")}
-                  className="gradient-primary h-16 sm:h-12 md:h-14 lg:h-16 px-8 sm:px-6 md:px-8 text-lg sm:text-base md:text-lg shadow-strong md:hover:scale-105 transition-transform flex-1 font-bold"
-                >
-                  <Home className="h-7 w-7 sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 mr-3 sm:mr-2 md:mr-3" />
-                  {t('hero.list_property')}
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => navigate("/search")}
-                  className="h-16 sm:h-12 md:h-14 lg:h-16 px-8 sm:px-6 md:px-8 text-lg sm:text-base md:text-lg border-2 border-primary text-primary hover:bg-primary md:hover:text-white transition-all shadow-medium flex-1 font-bold"
-                >
-                  <Search className="h-7 w-7 sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 mr-3 sm:mr-2 md:mr-3" />
-                  {t('hero.search_property')}
-                </Button>
-              </div>
+              {/* Unified Search and Action Widget */}
+              <Tabs defaultValue="find" className="w-full max-w-xl relative z-20 pt-2">
+                <TabsList className="grid grid-cols-2 w-full max-w-[360px] h-12 bg-secondary/80 dark:bg-secondary/30 p-1.5 rounded-2xl mb-4 border border-border/40">
+                  <TabsTrigger value="find" className="rounded-xl font-bold text-sm h-9 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
+                    <Search className="h-4 w-4 mr-2" />
+                    Trouver un bien
+                  </TabsTrigger>
+                  <TabsTrigger value="list" className="rounded-xl font-bold text-sm h-9 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
+                    <Home className="h-4 w-4 mr-2" />
+                    Mettre en location
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="find" className="animate-scale-in">
+                  <div className="p-3 bg-card dark:bg-card border border-border/60 shadow-strong rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="flex-1 flex items-center gap-2 min-w-0 py-1">
+                      <SearchAutocomplete 
+                        placeholder={t('hero.search_placeholder') || "Quartier, ville..."}
+                        initialValue={searchQuery}
+                        onValueChange={setSearchQuery}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="hidden sm:block h-8 w-px bg-border/80" />
+                    
+                    <div className="w-full sm:w-auto min-w-[130px] shrink-0">
+                      <Select onValueChange={(val) => navigate(`/search?type=${val}`)}>
+                        <SelectTrigger className="border-0 focus:ring-0 shadow-none bg-transparent hover:bg-secondary/20 dark:hover:bg-secondary/10 h-10 px-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground transition-all">
+                          <SelectValue placeholder={t('search.property_type') || "Type de bien"} />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-border/50 shadow-strong bg-card dark:bg-card">
+                          <SelectItem value="apartment" className="rounded-lg cursor-pointer">{t('search.types.apartment') || "Appartement"}</SelectItem>
+                          <SelectItem value="house" className="rounded-lg cursor-pointer">{t('search.types.house') || "Maison"}</SelectItem>
+                          <SelectItem value="villa" className="rounded-lg cursor-pointer">{t('search.types.villa') || "Villa"}</SelectItem>
+                          <SelectItem value="studio" className="rounded-lg cursor-pointer">{t('search.types.studio') || "Studio"}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-              {/* Quick Search */}
-              <div className="relative z-20 max-w-xl p-2 bg-card dark:bg-card rounded-2xl shadow-strong flex flex-col sm:flex-row items-center gap-2 border border-border/50 transition-all">
-                <SearchAutocomplete 
-                  placeholder={t('hero.search_placeholder')}
-                  initialValue={searchQuery}
-                  onValueChange={setSearchQuery}
-                />
-                <Button
-                  onClick={() => navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
-                  className="h-14 w-full sm:w-14 rounded-xl gradient-accent shadow-medium md:hover:scale-105 sm:hover:scale-110 transition-transform flex items-center justify-center shrink-0"
-                >
-                  <span className="sm:hidden font-bold mr-2 text-base">{t('hero.search_button')}</span>
-                  <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-white" />
-                </Button>
-              </div>
-
-
+                    <Button
+                      onClick={() => navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
+                      className="h-12 w-full sm:w-12 rounded-xl gradient-accent shadow-medium hover:scale-105 transition-transform flex items-center justify-center shrink-0 animate-fade-in"
+                    >
+                      <span className="sm:hidden font-bold mr-2 text-base">{t('hero.search_button')}</span>
+                      <ArrowRight className="h-5 w-5 text-white" />
+                    </Button>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="list" className="animate-scale-in">
+                  <div className="p-5 bg-card dark:bg-card border border-border/60 shadow-strong rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-left space-y-1">
+                      <h4 className="font-bold text-base text-primary dark:text-white">Vous êtes propriétaire ?</h4>
+                      <p className="text-xs text-muted-foreground">Publiez vos annonces et gérez vos locataires simplement.</p>
+                    </div>
+                    <Button
+                      onClick={() => navigate("/auth?mode=signup&type=owner")}
+                      className="w-full sm:w-auto h-11 px-5 rounded-xl gradient-primary text-white font-bold shadow-medium hover:scale-105 transition-all flex items-center justify-center gap-2 shrink-0 animate-fade-in"
+                    >
+                      <Home className="h-4 w-4" />
+                      <span>{t('hero.list_property')}</span>
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
 
             <div className="relative animate-fade-in hidden md:block md:-mt-16 lg:-mt-20">
               <div className="absolute -inset-10 bg-accent/5 blur-3xl rounded-full" />
-              <div className="relative rounded-[2.5rem] border-[8px] border-white/50 backdrop-blur-sm shadow-strong overflow-hidden animate-float max-h-[550px] aspect-[4/5] md:aspect-auto">
+              <div className="relative rounded-[2.5rem] border-[8px] border-white/50 dark:border-white/10 backdrop-blur-sm shadow-strong overflow-hidden animate-float max-h-[550px] aspect-[4/5] md:aspect-auto">
                 <img
                   src={heroLuxuryImage}
                   alt="Modern Luxury Real Estate"

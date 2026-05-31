@@ -22,12 +22,12 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-background/95 backdrop-blur-sm border-b shadow-soft">
-      <div className="container mx-auto px-4 py-4">
+    <nav className="fixed top-4 left-1/2 -translate-x-1/2 w-[92%] max-w-7xl z-40 bg-background/80 dark:bg-card/75 backdrop-blur-md border border-border/50 rounded-2xl shadow-strong transition-all duration-300">
+      <div className="container mx-auto px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group shrink-0">
-            <img src="/logo-sl.png" alt="Logo" className="h-12 w-auto" />
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden lg:block">
+            <img src="/logo-sl.png" alt="Logo" className="h-10 w-auto transition-transform group-hover:scale-105" />
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden lg:block tracking-tight">
               Samalocation
             </span>
           </Link>
