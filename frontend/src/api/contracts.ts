@@ -28,10 +28,18 @@ export const signContract = async (id: string): Promise<RentalContract> => {
 
 export const downloadContract = async (id: string, contractNumber: string) => {
     const token = localStorage.getItem("auth_token");
+    const activeContext = localStorage.getItem("active_context");
+
+    const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`
+    };
+
+    if (activeContext) {
+        headers["X-Active-Context"] = activeContext;
+    }
+
     const response = await fetch(`${API_BASE_URL}/contracts/${id}/download`, {
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
+        headers
     });
 
     if (!response.ok) throw new Error("Download failed");

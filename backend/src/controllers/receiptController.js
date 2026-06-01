@@ -188,14 +188,14 @@ const receiptController = {
                 });
             }
 
-            // Vérifier les permissions (locataire ou propriétaire)
+            // Vérifier les permissions (locataire, propriétaire ou collaborateur/agent)
             const db = require('../config/db');
             const { rows: properties } = await db.query(
                 'SELECT owner_id FROM properties WHERE id = $1',
                 [receipt.property_id]
             );
 
-            const isOwner = properties.length > 0 && properties[0].owner_id === userId;
+            const isOwner = properties.length > 0 && (properties[0].owner_id === req.ownerId || properties[0].owner_id === userId);
             const isTenant = receipt.tenant_id === userId;
 
             if (!isOwner && !isTenant) {

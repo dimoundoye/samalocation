@@ -34,13 +34,19 @@ export const getOwnerReceipts = async (): Promise<Receipt[]> => {
 // Télécharger un reçu en PDF
 export const downloadReceipt = async (id: string, receiptNumber?: string, paymentDate?: string) => {
     const token = localStorage.getItem("auth_token");
+    const activeContext = localStorage.getItem("active_context");
+
+    const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+    };
+
+    if (activeContext) {
+        headers["X-Active-Context"] = activeContext;
+    }
 
     const response = await fetch(`${API_BASE_URL}/receipts/${id}/download`, {
-
         method: "GET",
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
+        headers,
     });
 
     if (!response.ok) {
