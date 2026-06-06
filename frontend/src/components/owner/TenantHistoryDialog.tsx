@@ -46,8 +46,8 @@ export const TenantHistoryDialog = ({
         )
         .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime());
 
-    const getMonthName = (month: number) => {
-        const date = new Date(2000, month - 1, 1);
+    const getMonthName = (month: number, year: number) => {
+        const date = new Date(year, month - 1, 1);
         return format(date, "MMMM yyyy", { locale: fr });
     };
 
@@ -62,7 +62,7 @@ export const TenantHistoryDialog = ({
     const shareReceipt = async (receipt: Receipt) => {
         if (!tenant) return;
         const phone = tenant.phone?.replace(/[\s\(\)\-\+]/g, '') || '';
-        const monthLabel = getMonthName(receipt.month);
+        const monthLabel = getMonthName(receipt.month, receipt.year);
         const amount = formatCurrency(receipt.amount, currency);
         const text = `Bonjour ${tenant.full_name}, votre quittance de loyer pour le mois de ${monthLabel} (${amount}) est maintenant disponible sur votre compte Samalocation. Vous pouvez la consulter et la télécharger dès maintenant sur https://samalocation.com. Merci pour votre confiance !`;
 
@@ -119,7 +119,7 @@ export const TenantHistoryDialog = ({
                                         {/* Period + Date */}
                                         <div className="flex flex-wrap gap-2">
                                             <Badge variant="secondary" className="text-xs capitalize font-medium">
-                                                {getMonthName(receipt.month)}
+                                                {getMonthName(receipt.month, receipt.year)}
                                             </Badge>
                                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                                                 <Calendar className="h-3 w-3" />
@@ -169,7 +169,7 @@ export const TenantHistoryDialog = ({
                                             <TableRow key={receipt.id}>
                                                 <TableCell className="font-mono text-xs">{receipt.receipt_number}</TableCell>
                                                 <TableCell className="capitalize">
-                                                    {getMonthName(receipt.month)}
+                                                    {getMonthName(receipt.month, receipt.year)}
                                                 </TableCell>
                                                 <TableCell>
                                                     {format(new Date(receipt.payment_date), "dd/MM/yyyy")}
