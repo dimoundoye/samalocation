@@ -7,7 +7,28 @@ WORKDIR /app
 # Copier les fichiers de dépendances
 COPY package*.json ./
 
-# Installer uniquement les dépendances de production
+# Installer les dépendances système pour canvas (compilation native) et puppeteer (Chromium)
+RUN apk add --no-cache \
+    build-base \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pkgconfig \
+    python3 \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Désactiver le téléchargement de Chromium par puppeteer (utilise celui d'apk)
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Installer les dépendances npm (production uniquement)
 RUN npm install --omit=dev --legacy-peer-deps
 
 # Copier le reste du code source
