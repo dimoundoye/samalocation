@@ -14,6 +14,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RentalContract } from "@/types";
 import { CreateContractDialog } from "./CreateContractDialog";
+import { ContractTemplatesManager } from "./ContractTemplatesManager";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) => {
     const { toast } = useToast();
@@ -21,6 +23,9 @@ export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) =
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [templatesOpen, setTemplatesOpen] = useState(false);
+    const { hasFeature } = useSubscription();
+    const isProfessional = hasFeature('custom_contract');
 
     useEffect(() => {
         loadContracts();
@@ -121,6 +126,13 @@ export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) =
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <ContractModelPreview />
+                    <Button
+                        variant="outline"
+                        onClick={() => setTemplatesOpen(true)}
+                        className="gap-2 border-primary/20 hover:bg-primary/5 text-primary"
+                    >
+                        <FileText className="h-4 w-4" /> Mes modèles
+                    </Button>
                     <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
                         <Plus className="h-4 w-4" /> Nouveau Contrat
                     </Button>
@@ -218,8 +230,14 @@ export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) =
                                                     <div className="flex flex-col">
                                                         <span>{contract.contract_number}</span>
                                                         <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[80px]" title={contract.id}>ID: {contract.id.substring(0, 8)}...</span>
-                                                        <Badge variant="outline" className={`w-fit mt-1 text-[9px] px-1 py-0 h-4 ${contract.contract_type === 'premium' ? 'border-primary text-primary bg-primary/5' : 'text-muted-foreground'}`}>
-                                                            {contract.contract_type === 'premium' ? 'Premium 💎' : 'Standard'}
+                                                        <Badge variant="outline" className={`w-fit mt-1 text-[9px] px-1 py-0 h-4 ${
+                                                            contract.contract_type === 'premium' ? 'border-primary text-primary bg-primary/5' :
+                                                            contract.contract_type === 'custom' ? 'border-amber-500 text-amber-500 bg-amber-500/5' :
+                                                            'text-muted-foreground'
+                                                        }`}>
+                                                            {contract.contract_type === 'premium' ? 'Premium 💎' :
+                                                             contract.contract_type === 'custom' ? 'Personnalisé 👑' :
+                                                             'Standard'}
                                                         </Badge>
                                                     </div>
                                                 </TableCell>
@@ -277,6 +295,12 @@ export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) =
                 onSuccess={loadContracts}
                 propertyId="" // To be improved: selected from a list if empty
                 propertyName="un bien"
+            />
+
+            <ContractTemplatesManager
+                open={templatesOpen}
+                onOpenChange={setTemplatesOpen}
+                isProfessional={isProfessional}
             />
         </div>
     );

@@ -33,3 +33,8 @@ backend/clean_sql.js
 backend/test_db_connection.js
 backend/check_tables.js
 samal2728987.sql
+
+# Test artifacts
+backend/test_output*.pdf
+*.test.pdf
+

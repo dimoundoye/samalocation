@@ -289,12 +289,12 @@ const DossierDigital = () => {
                                                     <Wallet className="w-6 h-6 text-muted-foreground" />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-sm">3 dernières fiches de paie</h4>
-                                                    <p className="text-xs text-muted-foreground">Chargé : {dossier.last_three_payslips?.length || 0}/3</p>
+                                                    <h4 className="font-bold text-sm">Dernière fiche de paie</h4>
+                                                    <p className="text-xs text-muted-foreground">Chargé : {dossier.last_three_payslips?.length || 0}/1</p>
                                                 </div>
                                             </div>
                                             <label className="cursor-pointer">
-                                                <Input type="file" multiple className="hidden" onChange={(e) => handleUpload(e, 'last_three_payslips')} />
+                                                <Input type="file" className="hidden" onChange={(e) => handleUpload(e, 'last_three_payslips')} />
                                                 <div className="bg-primary text-white px-4 py-2 rounded-xl text-xs font-bold">
                                                     Ajouter
                                                 </div>

@@ -16,7 +16,8 @@ const PLANS = {
             excel_reports: false,
             inventory_contract: false,
             electronic_signature: false,
-            dossier_consultation: false
+            dossier_consultation: false,
+            custom_contract: false
         }
     },
     PREMIUM: {
@@ -33,7 +34,8 @@ const PLANS = {
             excel_reports: false,
             inventory_contract: true,
             electronic_signature: true,
-            dossier_consultation: true
+            dossier_consultation: true,
+            custom_contract: false
         }
     },
     PROFESSIONAL: {
@@ -51,7 +53,8 @@ const PLANS = {
             multi_user: true,
             inventory_contract: true,
             electronic_signature: true,
-            dossier_consultation: true
+            dossier_consultation: true,
+            custom_contract: true
         }
     }
 };

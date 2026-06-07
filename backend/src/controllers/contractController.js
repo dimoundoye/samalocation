@@ -1,5 +1,5 @@
 const Contract = require('../models/contractModel');
-const { generateContractPDF } = require('../utils/contractGenerator');
+const { generateContractPDF, generateCustomContractPDFWithBrowser } = require('../utils/contractGenerator');
 const path = require('path');
 
 const contractController = {
@@ -90,13 +90,18 @@ const contractController = {
                 return res.status(404).json({ message: "Contrat introuvable" });
             }
 
-            const doc = await generateContractPDF(contractData);
-
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename=Contrat_${contractData.contract_number}.pdf`);
-
-            doc.pipe(res);
-            doc.end();
+            if (contractData.custom_content) {
+                const buffer = await generateCustomContractPDFWithBrowser(contractData.custom_content, contractData);
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader('Content-Disposition', `attachment; filename=Contrat_${contractData.contract_number}.pdf`);
+                res.send(buffer);
+            } else {
+                const doc = await generateContractPDF(contractData);
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader('Content-Disposition', `attachment; filename=Contrat_${contractData.contract_number}.pdf`);
+                doc.pipe(res);
+                doc.end();
+            }
         } catch (error) {
             console.error('CRITICAL ERROR in PDF Generation:', error);
             if (!res.headersSent) {

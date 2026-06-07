@@ -90,6 +90,21 @@ export const OwnerDocumentationTab = () => {
       ]
     },
     {
+      id: "custom-contract",
+      title: "Créer un contrat personnalisé",
+      icon: <FileText className="h-5 w-5 text-amber-500" />,
+      purpose: "Le contrat personnalisé vous permet de rédiger vos propres modèles de bail adaptés à vos besoins spécifiques, avec votre mise en forme, vos clauses et votre structure. Disponible dans le plan Professionnel.",
+      steps: [
+        "Allez dans l'onglet 'Contrats' > 'Mes modèles'.",
+        "Cliquez sur 'Nouveau modèle' pour ouvrir l'éditeur.",
+        "Rédigez votre contrat directement dans l'éditeur (gras, titres, tableaux, listes).",
+        "Ou importez un fichier Word (.docx) pour conserver la mise en forme complète (tableaux inclus).",
+        "Importez un fichier PDF pour récupérer le texte avec le gras et les titres.",
+        "Enregistrez votre modèle. Il sera disponible lors de la création d'un contrat."
+      ],
+      tip: "Pour les tableaux, utilisez toujours un fichier Word (.docx) — le PDF ne préserve pas la structure des tableaux."
+    },
+    {
       id: "maintenance",
       title: "Gérer la maintenance",
       icon: <Wrench className="h-5 w-5 text-red-500" />,

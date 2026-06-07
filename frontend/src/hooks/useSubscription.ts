@@ -23,7 +23,8 @@ export const useSubscription = () => {
                     ai_descriptions_per_month: 0,
                     custom_branding: false,
                     excel_reports: false,
-                    inventory_contract: false
+                    inventory_contract: false,
+                    custom_contract: false
                 }
             });
         } catch (error) {
@@ -55,6 +56,8 @@ export const useSubscription = () => {
                 return subscription.limits.electronic_signature;
             case 'dossier_consultation':
                 return subscription.limits.dossier_consultation;
+            case 'custom_contract':
+                return subscription.limits.custom_contract;
             case 'unlimited_receipts':
                 return subscription.limits.max_receipts_per_month === -1 || subscription.limits.max_receipts_per_month === Infinity;
             default:

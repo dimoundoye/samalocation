@@ -82,17 +82,44 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
     const [showLegalReminder, setShowLegalReminder] = useState(true);
     const { hasFeature } = useSubscription();
     const canInventory = hasFeature('inventory_contract');
+    const canCustomContract = hasFeature('custom_contract');
+    const [customTemplates, setCustomTemplates] = useState<any[]>([]);
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
     const [upgradeModal, setUpgradeModal] = useState({
         open: false,
         title: "",
         description: ""
     });
 
-    const tabs = ["general", "parties", "property"];
+    useEffect(() => {
+        const loadCustomTemplates = async () => {
+            if (open && canCustomContract) {
+                try {
+                    const { getContractTemplates } = await import("@/api/contractTemplates");
+                    const data = await getContractTemplates();
+                    setCustomTemplates(data);
+                    if (data.length > 0) {
+                        setSelectedTemplateId(data[0].id);
+                    }
+                } catch (err) {
+                    console.error("Failed to load custom templates", err);
+                }
+            }
+        };
+        loadCustomTemplates();
+    }, [open, canCustomContract]);
+
+    const isCustomContract = formData.contract_type === 'custom';
+    const tabs = isCustomContract ? ["general"] : ["general", "parties", "property"];
     if (formData.contract_type === 'premium') tabs.push("premium");
 
     const isLastTab = activeTab === tabs[tabs.length - 1];
     const isFirstTab = activeTab === tabs[0];
+
+    // Reset to first tab when switching contract type to avoid being stuck on a non-existent tab
+    useEffect(() => {
+        setActiveTab("general");
+    }, [formData.contract_type]);
 
     useEffect(() => {
         const loadPropertyDetails = async () => {
@@ -123,6 +150,9 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
     const isTabValid = () => {
         switch (activeTab) {
             case "general":
+                if (isCustomContract) {
+                    return !!formData.tenant_id && !!formData.start_date && !!selectedTemplateId;
+                }
                 return !!formData.tenant_id && !!formData.start_date && !!formData.rent_amount;
             case "parties":
                 return !!formData.owner_id_number && !!formData.tenant_id_number && !!formData.owner_name && !!formData.tenant_name;
@@ -309,16 +339,23 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
             const selectedTenant = tenants.find(t => t.user_id === formData.tenant_id);
             if (!selectedTenant) throw new Error("Locataire non trouvé");
 
+            if (formData.contract_type === 'custom' && !selectedTemplateId) {
+                throw new Error("Veuillez sélectionner un modèle de contrat.");
+            }
+            const selectedTemplate = customTemplates.find(t => t.id === selectedTemplateId);
+
             await createContract({
                 ...formData,
-                contract_type: formData.contract_type as 'standard' | 'premium',
+                contract_type: formData.contract_type as 'standard' | 'premium' | 'custom',
                 tenant_id: selectedTenant.id,
                 rent_amount: Number(formData.rent_amount),
                 deposit_amount: Number(formData.deposit_amount),
                 duration_months: Number(formData.duration_months),
                 payment_day: Number(formData.payment_day),
                 occupancy_limit: Number(formData.occupancy_limit),
-                charges_info: { description: formData.charges_description }
+                charges_info: { description: formData.charges_description },
+                custom_template_id: formData.contract_type === 'custom' ? selectedTemplateId : undefined,
+                custom_content: formData.contract_type === 'custom' ? selectedTemplate?.content : undefined
             });
 
             toast({ title: "Contrat généré", description: "Le contrat de location a été créé avec succès." });
@@ -350,14 +387,16 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
 
                 <div className="flex-1 overflow-y-auto p-6 pt-2">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid grid-cols-2 sm:grid-cols-4 mb-6 h-auto">
-                            <TabsTrigger value="general" className="flex items-center gap-1.5 py-2"><Info className="h-3.5 w-3.5" /> 1. Général</TabsTrigger>
-                            <TabsTrigger value="parties" className="flex items-center gap-1.5 py-2"><User className="h-3.5 w-3.5" /> 2. Parties</TabsTrigger>
-                            <TabsTrigger value="property" className="flex items-center gap-1.5 py-2"><MapPin className="h-3.5 w-3.5" /> 3. Lieu</TabsTrigger>
-                            <TabsTrigger value="premium" className="flex items-center gap-1.5 py-2" disabled={formData.contract_type !== 'premium'}>
-                                <ClipboardList className="h-3.5 w-3.5" /> 4. Premium
-                            </TabsTrigger>
-                        </TabsList>
+                        {!isCustomContract && (
+                            <TabsList className="grid grid-cols-2 sm:grid-cols-4 mb-6 h-auto">
+                                <TabsTrigger value="general" className="flex items-center gap-1.5 py-2"><Info className="h-3.5 w-3.5" /> 1. Général</TabsTrigger>
+                                <TabsTrigger value="parties" className="flex items-center gap-1.5 py-2"><User className="h-3.5 w-3.5" /> 2. Parties</TabsTrigger>
+                                <TabsTrigger value="property" className="flex items-center gap-1.5 py-2"><MapPin className="h-3.5 w-3.5" /> 3. Lieu</TabsTrigger>
+                                <TabsTrigger value="premium" className="flex items-center gap-1.5 py-2" disabled={formData.contract_type !== 'premium'}>
+                                    <ClipboardList className="h-3.5 w-3.5" /> 4. Premium
+                                </TabsTrigger>
+                            </TabsList>
+                        )}
 
                         <form onSubmit={handleSubmit} id="contract-form">
                             {/* TAB 1: GENERAL */}
@@ -380,7 +419,7 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                         <Zap className="h-4 w-4 text-accent fill-accent" />
                                         Choisir le type de contrat
                                     </Label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <button
                                             type="button"
                                             onClick={() => setFormData({ ...formData, contract_type: 'standard' })}
@@ -427,22 +466,67 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                                 </div>
                                             )}
                                         </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (!canCustomContract) {
+                                                    setUpgradeModal({
+                                                        open: true,
+                                                        title: "Modèles personnalisés non inclus",
+                                                        description: "L'utilisation de vos propres modèles de contrat est réservée aux abonnés Professionnels."
+                                                    });
+                                                    return;
+                                                }
+                                                setFormData({ ...formData, contract_type: 'custom' });
+                                            }}
+                                            className={`p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden ${formData.contract_type === 'custom' ? 'border-amber-500 bg-amber-500/5 ring-1 ring-amber-500' : 'border-border hover:border-amber-500/30'} ${!canCustomContract ? 'opacity-70 group' : ''}`}
+                                        >
+                                            <div className="absolute -top-1 -right-5 bg-amber-500 text-white text-[8px] font-bold px-5 py-1 rotate-12">PRO</div>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="p-2 rounded-lg bg-amber-500/10">
+                                                    {canCustomContract ? <Crown className="h-5 w-5 text-amber-500" /> : <Lock className="h-5 w-5 text-slate-400" />}
+                                                </div>
+                                                {formData.contract_type === 'custom' && <CheckCircle2 className="h-4 w-4 text-amber-500" />}
+                                                {!canCustomContract && <Lock className="h-4 w-4 text-slate-300 group-hover:text-amber-500 transition-colors" />}
+                                            </div>
+                                            <p className="font-bold text-sm">Modèle Personnalisé</p>
+                                            <p className="text-[10px] text-muted-foreground leading-tight">Utilisez l'un de vos propres modèles de bail rédigés sur mesure.</p>
+                                            {!canCustomContract && (
+                                                <div className="mt-2 text-[9px] font-bold text-amber-600 flex items-center gap-1">
+                                                    <Crown className="h-3 w-3" /> Débloquer cette option
+                                                </div>
+                                            )}
+                                        </button>
                                     </div>
+
+                                    {formData.contract_type === 'custom' && (
+                                        <div className="space-y-2 p-4 border border-amber-200 bg-amber-500/5 rounded-xl mt-4">
+                                            <Label className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                                                <Crown className="h-3.5 w-3.5 text-amber-500" /> Sélectionnez votre modèle de contrat *
+                                            </Label>
+                                            {customTemplates.length === 0 ? (
+                                                <div className="text-center py-4 space-y-2">
+                                                    <p className="text-xs text-muted-foreground">Vous n'avez créé aucun modèle pour l'instant.</p>
+                                                    <p className="text-[10px] text-muted-foreground">Allez dans "Mes modèles" dans l'onglet des contrats pour en rédiger un ou en importer un.</p>
+                                                </div>
+                                            ) : (
+                                                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                                                    <SelectTrigger className="border-amber-200 focus:ring-amber-500">
+                                                        <SelectValue placeholder="Choisir un modèle..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {customTemplates.map((template) => (
+                                                            <SelectItem key={template.id} value={template.id}>{template.title}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Bien Immobilier (Optionnel)</Label>
-                                        <Select value={formData.property_id} onValueChange={(v) => setFormData({ ...formData, property_id: v })}>
-                                            <SelectTrigger><SelectValue placeholder="Choisir un bien" /></SelectTrigger>
-                                            <SelectContent>
-                                                {properties.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
-                                            </SelectContent>
-                                        </Select>
-                                        <p className="text-[10px] text-muted-foreground italic">Sélectionner un bien pour remplir l'adresse automatiquement.</p>
-                                    </div>
-                                </div>
-
+                                {/* Champs communs : locataire + date */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Locataire *</Label>
@@ -455,28 +539,49 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                         <Label>Date de début *</Label>
                                         <Input type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} required />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Loyer Mensuel *</Label>
-                                        <Input type="number" value={formData.rent_amount} onChange={(e) => setFormData({ ...formData, rent_amount: e.target.value })} required />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Dépôt de Garantie / Caution</Label>
-                                        <Input type="number" value={formData.deposit_amount} onChange={(e) => setFormData({ ...formData, deposit_amount: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Durée du bail (mois)</Label>
-                                        <Input type="number" value={formData.duration_months} onChange={(e) => setFormData({ ...formData, duration_months: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Jour limite de paiement</Label>
-                                        <Select value={String(formData.payment_day)} onValueChange={(v) => setFormData({ ...formData, payment_day: parseInt(v) })}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                {[1, 2, 3, 5, 10, 15].map(d => <SelectItem key={d} value={String(d)}>Le {d} du mois</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
                                 </div>
+
+                                {/* Champs uniquement pour contrats standard/premium */}
+                                {!isCustomContract && (
+                                    <>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Bien Immobilier (Optionnel)</Label>
+                                                <Select value={formData.property_id} onValueChange={(v) => setFormData({ ...formData, property_id: v })}>
+                                                    <SelectTrigger><SelectValue placeholder="Choisir un bien" /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {properties.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <p className="text-[10px] text-muted-foreground italic">Sélectionner un bien pour remplir l'adresse automatiquement.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Loyer Mensuel *</Label>
+                                                <Input type="number" value={formData.rent_amount} onChange={(e) => setFormData({ ...formData, rent_amount: e.target.value })} required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Dépôt de Garantie / Caution</Label>
+                                                <Input type="number" value={formData.deposit_amount} onChange={(e) => setFormData({ ...formData, deposit_amount: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Durée du bail (mois)</Label>
+                                                <Input type="number" value={formData.duration_months} onChange={(e) => setFormData({ ...formData, duration_months: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Jour limite de paiement</Label>
+                                                <Select value={String(formData.payment_day)} onValueChange={(v) => setFormData({ ...formData, payment_day: parseInt(v) })}>
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {[1, 2, 3, 5, 10, 15].map(d => <SelectItem key={d} value={String(d)}>Le {d} du mois</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </TabsContent>
 
                             {/* TAB 2: PARTIES */}
@@ -625,16 +730,18 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
 
                             </TabsContent>
 
-                            <div className="mt-6 space-y-2 border-t pt-4">
-                                <Label className="flex items-center gap-2"><ClipboardList className="h-4 w-4 text-primary" /> Notes & Clauses spécifiques supplémentaires</Label>
-                                <Textarea
-                                    value={formData.notes}
-                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                    placeholder="Ajoutez ici des clauses particulières ou des précisions importantes (visible sur toutes les versions du contrat)..."
-                                    rows={3}
-                                    className="resize-none"
-                                />
-                            </div>
+                            {!isCustomContract && (
+                                <div className="mt-6 space-y-2 border-t pt-4">
+                                    <Label className="flex items-center gap-2"><ClipboardList className="h-4 w-4 text-primary" /> Notes & Clauses spécifiques supplémentaires</Label>
+                                    <Textarea
+                                        value={formData.notes}
+                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                        placeholder="Ajoutez ici des clauses particulières ou des précisions importantes (visible sur toutes les versions du contrat)..."
+                                        rows={3}
+                                        className="resize-none"
+                                    />
+                                </div>
+                            )}
                         </form>
                     </Tabs>
                 </div>
@@ -676,10 +783,12 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
                                         type="submit"
                                         form="contract-form"
                                         disabled={loading || !isTabValid()}
-                                        className="bg-primary shadow-lg shadow-primary/20"
+                                        className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 text-white"
                                     >
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Générer le Bail Officiel {formData.contract_type === 'premium' ? 'Premium' : ''}
+                                        {isCustomContract
+                                            ? "Envoyer mon contrat personnalisé"
+                                            : `Générer le Bail Officiel ${formData.contract_type === 'premium' ? 'Premium' : ''}`}
                                     </Button>
                                 )}
                             </div>

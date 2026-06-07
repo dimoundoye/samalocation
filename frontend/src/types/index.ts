@@ -181,7 +181,7 @@ export interface CreateContractData {
     payment_day: number;
     payment_method: string;
     notes?: string;
-    contract_type?: 'standard' | 'premium';
+    contract_type?: 'standard' | 'premium' | 'custom';
     owner_id_type?: string;
     owner_id_number?: string;
     owner_id_date?: string;
@@ -196,6 +196,8 @@ export interface CreateContractData {
     charges_info?: { description: string };
     occupancy_limit?: number;
     inventory?: Record<string, string>;
+    custom_content?: string;
+    custom_template_id?: string;
 }
 
 export interface RentalContract extends CreateContractData {

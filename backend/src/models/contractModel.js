@@ -31,7 +31,9 @@ const Contract = {
             inventory,
             document_hash,
             owner_name,
-            tenant_name
+            tenant_name,
+            custom_content,
+            custom_template_id
         } = data;
 
         const contract_number = await this.generateContractNumber();
@@ -57,10 +59,10 @@ const Contract = {
             owner_id_type, owner_id_number, owner_id_date, owner_dob, owner_birthplace, owner_phone, owner_email,
             tenant_id_type, tenant_id_number, tenant_id_date, tenant_dob, tenant_birthplace, tenant_phone, tenant_email,
             detailed_address, property_type, property_details, charges_info, occupancy_limit, inventory, document_hash, owner_signed, owner_signed_at, owner_signature,
-            owner_name, tenant_name) 
+            owner_name, tenant_name, custom_content, custom_template_id) 
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending_signature', $13, 
             $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, TRUE, CURRENT_TIMESTAMP, $35,
-            $36, $37) 
+            $36, $37, $38, $39) 
             RETURNING *`,
             [
                 tenant_id, owner_id, property_id, unit_id, start_date, duration_months || 12, rent_amount, deposit_amount,
@@ -69,7 +71,7 @@ const Contract = {
                 tenant_id_type, tenant_id_number, nullIfEmpty(tenant_id_date), nullIfEmpty(tenant_dob), tenant_birthplace, tenant_phone, tenant_email,
                 detailed_address, property_type || 'Appartement', property_details || '', charges_info || {}, nullIfEmpty(occupancy_limit), inventory || {}, document_hash,
                 owner_signature,
-                owner_name, tenant_name
+                owner_name, tenant_name, nullIfEmpty(custom_content), nullIfEmpty(custom_template_id)
             ]
         );
 
@@ -130,8 +132,8 @@ const Contract = {
             JOIN tenants t ON c.tenant_id = t.id
             JOIN user_profiles up_owner ON c.owner_id = up_owner.id
             LEFT JOIN owner_profiles op ON c.owner_id = op.user_profile_id
-            JOIN properties p ON c.property_id = p.id
-            JOIN property_units pu ON c.unit_id = pu.id
+            LEFT JOIN properties p ON c.property_id = p.id
+            LEFT JOIN property_units pu ON c.unit_id = pu.id
             WHERE c.id = $1
         `, [id]);
         return rows[0] || null;
@@ -244,7 +246,9 @@ const Contract = {
             "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_phone VARCHAR(50)",
             "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_email VARCHAR(255)",
             "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS owner_name VARCHAR(255)",
-            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_name VARCHAR(255)"
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS tenant_name VARCHAR(255)",
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS custom_content TEXT",
+            "ALTER TABLE rental_contracts ADD COLUMN IF NOT EXISTS custom_template_id UUID"
         ];
 
         for (const sql of queries) {

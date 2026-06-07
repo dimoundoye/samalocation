@@ -18,20 +18,29 @@ const generatePropertyDescription = async (propertyData) => {
     try {
         const model = getModel();
 
-        const { name, type, address, equipments, bedrooms, bathrooms, area } = propertyData;
+        const { name, type, address, equipments, bedrooms, bathrooms, area, listing_type, price, rent_period, rooms_count, floors } = propertyData;
+
+        const isVente = listing_type === 'vente';
+        const typeTransaction = isVente ? 'la vente' : 'la location';
+        const prixLabel = isVente ? 'Prix de vente' : 'Loyer';
+        const prixDetail = price ? `${price} XOF${!isVente ? ` par ${rent_period || 'mois'}` : ''}` : 'Non spécifié';
 
         const prompt = `
-            En tant qu'expert en immobilier, rédige une description attrayante, professionnelle et optimisée pour la location pour le bien suivant :
+            En tant qu'expert en immobilier, rédige une description attrayante, professionnelle et optimisée pour ${typeTransaction} du bien suivant :
             - Nom du bien : ${name || 'Non spécifié'}
             - Type de bien : ${type || 'Non spécifié'}
+            - Type de transaction : ${listing_type || 'Non précisé'}
+            - ${prixLabel} : ${prixDetail}
             - Emplacement : ${address || 'Non précisé'}
-            - Équipements : ${Array.isArray(equipments) ? equipments.join(', ') : 'Standards'}
+            - Équipements / Services inclus : ${Array.isArray(equipments) && equipments.length > 0 ? equipments.join(', ') : 'Aucun équipement spécifique mentionné'}
+            - Nombre de pièces : ${rooms_count || 'N/A'}
             - Chambres : ${bedrooms || 'N/A'}
             - Salles de bain : ${bathrooms || 'N/A'}
             - Surface : ${area ? area + ' m²' : 'N/A'}
+            ${floors ? `- Nombre d'étages : ${floors}` : ''}
 
-            La description doit être en français, structurée avec des paragraphes clairs, et mettre en avant les points forts du bien et du quartier. Utilise un ton accueillant mais professionnel. Termine par une invitation à visiter.
-            N'utilise pas de placeholders (comme [Nom]), utilise les informations fournies.
+            La description doit être entièrement rédigée en français, structurée avec des paragraphes clairs, et mettre en valeur les points forts du bien et du quartier. Utilise un ton accueillant mais professionnel. Termine par une invitation chaleureuse à visiter ou à prendre contact.
+            Important : N'utilise pas de placeholders (comme [Nom du propriétaire] ou [Contact]), utilise uniquement les informations fournies.
         `;
 
         const result = await model.generateContent(prompt);

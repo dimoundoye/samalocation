@@ -92,6 +92,22 @@ const App = () => (
                       }
                     />
                     <Route
+                      path="/owner-dashboard/contracts/contract-editor"
+                      element={
+                        <ProtectedRoute requiredRole="owner">
+                          <DashboardProprietaire />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/owner-dashboard/contracts/contract-editor/:templateId"
+                      element={
+                        <ProtectedRoute requiredRole="owner">
+                          <DashboardProprietaire />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
                       path="/tenant-dashboard"
                       element={
                         <ProtectedRoute requiredRole="tenant">

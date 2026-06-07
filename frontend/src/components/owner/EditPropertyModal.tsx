@@ -234,6 +234,10 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                 bedrooms: unitData.bedrooms || firstUnit?.bedrooms?.toString(),
                 bathrooms: unitData.bathrooms || firstUnit?.bathrooms?.toString(),
                 area: unitData.area_sqm || firstUnit?.area_sqm?.toString(),
+                listing_type: propertyData.listing_type,
+                price: propertyData.listing_type === 'vente' ? propertyData.sale_price : (unitData.monthly_rent || firstUnit?.monthly_rent?.toString()),
+                rent_period: unitData.rent_period || firstUnit?.rent_period,
+                rooms_count: unitData.rooms_count || firstUnit?.rooms_count?.toString(),
             });
 
             setPropertyData(prev => ({ ...prev, description }));
@@ -386,40 +390,6 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                                         />
                                     </div>
                                 </div>
-                            </div>
-
-                            <div>
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                                    <div className="space-y-0.5">
-                                        <Label htmlFor="edit-description">Description</Label>
-                                        <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
-                                            <Sparkles className="h-2 w-2 text-primary" />
-                                            Plus d'infos (prix, surface, équipements) = meilleure description
-                                        </p>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 text-xs flex items-center gap-1.5 border-primary/20 hover:bg-primary/5 transition-all"
-                                        onClick={handleGenerateAI}
-                                        disabled={generatingAI}
-                                    >
-                                        {generatingAI ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : (
-                                            <Sparkles className="h-3 w-3 text-primary" />
-                                        )}
-                                        Régénérer avec l'IA
-                                    </Button>
-                                </div>
-                                <Textarea
-                                    id="edit-description"
-                                    value={propertyData.description}
-                                    onChange={(e) => setPropertyData({ ...propertyData, description: e.target.value })}
-                                    rows={4}
-                                    placeholder="Décrivez votre propriété ou laissez l'IA le faire pour vous..."
-                                />
                             </div>
 
                             <div>
@@ -670,6 +640,45 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                         </CardContent>
                     </Card>
                     )}
+
+                    <Card className="shadow-soft">
+                        <CardHeader>
+                            <CardTitle>Description du bien</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="edit-description">Description</Label>
+                                    <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                                        <Sparkles className="h-2 w-2 text-primary" />
+                                        💡 Toutes vos infos sont prêtes — cliquez sur "Régénérer avec l'IA" pour une description optimale
+                                    </p>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs flex items-center gap-1.5 border-primary/20 hover:bg-primary/5 transition-all"
+                                    onClick={handleGenerateAI}
+                                    disabled={generatingAI}
+                                >
+                                    {generatingAI ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="h-3 w-3 text-primary" />
+                                    )}
+                                    Régénérer avec l'IA
+                                </Button>
+                            </div>
+                            <Textarea
+                                id="edit-description"
+                                value={propertyData.description}
+                                onChange={(e) => setPropertyData({ ...propertyData, description: e.target.value })}
+                                rows={6}
+                                placeholder="Décrivez votre propriété ou laissez l'IA le faire pour vous... Remplissez d'abord les informations ci-dessus pour une meilleure génération."
+                            />
+                        </CardContent>
+                    </Card>
 
                     <div className="flex justify-end gap-3">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

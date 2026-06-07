@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
-import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
   getOwnerProperties,
@@ -68,11 +68,18 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { OwnerPublicProfileEditor } from "@/components/owner/OwnerPublicProfileEditor";
 import { OwnerDocumentationTab } from "@/components/owner/OwnerDocumentationTab";
 import OwnerSharedDossiersTab from "@/components/owner/OwnerSharedDossiersTab";
+import ContractTemplateEditor from "@/pages/ContractEditorPage";
 
 const DashboardProprietaire = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { tab: urlTab } = useParams();
   const { toast } = useToast();
+
+  const isContractEditor = location.pathname.includes('/contract-editor');
+  const editorTemplateId = isContractEditor
+    ? location.pathname.split('/contract-editor/')[1] || undefined
+    : undefined;
   const { t, i18n } = useTranslation();
   const { signOut, user, loading: authLoading } = useAuth();
   const { subscription } = useSubscription();
@@ -85,7 +92,7 @@ const DashboardProprietaire = () => {
     }
   }, [user, authLoading, navigate]);
 
-  const [activeTab, setActiveTab] = useState(urlTab || "dashboard");
+  const [activeTab, setActiveTab] = useState(isContractEditor ? "contracts" : urlTab || "dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({
@@ -446,12 +453,14 @@ const DashboardProprietaire = () => {
   }, [selectedChat, currentUserId, messages, activeTab]);
 
   useEffect(() => {
-    if (urlTab) {
+    if (isContractEditor) {
+      setActiveTab("contracts");
+    } else if (urlTab) {
       setActiveTab(urlTab);
     } else {
       setActiveTab("dashboard");
     }
-  }, [urlTab]);
+  }, [urlTab, isContractEditor]);
 
   const getMonthName = (month: number) => {
     const date = new Date(2000, month - 1, 1);
@@ -979,8 +988,8 @@ const DashboardProprietaire = () => {
                           ? "Maintenance"
                           : activeTab === "messages"
                             ? "Messages"
-                            : activeTab === "contracts"
-                              ? "Contrats"
+                    : activeTab === "contracts"
+                      ? isContractEditor ? "Éditeur de modèle" : "Contrats"
                               : activeTab === "subscription"
                                 ? "Abonnement"
                                 : activeTab === "team"
@@ -2327,7 +2336,16 @@ const DashboardProprietaire = () => {
             )}
 
             {/* Contracts Tab */}
-            {activeTab === "contracts" && <OwnerContractsTab currency={ownerProfile?.currency || 'XOF'} />}
+            {activeTab === "contracts" && (
+              isContractEditor ? (
+                <ContractTemplateEditor
+                  templateId={editorTemplateId}
+                  onClose={() => navigate("/owner-dashboard/contracts")}
+                />
+              ) : (
+                <OwnerContractsTab currency={ownerProfile?.currency || 'XOF'} />
+              )
+            )}
 
             {/* Subscription Tab */}
             {activeTab === "subscription" && <OwnerSubscription />}

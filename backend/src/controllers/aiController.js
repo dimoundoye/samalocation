@@ -56,14 +56,14 @@ const isInjectionAttempt = (message) => {
 const aiController = {
     async generateDescription(req, res, next) {
         try {
-            const { name, type, address, equipments, bedrooms, bathrooms, area } = req.body;
+            const { name, type, address, equipments, bedrooms, bathrooms, area, listing_type, price, rent_period, rooms_count, floors } = req.body;
 
             if (!name && !type && !address) {
                 return response.error(res, "Veuillez fournir au moins le nom, le type ou l'adresse du bien pour générer une description.", 400);
             }
 
             const description = await aiService.generatePropertyDescription({
-                name, type, address, equipments, bedrooms, bathrooms, area
+                name, type, address, equipments, bedrooms, bathrooms, area, listing_type, price, rent_period, rooms_count, floors
             });
 
             await AIUsage.log({ user_id: req.ownerId, action: 'description_generation' });

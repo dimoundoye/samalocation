@@ -353,6 +353,11 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         bedrooms: simplePropertyData.bedrooms,
         bathrooms: simplePropertyData.bathrooms,
         area: simplePropertyData.area_sqm,
+        listing_type: propertyData.listing_type,
+        price: propertyData.listing_type === 'vente' ? propertyData.sale_price : simplePropertyData.monthly_rent,
+        rent_period: simplePropertyData.rent_period,
+        rooms_count: simplePropertyData.rooms_count,
+        floors: simplePropertyData.floors,
       });
 
       setPropertyData(prev => ({ ...prev, description }));
@@ -566,40 +571,6 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                   </p>
 
                   <div>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="description">Description</Label>
-                          <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
-                            <Sparkles className="h-2 w-2 text-primary" />
-                            Plus d'infos (prix, surface, équipements) = meilleure description
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs flex items-center gap-1.5 border-primary/20 hover:bg-primary/5 transition-all"
-                          onClick={handleGenerateAI}
-                          disabled={generatingAI}
-                        >
-                          {generatingAI ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-3 w-3 text-primary" />
-                          )}
-                          Générer avec l'IA
-                        </Button>
-                      </div>
-                    <Textarea
-                      id="description"
-                      value={propertyData.description}
-                      onChange={(e) => setPropertyData({ ...propertyData, description: e.target.value })}
-                      placeholder="Décrivez votre propriété ou laissez l'IA le faire pour vous..."
-                      rows={4}
-                    />
-                  </div>
-
-                  <div>
                     <Label>Équipements / Services inclus</Label>
                     <p className="text-xs text-muted-foreground mt-1">
                       Indiquez les équipements proposés (ex : Climatisation, Parking sécurisé, Fibre optique…).
@@ -726,6 +697,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                       )}
                     </div>
                   </div>
+
                 </CardContent>
               </Card>
 
@@ -879,6 +851,44 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                 </Card>
               )}
 
+              <Card className="shadow-soft">
+                <CardHeader>
+                  <CardTitle>Description du bien</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="description">Description</Label>
+                      <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                        <Sparkles className="h-2 w-2 text-primary" />
+                        💡 Toutes vos infos sont prêtes — cliquez sur "Générer avec l'IA" pour une description optimale
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs flex items-center gap-1.5 border-primary/20 hover:bg-primary/5 transition-all"
+                      onClick={handleGenerateAI}
+                      disabled={generatingAI}
+                    >
+                      {generatingAI ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3 text-primary" />
+                      )}
+                      Générer avec l'IA
+                    </Button>
+                  </div>
+                  <Textarea
+                    id="description"
+                    value={propertyData.description}
+                    onChange={(e) => setPropertyData({ ...propertyData, description: e.target.value })}
+                    placeholder="Décrivez votre propriété ou laissez l'IA le faire pour vous... Remplissez d'abord les informations ci-dessus pour une meilleure génération."
+                    rows={6}
+                  />
+                </CardContent>
+              </Card>
 
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <p className="text-xs text-muted-foreground">
