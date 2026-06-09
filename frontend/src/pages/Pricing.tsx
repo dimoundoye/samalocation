@@ -157,7 +157,6 @@ const Pricing = () => {
                 "Gestion Multi-utilisateurs (Collaborateurs)",
                 "Logo & Branding sur les reçus",
                 "Assistant IA Gemini ILLIMITÉ",
-                "Exports Excel structurés",
                 "Gestionnaire de compte dédié"
             ],
             cta: "Choisir Professionnel",
