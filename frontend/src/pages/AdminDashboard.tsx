@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2 } from "lucide-react";
+import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2, Receipt } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { UserGrowthChart } from "@/components/admin/UserGrowthChart";
 import { PropertyStatsChart } from "@/components/admin/PropertyStatsChart";
@@ -50,6 +50,24 @@ const AdminDashboard = () => {
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [filter, setFilter] = useState<string>("all");
+
+  const filteredTransactions = useMemo(() => {
+    let filtered = transactions;
+
+    if (filter === "api") {
+      filtered = filtered.filter((t) => ["wave", "orange_money", "card"].includes(t.payment_method));
+    } else if (filter === "wave_manual") {
+      filtered = filtered.filter((t) => t.payment_method === "wave_manual");
+    } else if (filter === "referred") {
+      filtered = filtered.filter((t) => t.referred_by);
+    } else if (filter === "admin_validated") {
+      filtered = filtered.filter((t) => t.payment_method === "manual_admin");
+    }
+
+    return filtered;
+  }, [transactions, filter]);
+
   const [revenueStats, setRevenueStats] = useState<{ daily: any[], monthly: any[], yearly: any[], adminMonthly: any[], adminYearly: any[] }>({ daily: [], monthly: [], yearly: [], adminMonthly: [], adminYearly: [] });
   const [loadingRevenueStats, setLoadingRevenueStats] = useState(false);
   const [liveAnalytics, setLiveAnalytics] = useState<any>(null);
@@ -165,6 +183,8 @@ const AdminDashboard = () => {
     if (activeTab === 'finances') {
       loadTransactions();
       loadRevenueStats();
+    } else if (activeTab === 'receipts') {
+      loadRevenueStats();
     } else if (activeTab === 'live') {
       loadLiveAnalytics();
     }
@@ -183,15 +203,15 @@ const AdminDashboard = () => {
     <>
       <button
         onClick={() => navigate("/")}
-        className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity overflow-hidden"
+        className="flex items-center gap-2 mb-6 hover:opacity-80 transition-opacity overflow-hidden"
       >
-        <img src="/logo-sl.png" alt="Logo" className="h-12 w-auto object-contain shrink-0" />
-        <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate hidden lg:block">
-          Samalocation Admin
+        <img src="/logo-sl.png" alt="Logo" className="h-10 w-auto object-contain shrink-0" />
+        <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate hidden lg:block">
+          Admin
         </span>
       </button>
 
-      <nav className="space-y-2">
+      <nav className="space-y-1">
         {[
           { id: "overview", label: "Tableau de bord", icon: TrendingUp },
           { id: "live", label: "Vue en direct", icon: Eye },
@@ -201,6 +221,7 @@ const AdminDashboard = () => {
           { id: "reports", label: "Signalements", icon: AlertTriangle },
           { id: "support", label: "Messages Support", icon: MessageSquare },
           { id: "finances", label: "Finances", icon: CreditCard },
+          { id: "receipts", label: "Reçus", icon: Receipt },
           { id: "settings", label: "Paramètres", icon: Settings },
         ].map((item) => {
           // Calculer le badge en fonction de l'item
@@ -236,13 +257,13 @@ const AdminDashboard = () => {
                   loadTransactions();
                 }
               }}
-              className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === item.id
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition-colors ${activeTab === item.id
                 ? "bg-primary text-white"
                 : "hover:bg-secondary text-muted-foreground"
                 }`}
             >
-              <div className="flex items-center gap-3">
-                <item.icon className="h-5 w-5" />
+              <div className="flex items-center gap-2">
+                <item.icon className="h-4 w-4" />
                 <span>{item.label}</span>
               </div>
               {badgeCount > 0 && (
@@ -261,9 +282,9 @@ const AdminDashboard = () => {
       <Button
         variant="ghost"
         onClick={signOut}
-        className="w-full mt-8 justify-start text-muted-foreground"
+        className="w-full mt-4 justify-start text-muted-foreground"
       >
-        <LogOut className="mr-3 h-5 w-5" />
+        <LogOut className="mr-3 h-4 w-4" />
         Déconnexion
       </Button>
     </>
@@ -272,8 +293,8 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside className="w-64 bg-card border-r shadow-soft hidden md:block">
-        <div className="p-6">
+      <aside className="w-56 bg-card border-r shadow-soft hidden md:block">
+        <div className="p-4">
           {sidebarContent}
         </div>
       </aside>
@@ -285,24 +306,19 @@ const AdminDashboard = () => {
           <div className="md:hidden mb-6">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Menu className="h-5 w-5" />
+                <Button variant="outline" size="sm" className="h-8 w-8">
+                  <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-6">
+              <SheetContent side="left" className="w-56 p-4">
                 {sidebarContent}
               </SheetContent>
             </Sheet>
           </div>
 
           {/* Header */}
-          <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">Tableau de bord administrateur</h1>
-              <p className="text-muted-foreground">Vue d'ensemble de la plateforme Samalocation</p>
-            </div>
-            <div className="flex items-center gap-3 self-end sm:self-auto">
-              <div className="relative">
+          <div className="mb-8 flex items-center justify-end gap-3">
+            <div className="relative">
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="icon" className="rounded-full shadow-soft hover:shadow-medium border-primary/20">
@@ -364,7 +380,6 @@ const AdminDashboard = () => {
               </div>
               <ThemeToggle />
             </div>
-          </div>
 
           {/* Conditional Content Based on Active Tab */}
           {activeTab === "users" && (
@@ -434,18 +449,18 @@ const AdminDashboard = () => {
 
           {activeTab === "finances" && (
             <div className="animate-fade-in">
-              <div className="mb-6 flex justify-between items-end">
+              <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-bold mb-2">Transactions et Revenus</h1>
-                  <p className="text-muted-foreground">Suivez les abonnements et les rentrées d'argent</p>
+                  <h1 className="text-xl md:text-3xl font-bold mb-2">Transactions et Revenus</h1>
+                  <p className="text-muted-foreground text-sm">Suivez les abonnements et les rentrées d'argent</p>
                 </div>
-                <div className="bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
-                  <span className="text-xs text-primary font-bold uppercase block">Revenu du mois</span>
-                  <span className="text-xl font-black text-primary">{formatCurrency(statistics.revenue?.active || 0)}</span>
+                <div className="bg-primary/10 px-4 py-2 rounded-lg border border-primary/20 self-start sm:self-auto">
+                  <span className="text-[10px] text-primary font-bold uppercase block">Revenu du mois</span>
+                  <span className="text-lg md:text-xl font-black text-primary">{formatCurrency(statistics.revenue?.active || 0)}</span>
                 </div>
               </div>
 
-              <Card className="shadow-soft overflow-hidden">
+              <Card className="shadow-soft">
                 <CardHeader className="bg-secondary/10 border-b">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <History className="h-5 w-5 text-primary" />
@@ -453,6 +468,77 @@ const AdminDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
+                  <div className="flex flex-wrap items-center gap-1.5 p-3 md:p-4 border-b">
+                    <span className="hidden md:inline text-sm font-medium text-muted-foreground">Filtres:</span>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {[
+                        { key: "all", label: "Tous" },
+                        { key: "api", label: "API Paiement" },
+                        { key: "wave_manual", label: "Manuel" },
+                        { key: "referred", label: "Parrainage" },
+                        { key: "admin_validated", label: "Validé Admin" },
+                      ].map(({ key, label }) => (
+                        <Button
+                          key={key}
+                          variant={filter === key ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 md:h-8 text-[11px] md:text-xs px-2 md:px-3"
+                          onClick={() => setFilter(key)}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Mobile Card View */}
+                  <div className="grid grid-cols-1 gap-2 md:hidden">
+                    {loadingTransactions ? (
+                      <div className="p-8 text-center text-muted-foreground">Chargement...</div>
+                    ) : filteredTransactions.length > 0 ? (
+                      filteredTransactions.map((t) => (
+                        <div key={t.id} className="p-4 border-b last:border-0 bg-card">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="min-w-0 flex-1 mr-2">
+                              <p className="font-bold text-sm truncate">{t.user_name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{t.user_email}</p>
+                            </div>
+                            <Badge variant="outline" className="capitalize shrink-0 text-[10px]">{t.plan_name}</Badge>
+                          </div>
+
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-base">{formatCurrency(t.price)}</span>
+                            {t.status === 'active' ? (
+                              <Badge className="bg-green-500 text-[10px] h-5">Réussi</Badge>
+                            ) : t.status === 'pending' ? (
+                              <Badge className="bg-orange-500 text-[10px] h-5">En attente</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="capitalize text-[10px] h-5">{t.status}</Badge>
+                            )}
+                          </div>
+
+                          <div className="flex justify-between items-center text-xs text-muted-foreground mb-3">
+                            <span>{formatDate(t.created_at)}</span>
+                            {t.sender_phone && <span>{t.sender_phone}</span>}
+                          </div>
+
+                          {t.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              className="w-full h-8 text-xs gradient-primary text-white"
+                              onClick={() => handleApprovePayment(t)}
+                            >
+                              Approuver le paiement
+                            </Button>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-muted-foreground">Aucune transaction trouvée.</div>
+                    )}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -472,8 +558,8 @@ const AdminDashboard = () => {
                         <TableRow>
                           <TableCell colSpan={9} className="text-center py-10">Chargement...</TableCell>
                         </TableRow>
-                      ) : transactions.length > 0 ? (
-                        transactions.map((t) => (
+                      ) : filteredTransactions.length > 0 ? (
+                        filteredTransactions.map((t) => (
                           <TableRow key={t.id}>
                             <TableCell>
                               <div>
@@ -532,168 +618,191 @@ const AdminDashboard = () => {
                       )}
                     </TableBody>
                   </Table>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Statistiques des Reçus */}
-              <div className="mt-12 mb-6">
-                <h2 className="text-xl md:text-2xl font-bold mb-2">Volume des Reçus Délivrés</h2>
+            </div>
+          )}
+
+          {activeTab === "receipts" && (
+            <div className="animate-fade-in w-full max-w-full overflow-hidden">
+              <div className="mb-6">
+                <h1 className="text-xl md:text-3xl font-bold mb-2">Volume des Reçus Délivrés</h1>
                 <p className="text-muted-foreground text-sm">Activité financière globale gérée par la plateforme</p>
               </div>
 
-              <Tabs defaultValue="admin-monthly" className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="admin-monthly">Revenu Admin (Mois)</TabsTrigger>
-                  <TabsTrigger value="admin-yearly">Revenu Admin (Année)</TabsTrigger>
-                  <TabsTrigger value="daily">Loyer (Quotidien)</TabsTrigger>
-                  <TabsTrigger value="monthly">Loyer (Mensuel)</TabsTrigger>
-                </TabsList>
+              <Tabs defaultValue="admin-monthly" className="w-full max-w-full">
+                <div className="overflow-x-auto mb-4">
+                  <TabsList>
+                    <TabsTrigger value="admin-monthly">Admin (Mois)</TabsTrigger>
+                    <TabsTrigger value="admin-yearly">Admin (Année)</TabsTrigger>
+                    <TabsTrigger value="daily">Loyer (Quotidien)</TabsTrigger>
+                    <TabsTrigger value="monthly">Loyer (Mensuel)</TabsTrigger>
+                  </TabsList>
+                </div>
 
-                {/* --- REVENU ADMIN --- */}
-                <TabsContent value="admin-monthly">
-                  <Card className="shadow-soft bg-card border-l-4 border-l-primary/50">
-                    <CardHeader>
-                      <CardTitle className="text-sm font-bold flex items-center justify-between">
-                        Revenu Samalocation (Abonnements - Mensuel)
-                        <Badge variant="outline" className="text-[10px] text-primary border-primary/20">ADMIN REVENUE</Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[350px] pt-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={revenueStats.adminMonthly}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                          <XAxis
-                            dataKey="date"
-                            tickFormatter={(val) => new Date(val).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })}
-                            style={{ fontSize: 10 }}
-                          />
-                          <YAxis
-                            tickFormatter={(val) => `${val / 1000}k`}
-                            style={{ fontSize: 10 }}
-                          />
-                          <Tooltip
-                            formatter={(val: any) => [formatCurrency(val), "Revenu Admin"]}
-                            labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-                          />
-                          <Bar
-                            dataKey="total"
-                            fill="hsl(var(--primary))"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
+                {loadingRevenueStats ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      Chargement des statistiques...
                     </CardContent>
                   </Card>
-                </TabsContent>
+                ) : (
+                  <>
+                    <TabsContent value="admin-monthly" className="w-full max-w-full">
+                      <Card className="shadow-soft bg-card border-l-4 border-l-primary/50 w-full max-w-full">
+                        <CardHeader>
+                          <CardTitle className="text-sm font-bold flex items-center justify-between gap-2">
+                            <span className="truncate">Revenu Samalocation (Mensuel)</span>
+                            <Badge variant="outline" className="shrink-0 text-[10px] text-primary border-primary/20">ADMIN</Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0 w-full max-w-full">
+                          <div className="w-full aspect-[4/3] md:aspect-[3/1]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={revenueStats.adminMonthly}>
+                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                <XAxis
+                                  dataKey="date"
+                                  tickFormatter={(val) => new Date(val).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })}
+                                  style={{ fontSize: 10 }}
+                                />
+                                <YAxis
+                                  tickFormatter={(val) => `${val / 1000}k`}
+                                  style={{ fontSize: 10 }}
+                                />
+                                <Tooltip
+                                  formatter={(val: any) => [formatCurrency(val), "Revenu Admin"]}
+                                  labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                                />
+                                <Bar
+                                  dataKey="total"
+                                  fill="hsl(var(--primary))"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
 
-                <TabsContent value="admin-yearly">
-                  <Card className="shadow-soft bg-card border-l-4 border-l-primary/50">
-                    <CardHeader>
-                      <CardTitle className="text-sm font-bold flex items-center justify-between">
-                        Revenu Samalocation (Abonnements - Annuel)
-                        <Badge variant="outline" className="text-[10px] text-primary border-primary/20">HISTORIQUE ANNUEL</Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[350px] pt-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={revenueStats.adminYearly}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                          <XAxis
-                            dataKey="date"
-                            style={{ fontSize: 10 }}
-                          />
-                          <YAxis
-                            tickFormatter={(val) => `${val / 1000}k`}
-                            style={{ fontSize: 10 }}
-                          />
-                          <Tooltip
-                            formatter={(val: any) => [formatCurrency(val), "Revenu Admin"]}
-                          />
-                          <Bar
-                            dataKey="total"
-                            fill="hsl(var(--primary))"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                    <TabsContent value="admin-yearly" className="w-full max-w-full">
+                      <Card className="shadow-soft bg-card border-l-4 border-l-primary/50 w-full max-w-full">
+                        <CardHeader>
+                          <CardTitle className="text-sm font-bold flex items-center justify-between gap-2">
+                            <span className="truncate">Revenu Samalocation (Annuel)</span>
+                            <Badge variant="outline" className="shrink-0 text-[10px] text-primary border-primary/20">ANNUEL</Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0 w-full max-w-full">
+                          <div className="w-full aspect-[4/3] md:aspect-[3/1]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={revenueStats.adminYearly}>
+                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                <XAxis
+                                  dataKey="date"
+                                  style={{ fontSize: 10 }}
+                                />
+                                <YAxis
+                                  tickFormatter={(val) => `${val / 1000}k`}
+                                  style={{ fontSize: 10 }}
+                                />
+                                <Tooltip
+                                  formatter={(val: any) => [formatCurrency(val), "Revenu Admin"]}
+                                />
+                                <Bar
+                                  dataKey="total"
+                                  fill="hsl(var(--primary))"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
 
-                {/* --- VOLUME GÉRÉ (REÇUS) --- */}
-                <TabsContent value="daily">
-                  <Card className="shadow-soft bg-card">
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Volume des reçus (Mouvement de fonds - 30j)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[350px] pt-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={revenueStats.daily}>
-                          <defs>
-                            <linearGradient id="colorDaily" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                          <XAxis
-                            dataKey="date"
-                            tickFormatter={(val) => formatDate(val)}
-                            style={{ fontSize: 10 }}
-                          />
-                          <YAxis
-                            tickFormatter={(val) => `${val / 1000}k`}
-                            style={{ fontSize: 10 }}
-                          />
-                          <Tooltip
-                            formatter={(val: any) => [formatCurrency(val), "Volume"]}
-                            labelFormatter={(label) => formatDate(label)}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="total"
-                            stroke="#2563eb"
-                            fillOpacity={1}
-                            fill="url(#colorDaily)"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                    <TabsContent value="daily" className="w-full max-w-full">
+                      <Card className="shadow-soft bg-card w-full max-w-full">
+                        <CardHeader>
+                          <CardTitle className="text-sm font-medium">Volume des reçus (30j)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0 w-full max-w-full">
+                          <div className="w-full aspect-[4/3] md:aspect-[3/1]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={revenueStats.daily}>
+                                <defs>
+                                  <linearGradient id="colorDaily" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                <XAxis
+                                  dataKey="date"
+                                  tickFormatter={(val) => formatDate(val)}
+                                  style={{ fontSize: 10 }}
+                                />
+                                <YAxis
+                                  tickFormatter={(val) => `${val / 1000}k`}
+                                  style={{ fontSize: 10 }}
+                                />
+                                <Tooltip
+                                  formatter={(val: any) => [formatCurrency(val), "Volume"]}
+                                  labelFormatter={(label) => formatDate(label)}
+                                />
+                                <Area
+                                  type="monotone"
+                                  dataKey="total"
+                                  stroke="#2563eb"
+                                  fillOpacity={1}
+                                  fill="url(#colorDaily)"
+                                />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
 
-                <TabsContent value="monthly">
-                  <Card className="shadow-soft bg-card">
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Volume mensuel géré (12 derniers mois)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[350px] pt-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={revenueStats.monthly}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                          <XAxis
-                            dataKey="date"
-                            tickFormatter={(val) => new Date(val).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })}
-                            style={{ fontSize: 10 }}
-                          />
-                          <YAxis
-                            tickFormatter={(val) => `${val / 1000}k`}
-                            style={{ fontSize: 10 }}
-                          />
-                          <Tooltip
-                            formatter={(val: any) => [formatCurrency(val), "Volume"]}
-                            labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-                          />
-                          <Bar
-                            dataKey="total"
-                            fill="#8b5cf6"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                    <TabsContent value="monthly" className="w-full max-w-full">
+                      <Card className="shadow-soft bg-card w-full max-w-full">
+                        <CardHeader>
+                          <CardTitle className="text-sm font-medium">Volume mensuel géré (12 mois)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0 w-full max-w-full">
+                          <div className="w-full aspect-[4/3] md:aspect-[3/1]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={revenueStats.monthly}>
+                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                <XAxis
+                                  dataKey="date"
+                                  tickFormatter={(val) => new Date(val).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })}
+                                  style={{ fontSize: 10 }}
+                                />
+                                <YAxis
+                                  tickFormatter={(val) => `${val / 1000}k`}
+                                  style={{ fontSize: 10 }}
+                                />
+                                <Tooltip
+                                  formatter={(val: any) => [formatCurrency(val), "Volume"]}
+                                  labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                                />
+                                <Bar
+                                  dataKey="total"
+                                  fill="#8b5cf6"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+                  </>
+                )}
               </Tabs>
             </div>
           )}

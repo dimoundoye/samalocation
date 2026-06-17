@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, Ban, Search, UserCheck, CreditCard } from "lucide-react";
 import { getAllUsers, blockUser, unblockUser, updateUserSubscription } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -25,6 +26,7 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [blockReason, setBlockReason] = useState("");
@@ -38,6 +40,7 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
   });
   const [updatingSub, setUpdatingSub] = useState(false);
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
     loadUsers();
@@ -45,7 +48,7 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
 
   useEffect(() => {
     filterUsers();
-  }, [searchTerm, users]);
+  }, [searchTerm, roleFilter, users]);
 
   useEffect(() => {
     if (initialSearchTerm) {
@@ -80,19 +83,21 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
   };
 
   const filterUsers = () => {
-    if (!searchTerm) {
-      setFilteredUsers(users);
-      return;
+    let filtered = users;
+
+    if (roleFilter !== "all") {
+      filtered = filtered.filter((user) => user.role === roleFilter);
     }
 
-    const filtered = users.filter((user) => {
-      const email = user.email?.toLowerCase() || "";
-      const fullName = user.full_name?.toLowerCase() || "";
-      const customId = user.customId?.toLowerCase() || "";
+    if (searchTerm) {
       const search = searchTerm.toLowerCase();
-
-      return email.includes(search) || fullName.includes(search) || customId.includes(search);
-    });
+      filtered = filtered.filter((user) => {
+        const email = user.email?.toLowerCase() || "";
+        const fullName = user.full_name?.toLowerCase() || "";
+        const customId = user.customId?.toLowerCase() || "";
+        return email.includes(search) || fullName.includes(search) || customId.includes(search);
+      });
+    }
 
     setFilteredUsers(filtered);
   };
@@ -184,6 +189,8 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
     }
   };
 
+  const isSelf = (userId: string) => currentUser?.id === userId;
+
   const getUserTypeBadge = (role: string) => {
     if (role === "owner") {
       return <Badge variant="default">Propriétaire</Badge>;
@@ -211,14 +218,46 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
           <CardTitle>Gestion des utilisateurs</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par nom ou email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher par nom ou email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            <div className="flex items-center gap-1 ml-auto">
+              <Button
+                variant={roleFilter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setRoleFilter("all")}
+              >
+                Tous
+              </Button>
+              <Button
+                variant={roleFilter === "owner" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setRoleFilter("owner")}
+              >
+                Propriétaires
+              </Button>
+              <Button
+                variant={roleFilter === "tenant" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setRoleFilter("tenant")}
+              >
+                Locataires
+              </Button>
+              <Button
+                variant={roleFilter === "admin" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setRoleFilter("admin")}
+              >
+                Admins
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-md border p-0 overflow-hidden">
@@ -256,7 +295,7 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
                     </div>
 
                     <div className="mt-4 pt-3 border-t flex justify-end">
-                      {user.is_blocked ? (
+                      {!isSelf(user.id) && (user.is_blocked ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -276,7 +315,7 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
                           <Ban className="h-4 w-4 mr-2" />
                           Bloquer
                         </Button>
-                      )}
+                      ))}
                       {user.role === 'owner' && (
                         <Button
                           variant="outline"
@@ -333,7 +372,7 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {user.is_blocked ? (
+                          {!isSelf(user.id) && (user.is_blocked ? (
                             <Button
                               variant="outline"
                               size="sm"
@@ -351,7 +390,7 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
                               <Ban className="h-4 w-4 mr-1" />
                               Bloquer
                             </Button>
-                          )}
+                          ))}
                           {user.role === 'owner' && (
                             <Button
                               variant="outline"

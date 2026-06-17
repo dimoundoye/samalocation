@@ -74,9 +74,11 @@ const Subscription = {
                 s.*, 
                 up.full_name as user_name, 
                 up.email as user_email, 
-                up.phone as user_phone
+                up.phone as user_phone,
+                u.referred_by
             FROM subscriptions s
             JOIN user_profiles up ON s.user_id = up.id
+            LEFT JOIN users u ON s.user_id = u.id
             ORDER BY s.created_at DESC
             LIMIT $1
         `, [limit]);
