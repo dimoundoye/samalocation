@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
     FileText, Plus, Pencil, Trash2, Loader2, AlertTriangle, Lock, Crown
 } from "lucide-react";
@@ -31,6 +32,8 @@ export function ContractTemplatesManager({
     const { toast } = useToast();
     const [templates, setTemplates] = useState<ContractTemplate[]>([]);
     const [loading, setLoading] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
     useEffect(() => {
         if (open && isProfessional) {
@@ -52,18 +55,27 @@ export function ContractTemplatesManager({
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm("Supprimer ce modèle de contrat ?")) return;
+    const handleDeleteClick = (id: string) => {
+        setTemplateToDelete(id);
+        setConfirmOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!templateToDelete) return;
         try {
-            await deleteContractTemplate(id);
-            setTemplates(prev => prev.filter(t => t.id !== id));
+            await deleteContractTemplate(templateToDelete);
+            setTemplates(prev => prev.filter(t => t.id !== templateToDelete));
             toast({ title: "Modèle supprimé" });
         } catch (err: any) {
             toast({ title: "Erreur", description: err.message, variant: "destructive" });
+        } finally {
+            setTemplateToDelete(null);
+            setConfirmOpen(false);
         }
     };
 
     return (
+        <>
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl w-full max-h-[90vh] flex flex-col p-0 gap-0">
                 <DialogHeader className="px-6 py-4 border-b shrink-0">
@@ -146,7 +158,7 @@ export function ContractTemplatesManager({
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8 text-red-500 hover:text-red-700"
-                                                        onClick={() => handleDelete(template.id)}
+                                                        onClick={() => handleDeleteClick(template.id)}
                                                         title="Supprimer"
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
@@ -169,5 +181,17 @@ export function ContractTemplatesManager({
                 </div>
             </DialogContent>
         </Dialog>
+
+        <ConfirmDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            title="Supprimer ce modèle"
+            description="Êtes-vous sûr de vouloir supprimer ce modèle de contrat ?"
+            onConfirm={confirmDelete}
+            confirmText="Supprimer"
+            cancelText="Annuler"
+            variant="danger"
+        />
+        </>
     );
 }

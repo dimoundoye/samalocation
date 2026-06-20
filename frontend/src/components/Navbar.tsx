@@ -75,12 +75,21 @@ const Navbar = () => {
                     <LogIn className="h-4 w-4" />
                     {t('nav.login')}
                   </Button>
+                  {/* Mobile Login Button (only visible on mobile, redirects to login) */}
+                  <Button
+                    onClick={() => navigate("/auth?mode=login")}
+                    className="flex sm:hidden gradient-accent text-white shadow-soft hover:shadow-medium transition-all h-10 w-10 p-0 items-center justify-center"
+                  >
+                    <LogIn className="h-4 w-4" />
+                  </Button>
+
+                  {/* Desktop/Tablet Signup Button (hidden on mobile) */}
                   <Button
                     onClick={() => navigate("/auth?mode=signup")}
-                    className="gradient-accent text-white shadow-soft hover:shadow-medium transition-all h-10 px-4"
+                    className="hidden sm:flex gradient-accent text-white shadow-soft hover:shadow-medium transition-all h-10 px-4 items-center gap-2"
                   >
-                    <UserPlus className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">{t('nav.signup')}</span>
+                    <UserPlus className="h-4 w-4" />
+                    <span>{t('nav.signup')}</span>
                   </Button>
                 </div>
               )}

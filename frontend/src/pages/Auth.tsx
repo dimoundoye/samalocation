@@ -244,8 +244,12 @@ const Auth = () => {
             navigate(`/auth?${newSearchParams.toString()}`);
           }}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">{t('auth.login.title')}</TabsTrigger>
-              <TabsTrigger value="signup">{t('auth.signup.title')}</TabsTrigger>
+              <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                {t('auth.login.title')}
+              </TabsTrigger>
+              <TabsTrigger value="signup" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                {t('auth.signup.title')}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
