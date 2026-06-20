@@ -306,52 +306,54 @@ export const OwnerTeamTab = () => {
                                     >
                                         <Card className="group hover:border-primary/20 transition-all border border-transparent shadow-none bg-secondary/20 overflow-hidden">
                                             <CardContent className="p-4 flex items-center gap-4">
-                                                <Avatar className="h-14 w-14 rounded-2xl shadow-soft">
+                                                <Avatar className="h-14 w-14 rounded-2xl shadow-soft shrink-0">
                                                     <AvatarFallback className="bg-primary/5 text-primary text-xl font-bold">
                                                         {member.full_name?.charAt(0)}
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 items-start">
                                                         <h4 className="font-bold truncate">{member.full_name}</h4>
-                                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider h-5">
-                                                            Agent
-                                                        </Badge>
-                                                        {!hasMultiUser && (
-                                                            <Badge variant="destructive" className="text-[10px] uppercase tracking-wider h-5">
-                                                                Accès suspendu
+                                                        <div className="flex flex-wrap items-center gap-1.5">
+                                                            <Badge variant="outline" className="text-[10px] uppercase tracking-wider h-5 shrink-0">
+                                                                Agent
                                                             </Badge>
-                                                        )}
-                                                        <div
-                                                            className="cursor-pointer hover:scale-105 transition-transform"
-                                                            onClick={() => handleToggleRevenueAccess(member.id, member.permissions?.can_view_revenue)}
-                                                            title="Cliquer pour changer l'accès aux revenus"
-                                                        >
-                                                            {member.permissions?.can_view_revenue ? (
-                                                                <Badge variant="secondary" className="text-[10px] uppercase tracking-wider h-5 bg-green-50 text-green-600 border-green-200">
-                                                                    <Eye className="h-3 w-3 mr-1" /> Revenus
-                                                                </Badge>
-                                                            ) : (
-                                                                <Badge variant="outline" className="text-[10px] uppercase tracking-wider h-5 opacity-60">
-                                                                    <EyeOff className="h-3 w-3 mr-1" /> Revenus
+                                                            {!hasMultiUser && (
+                                                                <Badge variant="destructive" className="text-[10px] uppercase tracking-wider h-5 shrink-0">
+                                                                    Accès suspendu
                                                                 </Badge>
                                                             )}
+                                                            <div
+                                                                className="cursor-pointer hover:scale-105 transition-transform shrink-0"
+                                                                onClick={() => handleToggleRevenueAccess(member.id, member.permissions?.can_view_revenue)}
+                                                                title="Cliquer pour changer l'accès aux revenus"
+                                                            >
+                                                                {member.permissions?.can_view_revenue ? (
+                                                                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wider h-5 bg-green-50 text-green-600 border-green-200">
+                                                                        <Eye className="h-3 w-3 mr-1" /> Revenus
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <Badge variant="outline" className="text-[10px] uppercase tracking-wider h-5 opacity-60">
+                                                                        <EyeOff className="h-3 w-3 mr-1" /> Revenus
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col gap-1 mt-1">
                                                         <div className="flex items-center text-xs text-muted-foreground gap-1.5">
-                                                            <Mail className="h-3 w-3" />
+                                                            <Mail className="h-3 w-3 shrink-0" />
                                                             <span className="truncate">{member.email}</span>
                                                         </div>
                                                         {member.phone && (
                                                             <div className="flex items-center text-xs text-muted-foreground gap-1.5">
-                                                                <Phone className="h-3 w-3" />
-                                                                <span>{member.phone}</span>
+                                                                <Phone className="h-3 w-3 shrink-0" />
+                                                                <span className="truncate">{member.phone}</span>
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-2 shrink-0">
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"

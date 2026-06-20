@@ -489,7 +489,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -503,12 +503,14 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                         }
                         setScannerOpen(true);
                       }}
-                      className="gap-2 relative"
+                      className="h-auto py-2.5 px-4 gap-2 flex flex-wrap sm:flex-nowrap items-center justify-center text-center sm:text-left w-full sm:w-auto"
                     >
-                      <Scan className="h-4 w-4" /> 
-                      {t('settings.scan_signature_stamp')}
+                      <span className="flex items-center gap-2 shrink-0">
+                        <Scan className="h-4 w-4 shrink-0" />
+                        <span className="text-sm font-medium">{t('settings.scan_signature_stamp')}</span>
+                      </span>
                       {!hasFeature('signature') && (
-                        <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-700 border-amber-200 text-[10px] h-5 px-1.5 gap-1">
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] h-5 px-1.5 gap-1 shrink-0">
                           <Crown className="h-3 w-3" /> Premium
                         </Badge>
                       )}
