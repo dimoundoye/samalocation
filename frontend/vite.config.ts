@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            urlPattern: /\/api\/(auth\/me|tenant|receipts|properties|owner|maintenance|notifications|messages)/i,
+            urlPattern: /\/api\/(tenant|receipts|properties|owner|maintenance|notifications|messages)/i,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'api-cache',

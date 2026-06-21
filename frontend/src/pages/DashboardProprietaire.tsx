@@ -1719,6 +1719,16 @@ const DashboardProprietaire = () => {
                   </div>
                 </div>
 
+                <div className="bg-blue-500/5 border border-blue-500/10 rounded-3xl p-5 flex gap-4">
+                  <AlertCircle className="h-6 w-6 text-blue-500 shrink-0" />
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-blue-700">Comment affecter un locataire ?</h4>
+                    <p className="text-sm text-blue-600/80 leading-relaxed">
+                      Pour pouvoir affecter un locataire, vous devez d'abord enregistrer le bien immobilier (maison, appartement, chambre, etc.) correspondant dans l'onglet <strong>Mes Biens</strong>.
+                    </p>
+                  </div>
+                </div>
+
                  <Card className="shadow-soft overflow-hidden border border-border/40">
                   <div className="border-b border-border/40 bg-card px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <CardTitle className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('owner.tenants_list')}</CardTitle>

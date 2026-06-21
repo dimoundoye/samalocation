@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, WifiOff, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,13 +9,39 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { user, userRole, loading } = useAuth();
+  const { user, userRole, loading, connectionError, retryAuth, signOut } = useAuth();
   const location = useLocation();
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (connectionError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+        <div className="w-full max-w-md bg-card border border-border/50 rounded-3xl shadow-strong p-8 text-center space-y-6 animate-scale-in">
+          <div className="h-16 w-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto text-red-500 animate-pulse">
+            <WifiOff className="h-8 w-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Problème de connexion</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Impossible de se connecter au serveur. Le serveur est peut-être en train de redémarrer ou votre connexion internet est instable.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 pt-2">
+            <Button onClick={retryAuth} className="w-full h-11 gradient-primary text-white font-bold shadow-soft hover:shadow-medium transition-all">
+              <RefreshCw className="mr-2 h-4 w-4" /> Réessayer
+            </Button>
+            <Button variant="ghost" onClick={signOut} className="w-full h-11 text-muted-foreground hover:text-foreground">
+              Retour à l'accueil / Déconnexion
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }

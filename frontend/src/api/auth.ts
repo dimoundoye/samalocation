@@ -27,12 +27,7 @@ export const signup = async (userData: any) => {
 };
 
 export const getMe = async () => {
-    try {
-        return await baseClient("/auth/me");
-    } catch (error) {
-        console.error("GetMe error:", error);
-        return null;
-    }
+    return await baseClient("/auth/me");
 };
 
 export const searchUsers = async (query: string, role?: string) => {

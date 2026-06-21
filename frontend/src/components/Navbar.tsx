@@ -70,7 +70,7 @@ const Navbar = () => {
                   <Button
                     variant="ghost"
                     onClick={() => navigate("/auth?mode=login")}
-                    className="hidden lg:flex items-center gap-2"
+                    className="hidden sm:flex items-center gap-2"
                   >
                     <LogIn className="h-4 w-4" />
                     {t('nav.login')}
