@@ -1043,11 +1043,18 @@ const DashboardProprietaire = () => {
                   <div className="animate-in fade-in slide-in-from-top-4 duration-500">
                     {subscription.status === 'active' ? (() => {
                       const now = new Date().getTime();
-                      const expiry = subscription.expires_at ? new Date(subscription.expires_at).getTime() : 0;
-                      const diffInDays = expiry - now;
-                      const isFullyExpired = expiry > 0 && diffInDays <= -(3 * 24 * 60 * 60 * 1000);
-                      const isGracePeriod = expiry > 0 && diffInDays < 0 && diffInDays > -(3 * 24 * 60 * 60 * 1000);
-                      const isExpiringSoon = expiry > 0 && diffInDays < (7 * 24 * 60 * 60 * 1000) && diffInDays > 0;
+                      // Traiter l'expiration comme la FIN de la journée d'expiration (23:59:59)
+                      // pour que 3 jours calendaires complets soient accordés comme période de grâce
+                      let expiryEndOfDay = 0;
+                      if (subscription.expires_at) {
+                        const d = new Date(subscription.expires_at);
+                        expiryEndOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+                      }
+                      const GRACE_MS = 3 * 24 * 60 * 60 * 1000; // 3 jours en ms
+                      const diffMs = expiryEndOfDay - now;
+                      const isFullyExpired = expiryEndOfDay > 0 && diffMs <= -GRACE_MS;
+                      const isGracePeriod = expiryEndOfDay > 0 && diffMs < 0 && diffMs > -GRACE_MS;
+                      const isExpiringSoon = expiryEndOfDay > 0 && diffMs > 0 && diffMs < (7 * 24 * 60 * 60 * 1000);
 
                       return (
                         <Alert className={isFullyExpired || isGracePeriod

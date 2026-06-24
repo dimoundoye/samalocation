@@ -20,7 +20,14 @@ export const OwnerSubscription = () => {
     const { user } = useAuth();
     const { toast } = useToast();
     const { subscription, loading } = useSubscription();
-    const isExpired = subscription?.expires_at ? new Date(subscription.expires_at).getTime() < new Date().getTime() : false;
+    // Traiter la date d'expiration comme la FIN de la journée (23:59:59)
+    // pour qu'un abonnement expirant le 21 juin ne soit pas affiché "Expiré" avant le 22 juin
+    const isExpired = (() => {
+        if (!subscription?.expires_at) return false;
+        const d = new Date(subscription.expires_at);
+        const endOfExpiryDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+        return endOfExpiryDay.getTime() < new Date().getTime();
+    })();
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);

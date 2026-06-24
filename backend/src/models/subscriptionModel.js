@@ -9,7 +9,7 @@ const Subscription = {
             SELECT * FROM subscriptions 
             WHERE user_id = $1 
             AND status = 'active'
-            AND (expires_at > NOW() OR expires_at IS NULL)
+            AND (DATE(expires_at) >= CURRENT_DATE - INTERVAL '3 days' OR expires_at IS NULL)
             ORDER BY created_at DESC 
             LIMIT 1
         `, [userId]);
