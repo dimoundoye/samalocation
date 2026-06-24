@@ -12,15 +12,13 @@ export function LanguageToggle() {
     };
 
     return (
-        <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleLanguage}
-            className="h-9 w-9 rounded-full"
-            title={i18n.language === "fr" ? "Switch to English" : "Passer en français"}
-        >
-            <Globe className="h-[1.2rem] w-[1.2rem]" />
-            <span className="sr-only">Toggle language</span>
-        </Button>
+    <Button 
+        variant="ghost" 
+        onClick={toggleLanguage} 
+        className="h-9 px-3 rounded-full text-sm font-medium flex items-center gap-1.5"
+    >
+    <Globe className="h-4 w-4" />
+    <span className="uppercase">{i18n.language}</span>
+    </Button>
     );
 }

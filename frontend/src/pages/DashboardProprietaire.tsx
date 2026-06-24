@@ -1045,19 +1045,20 @@ const DashboardProprietaire = () => {
                       const now = new Date().getTime();
                       const expiry = subscription.expires_at ? new Date(subscription.expires_at).getTime() : 0;
                       const diffInDays = expiry - now;
-                      const isExpiringSoon = expiry > 0 && diffInDays < (7 * 24 * 60 * 60 * 1000) && diffInDays > 0;
+                      const isFullyExpired = expiry > 0 && diffInDays <= -(3 * 24 * 60 * 60 * 1000);
                       const isGracePeriod = expiry > 0 && diffInDays < 0 && diffInDays > -(3 * 24 * 60 * 60 * 1000);
+                      const isExpiringSoon = expiry > 0 && diffInDays < (7 * 24 * 60 * 60 * 1000) && diffInDays > 0;
 
                       return (
-                        <Alert className={isGracePeriod
-                          ? "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl shadow-md border-2 animate-pulse"
+                        <Alert className={isFullyExpired || isGracePeriod
+                          ? `bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl shadow-md border-2 ${isGracePeriod ? 'animate-pulse' : ''}`
                           : isExpiringSoon
                             ? "bg-orange-500/10 border-orange-500/20 text-orange-700 dark:text-orange-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl shadow-sm"
                             : "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl shadow-sm"
                         }>
                           <div className="flex items-start gap-4 flex-1 min-w-0 w-full">
-                            <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${isGracePeriod ? 'bg-red-500/20' : isExpiringSoon ? 'bg-orange-500/20' : 'bg-green-500/20'}`}>
-                              {isGracePeriod
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${isFullyExpired || isGracePeriod ? 'bg-red-500/20' : isExpiringSoon ? 'bg-orange-500/20' : 'bg-green-500/20'}`}>
+                              {isFullyExpired || isGracePeriod
                                 ? <History className="h-6 w-6 text-red-600" />
                                 : isExpiringSoon
                                   ? <AlertTriangle className="h-6 w-6 text-orange-600" />
@@ -1066,38 +1067,42 @@ const DashboardProprietaire = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <AlertTitle className="font-bold text-base">
-                                {isGracePeriod
-                                  ? "Action requise : Abonnement expiré !"
-                                  : isExpiringSoon
-                                    ? "Votre abonnement expire bientôt !"
-                                    : (subscription.price === 0 ? "Récompense de parrainage activée !" : "Paiement validé avec succès !")
+                                {isFullyExpired
+                                  ? "Action requise : Abonnement terminé !"
+                                  : isGracePeriod
+                                    ? "Action requise : Abonnement expiré !"
+                                    : isExpiringSoon
+                                      ? "Votre abonnement expire bientôt !"
+                                      : (subscription.price === 0 ? "Récompense de parrainage activée !" : "Paiement validé avec succès !")
                                 }
                               </AlertTitle>
                               <AlertDescription className="text-sm opacity-90">
-                                {isGracePeriod
-                                  ? `Votre plan ${subscription.plan_name} est terminé, mais Samalocation vous offre 3 jours de sursis pour régulariser. Profitez-en pour renouveler dès maintenant.`
-                                  : isExpiringSoon
-                                    ? `Attention, votre accès ${subscription.plan_name} se termine dans quelques jours.`
-                                    : (subscription.price === 0
-                                      ? `Félicitations ! Vous profitez de ${subscription.referral_count} mois de plan ${subscription.plan_name} offerts grâce à vos parrainages.`
-                                      : `Votre abonnement ${subscription.plan_name} est actif.`)
+                                {isFullyExpired
+                                  ? `Votre plan ${subscription.plan_name} est terminé. Veuillez renouveler votre abonnement pour continuer à profiter de toutes les fonctionnalités.`
+                                  : isGracePeriod
+                                    ? `Votre plan ${subscription.plan_name} est terminé, mais Samalocation vous offre 3 jours de sursis pour régulariser. Profitez-en pour renouveler dès maintenant.`
+                                    : isExpiringSoon
+                                      ? `Attention, votre accès ${subscription.plan_name} se termine dans quelques jours.`
+                                      : (subscription.price === 0
+                                        ? `Félicitations ! Vous profitez de ${subscription.referral_count} mois de plan ${subscription.plan_name} offerts grâce à vos parrainages.`
+                                        : `Votre abonnement ${subscription.plan_name} est actif.`)
                                 }
                                 {subscription.expires_at && (
-                                  <span> {isGracePeriod ? "Était valide jusqu'au" : "Fin de l'offre"} : <strong>{format(new Date(subscription.expires_at), 'dd MMMM yyyy', { locale: fr })}</strong>.</span>
+                                  <span> {isFullyExpired || isGracePeriod ? "Était valide jusqu'au" : "Fin de l'offre"} : <strong>{format(new Date(subscription.expires_at), 'dd MMMM yyyy', { locale: fr })}</strong>.</span>
                                 )}
                               </AlertDescription>
                             </div>
                           </div>
-                          {(isExpiringSoon || isGracePeriod) && (
+                          {(isExpiringSoon || isGracePeriod || isFullyExpired) && (
                             <Button
                               size="sm"
-                              variant={isGracePeriod ? "default" : "outline"}
-                              className={isGracePeriod
+                              variant={isGracePeriod || isFullyExpired ? "default" : "outline"}
+                              className={isGracePeriod || isFullyExpired
                                 ? "bg-red-600 hover:bg-red-700 text-white font-black px-6 shadow-lg h-12 w-full sm:w-auto shrink-0"
                                 : "border-orange-500/30 hover:bg-orange-500/10 text-orange-700 dark:text-orange-400 font-bold w-full sm:w-auto shrink-0"}
                               onClick={() => setActiveTab('subscription')}
                             >
-                              {isGracePeriod ? "RENOUVELER MAINTENANT" : "Renouveler"}
+                              {isGracePeriod || isFullyExpired ? "RENOUVELER MAINTENANT" : "Renouveler"}
                             </Button>
                           )}
                         </Alert>

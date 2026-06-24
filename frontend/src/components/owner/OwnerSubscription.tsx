@@ -20,6 +20,7 @@ export const OwnerSubscription = () => {
     const { user } = useAuth();
     const { toast } = useToast();
     const { subscription, loading } = useSubscription();
+    const isExpired = subscription?.expires_at ? new Date(subscription.expires_at).getTime() < new Date().getTime() : false;
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -106,6 +107,10 @@ export const OwnerSubscription = () => {
                                     <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border border-amber-300 animate-pulse font-bold">
                                         <Clock className="h-3 w-3 mr-1" /> Actif (Provisoire)
                                     </Badge>
+                                ) : isExpired ? (
+                                    <Badge className="bg-red-500 hover:bg-red-600 text-white font-bold">
+                                        <AlertCircle className="h-3 w-3 mr-1" /> Expiré
+                                    </Badge>
                                 ) : (
                                     <Badge className="bg-green-500 hover:bg-green-600">
                                         <CheckCircle2 className="h-3 w-3 mr-1" /> Actif
@@ -113,7 +118,7 @@ export const OwnerSubscription = () => {
                                 )}
                                 {subscription?.expires_at && (
                                     <span className="text-xs text-muted-foreground">
-                                        Expire le {format(new Date(subscription.expires_at), "dd MMMM yyyy", { locale: fr })}
+                                        {isExpired ? "Expiré le" : "Expire le"} {format(new Date(subscription.expires_at), "dd MMMM yyyy", { locale: fr })}
                                     </span>
                                 )}
                             </div>
