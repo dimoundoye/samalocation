@@ -13,9 +13,11 @@ import { AccountSettings } from "@/components/shared/AccountSettings";
 import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown, Facebook, Instagram, Linkedin, Save, Loader2 } from "lucide-react";
 import { SignatureScanner } from "./SignatureScanner";
 import { uploadPhotos, getMySubscription } from "@/lib/api";
+import { logFrontendActivity } from "@/api/owner";
 import { useTranslation } from "react-i18next";
 import { UpgradeModal } from "./UpgradeModal";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/contexts/AuthContext";
 import classicImg from "@/assets/classic.png";
 import modernImg from "@/assets/modern.png";
 import minimalImg from "@/assets/minimal.png";
@@ -24,6 +26,8 @@ import agenceImg from "@/assets/agence.png";
 export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isAgent = !!user?.parentId;
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     fullName: "",
@@ -57,8 +61,8 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
   }, [profile]);
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    if (!isAgent) loadProfile();
+  }, [isAgent]);
 
   const loadProfile = async () => {
     try {
@@ -145,6 +149,15 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
         title: t('common.success'),
         description: t('common.save_success'),
       });
+
+      // Journal d'activité — Paramètres modifiés
+      logFrontendActivity({
+        action: 'UPDATE',
+        entityType: 'settings',
+        entityLabel: 'Paramètres de l\'agence modifiés',
+        metadata: {}
+      });
+
       if (onSuccess) onSuccess();
     } catch (error: any) {
       toast({
@@ -213,6 +226,22 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
       setLoading(false);
     }
   };
+
+  // Bloquer les agents : ils n'ont pas accès aux paramètres de l'agence
+  if (isAgent) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
+        <div className="h-20 w-20 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-5">
+          <Shield className="h-10 w-10 text-red-500" />
+        </div>
+        <h3 className="text-xl font-bold text-foreground mb-2">Accès restreint</h3>
+        <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+          Les paramètres de l'agence sont réservés au propriétaire du compte.
+          Contactez votre responsable si vous avez besoin d'effectuer une modification.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

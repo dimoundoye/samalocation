@@ -4,6 +4,7 @@ const Property = require('../models/propertyModel');
 const Notification = require('../models/notificationModel');
 const Subscription = require('../models/subscriptionModel');
 const { v4: uuidv4 } = require('uuid');
+const logActivity = require('../utils/logActivity');
 
 const dossierController = {
     /**
@@ -111,6 +112,16 @@ const dossierController = {
             }
 
             const dossier = await Dossier.findById(dossierId);
+
+            // Journal d'activité — dossier consulté
+            await logActivity(req, {
+                action: 'VIEW',
+                entityType: 'dossier',
+                entityId: dossierId,
+                entityLabel: `Dossier de ${dossier?.full_name || 'candidat'} consulté`,
+                metadata: { dossierId }
+            });
+
             return response.success(res, dossier);
         } catch (error) {
             next(error);

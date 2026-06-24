@@ -4,6 +4,7 @@ const Notification = require('../models/notificationModel');
 const response = require('../utils/response');
 const db = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
+const logActivity = require('../utils/logActivity');
 
 const maintenanceController = {
     /**
@@ -159,7 +160,17 @@ const maintenanceController = {
                 console.error('Failed to send maintenance status update notification to tenant:', notifError);
             }
 
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'UPDATE',
+                entityType: 'maintenance',
+                entityId: id,
+                entityLabel: `Maintenance "${request.title}" → statut : ${status}`,
+                metadata: { status, property_id: request.property_id }
+            });
+
             return response.success(res, updatedRequest, 'Statut mis à jour.');
+
         } catch (error) {
             next(error);
         }

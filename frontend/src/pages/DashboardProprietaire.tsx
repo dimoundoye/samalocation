@@ -420,14 +420,14 @@ const DashboardProprietaire = () => {
 
   // Marquer les messages comme lus quand un chat est sélectionné
   useEffect(() => {
-    if (!selectedChat || !currentUserId || activeTab !== "messages" || !messages.length) return;
+    if (!selectedChat || !activeOwnerId || activeTab !== "messages" || !messages.length) return;
 
     const markMessagesAsReadLocal = async () => {
       // Trouver tous les messages non lus de ce contact (reçus par l'utilisateur actuel)
       const unreadMessages = messages.filter(
         (m) =>
           m.sender_id === selectedChat.user_id &&
-          m.receiver_id === currentUserId &&
+          m.receiver_id === activeOwnerId &&
           !m.is_read
       );
 
@@ -450,7 +450,7 @@ const DashboardProprietaire = () => {
     };
 
     markMessagesAsReadLocal();
-  }, [selectedChat, currentUserId, messages, activeTab]);
+  }, [selectedChat, activeOwnerId, messages, activeTab]);
 
   useEffect(() => {
     if (isContractEditor) {
@@ -850,7 +850,7 @@ const DashboardProprietaire = () => {
             const unreadCount =
               item.id === "messages"
                 ? messages.filter(
-                  (msg) => msg.receiver_id === user?.id && !msg.is_read
+                  (msg) => msg.receiver_id === activeOwnerId && !msg.is_read
                 ).length
                 : item.id === "maintenance"
                   ? maintenanceRequests.filter(
@@ -2089,7 +2089,7 @@ const DashboardProprietaire = () => {
                     <CardContent className="p-0">
                       <ScrollArea className="h-[500px]">
                         {(() => {
-                          const currentUserId = user?.id;
+                          const currentUserId = activeOwnerId;
                           if (!currentUserId) return null;
 
                           // Create a unique list of contacts
@@ -2235,7 +2235,7 @@ const DashboardProprietaire = () => {
                         <CardContent className="p-0 flex-1 flex flex-col">
                           <ScrollArea className="flex-1 p-4 h-[400px]">
                             {(() => {
-                              const currentUserId = user?.id;
+                              const currentUserId = activeOwnerId;
                               if (!currentUserId) return null;
 
                               const filteredMessages = messages.filter(
@@ -2347,6 +2347,7 @@ const DashboardProprietaire = () => {
                     years={years}
                     currency={ownerProfile?.currency}
                     userGroupsKey={userGroupsKey}
+                    canSeeRevenue={canSeeRevenue}
                   />
                 )}
               </div>

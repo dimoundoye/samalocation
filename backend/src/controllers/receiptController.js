@@ -1,6 +1,7 @@
 const Receipt = require('../models/receiptModel');
 const { generateReceiptPDF } = require('../utils/pdfGenerator');
 const response = require('../utils/response');
+const logActivity = require('../utils/logActivity');
 
 const receiptController = {
     /**
@@ -117,9 +118,10 @@ const receiptController = {
             try {
                 await db.query(
                     `INSERT INTO notifications (id, user_id, type, title, message, created_at)
-                    VALUES (uuid_generate_v4(), $1, 'receipt', $2, $3, NOW())`,
+                    VALUES (uuid_generate_v4(), $1, $2, $3, $4, NOW())`,
                     [
                         tenant_id,
+                        'receipt',
                         'Nouveau reçu de loyer',
                         `Votre reçu de paiement N° ${receipt.receipt_number} pour ${month}/${year} est maintenant disponible.`
                     ]
@@ -128,6 +130,20 @@ const receiptController = {
             } catch (notifError) {
                 console.error('⚠️ Failed to create notification for tenant:', notifError);
             }
+
+            // Journal d'activité
+            try {
+                const tenantName = receipt.tenant_name || 'Locataire inconnu';
+                const propName = receipt.property_name || 'Bien inconnu';
+                const formattedAmount = Number(amount).toLocaleString('fr-FR');
+                await logActivity(req, {
+                    action: 'GENERATE',
+                    entityType: 'tenant',
+                    entityId: receipt.id,
+                    entityLabel: `Reçu de ${formattedAmount} F CFA pour ${tenantName} — ${propName} (${month}/${year})`,
+                    metadata: { amount, month, year, tenant_id, property_id }
+                });
+            } catch (logErr) { /* silencieux */ }
 
             return response.success(res, receipt, 'Reçu créé avec succès');
         } catch (error) {
@@ -262,6 +278,16 @@ const receiptController = {
             }
 
             await Receipt.delete(id);
+
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'DELETE',
+                entityType: 'tenant',
+                entityId: id,
+                entityLabel: `Reçu supprimé : ${receipt.tenant_name || receipt.tenant_id} — ${receipt.property_name || receipt.property_id} (${receipt.month}/${receipt.year})`,
+                metadata: { receipt_number: receipt.receipt_number, amount: receipt.amount }
+            });
+
             return response.success(res, null, 'Reçu supprimé avec succès');
         } catch (error) {
             next(error);

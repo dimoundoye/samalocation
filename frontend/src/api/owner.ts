@@ -94,3 +94,44 @@ export const acceptInvitation = async (token: string) => {
         throw error;
     }
 };
+
+export const getActivityLog = async (params?: {
+    page?: number;
+    limit?: number;
+    actor_id?: string;
+    entity_type?: string;
+    action?: string;
+}) => {
+    try {
+        const query = new URLSearchParams();
+        if (params?.page) query.set('page', String(params.page));
+        if (params?.limit) query.set('limit', String(params.limit));
+        if (params?.actor_id) query.set('actor_id', params.actor_id);
+        if (params?.entity_type) query.set('entity_type', params.entity_type);
+        if (params?.action) query.set('action', params.action);
+        const qs = query.toString() ? `?${query.toString()}` : '';
+        return await baseClient(`/owner/activity-log${qs}`);
+    } catch (error) {
+        console.error("GetActivityLog error:", error);
+        return null;
+    }
+};
+
+export const logFrontendActivity = async (data: {
+    action: string;
+    entityType: string;
+    entityId?: string;
+    entityLabel: string;
+    metadata?: Record<string, any>;
+}) => {
+    try {
+        await baseClient("/owner/activity-log", {
+            method: "POST",
+            body: JSON.stringify(data),
+        });
+    } catch (error) {
+        // Silencieux — ne jamais bloquer l'action principale
+        console.warn("[logFrontendActivity] Failed silently:", error);
+    }
+};
+

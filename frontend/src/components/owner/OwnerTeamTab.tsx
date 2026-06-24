@@ -40,6 +40,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
+import { OwnerActivityLog } from "@/components/owner/OwnerActivityLog";
 
 export const OwnerTeamTab = () => {
     const { toast } = useToast();
@@ -396,6 +397,18 @@ export const OwnerTeamTab = () => {
                 </CardContent>
             </Card>
 
+            <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                title="Retirer un collaborateur"
+                description="Êtes-vous sûr de vouloir retirer ce collaborateur de votre équipe ?"
+                onConfirm={confirmRemoveCollaborator}
+            />
+
+            {/* Journal d'activité — réservé au patron */}
+            {hasMultiUser && (
+                <OwnerActivityLog collaborators={collaborators} />
+            )}
             {/* Info Box */}
             <div className="bg-blue-500/5 border border-blue-500/10 rounded-3xl p-6 flex gap-4">
                 <AlertCircle className="h-6 w-6 text-blue-500 shrink-0" />
@@ -406,13 +419,6 @@ export const OwnerTeamTab = () => {
                     </p>
                 </div>
             </div>
-            <ConfirmDialog
-                open={confirmOpen}
-                onOpenChange={setConfirmOpen}
-                title="Retirer un collaborateur"
-                description="Êtes-vous sûr de vouloir retirer ce collaborateur de votre équipe ?"
-                onConfirm={confirmRemoveCollaborator}
-            />
         </div>
     );
 };

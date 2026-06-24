@@ -4,6 +4,7 @@ const Property = require('../models/propertyModel');
 const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
 const { getIO } = require('../utils/socket');
+const logActivity = require('../utils/logActivity');
 
 const messageController = {
     /**
@@ -70,6 +71,16 @@ const messageController = {
             } catch (notifError) {
                 console.error("Failed to create auto-notification:", notifError);
             }
+
+            // Journal d'activité
+            const propLabel = property_id ? `(bien concerné)` : '';
+            await logActivity(req, {
+                action: 'SEND',
+                entityType: 'message',
+                entityId: newMessage.id,
+                entityLabel: `Message envoyé ${propLabel}`,
+                metadata: { receiver_id, property_id }
+            });
 
             return response.success(res, newMessage, 'Message sent', 201);
         } catch (error) {

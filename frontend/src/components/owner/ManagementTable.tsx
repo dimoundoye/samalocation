@@ -42,6 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Tenant, Receipt, Property, PropertyUnit } from "@/types";
 import { syncPropertyGroups } from "@/lib/api";
+import { logFrontendActivity } from "@/api/owner";
 
 interface ManagementTableProps {
     tenants: Tenant[];
@@ -58,6 +59,7 @@ interface ManagementTableProps {
     years: number[];
     currency?: string;
     userGroupsKey?: string;
+    canSeeRevenue?: boolean;
 }
 
 export const ManagementTable = ({
@@ -74,12 +76,14 @@ export const ManagementTable = ({
     groupedData,
     years,
     currency = 'XOF',
-    userGroupsKey: propUserGroupsKey
+    userGroupsKey: propUserGroupsKey,
+    canSeeRevenue = true
 }: ManagementTableProps) => {
     const { toast } = useToast();
     const { user } = useAuth();
     const { hasFeature, subscription } = useSubscription();
-    const canExport = hasFeature('excel');
+    const isAgent = !!user?.parentId;
+    const canExport = hasFeature('excel') && !isAgent; // Export réservé au patron uniquement
     const defaultGroupsKey = useMemo(() => user?.id ? `owner_property_groups_v1_${user.id}` : "owner_property_groups_v1_guest", [user?.id]);
     const userGroupsKey = propUserGroupsKey || defaultGroupsKey;
 
@@ -154,6 +158,15 @@ export const ManagementTable = ({
             parentId: newGroupParentId === "root" ? undefined : newGroupParentId,
         };
         saveGroups([...customGroups, newGroup]);
+
+        // Journal d'activité — Création de groupe
+        logFrontendActivity({
+            action: 'CREATE',
+            entityType: 'gerance',
+            entityLabel: `Groupe "${newGroupName.trim()}" créé dans Gérance`,
+            metadata: { group_name: newGroupName.trim() }
+        });
+
         setNewGroupName("");
         setNewGroupParentId("root");
     };
@@ -386,6 +399,14 @@ export const ManagementTable = ({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        // Journal d'activité — Export Excel
+        logFrontendActivity({
+            action: 'EXPORT',
+            entityType: 'gerance',
+            entityLabel: `Export Excel Gérance ${selectedYear} téléchargé`,
+            metadata: { year: selectedYear, rows: rows.length }
+        });
     };
 
 
@@ -569,7 +590,13 @@ export const ManagementTable = ({
                             onClick={handleExport}
                             disabled={!canExport}
                             className={`flex-1 sm:flex-none ${!canExport ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
-                            title={!canExport ? "L'export Excel est réservé aux comptes Entreprise (Professionnel)" : "Exporter les données en CSV"}
+                            title={
+                                isAgent
+                                    ? "L'export Excel est réservé au patron de l'agence"
+                                    : !canExport
+                                        ? "L'export Excel est réservé aux comptes Professionnel (Entreprise)"
+                                        : "Exporter les données en CSV"
+                            }
                         >
                             {canExport ? <Download className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
                             Export
@@ -749,7 +776,7 @@ export const ManagementTable = ({
                                                                 </div>
                                                                 <div className="flex items-center gap-6">
                                                                     <div className="text-sm font-bold text-primary bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
-                                                                        {formatCurrency(stats.total, currency)}
+                                                                        {canSeeRevenue ? formatCurrency(stats.total, currency) : "🔒"}
                                                                     </div>
                                                                     <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0" />
                                                                 </div>
@@ -777,7 +804,7 @@ export const ManagementTable = ({
                                                                         )}
                                                                     </div>
                                                                     <div className="text-[10px] font-bold text-muted-foreground">
-                                                                        {formatCurrency(stats.total, currency)}
+                                                                        {canSeeRevenue ? formatCurrency(stats.total, currency) : "🔒"}
                                                                     </div>
                                                                 </div>
                                                             </TableCell>
@@ -829,7 +856,7 @@ export const ManagementTable = ({
                                                                                     <div className="flex flex-col items-center gap-0.5 group relative">
                                                                                         <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                                                                                         <span className="text-[9px] font-semibold text-green-700">
-                                                                                            {(monthAmount / 1000).toFixed(1).replace(/\.0$/, '')}k
+                                                                                            {canSeeRevenue ? `${(monthAmount / 1000).toFixed(1).replace(/\.0$/, '')}k` : "🔒"}
                                                                                         </span>
                                                                                         
                                                                                         {/* Action Buttons */}
@@ -844,7 +871,7 @@ export const ManagementTable = ({
                                                                                             </button>
                                                                                             <div className="w-[1px] h-3 bg-border mx-1"></div>
                                                                                             <span className="text-[10px] font-bold text-primary px-1">
-                                                                                                {formatCurrency(monthAmount, currency)}
+                                                                                                {canSeeRevenue ? formatCurrency(monthAmount, currency) : "🔒"}
                                                                                             </span>
                                                                                         </div>
                                                                                     </div>
@@ -858,7 +885,7 @@ export const ManagementTable = ({
                                                                         );
                                                                     })}
                                                                     <TableCell className="text-right font-bold text-primary/80 text-xs">
-                                                                        {formatCurrency(tenantYearTotal, currency)}
+                                                                        {canSeeRevenue ? formatCurrency(tenantYearTotal, currency) : "🔒"}
                                                                     </TableCell>
                                                                 </TableRow>
                                                             );
@@ -894,18 +921,23 @@ export const ManagementTable = ({
 
                                             return (
                                                 <TableHead key={month.id} className="text-center font-bold text-xs text-white/90">
-                                                    {folderMonthlyTotal > 0 ? (
-                                                        <div>
-                                                            {(folderMonthlyTotal / 1000).toFixed(1).replace(/\.0$/, '')}k
-                                                        </div>
+                                                    {canSeeRevenue ? (
+                                                        folderMonthlyTotal > 0 ? (
+                                                            <div>
+                                                                {(folderMonthlyTotal / 1000).toFixed(1).replace(/\.0$/, '')}k
+                                                            </div>
+                                                        ) : (
+                                                            "0"
+                                                        )
                                                     ) : (
-                                                        "0"
+                                                        "🔒"
                                                     )}
                                                 </TableHead>
                                             );
                                         })}
                                         <TableHead className="text-right font-black text-white py-3">
                                             {(() => {
+                                                if (!canSeeRevenue) return "🔒";
                                                 const currentNodes = getCurrentNodes();
                                                 const calculateGrandTotal = (nodes: any[]): number => {
                                                     let total = 0;

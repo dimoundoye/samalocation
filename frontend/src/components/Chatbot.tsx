@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,10 +14,8 @@ interface Message {
 
 const Chatbot = () => {
     const { user } = useAuth();
-    const isMessagingTab = typeof window !== 'undefined' && (
-        window.location.pathname.includes('/messages') ||
-        window.location.hash.includes('/messages')
-    );
+    const location = useLocation();
+    const isMessagingTab = location.pathname.includes('/messages') || location.hash.includes('/messages');
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [input, setInput] = useState("");
@@ -31,6 +30,10 @@ const Chatbot = () => {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages, isOpen, isMinimized]);
+
+    if (isMessagingTab) {
+        return null;
+    }
 
     const handleSend = async () => {
         if (!input.trim() || loading) return;

@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const Property = require('../models/propertyModel');
 const TeamInvitation = require('../models/teamInvitationModel');
+const logActivity = require('../utils/logActivity');
 
 const ownerController = {
     /**
@@ -28,6 +29,16 @@ const ownerController = {
         try {
             const userId = req.ownerId;
             const profile = await Owner.updateProfile(userId, req.body);
+
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'UPDATE',
+                entityType: 'profile',
+                entityId: userId,
+                entityLabel: 'Profil public de l\'agence modifié',
+                metadata: {}
+            });
+
             return response.success(res, profile, 'Profile updated');
         } catch (error) {
             next(error);
@@ -113,6 +124,15 @@ const ownerController = {
             // Envoyer l'e-mail d'invitation avec le lien d'acceptation
             await sendTeamInvitationLink(email, ownerName, invitation.token, !!existingUser);
 
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'INVITE',
+                entityType: 'team',
+                entityId: invitation.id,
+                entityLabel: `Agent ${email} invité dans l'équipe`,
+                metadata: { email, permissions }
+            });
+
             return response.success(res, null, 'Invitation envoyée avec succès', 201);
         } catch (error) {
             next(error);
@@ -188,6 +208,17 @@ const ownerController = {
             }
 
             await User.updatePermissions(id, permissions);
+
+            // Journal d'activité
+            const targetUser = collaborators.find(c => c.id === id);
+            await logActivity(req, {
+                action: 'UPDATE',
+                entityType: 'team',
+                entityId: id,
+                entityLabel: `Permissions de ${targetUser?.full_name || id} modifiées`,
+                metadata: { permissions }
+            });
+
             return response.success(res, null, 'Permissions mises à jour');
         } catch (error) {
             next(error);
@@ -202,7 +233,21 @@ const ownerController = {
             const { id } = req.params;
             const parentId = req.ownerId;
 
+            // Récupérer le nom de l'agent avant suppression
+            const collaboratorsBefore = await User.findCollaboratorsByParentId(parentId);
+            const agentToRemove = collaboratorsBefore.find(c => c.id === id);
+
             await User.removeCollaborator(id, parentId);
+
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'REMOVE',
+                entityType: 'team',
+                entityId: id,
+                entityLabel: `Agent ${agentToRemove?.full_name || agentToRemove?.email || id} retiré de l'équipe`,
+                metadata: { email: agentToRemove?.email }
+            });
+
             return response.success(res, null, 'Collaborateur retiré de l\'équipe');
         } catch (error) {
             next(error);

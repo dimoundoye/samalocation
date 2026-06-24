@@ -1,6 +1,7 @@
 const Property = require('../models/propertyModel');
 const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
+const logActivity = require('../utils/logActivity');
 
 // Simple in-memory cache for public properties
 const propertyCache = new Map();
@@ -110,6 +111,16 @@ const propertyController = {
 
             const newProperty = await Property.create(propertyData);
             clearPropertyCache();
+
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'CREATE',
+                entityType: 'property',
+                entityId: newProperty.id,
+                entityLabel: `Bien ajouté : ${req.body.name || 'Nouveau bien'}`,
+                metadata: { property_type: req.body.property_type, address: req.body.address }
+            });
+
             return response.success(res, newProperty, 'Property created successfully', 201);
         } catch (error) {
             next(error);
@@ -130,6 +141,16 @@ const propertyController = {
             }
 
             clearPropertyCache();
+
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'UPDATE',
+                entityType: 'property',
+                entityId: propertyId,
+                entityLabel: `Publication du bien ${result.name || propertyId} ${result.is_published ? 'activée' : 'désactivée'}`,
+                metadata: { is_published: result.is_published }
+            });
+
             return response.success(res, result, 'Publication status updated');
         } catch (error) {
             next(error);
@@ -169,6 +190,16 @@ const propertyController = {
             }
 
             clearPropertyCache();
+
+            // Journal d'activité (les détails ont déjà été supprimés, on utilise l'ID)
+            await logActivity(req, {
+                action: 'DELETE',
+                entityType: 'property',
+                entityId: propertyId,
+                entityLabel: `Bien supprimé (ID: ${propertyId})`,
+                metadata: {}
+            });
+
             return response.success(res, null, 'Property deleted successfully');
         } catch (error) {
             next(error);
@@ -190,6 +221,16 @@ const propertyController = {
             }
 
             clearPropertyCache();
+
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'UPDATE',
+                entityType: 'property',
+                entityId: propertyId,
+                entityLabel: `Bien modifié : ${updatedProperty.name || propertyId}`,
+                metadata: {}
+            });
+
             return response.success(res, updatedProperty, 'Property updated successfully');
         } catch (error) {
             next(error);

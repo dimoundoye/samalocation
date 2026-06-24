@@ -1,6 +1,7 @@
 const Contract = require('../models/contractModel');
 const { generateContractPDF, generateCustomContractPDFWithBrowser } = require('../utils/contractGenerator');
 const path = require('path');
+const logActivity = require('../utils/logActivity');
 
 const contractController = {
     async createContract(req, res, next) {
@@ -12,6 +13,18 @@ const contractController = {
                 contract_type: req.body.contract_type || 'standard'
             };
             const contract = await Contract.create(contractData);
+
+            // Journal d'activité
+            const tenantName = req.body.tenant_name || 'Locataire inconnu';
+            const propName = req.body.property_name || 'Bien inconnu';
+            await logActivity(req, {
+                action: 'CREATE',
+                entityType: 'contract',
+                entityId: contract.id,
+                entityLabel: `Contrat créé pour ${tenantName} — ${propName}`,
+                metadata: { contract_type: contractData.contract_type, start_date: req.body.start_date, end_date: req.body.end_date }
+            });
+
             res.status(201).json(contract);
         } catch (error) {
             next(error);

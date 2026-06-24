@@ -2,6 +2,7 @@ const Tenant = require('../models/tenantModel');
 const Property = require('../models/propertyModel');
 const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
+const logActivity = require('../utils/logActivity');
 
 const tenantController = {
     /**
@@ -118,6 +119,19 @@ const tenantController = {
 
             console.log('Tenant created:', newTenant);
 
+            // Journal d'activité
+            const { rows: propNameRows } = await db.query(
+                'SELECT p.name FROM properties p JOIN property_units pu ON pu.property_id = p.id WHERE pu.id = $1',
+                [unit_id]
+            );
+            await logActivity(req, {
+                action: 'CREATE',
+                entityType: 'tenant',
+                entityId: newTenant.id,
+                entityLabel: `Locataire ${full_name} ajouté — ${propNameRows[0]?.name || 'Bien inconnu'}`,
+                metadata: { email, phone, unit_id }
+            });
+
             return response.success(res, newTenant, 'Tenant assigned', 201);
         } catch (error) {
             console.error('Error in assignTenant:', error);
@@ -145,6 +159,16 @@ const tenantController = {
             }
 
             const updated = await Tenant.update(id, data);
+
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'UPDATE',
+                entityType: 'tenant',
+                entityId: id,
+                entityLabel: `Locataire ${tenant.full_name} modifié`,
+                metadata: {}
+            });
+
             return response.success(res, updated, 'Tenant updated');
         } catch (error) {
             console.error('Error in updateTenant:', error);
@@ -171,6 +195,16 @@ const tenantController = {
             }
 
             await Tenant.delete(id);
+
+            // Journal d'activité
+            await logActivity(req, {
+                action: 'DELETE',
+                entityType: 'tenant',
+                entityId: id,
+                entityLabel: `Locataire ${tenant.full_name} retiré`,
+                metadata: { email: tenant.email }
+            });
+
             return response.success(res, null, 'Tenant deleted');
         } catch (error) {
             console.error('Error in deleteTenant:', error);

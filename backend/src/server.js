@@ -44,6 +44,7 @@ const User = require('./models/userModel');
 const Subscription = require('./models/subscriptionModel');
 const PropertyGroup = require('./models/propertyGroupModel');
 const ContractTemplate = require('./models/contractTemplateModel');
+const ActivityLog = require('./models/activityLogModel');
 
 const app = express();
 const server = require('http').createServer(app);
@@ -229,6 +230,7 @@ server.listen(PORT, async () => {
         await Subscription.migrate();
         await PropertyGroup.migrate();
         await ContractTemplate.migrate();
+        await ActivityLog.migrate();
         console.log('  [DB] ✅ Migrations terminées.\n');
     } catch (err) {
         console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');

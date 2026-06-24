@@ -37,6 +37,10 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 setConnected(true);
                 // Join user-specific room for private messages/notifications
                 newSocket.emit('join', user.id);
+                // If collaborator/agent, also join the parent owner's context room to receive messages/notifications
+                if (user.parentId) {
+                    newSocket.emit('join', user.parentId);
+                }
             });
 
             newSocket.on('connect_error', (err) => {

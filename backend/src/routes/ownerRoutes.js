@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ownerController = require('../controllers/ownerController');
+const activityLogController = require('../controllers/activityLogController');
 const authMiddleware = require('../middleware/authMiddleware');
 const { checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 
@@ -22,5 +23,10 @@ router.delete('/collaborators/:id', authMiddleware, ownerController.removeCollab
 // Invitations d'équipe
 router.get('/invitations/:token', ownerController.getInvitationDetails);
 router.post('/invitations/:token/accept', authMiddleware, ownerController.acceptInvitation);
+
+// Journal d'activité (réservé au patron - plan Professionnel)
+router.get('/activity-log', authMiddleware, checkFeatureAccess('multi_user'), activityLogController.getActivityLog);
+// Route pour logger des actions frontend (export Excel, groupe)
+router.post('/activity-log', authMiddleware, activityLogController.createActivityLog);
 
 module.exports = router;
