@@ -33,6 +33,9 @@ router.get('/users/search', authMiddleware, authController.searchUsers);
 // Change password
 router.post('/change-password', authMiddleware, authController.changePassword);
 
+// Update my personal profile (name, phone)
+router.patch('/update-profile', authMiddleware, authController.updateMyProfile);
+
 // Create tenant account (for owners)
 router.post('/create-tenant-account', authMiddleware, authController.createTenantAccount);
 

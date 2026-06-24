@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountSettings } from "@/components/shared/AccountSettings";
-import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown, Facebook, Instagram, Linkedin, Save, Loader2 } from "lucide-react";
+import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown, Facebook, Instagram, Linkedin, Save, Loader2, User } from "lucide-react";
 import { SignatureScanner } from "./SignatureScanner";
 import { uploadPhotos, getMySubscription } from "@/lib/api";
 import { logFrontendActivity } from "@/api/owner";
@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { UpgradeModal } from "./UpgradeModal";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/contexts/AuthContext";
+import { baseClient } from "@/api/baseClient";
 import classicImg from "@/assets/classic.png";
 import modernImg from "@/assets/modern.png";
 import minimalImg from "@/assets/minimal.png";
@@ -28,6 +29,8 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isAgent = !!user?.parentId;
+  // Agent is operating in the patron's space when active_context is set to a non-personal value
+  const isInPatronContext = isAgent && !!localStorage.getItem("active_context") && localStorage.getItem("active_context") !== "personal";
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     fullName: "",
@@ -46,6 +49,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
     receiptTemplate: "classic",
     currency: "XOF",
   });
+
   const [scannerOpen, setScannerOpen] = useState(false);
   const { hasFeature } = useSubscription();
   const [upgradeModal, setUpgradeModal] = useState({
@@ -61,8 +65,8 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
   }, [profile]);
 
   useEffect(() => {
-    if (!isAgent) loadProfile();
-  }, [isAgent]);
+    if (!isInPatronContext) loadProfile();
+  }, [isInPatronContext]);
 
   const loadProfile = async () => {
     try {
@@ -227,28 +231,30 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
     }
   };
 
-  // Bloquer les agents : ils n'ont pas accès aux paramètres de l'agence
-  if (isAgent) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
-        <div className="h-20 w-20 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-5">
-          <Shield className="h-10 w-10 text-red-500" />
-        </div>
-        <h3 className="text-xl font-bold text-foreground mb-2">Accès restreint</h3>
-        <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-          Les paramètres de l'agence sont réservés au propriétaire du compte.
-          Contactez votre responsable si vous avez besoin d'effectuer une modification.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2">{t('settings.title')}</h2>
         <p className="text-muted-foreground">{t('settings.subtitle')}</p>
       </div>
+
+      {/* Block access to agency settings when agent is in patron context */}
+      {isInPatronContext ? (
+        <div className="flex flex-col items-center justify-center gap-6 py-20 text-center">
+          <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center">
+            <Shield className="h-10 w-10 text-muted-foreground/50" />
+          </div>
+          <div className="space-y-2 max-w-sm">
+            <h3 className="text-lg font-bold">Paramètres de l'agence</h3>
+            <p className="text-sm text-muted-foreground">
+              Vous êtes actuellement dans l'espace de votre patron. Vous ne pouvez pas modifier les paramètres de l'agence.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Basculez vers votre espace personnel pour accéder à vos propres paramètres.
+            </p>
+          </div>
+        </div>
+      ) : (
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[260px] shrink-0 mb-6 border border-border/40">
@@ -266,7 +272,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile" className="space-y-4">
+          <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>{t('settings.profile_info')}</CardTitle>
@@ -744,12 +750,13 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+          </TabsContent>
 
         <TabsContent value="account" className="space-y-4">
           <AccountSettings />
         </TabsContent>
       </Tabs>
+      )}
 
       <UpgradeModal
         open={upgradeModal.open}

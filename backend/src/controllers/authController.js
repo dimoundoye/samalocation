@@ -334,6 +334,30 @@ const authController = {
     },
 
     /**
+     * Update my personal profile (name, phone) — accessible to all authenticated users
+     */
+    async updateMyProfile(req, res, next) {
+        try {
+            const userId = req.user.id;
+            const { name, phone } = req.body;
+
+            if (!name || !name.trim()) {
+                return response.error(res, 'Le nom est obligatoire', 400);
+            }
+
+            const db = require('../config/db');
+            await db.query(
+                'UPDATE user_profiles SET full_name = $1, phone = $2 WHERE id = $3',
+                [name.trim(), phone || '', userId]
+            );
+
+            return response.success(res, null, 'Profil mis à jour avec succès');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
      * Create a tenant account (Owner action)
      */
     async createTenantAccount(req, res, next) {
