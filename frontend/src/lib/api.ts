@@ -6,7 +6,7 @@ import { getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant,
 import { getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator, getPublicOwnerProfile } from "../api/owner";
 import { getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt } from "../api/receipts";
 import { createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser } from "../api/reports";
-import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting } from "../api/admin";
+import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting, verifyPDFDocument } from "../api/admin";
 import { getContactMessages, updateContactMessageStatus } from "../api/contact";
 import { createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract } from "../api/contracts";
 import { getMySubscription, notifyPayment } from "../api/subscription";
@@ -25,7 +25,7 @@ export {
     getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator, getPublicOwnerProfile,
     getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt,
     createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser,
-    getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting,
+    getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting, verifyPDFDocument,
     getContactMessages, updateContactMessageStatus,
     createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract,
     getMySubscription, notifyPayment,

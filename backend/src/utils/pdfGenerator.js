@@ -79,7 +79,18 @@ function formatPeriodLabel(receiptData) {
  */
 async function generateReceiptPDF(receiptData) {
     const template = receiptData.receipt_template || 'classic';
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const ownerPassword = process.env.PDF_OWNER_PASSWORD || 'samalocation_default_secure_key_2026';
+    const doc = new PDFDocument({ 
+        margin: 50, 
+        size: 'A4',
+        ownerPassword: ownerPassword,
+        permissions: {
+            modifying: false,
+            copying: false,
+            annotating: false,
+            printing: 'highResolution'
+        }
+    });
 
     if (template === 'modern') {
         await drawModernTemplate(doc, receiptData);
@@ -161,7 +172,7 @@ async function drawClassicTemplate(doc, receiptData) {
     }
 
     await embedSignature(doc, receiptData);
-    drawFooter(doc);
+    drawFooter(doc, receiptData);
 }
 
 /**
@@ -259,7 +270,7 @@ async function drawModernTemplate(doc, receiptData) {
     }
 
     await embedSignature(doc, receiptData);
-    drawFooter(doc);
+    drawFooter(doc, receiptData);
 }
 
 /**
@@ -336,7 +347,7 @@ async function drawMinimalTemplate(doc, receiptData) {
     }
 
     await embedSignature(doc, receiptData);
-    drawFooter(doc);
+    drawFooter(doc, receiptData);
 }
 
 async function embedSignature(doc, receiptData) {
@@ -423,11 +434,21 @@ async function drawCorporateTemplate(doc, receiptData) {
     }
 
     await embedSignature(doc, receiptData);
-    drawFooter(doc);
+    drawFooter(doc, receiptData);
 }
 
-function drawFooter(doc) {
+function drawFooter(doc, receiptData) {
     const bottom = doc.page.height - 70;
+    if (receiptData) {
+        const crypto = require('crypto');
+        const rawData = `${receiptData.receipt_number || ''}${receiptData.id || ''}${receiptData.amount || ''}`;
+        const docHash = crypto.createHash('sha256').update(rawData).digest('hex');
+        
+        doc.fontSize(7).fillColor('#cbd5e1').text(
+            `Hash de securite : ${docHash}`,
+            50, bottom - 15, { align: 'center', width: 512 }
+        );
+    }
     doc.fontSize(8).fillColor('#94a3b8').text(
         'Ce reçu atteste du paiement du loyer pour la période mentionnée ci-dessus.',
         50, bottom, { align: 'center', width: 512 }

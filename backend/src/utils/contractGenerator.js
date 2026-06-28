@@ -10,9 +10,17 @@ const { formatAmountInWords } = require('./numberToWords');
  * Génère le PDF du contrat de location optimisé juridiquement
  */
 async function generateContractPDF(contractData) {
+    const ownerPassword = process.env.PDF_OWNER_PASSWORD || 'samalocation_default_secure_key_2026';
     const doc = new PDFDocument({
         margin: 50,
-        size: 'A4'
+        size: 'A4',
+        ownerPassword: ownerPassword,
+        permissions: {
+            modifying: false,
+            copying: false,
+            annotating: false,
+            printing: 'highResolution'
+        }
     });
 
     const isPremium = contractData.contract_type === 'premium';
@@ -213,7 +221,7 @@ async function generateContractPDF(contractData) {
     // Document Hash
     const rawData = `${contractData.contract_number || ''}${contractData.contract_id || contractData.id || ''}`;
     const docHash = crypto.createHash('sha256').update(rawData).digest('hex');
-    doc.fontSize(7).fillColor(secondaryColor).text(`Hash de securite : ${docHash}`, { align: 'center' });
+    doc.fontSize(7).fillColor(secondaryColor).text(`Hash de securite : ${docHash}`, 50, doc.y, { align: 'center', width: 495 });
 
     // QR Code
     try {
@@ -257,7 +265,18 @@ async function generateContractPDF(contractData) {
  * @returns {PDFDocument}
  */
 async function generateCustomContractPDF(htmlContent, meta = {}) {
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const ownerPassword = process.env.PDF_OWNER_PASSWORD || 'samalocation_default_secure_key_2026';
+    const doc = new PDFDocument({ 
+        margin: 50, 
+        size: 'A4',
+        ownerPassword: ownerPassword,
+        permissions: {
+            modifying: false,
+            copying: false,
+            annotating: false,
+            printing: 'highResolution'
+        }
+    });
 
     const textColor      = '#000000';
     const secondaryColor = '#666666';
@@ -802,6 +821,10 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
     color: #000;
     margin: 0;
     padding: 0;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
   .header {
     font-size: 9pt;

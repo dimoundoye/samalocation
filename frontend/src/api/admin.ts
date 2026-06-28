@@ -71,3 +71,12 @@ export const updatePlatformSetting = async (key: string, value: any) => {
         body: JSON.stringify({ key, value })
     });
 };
+
+export const verifyPDFDocument = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return await baseClient("/admin/verify-document", {
+        method: "POST",
+        body: formData
+    });
+};

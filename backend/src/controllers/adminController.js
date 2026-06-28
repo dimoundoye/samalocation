@@ -599,6 +599,208 @@ const adminController = {
             console.error('Error updating platform setting:', error);
             next(error);
         }
+    },
+    /**
+     * Audit et vérification d'un fichier PDF (Contrat ou Reçu) pour détecter les falsifications.
+     */
+    async verifyDocument(req, res, next) {
+        try {
+            if (!req.file) {
+                return response.error(res, "Aucun fichier téléversé.", 400);
+            }
+
+            const { PDFParse } = require('pdf-parse');
+            const crypto = require('crypto');
+            const Contract = require('../models/contractModel');
+            const Receipt = require('../models/receiptModel');
+
+            // 1. Parser le document PDF
+            const parser = new PDFParse({ data: req.file.buffer });
+            const pdfData = await parser.getText();
+            const text = pdfData.text;
+
+            // 2. Détecter le type de document
+            let docType = null;
+            if (text.includes("CONTRAT DE BAIL") || text.includes("DÉSIGNATION DES PARTIES") || text.includes("DESIGNATION DES PARTIES") || text.includes("DUREE ET RELOCALISATION")) {
+                docType = "contract";
+            } else if (text.includes("REÇU DE PAIEMENT") || text.includes("RECU DE PAIEMENT") || text.includes("OBJET DU PAIEMENT") || text.includes("Loyer mensuel") || text.includes("Loyer journalier") || text.includes("Loyer hebdomadaire")) {
+                docType = "receipt";
+            }
+
+            if (!docType) {
+                return response.error(res, "Le document téléversé n'est pas reconnu comme un contrat ou un reçu Sama Location.", 400);
+            }
+
+            let report = {
+                fileName: req.file.originalname,
+                fileSize: req.file.size,
+                docType: docType,
+                verified: false,
+                databaseMatch: false,
+                details: {}
+            };
+
+            if (docType === "contract") {
+                // 3. Extraire les identifiants pour le contrat
+                const contractNumMatch = text.match(/CONT-\d{4}-\d{4}/);
+                const uuidMatch = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+                
+                let contract = null;
+                if (uuidMatch) {
+                    contract = await Contract.findById(uuidMatch[0]);
+                }
+                if (!contract && contractNumMatch) {
+                    const { rows } = await db.query('SELECT id FROM rental_contracts WHERE contract_number = $1', [contractNumMatch[0]]);
+                    if (rows[0]) {
+                        contract = await Contract.findById(rows[0].id);
+                    }
+                }
+
+                if (!contract) {
+                    report.details = {
+                        contractNumber: { status: 'failed', expected: contractNumMatch ? contractNumMatch[0] : 'Inconnu', actual: 'Non trouvé en base de données' }
+                    };
+                    return response.success(res, report, "Document non identifié dans la base de données.");
+                }
+
+                report.databaseMatch = true;
+
+                // 4. Comparaison croisée des champs clés
+                const cleanText = text.replace(/\s+/g, ' '); // normaliser les espaces
+
+                // a. Numéro de contrat
+                const contractNumberMatch = cleanText.includes(contract.contract_number);
+                
+                // b. Bailleur
+                const ownerNameMatch = cleanText.toLowerCase().includes(contract.owner_name.toLowerCase());
+                
+                // c. Locataire
+                const tenantNameMatch = cleanText.toLowerCase().includes(contract.tenant_name.toLowerCase());
+                
+                // d. Loyer (vérifier plusieurs formats, ex: "250 000" et "250000")
+                const rentAmountStr = Math.floor(contract.rent_amount).toString();
+                const rentFormatted = rentAmountStr.replace(/\B(?=(\d{3})+(?!\d))/g, " "); // ex: 250 000
+                const rentAmountMatch = cleanText.includes(rentAmountStr) || cleanText.includes(rentFormatted);
+
+                // e. Caution
+                const depositAmountStr = Math.floor(contract.deposit_amount).toString();
+                const depositFormatted = depositAmountStr.replace(/\B(?=(\d{3})+(?!\d))/g, " "); // ex: 500 000
+                const depositAmountMatch = cleanText.includes(depositAmountStr) || cleanText.includes(depositFormatted);
+
+                // f. Hash de sécurité
+                const textWithoutWhitespace = text.replace(/\s+/g, '');
+                const hashMatch = textWithoutWhitespace.match(/Hashdesecurite:([a-f0-9]{64})/i) || 
+                                  textWithoutWhitespace.match(/Hashdesécurité:([a-f0-9]{64})/i);
+                
+                let hashStatus = 'not_applicable';
+                let pdfHash = null;
+                let expectedHash = crypto.createHash('sha256').update(`${contract.contract_number}${contract.id}`).digest('hex');
+
+                if (hashMatch && hashMatch[1]) {
+                    pdfHash = hashMatch[1];
+                    if (pdfHash === expectedHash) {
+                        hashStatus = 'success';
+                    } else {
+                        hashStatus = 'failed';
+                    }
+                }
+
+                // Déterminer la conformité finale
+                const allFieldsMatch = contractNumberMatch && ownerNameMatch && tenantNameMatch && rentAmountMatch && depositAmountMatch && (hashStatus !== 'failed');
+                report.verified = allFieldsMatch;
+
+                report.details = {
+                    contractNumber: { status: contractNumberMatch ? 'success' : 'failed', expected: contract.contract_number, actual: contractNumMatch ? contractNumMatch[0] : 'Introuvable' },
+                    ownerName: { status: ownerNameMatch ? 'success' : 'failed', expected: contract.owner_name, actual: ownerNameMatch ? contract.owner_name : 'Modifié ou absent' },
+                    tenantName: { status: tenantNameMatch ? 'success' : 'failed', expected: contract.tenant_name, actual: tenantNameMatch ? contract.tenant_name : 'Modifié ou absent' },
+                    rentAmount: { status: rentAmountMatch ? 'success' : 'failed', expected: `${rentFormatted} FCFA`, actual: rentAmountMatch ? `${rentFormatted} FCFA` : 'Modifié ou absent' },
+                    depositAmount: { status: depositAmountMatch ? 'success' : 'failed', expected: `${depositFormatted} FCFA`, actual: depositAmountMatch ? `${depositFormatted} FCFA` : 'Modifié ou absent' },
+                    securityHash: { status: hashStatus, expected: expectedHash, actual: pdfHash || (hashStatus === 'failed' ? 'Invalide' : 'Absent dans le PDF') }
+                };
+
+            } else if (docType === "receipt") {
+                // 3. Extraire les identifiants pour le reçu
+                const receiptNumMatch = text.match(/REC-\d{6}-\d{4}/);
+                const uuidMatch = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+
+                let receipt = null;
+                if (uuidMatch) {
+                    receipt = await Receipt.findById(uuidMatch[0]);
+                }
+                if (!receipt && receiptNumMatch) {
+                    const { rows } = await db.query('SELECT id FROM receipts WHERE receipt_number = $1', [receiptNumMatch[0]]);
+                    if (rows[0]) {
+                        receipt = await Receipt.findById(rows[0].id);
+                    }
+                }
+
+                if (!receipt) {
+                    report.details = {
+                        receiptNumber: { status: 'failed', expected: receiptNumMatch ? receiptNumMatch[0] : 'Inconnu', actual: 'Non trouvé en base de données' }
+                    };
+                    return response.success(res, report, "Document non identifié dans la base de données.");
+                }
+
+                report.databaseMatch = true;
+
+                // 4. Comparaison croisée des champs clés
+                const cleanText = text.replace(/\s+/g, ' ');
+
+                // a. Numéro de reçu
+                const receiptNumberMatch = cleanText.includes(receipt.receipt_number);
+
+                // b. Propriétaire (Bailleur)
+                const ownerNameMatch = cleanText.toLowerCase().includes(receipt.owner_name.toLowerCase());
+
+                // c. Locataire
+                const tenantNameMatch = cleanText.toLowerCase().includes(receipt.tenant_name.toLowerCase());
+
+                // d. Montant payé (ex: 250000 et 250 000)
+                const amountStr = Math.floor(receipt.amount).toString();
+                const amountFormatted = amountStr.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                const amountMatch = cleanText.includes(amountStr) || cleanText.includes(amountFormatted);
+
+                // e. Période / Date de paiement
+                const paymentDateFormatted = new Date(receipt.payment_date).toLocaleDateString('fr-FR');
+                const paymentDateMatch = cleanText.includes(paymentDateFormatted) || cleanText.includes(new Date(receipt.payment_date).getFullYear().toString());
+
+                // f. Hash de sécurité (optionnel pour les anciens reçus)
+                const textWithoutWhitespace = text.replace(/\s+/g, '');
+                const hashMatch = textWithoutWhitespace.match(/Hashdesecurite:([a-f0-9]{64})/i) || 
+                                  textWithoutWhitespace.match(/Hashdesécurité:([a-f0-9]{64})/i);
+
+                let hashStatus = 'not_applicable';
+                let pdfHash = null;
+                let expectedHash = crypto.createHash('sha256').update(`${receipt.receipt_number}${receipt.id}${receipt.amount}`).digest('hex');
+
+                if (hashMatch && hashMatch[1]) {
+                    pdfHash = hashMatch[1];
+                    if (pdfHash === expectedHash) {
+                        hashStatus = 'success';
+                    } else {
+                        hashStatus = 'failed';
+                    }
+                }
+
+                // Déterminer la conformité finale
+                const allFieldsMatch = receiptNumberMatch && ownerNameMatch && tenantNameMatch && amountMatch && (hashStatus !== 'failed');
+                report.verified = allFieldsMatch;
+
+                report.details = {
+                    receiptNumber: { status: receiptNumberMatch ? 'success' : 'failed', expected: receipt.receipt_number, actual: receiptNumMatch ? receiptNumMatch[0] : 'Introuvable' },
+                    ownerName: { status: ownerNameMatch ? 'success' : 'failed', expected: receipt.owner_name, actual: ownerNameMatch ? receipt.owner_name : 'Modifié ou absent' },
+                    tenantName: { status: tenantNameMatch ? 'success' : 'failed', expected: receipt.tenant_name, actual: tenantNameMatch ? receipt.tenant_name : 'Modifié ou absent' },
+                    amount: { status: amountMatch ? 'success' : 'failed', expected: `${amountFormatted} FCFA`, actual: amountMatch ? `${amountFormatted} FCFA` : 'Modifié ou absent' },
+                    paymentDate: { status: paymentDateMatch ? 'success' : 'failed', expected: paymentDateFormatted, actual: paymentDateMatch ? 'Vérifiée dans le document' : 'Non détectée' },
+                    securityHash: { status: hashStatus, expected: expectedHash, actual: pdfHash || (hashStatus === 'failed' ? 'Invalide' : 'Absent dans le PDF') }
+                };
+            }
+
+            return response.success(res, report, "Vérification du document effectuée.");
+        } catch (error) {
+            console.error('Error verifying document:', error);
+            next(error);
+        }
     }
 };
 

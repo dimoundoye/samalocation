@@ -3,6 +3,12 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
+const multer = require('multer');
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 } // limit to 10MB for safety
+});
 
 // Toutes les routes nécessitent l'authentification ET le rôle admin
 router.use(authMiddleware);
@@ -42,5 +48,8 @@ router.get('/analytics/live', adminController.getLiveAnalytics);
 // Paramètres de la plateforme
 router.get('/platform/settings', adminController.getPlatformSettings);
 router.patch('/platform/settings', adminController.updatePlatformSettings);
+
+// Outil d'audit et vérification de documents PDF (Anti-fraude)
+router.post('/verify-document', upload.single('file'), adminController.verifyDocument);
 
 module.exports = router;

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2, Receipt } from "lucide-react";
+import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2, Receipt, ShieldAlert } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { UserGrowthChart } from "@/components/admin/UserGrowthChart";
 import { PropertyStatsChart } from "@/components/admin/PropertyStatsChart";
@@ -18,6 +18,7 @@ import ReportsManagement from "@/components/admin/ReportsManagement";
 import ContactsManagement from "@/components/admin/ContactsManagement";
 import AdminSettings from "@/components/admin/AdminSettings";
 import VerificationsManagement from "@/components/admin/VerificationsManagement";
+import { DocumentAudit } from "@/components/admin/DocumentAudit";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { History, ExternalLink } from "lucide-react";
 import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getLiveAnalytics } from "@/lib/api";
@@ -218,6 +219,7 @@ const AdminDashboard = () => {
           { id: "users", label: "Utilisateurs", icon: Users },
           { id: "properties", label: "Propriétés", icon: Building2 },
           { id: "verifications", label: "Vérifications", icon: Shield },
+          { id: "audit", label: "Audit Documents", icon: ShieldAlert },
           { id: "reports", label: "Signalements", icon: AlertTriangle },
           { id: "support", label: "Messages Support", icon: MessageSquare },
           { id: "finances", label: "Finances", icon: CreditCard },
@@ -293,93 +295,167 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside className="w-56 bg-card border-r shadow-soft hidden md:block">
-        <div className="p-4">
+      <aside className="w-56 bg-card border-r shadow-soft hidden md:flex flex-col">
+        <div className="p-4 flex-1 overflow-y-auto">
           {sidebarContent}
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Mobile Header with Menu */}
-          <div className="md:hidden mb-6">
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 w-8">
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-56 p-4">
-                {sidebarContent}
-              </SheetContent>
-            </Sheet>
-          </div>
+      <main className="flex-1 min-w-0">
+        {/* ─── Sticky Mobile Header ────────────────────────────────────────────── */}
+        <header className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b bg-card/85 backdrop-blur-md shadow-sm">
+          {/* Left: Hamburger */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Ouvrir le menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-4">
+              {sidebarContent}
+            </SheetContent>
+          </Sheet>
 
-          {/* Header */}
-          <div className="mb-8 flex items-center justify-end gap-3">
+          {/* Center: Logo */}
+          <button onClick={() => navigate("/")} className="flex items-center gap-2 hover:opacity-80 transition-opacity" aria-label="Accueil">
+            <img src="/logo-sl.png" alt="Samalocation" className="h-8 w-auto object-contain" />
+            <span className="text-sm font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Admin</span>
+          </button>
+
+          {/* Right: Notifications + Theme */}
+          <div className="flex items-center gap-1">
             <div className="relative">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="icon" className="rounded-full shadow-soft hover:shadow-medium border-primary/20">
-                      <Bell className="h-5 w-5 text-primary" />
-                      {(statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount) > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 border-2 border-background animate-pulse text-white">
-                          {statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0 shadow-premium border-primary/10 rounded-2xl overflow-hidden" align="end">
-                    <div className="p-4 border-b bg-primary/5">
-                      <h3 className="font-bold text-sm">Notifications Admin</h3>
-                    </div>
-                    <div className="max-h-[300px] overflow-y-auto">
-                      {statistics.pendingPaymentsCount > 0 && (
-                        <button onClick={() => { navigate("/admin-dashboard/finances"); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
-                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                            <CreditCard className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold">{statistics.pendingPaymentsCount} paiement{statistics.pendingPaymentsCount > 1 ? 's' : ''} en attente</p>
-                            <p className="text-xs text-muted-foreground italic tracking-tight">À valider dans Finances</p>
-                          </div>
-                        </button>
-                      )}
-                      {statistics.pendingReportsCount > 0 && (
-                        <button onClick={() => navigate("/admin-dashboard/reports")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
-                          <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                            <AlertTriangle className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold">{statistics.pendingReportsCount} signalements en attente</p>
-                            <p className="text-xs text-muted-foreground italic tracking-tight">Appuyez pour examiner</p>
-                          </div>
-                        </button>
-                      )}
-                      {statistics.pendingVerificationsCount > 0 && (
-                        <button onClick={() => navigate("/admin-dashboard/verifications")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                            <Shield className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold">{statistics.pendingVerificationsCount} vérifications d'identité</p>
-                            <p className="text-xs text-muted-foreground italic tracking-tight">Profils à valider</p>
-                          </div>
-                        </button>
-                      )}
-                      {(statistics.pendingReportsCount === 0 && statistics.pendingVerificationsCount === 0 && statistics.pendingPaymentsCount === 0) && (
-                        <div className="p-8 text-center text-muted-foreground">
-                          <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                          <p className="text-sm">Tout est à jour !</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 relative" aria-label="Notifications">
+                    <Bell className="h-5 w-5 text-primary" />
+                    {(statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount) > 0 && (
+                      <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 bg-red-500 border border-background text-[9px] font-bold text-white">
+                        {statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount > 9 ? '9+' : statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0 shadow-premium border-primary/10 rounded-2xl overflow-hidden" align="end">
+                  <div className="p-4 border-b bg-primary/5">
+                    <h3 className="font-bold text-sm">Notifications Admin</h3>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {statistics.pendingPaymentsCount > 0 && (
+                      <button onClick={() => { navigate("/admin-dashboard/finances"); setMobileMenuOpen(false); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                          <CreditCard className="h-4 w-4" />
                         </div>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <ThemeToggle />
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.pendingPaymentsCount} paiement{statistics.pendingPaymentsCount > 1 ? 's' : ''} en attente</p>
+                          <p className="text-xs text-muted-foreground italic">À valider dans Finances</p>
+                        </div>
+                      </button>
+                    )}
+                    {statistics.pendingReportsCount > 0 && (
+                      <button onClick={() => { navigate("/admin-dashboard/reports"); setMobileMenuOpen(false); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
+                          <AlertTriangle className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.pendingReportsCount} signalements en attente</p>
+                          <p className="text-xs text-muted-foreground italic">Appuyez pour examiner</p>
+                        </div>
+                      </button>
+                    )}
+                    {statistics.pendingVerificationsCount > 0 && (
+                      <button onClick={() => { navigate("/admin-dashboard/verifications"); setMobileMenuOpen(false); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                          <Shield className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.pendingVerificationsCount} vérifications d'identité</p>
+                          <p className="text-xs text-muted-foreground italic">Profils à valider</p>
+                        </div>
+                      </button>
+                    )}
+                    {(statistics.pendingReportsCount === 0 && statistics.pendingVerificationsCount === 0 && statistics.pendingPaymentsCount === 0) && (
+                      <div className="p-8 text-center text-muted-foreground">
+                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                        <p className="text-sm">Tout est à jour !</p>
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
+            <ThemeToggle />
+          </div>
+        </header>
+
+        <div className="p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+
+          {/* Desktop Header - Notifications + Theme */}
+          <div className="hidden md:flex mb-8 items-center justify-end gap-3">
+            <div className="relative">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="rounded-full shadow-soft hover:shadow-medium border-primary/20">
+                    <Bell className="h-5 w-5 text-primary" />
+                    {(statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount) > 0 && (
+                      <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 border-2 border-background animate-pulse text-white">
+                        {statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 shadow-premium border-primary/10 rounded-2xl overflow-hidden" align="end">
+                  <div className="p-4 border-b bg-primary/5">
+                    <h3 className="font-bold text-sm">Notifications Admin</h3>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {statistics.pendingPaymentsCount > 0 && (
+                      <button onClick={() => { navigate("/admin-dashboard/finances"); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                          <CreditCard className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.pendingPaymentsCount} paiement{statistics.pendingPaymentsCount > 1 ? 's' : ''} en attente</p>
+                          <p className="text-xs text-muted-foreground italic tracking-tight">À valider dans Finances</p>
+                        </div>
+                      </button>
+                    )}
+                    {statistics.pendingReportsCount > 0 && (
+                      <button onClick={() => navigate("/admin-dashboard/reports")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                          <AlertTriangle className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.pendingReportsCount} signalements en attente</p>
+                          <p className="text-xs text-muted-foreground italic tracking-tight">Appuyez pour examiner</p>
+                        </div>
+                      </button>
+                    )}
+                    {statistics.pendingVerificationsCount > 0 && (
+                      <button onClick={() => navigate("/admin-dashboard/verifications")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                          <Shield className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.pendingVerificationsCount} vérifications d'identité</p>
+                          <p className="text-xs text-muted-foreground italic tracking-tight">Profils à valider</p>
+                        </div>
+                      </button>
+                    )}
+                    {(statistics.pendingReportsCount === 0 && statistics.pendingVerificationsCount === 0 && statistics.pendingPaymentsCount === 0) && (
+                      <div className="p-8 text-center text-muted-foreground">
+                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                        <p className="text-sm">Tout est à jour !</p>
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <ThemeToggle />
+          </div>
 
           {/* Conditional Content Based on Active Tab */}
           {activeTab === "users" && (
@@ -444,6 +520,16 @@ const AdminDashboard = () => {
                 <p className="text-muted-foreground">Configurez les paramètres de la plateforme</p>
               </div>
               <AdminSettings />
+            </div>
+          )}
+
+          {activeTab === "audit" && (
+            <div>
+              <div className="mb-6">
+                <h1 className="text-2xl md:text-3xl font-bold mb-2">Audit & Anti-Fraude</h1>
+                <p className="text-muted-foreground">Vérifiez l'authenticité et l'intégrité des documents PDF générés</p>
+              </div>
+              <DocumentAudit />
             </div>
           )}
 
@@ -957,20 +1043,20 @@ const AdminDashboard = () => {
                     Systèmes automatisés (Robots détectés)
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-0 overflow-x-auto">
                   <Table>
                     <TableHeader className="bg-secondary/20">
                       <TableRow>
                         <TableHead>User Agent (Identité)</TableHead>
-                        <TableHead className="text-right">Nombre de requêtes</TableHead>
+                        <TableHead className="text-right w-32 shrink-0">Requêtes</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {liveAnalytics?.topBots?.length > 0 ? (
                         liveAnalytics.topBots.map((bot: any, i: number) => (
                           <TableRow key={i}>
-                            <TableCell className="font-mono text-xs max-w-md truncate opacity-80">
-                              {bot.user_agent}
+                            <TableCell className="font-mono text-xs opacity-80">
+                              <span className="block max-w-[200px] md:max-w-md truncate">{bot.user_agent}</span>
                             </TableCell>
                             <TableCell className="text-right font-black">
                               {formatNumber(bot.count)}
@@ -1213,6 +1299,7 @@ const AdminDashboard = () => {
               </div>
             </>
           )}
+        </div>
         </div>
       </main>
     </div>
