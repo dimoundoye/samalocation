@@ -1,6 +1,5 @@
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn, formatCurrency } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, BedDouble, Home, CheckCircle2, Phone, ArrowRight, Square, Bath, Shield, Layers, Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -319,21 +318,12 @@ const PropertyCard = ({
               )}
             </div>
 
-            <div className="sm:hidden flex items-center gap-0.5 text-accent text-[10px] font-bold pb-0.5 px-2 py-1 bg-accent/5 rounded-full">
+            <div className="flex items-center gap-0.5 text-accent text-[10px] sm:text-xs font-bold px-2 py-1 sm:px-3 sm:py-1 bg-accent/5 rounded-full group-hover:bg-accent/10 transition-colors">
               <span>{t('common.view')}</span>
-              <ArrowRight className="h-2.5 w-2.5" />
+              <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
             </div>
           </div>
         </CardContent>
-
-        <CardFooter className="p-4 pt-0 sm:pt-4 hidden sm:flex">
-          <Button
-            className="w-full gradient-accent text-white md:hover:scale-105 transition-transform duration-300 h-9 sm:h-10"
-            onClick={handleViewDetails}
-          >
-            {t('property.view_details')}
-          </Button>
-        </CardFooter>
       </div>
     </Card>
   );

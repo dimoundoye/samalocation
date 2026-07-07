@@ -1,8 +1,6 @@
 require('dotenv').config();
 const ApiClient = require('./apiClient');
 const MockScraper = require('./scrapers/mockScraper');
-const ExpatDakarScraper = require('./scrapers/expatDakarScraper');
-const AppartSnScraper = require('./scrapers/appartSnScraper');
 const CoinAfriqueScraper = require('./scrapers/coinAfriqueScraper');
 
 async function runPipeline() {
@@ -23,18 +21,7 @@ async function runPipeline() {
     if (useMock) {
         scrapersToRun.push(new MockScraper());
     } else {
-        const source = process.env.SCRAPER_SOURCE || 'expat-dakar';
-        if (source === 'all') {
-            scrapersToRun.push(new ExpatDakarScraper());
-            scrapersToRun.push(new AppartSnScraper());
-            scrapersToRun.push(new CoinAfriqueScraper());
-        } else if (source === 'appart-sn') {
-            scrapersToRun.push(new AppartSnScraper());
-        } else if (source === 'coinafrique') {
-            scrapersToRun.push(new CoinAfriqueScraper());
-        } else {
-            scrapersToRun.push(new ExpatDakarScraper());
-        }
+        scrapersToRun.push(new CoinAfriqueScraper());
     }
     
     console.log(`[Main] Scrapers configurés : ${scrapersToRun.map(s => s.name).join(', ')}`);
@@ -102,8 +89,7 @@ async function runPipeline() {
             // C. Build the property payload
             // Append original owner and source details to description for transparency & legal compliance
             let enrichedDescription = parsedData.description || '';
-            enrichedDescription += `\n\n---\n*Cette annonce a été importée automatiquement.*`;
-            enrichedDescription += `\n*Source originale : [Annonce sur ${rawListing.source}](${rawListing.url})*`;
+            enrichedDescription += `\n\n---\n*Source originale : [Annonce sur ${rawListing.source}](${rawListing.url})*`;
             
             const finalOwnerName = rawListing.sellerName || parsedData.original_owner_name;
             const finalOwnerPhone = rawListing.sellerPhone || parsedData.original_owner_phone;

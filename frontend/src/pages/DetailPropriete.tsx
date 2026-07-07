@@ -25,6 +25,7 @@ import { isRecent } from "@/lib/dateUtils";
 import PropertyDetailSkeleton from "@/components/PropertyDetailSkeleton";
 import { getMyDossier, shareDossier } from "@/api/dossier";
 import { formatCurrency } from "@/lib/utils";
+import Footer from "@/components/Footer";
 
 const renderDescription = (text: string) => {
   if (!text) return null;
@@ -399,7 +400,7 @@ const DetailPropriete = () => {
       />
       <Navbar />
 
-      <div className="pt-24 pb-16 px-4 md:px-8">
+      <div className="pt-24 pb-28 px-4 md:px-8">
         <div className="container mx-auto max-w-6xl">
           <div className="flex items-center justify-between mb-6">
             <Button
@@ -817,6 +818,7 @@ const DetailPropriete = () => {
           </section>
         </div>
       </div>
+      <Footer />
 
       {/* Auth Required Dialog */}
       <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile, uploadPhotos } from "@/lib/api";
-import { X, FileText, Clock, Facebook, Instagram, Linkedin, Globe, MessageSquare, Mail, Building2 } from "lucide-react";
+import { X, FileText, Clock, Facebook, Instagram, Linkedin, Globe, MessageSquare, Mail, Building2, MapPin } from "lucide-react";
 
 export const OwnerPublicProfileEditor = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { toast } = useToast();
@@ -17,6 +17,7 @@ export const OwnerPublicProfileEditor = ({ onSuccess }: { onSuccess?: () => void
   const [profile, setProfile] = useState<any>({
     bio: "",
     companyName: "",
+    address: "",
     bannerUrl: "",
     logoUrl: "",
     externalEmail: "",
@@ -48,6 +49,7 @@ export const OwnerPublicProfileEditor = ({ onSuccess }: { onSuccess?: () => void
           ...profile,
           bio: data.bio || "",
           companyName: data.company_name || "",
+          address: data.address || "",
           bannerUrl: data.banner_url || "",
           logoUrl: data.logo_url || "",
           externalEmail: data.external_email || "",
@@ -87,6 +89,7 @@ export const OwnerPublicProfileEditor = ({ onSuccess }: { onSuccess?: () => void
       setLoading(true);
       const profileData = {
         bio: profile.bio,
+        address: profile.address,
         banner_url: profile.bannerUrl,
         logo_url: profile.logoUrl,
         external_email: profile.externalEmail,
@@ -347,6 +350,19 @@ export const OwnerPublicProfileEditor = ({ onSuccess }: { onSuccess?: () => void
                     />
                     <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Adresse de l'agence (affichée sur le profil)</Label>
+                <div className="relative">
+                  <Input 
+                    className="pl-10"
+                    value={profile.address} 
+                    onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                    placeholder="Ex: Almadies, Dakar (Sénégal)"
+                  />
+                  <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
 
