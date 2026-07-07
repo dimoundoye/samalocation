@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2 } from "lucide-react";
+import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -595,13 +595,17 @@ const DashboardLocataire = () => {
                           onClick={() => setSelectedLease(lease)}
                         >
                           <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start mb-2">
+                            <div className="flex justify-between items-center mb-2">
                               <Badge
                                 variant={lease.status === "active" ? "default" : "secondary"}
                                 className="text-[10px] h-5 px-2"
                               >
                                 {lease.status === "active" ? t('common.active') : lease.status}
                               </Badge>
+                              <div className="flex items-center gap-1 text-[11px] font-medium text-primary/75 group-hover:text-primary transition-colors">
+                                <span className="hidden sm:inline">Détails</span>
+                                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                              </div>
                             </div>
                             <CardTitle className="text-sm font-bold leading-tight line-clamp-1">
                               {lease.property_name}

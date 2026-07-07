@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search as SearchIcon, SlidersHorizontal, ArrowLeft, Home, ChevronRight, Map as MapIcon } from "lucide-react";
+import { Search as SearchIcon, SlidersHorizontal, ArrowLeft, Home, ChevronLeft, ChevronRight, Map as MapIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
@@ -76,6 +76,31 @@ const Recherche = () => {
 
   const isAuthenticated = !!user;
   const currentUserId = user?.id || null;
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      if (start > 2) {
+        pages.push('...');
+      }
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      if (end < totalPages - 1) {
+        pages.push('...');
+      }
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   const loadProperties = async (page = 1) => {
     try {
@@ -173,7 +198,7 @@ const Recherche = () => {
           <div className="space-y-8">
             {/* Filters Section */}
             <div className={cn(
-              "bg-card p-6 rounded-2xl shadow-soft border border-border/50 space-y-6 transition-all duration-300 relative z-50",
+              "bg-card p-6 rounded-2xl shadow-soft border border-border/50 space-y-6 transition-all duration-300 relative z-30",
               isSearchActive && "md:p-6 p-4 translate-y-[-10px] sm:translate-y-0"
             )}>
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -553,15 +578,62 @@ const Recherche = () => {
                       </div>
 
                       {totalPages > 1 && (
-                        <div className="flex items-center justify-center gap-4 pt-12 border-t">
-                          <Button variant="outline" disabled={currentPage <= 1} onClick={() => navigate(`/search/page_${currentPage - 1}${location.search}`)} className="rounded-xl px-6">
-                            <ArrowLeft className="h-4 w-4 mr-2" /> {t('search.pagination.prev')}
+                        <div className="flex items-center justify-center gap-2 sm:gap-3 pt-12 border-t">
+                          {/* Bouton Précédent */}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            disabled={currentPage <= 1} 
+                            onClick={() => navigate(`/search/page_${currentPage - 1}${location.search}`)} 
+                            className="rounded-full h-10 w-10 border border-border/40 hover:bg-muted/50 transition-colors"
+                          >
+                            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                           </Button>
-                          <div className="flex items-center px-4 py-2 bg-muted/30 rounded-xl font-bold text-sm">
-                            {t('search.pagination.page', { current: currentPage, total: totalPages })}
+
+                          {/* Mode Mobile : Compact Style 6 */}
+                          <div className="flex sm:hidden items-center px-4 py-2 bg-muted/40 rounded-full font-bold text-xs whitespace-nowrap text-foreground">
+                            {currentPage} / {totalPages}
                           </div>
-                          <Button variant="outline" disabled={currentPage >= totalPages} onClick={() => navigate(`/search/page_${currentPage + 1}${location.search}`)} className="rounded-xl px-6">
-                            {t('search.pagination.next')} <ChevronRight className="h-4 w-4 ml-2" />
+
+                          {/* Mode Desktop : Pills Style 2 */}
+                          <div className="hidden sm:flex items-center gap-2">
+                            {getPageNumbers().map((pageVal, idx) => {
+                              if (pageVal === '...') {
+                                return (
+                                  <span key={`dots-${idx}`} className="text-muted-foreground px-1 font-medium">
+                                    ...
+                                  </span>
+                                );
+                              }
+                              
+                              const isCurrent = pageVal === currentPage;
+                              return (
+                                <Button
+                                  key={`page-${pageVal}`}
+                                  variant={isCurrent ? "default" : "ghost"}
+                                  onClick={() => navigate(`/search/page_${pageVal}${location.search}`)}
+                                  className={cn(
+                                    "h-10 w-10 rounded-full p-0 font-bold transition-all duration-300",
+                                    isCurrent 
+                                      ? "bg-primary text-primary-foreground shadow-md hover:bg-primary/95" 
+                                      : "border border-border/20 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                                  )}
+                                >
+                                  {pageVal}
+                                </Button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Bouton Suivant */}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            disabled={currentPage >= totalPages} 
+                            onClick={() => navigate(`/search/page_${currentPage + 1}${location.search}`)} 
+                            className="rounded-full h-10 w-10 border border-border/40 hover:bg-muted/50 transition-colors"
+                          >
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
                           </Button>
                         </div>
                       )}

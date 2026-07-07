@@ -192,8 +192,59 @@ const getChatResponse = async (message, history = []) => {
     }
 };
 
+const parseRawListing = async (text) => {
+    try {
+        const model = getModel();
+
+        const prompt = `
+            Tu es un expert en immobilier. Analyse le texte brut d'une annonce immobilière ci-dessous (provenant d'un site web, de réseaux sociaux ou de WhatsApp) et extrais les informations structurées en JSON.
+
+            Texte de l'annonce :
+            "${text}"
+
+            Format de sortie attendu (JSON uniquement, sans texte ou balises markdown de type \`\`\`json autour, juste le JSON brut) :
+            {
+                "property_type": "appartement" | "villa" | "studio" | "maison" | "chambre" | "locale" | "garage",
+                "listing_type": "location" | "vente",
+                "name": "Titre court, accrocheur et propre en français (ex: Studio meublé à Mermoz)",
+                "address": "Quartier ou ville identifié (ex: Mermoz, Dakar)",
+                "description": "Description propre, fluide et complète en français reprenant tous les détails pertinents du bien",
+                "equipments": ["Tableau de chaînes de caractères (ex: Climatisation, Gardiennage, Piscine, Meublé, etc.)"],
+                "sale_price": number | null (si listing_type est vente, loyer sinon null),
+                "units": [
+                    {
+                        "unit_type": "appartement" | "villa" | "studio" | "maison" | "chambre" | "locale" | "garage",
+                        "unit_number": "1",
+                        "monthly_rent": number | null (si listing_type est location, loyer par mois),
+                        "area_sqm": number | null (surface en m²),
+                        "bedrooms": number | null (nombre de chambres),
+                        "bathrooms": number | null (nombre de salles de bain),
+                        "rooms_count": number | null (nombre de pièces au total),
+                        "description": "Description courte spécifique à cette unité si nécessaire ou vide"
+                    }
+                ],
+                "original_owner_name": "Nom de l'agence, hôtel ou propriétaire identifié si disponible, sinon null",
+                "original_owner_phone": "Numéro de téléphone de contact (ex: +22177XXXXXXX) au format international si possible ou brut, sinon null"
+            }
+
+            Règles strictes :
+            - Si le type de bien est ambigu ou non spécifié, utilise la valeur la plus probable (ex: F2/F3 -> appartement, meublé climatisé -> appartement ou studio).
+            - Convertis les prix écrits sous formes abrégées (ex: 150k -> 150000, 1,2 million -> 1200000).
+            - Réponds TOUJOURS uniquement en JSON valide.
+        `;
+
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(responseText);
+    } catch (error) {
+        console.error("Gemini Parse Raw Listing Error:", error.message || error);
+        return null;
+    }
+};
+
 module.exports = {
     generatePropertyDescription,
     parseSearchQuery,
-    getChatResponse
+    getChatResponse,
+    parseRawListing
 };

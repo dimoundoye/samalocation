@@ -217,7 +217,7 @@ export const OwnerPublicProfileEditor = ({ onSuccess }: { onSuccess?: () => void
                 {/* Banner Upload */}
                 <div className="md:col-span-3 space-y-4">
                   <Label className="text-base font-semibold">Bannière de l'agence</Label>
-                  <div className="relative h-full min-h-[140px] rounded-2xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center bg-muted/10 overflow-hidden group transition-all hover:bg-muted/20">
+                  <div className="relative aspect-[3/1] w-full min-h-[300px] rounded-2xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center bg-muted/10 overflow-hidden group transition-all hover:bg-muted/20">
                     {profile.bannerUrl ? (
                       <>
                         <img src={profile.bannerUrl} alt="Banner" className="w-full h-full object-cover transition-transform group-hover:scale-105" />

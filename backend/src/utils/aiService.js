@@ -300,8 +300,64 @@ const getChatResponse = async (message, history = []) => {
     }
 };
 
+const parseRawListing = async (text) => {
+    if (!groq) return await geminiService.parseRawListing(text);
+
+    try {
+        const prompt = `
+            Tu es un expert en immobilier. Analyse le texte brut d'une annonce immobilière ci-dessous (provenant d'un site web, de réseaux sociaux ou de WhatsApp) et extrais les informations structurées en JSON.
+
+            Texte de l'annonce :
+            "${text}"
+
+            Format de sortie attendu (JSON uniquement, sans texte autour) :
+            {
+                "property_type": "appartement" | "villa" | "studio" | "maison" | "chambre" | "garage" | "locale" | "garage",
+                "listing_type": "location" | "vente",
+                "name": "Titre court, accrocheur et propre en français (ex: Studio meublé à Mermoz)",
+                "address": "Quartier ou ville identifié (ex: Mermoz, Dakar)",
+                "description": "Description propre, fluide et complète en français reprenant tous les détails pertinents du bien",
+                "equipments": ["Tableau de chaînes (ex: Climatisation, Gardiennage, Piscine, Meublé)"],
+                "sale_price": number | null,
+                "units": [
+                    {
+                        "unit_type": "appartement" | "villa" | "studio" | "maison" | "chambre" | "garage" | "locale" | "garage",
+                        "unit_number": "1",
+                        "monthly_rent": number | null,
+                        "area_sqm": number | null,
+                        "bedrooms": number | null,
+                        "bathrooms": number | null,
+                        "rooms_count": number | null,
+                        "description": "Description courte spécifique à cette unité si nécessaire ou vide"
+                    }
+                ],
+                "original_owner_name": "Nom de l'agence, hôtel ou propriétaire identifié si disponible, sinon null",
+                "original_owner_phone": "Numéro de téléphone de contact (ex: +22177XXXXXXX) au format international si possible ou brut, sinon null"
+            }
+
+            Règles strictes :
+            - Si le type de bien est ambigu ou non spécifié, utilise la valeur la plus probable.
+            - Convertis les prix écrits sous formes abrégées (ex: 150k -> 150000, 1.2 million -> 1200000).
+            - Réponds TOUJOURS uniquement en JSON valide.
+        `;
+
+        const completion = await groq.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            model: MODELS.QUALITY,
+            response_format: { type: "json_object" },
+            temperature: 0.1,
+        });
+
+        return JSON.parse(completion.choices[0]?.message?.content);
+    } catch (error) {
+        console.error("Groq Error (ParseRawListing):", error.message);
+        return await geminiService.parseRawListing(text);
+    }
+};
+
 module.exports = {
     generatePropertyDescription,
     parseSearchQuery,
-    getChatResponse
+    getChatResponse,
+    parseRawListing
 };

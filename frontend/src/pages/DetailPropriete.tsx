@@ -26,6 +26,39 @@ import PropertyDetailSkeleton from "@/components/PropertyDetailSkeleton";
 import { getMyDossier, shareDossier } from "@/api/dossier";
 import { formatCurrency } from "@/lib/utils";
 
+const renderDescription = (text: string) => {
+  if (!text) return null;
+  const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  const regex = new RegExp(markdownLinkRegex);
+  while ((match = regex.exec(text)) !== null) {
+    const index = match.index;
+    const linkText = match[1];
+    const linkUrl = match[2];
+    if (index > lastIndex) {
+      parts.push(text.substring(lastIndex, index));
+    }
+    parts.push(
+      <a 
+        key={index} 
+        href={linkUrl} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        className="text-primary hover:underline font-medium break-all"
+      >
+        {linkText}
+      </a>
+    );
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+  return <>{parts}</>;
+};
+
 const DetailPropriete = () => {
   const { t } = useTranslation();
   const { id } = useParams();
@@ -347,6 +380,7 @@ const DetailPropriete = () => {
   const ownerCompanyName = ownerProfile?.company_name || "Non renseigné";
   const ownerContactPhone = ownerProfile?.contact_phone || ownerProfile?.phone || null;
   const ownerContactEmail = ownerProfile?.external_email || ownerProfile?.email || null;
+  const isBotOwner = ownerProfile?.registration_email === 'import@samalocation.com' || ownerProfile?.email === 'import@samalocation.com';
   const rentPeriodLabels: Record<string, string> = {
     jour: "jour",
     semaine: "semaine",
@@ -531,7 +565,7 @@ const DetailPropriete = () => {
                     <div>
                       <h3 className="text-lg md:text-xl font-semibold mb-3">Description</h3>
                       <div className="text-muted-foreground whitespace-pre-line leading-relaxed">
-                        {property.description}
+                        {renderDescription(property.description)}
                       </div>
                     </div>
                   )}
@@ -559,47 +593,59 @@ const DetailPropriete = () => {
 
             <div className="md:col-span-1">
               <Card className="shadow-soft sticky top-24">
-                <CardHeader>
-                  <CardTitle>Intéressé par ce bien ?</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {property.display_status === "available" ? (
+                {!isBotOwner && (
+                  <CardHeader>
+                    <CardTitle>Intéressé par ce bien ?</CardTitle>
+                  </CardHeader>
+                )}
+                <CardContent className="space-y-4 pt-6">
+                  {!isBotOwner && (
                     <>
-                      <p className="text-sm text-muted-foreground">
-                        {property.listing_type === 'vente'
-                          ? "Vous êtes intéressé par l'achat de ce bien ? Envoyez une demande d'information au propriétaire pour discuter des modalités de vente."
-                          : "Envoyez votre candidature au propriétaire. Il vous répondra par message. Après avoir postulé, consultez régulièrement votre messagerie dans votre tableau de bord."}
-                      </p>
-                      <Button
-                        onClick={handleApply}
-                        className={`w-full ${hasApplied ? "bg-muted text-muted-foreground cursor-not-allowed" : "gradient-accent text-white"}`}
-                        size="lg"
-                        disabled={hasApplied}
-                      >
-                        {hasApplied 
-                          ? (property.listing_type === 'vente' ? "Demande envoyée" : "Candidature envoyée") 
-                          : (property.listing_type === 'vente' ? "Contacter le vendeur" : "Demander à louer")}
-                      </Button>
-                      {hasApplied && (
-                        <div className="flex items-center gap-2 text-sm text-green-600">
-                          <CheckCircle className="h-4 w-4" />
-                          <span>Vous avez déjà envoyé une demande pour ce bien.</span>
+                      {property.display_status === "available" ? (
+                        <>
+                          <p className="text-sm text-muted-foreground">
+                            {property.listing_type === 'vente'
+                              ? "Vous êtes intéressé par l'achat de ce bien ? Envoyez une demande d'information au propriétaire pour discuter des modalités de vente."
+                              : "Envoyez votre candidature au propriétaire. Il vous répondra par message. Après avoir postulé, consultez régulièrement votre messagerie dans votre tableau de bord."}
+                          </p>
+                          <Button
+                            onClick={handleApply}
+                            className={`w-full ${hasApplied ? "bg-muted text-muted-foreground cursor-not-allowed" : "gradient-accent text-white"}`}
+                            size="lg"
+                            disabled={hasApplied}
+                          >
+                            {hasApplied 
+                              ? (property.listing_type === 'vente' ? "Demande envoyée" : "Candidature envoyée") 
+                              : (property.listing_type === 'vente' ? "Contacter le vendeur" : "Demander à louer")}
+                          </Button>
+                          {hasApplied && (
+                            <div className="flex items-center gap-2 text-sm text-green-600">
+                              <CheckCircle className="h-4 w-4" />
+                              <span>Vous avez déjà envoyé une demande pour ce bien.</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-start gap-2 p-4 bg-muted rounded-lg">
+                          <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-sm">Non disponible</p>
+                            <p className="text-sm text-muted-foreground">
+                              Ce bien n'est actuellement plus disponible sur la plateforme.
+                            </p>
+                          </div>
                         </div>
                       )}
                     </>
-                  ) : (
-                    <div className="flex items-start gap-2 p-4 bg-muted rounded-lg">
-                      <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-sm">Non disponible</p>
-                        <p className="text-sm text-muted-foreground">
-                          Ce bien n'est actuellement plus disponible sur la plateforme.
-                        </p>
-                      </div>
+                  )}
+
+                  {isBotOwner && (
+                    <div className="text-sm text-muted-foreground bg-primary/5 p-4 rounded-xl border border-primary/10">
+                      Pour toute information ou pour programmer une visite, veuillez contacter le vendeur de l'annonce dans la section ci-dessous.
                     </div>
                   )}
 
-                  <div className="pt-4 border-t">
+                  <div className={!isBotOwner ? "pt-4 border-t" : ""}>
                     <h4 className="font-semibold mb-3">Propriétaire</h4>
                     <div className="space-y-4 text-sm">
                       <div className="flex items-center gap-3">
@@ -841,7 +887,7 @@ const DetailPropriete = () => {
 
       {/* Galerie d'images modale */}
       <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
-        <DialogContent className="max-w-5xl w-[95vw] md:w-full h-auto max-h-[85vh] p-0 gap-0 bg-black/95 border-none shadow-2xl rounded-2xl overflow-hidden">
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] p-0 gap-0 bg-black/95 border-none shadow-2xl rounded-2xl overflow-hidden">
           {allPhotos.length > 0 && selectedImageIndex < allPhotos.length && (
             <div className="relative w-full h-full flex items-center justify-center">
               {/* Bouton fermer */}
@@ -871,7 +917,7 @@ const DetailPropriete = () => {
                 <img
                   src={allPhotos[selectedImageIndex]}
                   alt={`Photo ${selectedImageIndex + 1}`}
-                  className="max-w-[95%] max-h-[50vh] md:max-h-[60vh] lg:max-h-[70vh] object-contain shadow-2xl transition-all duration-300 rounded-xl"
+                  className="max-w-full max-h-full object-contain shadow-2xl transition-all duration-300 rounded-xl"
                 />
               </div>
 

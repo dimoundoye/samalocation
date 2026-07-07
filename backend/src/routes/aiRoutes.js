@@ -13,4 +13,7 @@ router.post('/parse-search', aiController.parseSearch);
 // Route for AI Chatbot
 router.post('/chat', aiController.chat);
 
+// Route for parsing raw listing texts (restricted to authenticated users/bots)
+router.post('/parse-listing', authMiddleware, aiController.parseListing);
+
 module.exports = router;

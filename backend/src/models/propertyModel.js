@@ -136,9 +136,10 @@ const Property = {
         property.property_units = units;
 
         const { rows: ownerProfiles } = await db.query(`
-            SELECT id, user_profile_id, company_name, phone, phone as contact_phone, bio, logo_url, external_email, verification_status, is_verified, currency
-            FROM owner_profiles 
-            WHERE user_profile_id = $1 OR id = $2
+            SELECT op.id, op.user_profile_id, op.company_name, op.phone, op.phone as contact_phone, op.bio, op.logo_url, op.external_email, op.verification_status, op.is_verified, op.currency, up.email as registration_email
+            FROM owner_profiles op
+            LEFT JOIN user_profiles up ON op.id = up.id
+            WHERE op.user_profile_id = $1 OR op.id = $2
         `, [property.owner_id, property.owner_id]);
         property.owner_profiles = ownerProfiles;
 

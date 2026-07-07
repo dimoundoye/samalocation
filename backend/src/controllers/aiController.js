@@ -108,6 +108,25 @@ const aiController = {
         } catch (error) {
             next(error);
         }
+    },
+
+    async parseListing(req, res, next) {
+        try {
+            const { text } = req.body;
+            if (!text || text.trim().length < 5) {
+                return response.error(res, "Texte d'annonce trop court ou manquant.", 400);
+            }
+
+            const parsed = await aiService.parseRawListing(text);
+            if (!parsed) {
+                return response.error(res, "Impossible d'analyser l'annonce avec l'IA.", 500);
+            }
+
+            await AIUsage.log({ user_id: req.ownerId, action: 'parse_listing' });
+            return response.success(res, parsed, "Annonce analysée avec succès !");
+        } catch (error) {
+            next(error);
+        }
     }
 };
 

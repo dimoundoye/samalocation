@@ -55,6 +55,9 @@ const OwnerPublicProfile = () => {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
 
+  const profile = data?.profile;
+  const properties = data?.properties || [];
+
   useEffect(() => {
     if (id) {
       loadProfile(id);
@@ -186,7 +189,7 @@ const OwnerPublicProfile = () => {
     );
   }
 
-  const { profile, properties } = data;
+
   const horaires = typeof profile.horaires === 'string' ? JSON.parse(profile.horaires) : profile.horaires;
   const prestations = typeof profile.prestations === 'string' ? JSON.parse(profile.prestations) : profile.prestations;
   const socialLinks = typeof profile.social_links === 'string' ? JSON.parse(profile.social_links) : profile.social_links;
@@ -374,7 +377,11 @@ const OwnerPublicProfile = () => {
                           </p>
                           <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-100">
                              <p className="text-primary font-bold text-xl">
-                                {prop.property_units?.[0]?.monthly_rent.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">/ mois</span>
+                                {prop.listing_type === 'vente' 
+                                  ? `${prop.sale_price ? Number(prop.sale_price).toLocaleString() : 'Sur devis'} FCFA`
+                                  : `${prop.property_units?.[0]?.monthly_rent ? Number(prop.property_units[0].monthly_rent).toLocaleString() : 'N/A'} FCFA`
+                                }
+                                {prop.listing_type !== 'vente' && <span className="text-xs font-normal text-muted-foreground">/ mois</span>}
                              </p>
                           </div>
                         </CardContent>

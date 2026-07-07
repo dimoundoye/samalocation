@@ -381,6 +381,8 @@ const resources = {
                 "no_tenant_found": "Aucun locataire ne correspond à votre recherche",
                 "tenant": "Locataire",
                 "conversations": "Conversations",
+                "property_delete_confirm": "Êtes-vous sûr de vouloir supprimer ce bien ?",
+                "property_deleted": "Bien supprimé",
                 "stats": {
                     "total_properties": "Total des biens",
                     "occupied_units": "Unités occupées",
@@ -925,6 +927,8 @@ const resources = {
                 "no_tenant_found": "No tenant matches your search",
                 "tenant": "Tenant",
                 "conversations": "Conversations",
+                "property_delete_confirm": "Are you sure you want to delete this property?",
+                "property_deleted": "Property deleted",
                 "stats": {
                     "total_properties": "Total Properties",
                     "occupied_units": "Occupied Units",

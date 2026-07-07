@@ -1531,15 +1531,15 @@ const DashboardProprietaire = () => {
                               )}
                             </div>
                           )}
-                          <CardHeader>
-                            <CardTitle className="flex items-center justify-between">
-                              <span>{property.name}</span>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="capitalize">{property.property_type}</Badge>
+                           <CardHeader className="p-4 sm:p-6">
+                            <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-lg sm:text-xl">
+                              <span className="font-bold tracking-tight text-neutral-800 dark:text-neutral-100">{property.name}</span>
+                              <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                <Badge variant="outline" className="capitalize text-[10px] sm:text-xs">{property.property_type}</Badge>
                                 {property.listing_type === 'vente' ? (
-                                  <Badge variant="destructive" className="animate-pulse shadow-sm">À VENDRE</Badge>
+                                  <Badge variant="destructive" className="animate-pulse shadow-sm text-[10px] sm:text-xs">À VENDRE</Badge>
                                 ) : (
-                                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm">À LOUER</Badge>
+                                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm text-[10px] sm:text-xs">À LOUER</Badge>
                                 )}
                               </div>
                             </CardTitle>

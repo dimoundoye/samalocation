@@ -13,7 +13,7 @@ import { fr } from "date-fns/locale";
 import { getTenantContracts } from "@/api/contracts";
 import { downloadReceipt } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 
 export const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
@@ -52,6 +52,7 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
     const [contracts, setContracts] = useState<any[]>([]);
     const [receipts, setReceipts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState("receipts");
 
     useEffect(() => {
         if (open && lease) {
@@ -137,20 +138,44 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                     </div>
                 </div>
 
-                <Tabs defaultValue="receipts" className="flex-1 overflow-hidden flex flex-col">
-                    <TabsList className="w-full">
-                        <TabsTrigger value="receipts" className="flex-1 gap-2">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
+                    <TabsList className="w-full bg-muted/40 p-1 rounded-xl">
+                        <TabsTrigger 
+                            value="receipts" 
+                            className="flex-1 gap-2 rounded-lg transition-all duration-300 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
+                        >
                             <Receipt className="w-4 h-4" />
-                            Reçus de paiement
+                            Reçus
                             {receipts.length > 0 && (
-                                <Badge variant="secondary" className="h-5 px-1.5 text-xs">{receipts.length}</Badge>
+                                <Badge 
+                                    className={cn(
+                                        "h-5 px-1.5 text-xs transition-colors border-none",
+                                        activeTab === "receipts"
+                                            ? "bg-white text-primary hover:bg-white"
+                                            : "bg-slate-100 text-slate-900"
+                                    )}
+                                >
+                                    {receipts.length}
+                                </Badge>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="contracts" className="flex-1 gap-2">
+                        <TabsTrigger 
+                            value="contracts" 
+                            className="flex-1 gap-2 rounded-lg transition-all duration-300 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
+                        >
                             <FileText className="w-4 h-4" />
-                            Baux / Contrats
+                            Contrats
                             {contracts.length > 0 && (
-                                <Badge variant="secondary" className="h-5 px-1.5 text-xs">{contracts.length}</Badge>
+                                <Badge 
+                                    className={cn(
+                                        "h-5 px-1.5 text-xs transition-colors border-none",
+                                        activeTab === "contracts"
+                                            ? "bg-white text-primary hover:bg-white"
+                                            : "bg-slate-100 text-slate-900"
+                                    )}
+                                >
+                                    {contracts.length}
+                                </Badge>
                             )}
                         </TabsTrigger>
                     </TabsList>
