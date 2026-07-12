@@ -598,30 +598,44 @@ const adminController = {
                     message: `Retrait forcé de ${amount} F CFA simulé avec succès.`
                 });
             } else {
-                // Production API PayDunya
-                const PAYDUNYA_DISBURSE_URL = 'https://app.paydunya.com/api/v1/disbursement/create-transfer';
+                // Production API PayDunya - flux en 2 étapes
+                const disburseBaseUrl = 'https://app.paydunya.com/api/v1/disburse';
                 
-                const payload = {
-                    disbursement: {
-                        amount: netAmount,
-                        provider: 'wave',
-                        phone: phone
-                    }
-                };
-
                 try {
-                    const paydunyaResponse = await axios.post(PAYDUNYA_DISBURSE_URL, payload, {
+                    // Étape 1 : Obtenir le jeton de virement (get-invoice)
+                    const getInvoiceRes = await axios.post(`${disburseBaseUrl}/get-invoice`, {
+                        amount: netAmount,
+                        account_alias: phone,
+                        service: 'wave-senegal'
+                    }, {
                         headers: {
                             'Content-Type': 'application/json',
                             'PAYDUNYA-MASTER-KEY': process.env.PAYDUNYA_MASTER_KEY,
                             'PAYDUNYA-PRIVATE-KEY': process.env.PAYDUNYA_PRIVATE_KEY,
-                            'PAYDUNYA-PUBLIC-KEY': process.env.PAYDUNYA_PUBLIC_KEY,
                             'PAYDUNYA-TOKEN': process.env.PAYDUNYA_TOKEN
                         }
                     });
 
-                    if (paydunyaResponse.data.response_code === "00" || paydunyaResponse.data.status === "success") {
-                        const transactionId = paydunyaResponse.data.transaction_id || `PD-${Date.now()}`;
+                    if (getInvoiceRes.data.response_code !== "00") {
+                        throw new Error(getInvoiceRes.data.response_text || 'Échec de la création de la facture de virement.');
+                    }
+
+                    const disburseToken = getInvoiceRes.data.disburse_token;
+
+                    // Étape 2 : Confirmer et soumettre le virement (submit-invoice)
+                    const submitInvoiceRes = await axios.post(`${disburseBaseUrl}/submit-invoice`, {
+                        disburse_token: disburseToken
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'PAYDUNYA-MASTER-KEY': process.env.PAYDUNYA_MASTER_KEY,
+                            'PAYDUNYA-PRIVATE-KEY': process.env.PAYDUNYA_PRIVATE_KEY,
+                            'PAYDUNYA-TOKEN': process.env.PAYDUNYA_TOKEN
+                        }
+                    });
+
+                    if (submitInvoiceRes.data.response_code === "00" || submitInvoiceRes.data.status === "success") {
+                        const transactionId = submitInvoiceRes.data.transaction_id || `PD-${Date.now()}`;
                         
                         await db.query('BEGIN');
                         await client.query("UPDATE withdrawals SET status = 'completed', transaction_id = $1 WHERE id = $2", [transactionId, withdrawalId]);
@@ -635,10 +649,13 @@ const adminController = {
                             message: `Virement forcé effectué avec succès vers ${phone}.`
                         });
                     } else {
-                        throw new Error(paydunyaResponse.data.response_text || 'Échec du virement PayDunya');
+                        throw new Error(submitInvoiceRes.data.response_text || 'Échec de la soumission du virement.');
                     }
                 } catch (apiError) {
                     console.error('Force transfer fail:', apiError.message);
+                    if (apiError.response && apiError.response.data) {
+                        console.error('Force transfer fail details:', JSON.stringify(apiError.response.data));
+                    }
                     
                     await db.query('BEGIN');
                     await client.query("UPDATE withdrawals SET status = 'failed', error_message = $1 WHERE id = $2", [apiError.message, withdrawalId]);

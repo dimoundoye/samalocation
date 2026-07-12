@@ -126,6 +126,7 @@ const withdrawalController = {
             let pdProvider = provider.toLowerCase();
             if (pdProvider === 'orange_money') pdProvider = 'orange-money-senegal';
             if (pdProvider === 'free_money') pdProvider = 'free-money-senegal';
+            if (pdProvider === 'wave') pdProvider = 'wave-senegal';
 
             if (isTestMode) {
                 // Mode simulation (Sandbox / Test)
@@ -146,30 +147,44 @@ const withdrawalController = {
                     message: 'Retrait simulé avec succès.'
                 });
             } else {
-                // Mode Production (Live API PayDunya)
-                const PAYDUNYA_DISBURSE_URL = 'https://app.paydunya.com/api/v1/disbursement/create-transfer';
+                // Mode Production (Live API PayDunya - flux en 2 étapes)
+                const disburseBaseUrl = 'https://app.paydunya.com/api/v1/disburse';
                 
-                const payload = {
-                    disbursement: {
-                        amount: netAmount,
-                        provider: pdProvider,
-                        phone: recipientDetails
-                    }
-                };
-
                 try {
-                    const paydunyaResponse = await axios.post(PAYDUNYA_DISBURSE_URL, payload, {
+                    // Étape 1 : Obtenir le jeton de virement (get-invoice)
+                    const getInvoiceRes = await axios.post(`${disburseBaseUrl}/get-invoice`, {
+                        amount: netAmount,
+                        account_alias: recipientDetails,
+                        service: pdProvider
+                    }, {
                         headers: {
                             'Content-Type': 'application/json',
                             'PAYDUNYA-MASTER-KEY': process.env.PAYDUNYA_MASTER_KEY,
                             'PAYDUNYA-PRIVATE-KEY': process.env.PAYDUNYA_PRIVATE_KEY,
-                            'PAYDUNYA-PUBLIC-KEY': process.env.PAYDUNYA_PUBLIC_KEY,
                             'PAYDUNYA-TOKEN': process.env.PAYDUNYA_TOKEN
                         }
                     });
 
-                    if (paydunyaResponse.data.response_code === "00" || paydunyaResponse.data.status === "success") {
-                        const transactionId = paydunyaResponse.data.transaction_id || `PD-${Date.now()}`;
+                    if (getInvoiceRes.data.response_code !== "00") {
+                        throw new Error(getInvoiceRes.data.response_text || 'Échec de la création de la facture de virement.');
+                    }
+
+                    const disburseToken = getInvoiceRes.data.disburse_token;
+
+                    // Étape 2 : Confirmer et soumettre le virement (submit-invoice)
+                    const submitInvoiceRes = await axios.post(`${disburseBaseUrl}/submit-invoice`, {
+                        disburse_token: disburseToken
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'PAYDUNYA-MASTER-KEY': process.env.PAYDUNYA_MASTER_KEY,
+                            'PAYDUNYA-PRIVATE-KEY': process.env.PAYDUNYA_PRIVATE_KEY,
+                            'PAYDUNYA-TOKEN': process.env.PAYDUNYA_TOKEN
+                        }
+                    });
+
+                    if (submitInvoiceRes.data.response_code === "00" || submitInvoiceRes.data.status === "success") {
+                        const transactionId = submitInvoiceRes.data.transaction_id || `PD-${Date.now()}`;
                         
                         await db.query('BEGIN');
                         await Withdrawal.updateStatus(withdrawal.id, 'completed', { transaction_id: transactionId });
@@ -183,10 +198,13 @@ const withdrawalController = {
                             message: 'Votre retrait a été envoyé avec succès.'
                         });
                     } else {
-                        throw new Error(paydunyaResponse.data.response_text || 'Échec du transfert PayDunya');
+                        throw new Error(submitInvoiceRes.data.response_text || 'Échec de la soumission du virement.');
                     }
                 } catch (apiError) {
                     console.error('PayDunya Transfer API Error:', apiError.message);
+                    if (apiError.response && apiError.response.data) {
+                        console.error('PayDunya Transfer API Response:', JSON.stringify(apiError.response.data));
+                    }
                     
                     // En cas d'erreur de l'API, on annule et on recrédite le propriétaire
                     await db.query('BEGIN');
