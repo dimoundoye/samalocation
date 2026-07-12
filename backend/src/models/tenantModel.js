@@ -26,7 +26,8 @@ const Tenant = {
                    up_tenant.full_name as profile_full_name, up_tenant.phone as profile_phone,
                    up_tenant.role as profile_role,
                    own_op.currency as owner_currency, own_op.company_name as owner_company_name,
-                   own_op.logo_url as owner_logo_url, own_op.phone as owner_contact_phone
+                   own_op.logo_url as owner_logo_url, own_op.phone as owner_contact_phone,
+                   own_op.online_payment_enabled as owner_online_payment_enabled
             FROM tenants t
             LEFT JOIN property_units pu ON t.unit_id = pu.id
             LEFT JOIN properties p ON pu.property_id = p.id
@@ -58,6 +59,7 @@ const Tenant = {
                     full_name: tenant.owner_name,
                     email: tenant.owner_email,
                     phone: tenant.owner_phone,
+                    online_payment_enabled: tenant.owner_online_payment_enabled
                 };
             }
             return enriched;

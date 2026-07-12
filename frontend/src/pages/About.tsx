@@ -179,8 +179,8 @@ const About = () => {
                   <CheckCircle2 className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg mb-2">Paiements Sécurisés (Prochainement)</h3>
-                  <p className="text-muted-foreground">Nous travaillons à l'intégration des solutions de paiement pour automatiser vos transactions en toute sécurité.</p>
+                  <h3 className="font-bold text-lg mb-2">Paiements en Ligne Sécurisés</h3>
+                  <p className="text-muted-foreground">Réglez ou encaissez vos loyers instantanément via Mobile Money (Wave, Orange Money, Free Money) ou Carte Bancaire en toute sécurité.</p>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -376,13 +376,31 @@ const About = () => {
               <div className="space-y-2">
                 <h3 className="font-bold text-lg">Puis-je payer mon loyer via l'application ?</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  Cette fonctionnalité est actuellement en cours de développement. Bientôt, vous pourrez régler vos loyers via des solutions de paiement mobile directement depuis votre tableau de bord et recevoir vos quittances numériques.
+                  Oui, c'est tout à fait possible ! Si votre propriétaire a activé l'option de paiement en ligne dans ses paramètres, vous pouvez régler votre loyer instantanément via Wave, Orange Money, Free Money ou par Carte Bancaire directement depuis votre tableau de bord locataire. Une fois le paiement validé, votre quittance de loyer numérique vous est automatiquement générée et archivée.
                 </p>
               </div>
               <div className="space-y-2">
                 <h3 className="font-bold text-lg">Comment devenir un propriétaire vérifié ?</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
                   Il vous suffit de soumettre vos documents (CNI, preuve de propriété) dans votre espace profil. Notre équipe validera votre badge en moins de 24h pour renforcer votre crédibilité.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-bold text-lg">Comment retirer l'argent de mon portefeuille bailleur ?</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Les propriétaires peuvent demander un retrait de leur solde à tout moment depuis l'onglet "Mon portefeuille". Les fonds sont virés instantanément sur le compte Mobile Money (Wave, Orange Money ou Free Money) de leur choix. Ces retraits sont soumis à des frais de service de 2.5%.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-bold text-lg">Comment fonctionne la signature électronique ?</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Depuis vos paramètres de profil, vous pouvez prendre en photo votre signature physique sur une feuille blanche. Notre système supprime automatiquement le fond pour la rendre transparente et l'apposer instantanément sur toutes vos quittances et contrats de bail générés.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-bold text-lg">Le locataire reçoit-il un justificatif après paiement ?</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Oui ! Dès que le paiement en ligne est validé ou qu'un reçu est créé par le bailleur, le locataire reçoit immédiatement une notification et sa quittance officielle signée au format PDF, téléchargeable depuis son espace personnel.
                 </p>
               </div>
             </div>

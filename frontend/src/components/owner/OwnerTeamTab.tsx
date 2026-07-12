@@ -407,7 +407,7 @@ export const OwnerTeamTab = () => {
 
             {/* Journal d'activité — réservé au patron */}
             {hasMultiUser && (
-                <OwnerActivityLog collaborators={collaborators} />
+                <OwnerActivityLog />
             )}
             {/* Info Box */}
             <div className="bg-blue-500/5 border border-blue-500/10 rounded-3xl p-6 flex gap-4">

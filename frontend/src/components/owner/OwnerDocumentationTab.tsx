@@ -139,6 +139,20 @@ export const OwnerDocumentationTab = () => {
       ]
     },
     {
+      id: "online-payment",
+      title: "Activer les paiements en ligne",
+      icon: <ShieldCheck className="h-5 w-5 text-indigo-500" />,
+      purpose: "Le paiement en ligne permet à vos locataires de payer leur loyer directement par Mobile Money (Wave, Orange Money, Free Money) ou Carte Bancaire. Les fonds arrivent dans votre portefeuille virtuel sécurisé SamaLocation, d'où vous pouvez les transférer vers votre numéro Mobile Money en toute simplicité.",
+      steps: [
+        "Allez dans l'onglet 'Mon portefeuille'.",
+        "Dans la section 'Option d'encaissement', localisez le paramètre 'Paiement en ligne'.",
+        "Activez le bouton de bascule (Switch). Un message 'Activé' s'affichera.",
+        "Vos locataires pourront désormais voir le bouton 'Payer en ligne' sur leur propre tableau de bord pour toutes leurs factures de loyer.",
+        "Pour retirer vos fonds cumulés, cliquez sur 'Retirer mes fonds' dans l'onglet 'Mon portefeuille', saisissez votre numéro de virement, le montant et confirmez avec votre mot de passe."
+      ],
+      tip: "Activer cette option réduit vos retards de paiement de 80% car vos locataires n'ont plus besoin de se déplacer ou de faire des transferts manuels."
+    },
+    {
       id: "collaborators",
       title: "Ajouter un collaborateur",
       icon: <Briefcase className="h-5 w-5 text-slate-500" />,

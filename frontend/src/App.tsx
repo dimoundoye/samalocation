@@ -108,6 +108,14 @@ const App = () => (
                       }
                     />
                     <Route
+                      path="/owner-dashboard/team/history"
+                      element={
+                        <ProtectedRoute requiredRole="owner">
+                          <DashboardProprietaire />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
                       path="/tenant-dashboard"
                       element={
                         <ProtectedRoute requiredRole="tenant">

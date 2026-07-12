@@ -413,11 +413,11 @@ const adminController = {
 
             // --- REVENUS ADMIN (Abonnements payés) ---
 
-            // Revenu admin mensuel (12 derniers mois)
+            // Revenu admin mensuel (12 derniers mois) - avec déduction des 2% de frais de PayDunya
             const { rows: adminMonthly } = await db.query(`
                 SELECT 
                     DATE_TRUNC('month', created_at) as date,
-                    SUM(price) as total
+                    SUM(price * 0.98) as total
                 FROM subscriptions
                 WHERE status IN ('active', 'expired') AND price > 0
                 AND created_at >= NOW() - INTERVAL '12 months'
@@ -425,11 +425,11 @@ const adminController = {
                 ORDER BY date ASC
             `);
 
-            // Revenu admin annuel
+            // Revenu admin annuel - avec déduction des 2% de frais de PayDunya
             const { rows: adminYearly } = await db.query(`
                 SELECT 
                     EXTRACT(YEAR FROM created_at)::text as date,
-                    SUM(price) as total
+                    SUM(price * 0.98) as total
                 FROM subscriptions
                 WHERE status IN ('active', 'expired') AND price > 0
                 GROUP BY EXTRACT(YEAR FROM created_at)
@@ -446,6 +446,215 @@ const adminController = {
         } catch (error) {
             console.error('Error getting revenue stats:', error);
             next(error);
+        }
+    },
+
+    /**
+     * Récupérer les soldes de tous les propriétaires
+     */
+    async getOwnerBalances(req, res, next) {
+        try {
+            const { rows: owners } = await db.query(
+                `SELECT op.id, op.company_name, op.balance, op.currency, op.online_payment_enabled,
+                        up.full_name, up.email, up.phone, u.is_blocked
+                 FROM owner_profiles op
+                 JOIN user_profiles up ON op.user_profile_id = up.id
+                 JOIN users u ON up.id = u.id
+                 ORDER BY op.balance DESC`
+            );
+
+            // Récupérer les stats globales de surplus du grand livre
+            const { rows: stats } = await db.query(
+                `SELECT 
+                    COALESCE(SUM(platform_surplus), 0) as total_surplus,
+                    COUNT(*) as total_transactions,
+                    COALESCE(SUM(CASE WHEN type = 'pay_rent' THEN amount ELSE 0 END), 0) as total_rent_volume
+                 FROM ledger_transactions 
+                 WHERE status = 'completed'`
+            );
+
+            // Récupérer les revenus des abonnements payés via PayDunya
+            const { rows: subStats } = await db.query(
+                `SELECT 
+                    COALESCE(SUM(price), 0) as total_subscriptions_gross,
+                    COALESCE(SUM(price * 0.98), 0) as total_subscriptions_net
+                 FROM subscriptions 
+                 WHERE status IN ('active', 'expired') AND price > 0`
+            );
+            const totalSurplus = parseFloat(stats[0].total_surplus) || 0;
+            const totalRentVolume = parseFloat(stats[0].total_rent_volume) || 0;
+            const totalTransactions = parseInt(stats[0].total_transactions) || 0;
+            const subGross = parseFloat(subStats[0].total_subscriptions_gross) || 0;
+            const subNet = parseFloat(subStats[0].total_subscriptions_net) || 0;
+            const cumulative = totalSurplus + subNet;
+            const totalOwnerBalances = owners.reduce((sum, o) => sum + parseFloat(o.balance || 0), 0);
+            const reservedFunds = totalOwnerBalances * 0.975 * 1.02; // 99.45% of virtual landlord balance (amount sent to landlord + 2% PayDunya disbursement fee)
+
+            return response.success(res, {
+                owners,
+                stats: {
+                    total_surplus: totalSurplus,
+                    total_transactions: totalTransactions,
+                    total_rent_volume: totalRentVolume,
+                    total_subscriptions_gross: subGross,
+                    total_subscriptions_net: subNet,
+                    cumulative_revenue: cumulative,
+                    total_owner_balances: totalOwnerBalances,
+                    reserved_funds: reservedFunds
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Forcer le virement du solde d'un propriétaire suspendu
+     */
+    async forceOwnerWithdrawal(req, res, next) {
+        const client = await db.connect();
+        const axios = require('axios');
+        const FEE_RATE_USER = parseFloat(process.env.PAYMENT_FEE_CLIENT || '0.025');
+        const FEE_RATE_PAYDUNYA = parseFloat(process.env.PAYDUNYA_REAL_FEE_RATE || '0.02');
+        
+        try {
+            const { ownerId } = req.params;
+
+            // 1. Récupérer le solde
+            const { rows: profiles } = await client.query(
+                'SELECT balance, currency FROM owner_profiles WHERE id = $1',
+                [ownerId]
+            );
+
+            if (profiles.length === 0) {
+                return response.error(res, 'Profil propriétaire non trouvé.', 404);
+            }
+
+            const ownerProfile = profiles[0];
+            const amount = parseFloat(ownerProfile.balance);
+
+            if (amount <= 0) {
+                return response.error(res, 'Le solde du propriétaire est déjà nul ou négatif.', 400);
+            }
+
+            // 2. Récupérer les coordonnées
+            const { rows: userProfiles } = await client.query(
+                'SELECT phone, full_name FROM user_profiles WHERE id = $1',
+                [ownerId]
+            );
+            
+            const phone = userProfiles[0]?.phone || '770000000';
+
+            // 3. Calculs des frais (2.5% utilisateur, 2% PayDunya)
+            const fee = amount * FEE_RATE_USER;
+            const netAmount = amount - fee;
+
+            await client.query('BEGIN');
+
+            // 4. Créer la demande de retrait en statut 'pending'
+            const { rows: wRows } = await client.query(
+                `INSERT INTO withdrawals 
+                (owner_id, amount, fee, net_amount, provider, recipient_details, status) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                RETURNING *`,
+                [ownerId, amount, fee, netAmount, 'wave', phone, 'pending']
+            );
+            const withdrawalId = wRows[0].id;
+
+            // 5. Mettre à jour le solde à 0
+            await client.query(
+                'UPDATE owner_profiles SET balance = 0, updated_at = NOW() WHERE id = $1',
+                [ownerId]
+            );
+
+            // 6. Créer la transaction de grand livre en statut 'pending'
+            const expectedPayDunyaFee = netAmount * FEE_RATE_PAYDUNYA;
+            const estimatedSurplus = fee - expectedPayDunyaFee;
+
+            await client.query(
+                `INSERT INTO ledger_transactions 
+                (owner_id, type, amount, fee, net_amount, platform_surplus, status, description, reference_id) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                [
+                    ownerId, 'force_withdrawal', amount, fee, netAmount, estimatedSurplus, 'pending',
+                    `Virement forcé par l'admin suite à suspension`, withdrawalId
+                ]
+            );
+
+            await client.query('COMMIT');
+
+            // 7. Virement réel via PayDunya
+            const isTestMode = process.env.PAYDUNYA_MODE === 'test';
+            if (isTestMode) {
+                // Simulation
+                await db.query('BEGIN');
+                await client.query("UPDATE withdrawals SET status = 'completed', transaction_id = $1 WHERE id = $2", [`FORCE-SIM-${Date.now()}`, withdrawalId]);
+                await client.query("UPDATE ledger_transactions SET status = 'completed' WHERE reference_id = $1", [withdrawalId]);
+                await db.query('COMMIT');
+
+                return response.success(res, {
+                    withdrawal_id: withdrawalId,
+                    status: 'completed',
+                    message: `Retrait forcé de ${amount} F CFA simulé avec succès.`
+                });
+            } else {
+                // Production API PayDunya
+                const PAYDUNYA_DISBURSE_URL = 'https://app.paydunya.com/api/v1/disbursement/create-transfer';
+                
+                const payload = {
+                    disbursement: {
+                        amount: netAmount,
+                        provider: 'wave',
+                        phone: phone
+                    }
+                };
+
+                try {
+                    const paydunyaResponse = await axios.post(PAYDUNYA_DISBURSE_URL, payload, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'PAYDUNYA-MASTER-KEY': process.env.PAYDUNYA_MASTER_KEY,
+                            'PAYDUNYA-PRIVATE-KEY': process.env.PAYDUNYA_PRIVATE_KEY,
+                            'PAYDUNYA-PUBLIC-KEY': process.env.PAYDUNYA_PUBLIC_KEY,
+                            'PAYDUNYA-TOKEN': process.env.PAYDUNYA_TOKEN
+                        }
+                    });
+
+                    if (paydunyaResponse.data.response_code === "00" || paydunyaResponse.data.status === "success") {
+                        const transactionId = paydunyaResponse.data.transaction_id || `PD-${Date.now()}`;
+                        
+                        await db.query('BEGIN');
+                        await client.query("UPDATE withdrawals SET status = 'completed', transaction_id = $1 WHERE id = $2", [transactionId, withdrawalId]);
+                        await client.query("UPDATE ledger_transactions SET status = 'completed' WHERE reference_id = $1", [withdrawalId]);
+                        await db.query('COMMIT');
+
+                        return response.success(res, {
+                            withdrawal_id: withdrawalId,
+                            status: 'completed',
+                            transaction_id: transactionId,
+                            message: `Virement forcé effectué avec succès vers ${phone}.`
+                        });
+                    } else {
+                        throw new Error(paydunyaResponse.data.response_text || 'Échec du virement PayDunya');
+                    }
+                } catch (apiError) {
+                    console.error('Force transfer fail:', apiError.message);
+                    
+                    await db.query('BEGIN');
+                    await client.query("UPDATE withdrawals SET status = 'failed', error_message = $1 WHERE id = $2", [apiError.message, withdrawalId]);
+                    await client.query("UPDATE ledger_transactions SET status = 'failed' WHERE reference_id = $1", [withdrawalId]);
+                    await client.query("UPDATE owner_profiles SET balance = balance + $1 WHERE id = $2", [amount, ownerId]);
+                    await db.query('COMMIT');
+
+                    return response.error(res, `Le virement forcé a échoué : ${apiError.message}. Le solde a été restauré.`, 400);
+                }
+            }
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            next(error);
+        } finally {
+            client.release();
         }
     },
 

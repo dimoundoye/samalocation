@@ -80,3 +80,13 @@ export const verifyPDFDocument = async (file: File) => {
         body: formData
     });
 };
+
+export const getOwnerBalances = async () => {
+    return await baseClient("/admin/owners/balances");
+};
+
+export const forceOwnerWithdrawal = async (ownerId: string) => {
+    return await baseClient(`/admin/owners/${ownerId}/force-withdrawal`, {
+        method: "POST"
+    });
+};

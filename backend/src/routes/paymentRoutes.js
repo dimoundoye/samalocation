@@ -9,6 +9,7 @@ const authMiddleware = require('../middleware/authMiddleware');
  * @access  Private (Owner/User)
  */
 router.post('/request', authMiddleware, paymentController.initializePayment);
+router.post('/rent/request', authMiddleware, paymentController.initializeRentPayment);
 
 /**
  * @route   POST /api/payment/callback

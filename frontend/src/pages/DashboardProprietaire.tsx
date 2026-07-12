@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature } from "lucide-react";
+import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature, Wallet } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams, useParams, useLocation } from "react-router-dom";
@@ -42,6 +42,7 @@ import { PenTool, ArrowRight } from "lucide-react";
 import { AddPropertyModal } from "@/components/owner/AddPropertyModal";
 import { EditPropertyModal } from "@/components/owner/EditPropertyModal";
 import { OwnerSettings } from "@/components/owner/OwnerSettings";
+import { OwnerWalletTab } from "@/components/owner/OwnerWalletTab";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfile } from "@/components/UserProfile";
 import { AssignTenantDialog } from "@/components/owner/AssignTenantDialog";
@@ -54,6 +55,7 @@ import { OwnerMaintenanceTab } from "@/components/owner/OwnerMaintenanceTab";
 import { OwnerContractsTab } from "@/components/owner/OwnerContractsTab";
 import { OwnerSubscription } from "@/components/owner/OwnerSubscription";
 import { OwnerTeamTab } from "@/components/owner/OwnerTeamTab";
+import { FullActivityLogView } from "@/components/owner/OwnerActivityLog";
 import { CreateContractDialog } from "@/components/owner/CreateContractDialog";
 import { format } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
@@ -75,11 +77,33 @@ const DashboardProprietaire = () => {
   const location = useLocation();
   const { tab: urlTab } = useParams();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isContractEditor = location.pathname.includes('/contract-editor');
+  const isTeamHistory = location.pathname.includes('/team/history');
   const editorTemplateId = isContractEditor
     ? location.pathname.split('/contract-editor/')[1] || undefined
     : undefined;
+
+  const paymentStatus = searchParams.get("payment");
+
+  useEffect(() => {
+    if (paymentStatus === "success") {
+      toast({
+        title: "Abonnement activé !",
+        description: "Votre abonnement a été payé et activé avec succès via PayDunya.",
+        variant: "default",
+      });
+      setSearchParams({}, { replace: true });
+    } else if (paymentStatus === "cancel") {
+      toast({
+        title: "Paiement annulé",
+        description: "L'activation de votre abonnement a été annulée.",
+        variant: "destructive",
+      });
+      setSearchParams({}, { replace: true });
+    }
+  }, [paymentStatus, setSearchParams, toast]);
   const { t, i18n } = useTranslation();
   const { signOut, user, loading: authLoading } = useAuth();
   const { subscription } = useSubscription();
@@ -92,7 +116,7 @@ const DashboardProprietaire = () => {
     }
   }, [user, authLoading, navigate]);
 
-  const [activeTab, setActiveTab] = useState(isContractEditor ? "contracts" : urlTab || "dashboard");
+  const [activeTab, setActiveTab] = useState(isContractEditor ? "contracts" : (isTeamHistory ? "team-history" : urlTab || "dashboard"));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({
@@ -455,12 +479,14 @@ const DashboardProprietaire = () => {
   useEffect(() => {
     if (isContractEditor) {
       setActiveTab("contracts");
+    } else if (isTeamHistory) {
+      setActiveTab("team-history");
     } else if (urlTab) {
       setActiveTab(urlTab);
     } else {
       setActiveTab("dashboard");
     }
-  }, [urlTab, isContractEditor]);
+  }, [urlTab, isContractEditor, isTeamHistory]);
 
   const getMonthName = (month: number) => {
     const date = new Date(2000, month - 1, 1);
@@ -839,6 +865,7 @@ const DashboardProprietaire = () => {
             { id: "public-profile", label: "Profil Public", icon: Globe },
             { id: "contracts", label: t('dashboard.sidebar.contracts'), icon: FileText },
             { id: "subscription", label: t('dashboard.sidebar.subscription'), icon: CreditCard },
+            { id: "wallet", label: "Mon Portefeuille", icon: Wallet },
             { id: "team", label: "Équipe", icon: Users2 },
             { id: "settings", label: t('dashboard.sidebar.settings'), icon: Settings },
             { id: "guide", label: "Guide", icon: HelpCircle },
@@ -873,7 +900,7 @@ const DashboardProprietaire = () => {
                   }
                   if (isMobile) setMobileMenuOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 relative group/nav ${activeTab === item.id
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 relative group/nav ${(activeTab === item.id || (activeTab === "team-history" && item.id === "team"))
                   ? "bg-primary text-white"
                   : "hover:bg-secondary text-muted-foreground"
                   } ${itemAlignment}`}
@@ -2375,8 +2402,44 @@ const DashboardProprietaire = () => {
             {/* Subscription Tab */}
             {activeTab === "subscription" && <OwnerSubscription />}
 
+            {/* Wallet Tab */}
+            {activeTab === "wallet" && <OwnerWalletTab />}
+
             {/* Team Tab */}
             {activeTab === "team" && <OwnerTeamTab />}
+
+            {activeTab === "team-history" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="gap-1.5 text-xs rounded-xl hover:bg-muted"
+                    onClick={() => navigate("/owner-dashboard/team")}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Retour à l'équipe
+                  </Button>
+                </div>
+                
+                <Card className="border shadow-soft rounded-3xl p-6">
+                  <CardHeader className="pb-4 px-0 pt-0 border-b flex flex-row items-center gap-3 mb-6">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+                      <History className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-bold">Journal d'activité complet</CardTitle>
+                      <CardDescription className="text-xs mt-0.5">
+                        Consultez l'historique complet de toutes les actions de vos agents.
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <FullActivityLogView />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Settings Tab */}
             {activeTab === "settings" && <OwnerSettings onSuccess={loadData} />}

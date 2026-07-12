@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfile } from "@/components/UserProfile";
@@ -39,9 +39,30 @@ const DashboardLocataire = () => {
   const navigate = useNavigate();
   const { tab: urlTab } = useParams();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState(urlTab || "dashboard");
+
+  const paymentStatus = searchParams.get("payment");
+
+  useEffect(() => {
+    if (paymentStatus === "success") {
+      toast({
+        title: "Paiement réussi !",
+        description: "Votre loyer a été payé avec succès via PayDunya. Un reçu a été généré.",
+        variant: "default",
+      });
+      setSearchParams({}, { replace: true });
+    } else if (paymentStatus === "cancel") {
+      toast({
+        title: "Paiement annulé",
+        description: "Le paiement de votre loyer a été annulé.",
+        variant: "destructive",
+      });
+      setSearchParams({}, { replace: true });
+    }
+  }, [paymentStatus, setSearchParams, toast]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedLease, setSelectedLease] = useState<any>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -1053,7 +1074,6 @@ const DashboardLocataire = () => {
             {/* Maintenance Tab */}
             {activeTab === "maintenance" && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold">{t('dashboard.sidebar.maintenance')}</h2>
                 <MaintenanceTab />
               </div>
             )}

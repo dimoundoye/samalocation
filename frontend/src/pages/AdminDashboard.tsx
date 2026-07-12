@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,8 +21,8 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import VerificationsManagement from "@/components/admin/VerificationsManagement";
 import { DocumentAudit } from "@/components/admin/DocumentAudit";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { History, ExternalLink } from "lucide-react";
-import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getLiveAnalytics } from "@/lib/api";
+import { History, ExternalLink, ArrowUpRight, Loader2 } from "lucide-react";
+import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getLiveAnalytics, getOwnerBalances, forceOwnerWithdrawal } from "@/lib/api";
 import { CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -57,13 +58,13 @@ const AdminDashboard = () => {
     let filtered = transactions;
 
     if (filter === "api") {
-      filtered = filtered.filter((t) => ["wave", "orange_money", "card"].includes(t.payment_method));
+      filtered = filtered.filter((t) => ["wave", "orange_money", "card", "paydunya"].includes(t.payment_method?.toLowerCase()));
     } else if (filter === "wave_manual") {
-      filtered = filtered.filter((t) => t.payment_method === "wave_manual");
+      filtered = filtered.filter((t) => t.payment_method?.toLowerCase() === "wave_manual");
     } else if (filter === "referred") {
       filtered = filtered.filter((t) => t.referred_by);
     } else if (filter === "admin_validated") {
-      filtered = filtered.filter((t) => t.payment_method === "manual_admin");
+      filtered = filtered.filter((t) => ["manual_admin", "admin_validated"].includes(t.payment_method?.toLowerCase()));
     }
 
     return filtered;
@@ -74,6 +75,12 @@ const AdminDashboard = () => {
   const [liveAnalytics, setLiveAnalytics] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [financeSubTab, setFinanceSubTab] = useState<"subscriptions" | "owners">("subscriptions");
+  const [ownersWallets, setOwnersWallets] = useState<any[]>([]);
+  const [realPayDunyaBalance, setRealPayDunyaBalance] = useState<string>("");
+  const [ledgerStats, setLedgerStats] = useState<any>({ total_surplus: 0, total_transactions: 0, total_rent_volume: 0 });
+  const [loadingOwners, setLoadingOwners] = useState(false);
+  const [actionLoadingOwnerId, setActionLoadingOwnerId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAdminData();
@@ -160,6 +167,21 @@ const AdminDashboard = () => {
     }
   };
 
+  const loadOwnerBalancesData = async () => {
+    setLoadingOwners(true);
+    try {
+      const response = await getOwnerBalances();
+      if (response.status === "success") {
+        setOwnersWallets(response.data.owners || []);
+        setLedgerStats(response.data.stats || { total_surplus: 0, total_transactions: 0, total_rent_volume: 0 });
+      }
+    } catch (error) {
+      console.error("Error loading owner balances:", error);
+    } finally {
+      setLoadingOwners(false);
+    }
+  };
+
   const loadLiveAnalytics = async () => {
     setLoadingAnalytics(true);
     try {
@@ -184,6 +206,7 @@ const AdminDashboard = () => {
     if (activeTab === 'finances') {
       loadTransactions();
       loadRevenueStats();
+      loadOwnerBalancesData();
     } else if (activeTab === 'receipts') {
       loadRevenueStats();
     } else if (activeTab === 'live') {
@@ -534,180 +557,472 @@ const AdminDashboard = () => {
           )}
 
           {activeTab === "finances" && (
-            <div className="animate-fade-in">
-              <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+            <div className="animate-fade-in space-y-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b pb-4">
                 <div>
-                  <h1 className="text-xl md:text-3xl font-bold mb-2">Transactions et Revenus</h1>
-                  <p className="text-muted-foreground text-sm">Suivez les abonnements et les rentrées d'argent</p>
+                  <h1 className="text-xl md:text-3xl font-black mb-1">Finances et Gains</h1>
+                  <p className="text-muted-foreground text-xs">Suivez les abonnements, les soldes bailleurs et les gains de SamaLocation.</p>
                 </div>
-                <div className="bg-primary/10 px-4 py-2 rounded-lg border border-primary/20 self-start sm:self-auto">
-                  <span className="text-[10px] text-primary font-bold uppercase block">Revenu du mois</span>
-                  <span className="text-lg md:text-xl font-black text-primary">{formatCurrency(statistics.revenue?.active || 0)}</span>
+                <div className="flex gap-1.5 bg-secondary/40 p-1 rounded-xl self-start sm:self-auto border">
+                  <Button 
+                    variant={financeSubTab === "subscriptions" ? "default" : "ghost"}
+                    size="sm"
+                    className="text-xs h-8 rounded-lg font-bold"
+                    onClick={() => setFinanceSubTab("subscriptions")}
+                  >
+                    Abonnements
+                  </Button>
+                  <Button 
+                    variant={financeSubTab === "owners" ? "default" : "ghost"}
+                    size="sm"
+                    className="text-xs h-8 rounded-lg font-bold"
+                    onClick={() => setFinanceSubTab("owners")}
+                  >
+                    Portefeuilles & Retraits Bailleurs
+                  </Button>
                 </div>
               </div>
 
-              <Card className="shadow-soft">
-                <CardHeader className="bg-secondary/10 border-b">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <History className="h-5 w-5 text-primary" />
-                    Dernières Transactions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="flex flex-wrap items-center gap-1.5 p-3 md:p-4 border-b">
-                    <span className="hidden md:inline text-sm font-medium text-muted-foreground">Filtres:</span>
-                    <div className="flex flex-wrap items-center gap-1">
-                      {[
-                        { key: "all", label: "Tous" },
-                        { key: "api", label: "API Paiement" },
-                        { key: "wave_manual", label: "Manuel" },
-                        { key: "referred", label: "Parrainage" },
-                        { key: "admin_validated", label: "Validé Admin" },
-                      ].map(({ key, label }) => (
-                        <Button
-                          key={key}
-                          variant={filter === key ? "default" : "outline"}
-                          size="sm"
-                          className="h-7 md:h-8 text-[11px] md:text-xs px-2 md:px-3"
-                          onClick={() => setFilter(key)}
-                        >
-                          {label}
-                        </Button>
-                      ))}
-                    </div>
+              {financeSubTab === "subscriptions" ? (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center bg-primary/5 px-4 py-3 rounded-xl border border-primary/10">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">Revenu Brut estimé ce mois (Abonnements)</span>
+                    <span className="text-lg font-black text-primary">{formatCurrency(statistics.revenue?.active || 0)}</span>
                   </div>
-                  {/* Mobile Card View */}
-                  <div className="grid grid-cols-1 gap-2 md:hidden">
-                    {loadingTransactions ? (
-                      <div className="p-8 text-center text-muted-foreground">Chargement...</div>
-                    ) : filteredTransactions.length > 0 ? (
-                      filteredTransactions.map((t) => (
-                        <div key={t.id} className="p-4 border-b last:border-0 bg-card">
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="min-w-0 flex-1 mr-2">
-                              <p className="font-bold text-sm truncate">{t.user_name}</p>
-                              <p className="text-xs text-muted-foreground truncate">{t.user_email}</p>
-                            </div>
-                            <Badge variant="outline" className="capitalize shrink-0 text-[10px]">{t.plan_name}</Badge>
-                          </div>
 
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-bold text-base">{formatCurrency(t.price)}</span>
-                            {t.status === 'active' ? (
-                              <Badge className="bg-green-500 text-[10px] h-5">Réussi</Badge>
-                            ) : t.status === 'pending' ? (
-                              <Badge className="bg-orange-500 text-[10px] h-5">En attente</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="capitalize text-[10px] h-5">{t.status}</Badge>
-                            )}
-                          </div>
-
-                          <div className="flex justify-between items-center text-xs text-muted-foreground mb-3">
-                            <span>{formatDate(t.created_at)}</span>
-                            {t.sender_phone && <span>{t.sender_phone}</span>}
-                          </div>
-
-                          {t.status === 'pending' && (
+                  <Card className="shadow-soft">
+                    <CardHeader className="bg-secondary/10 border-b">
+                      <CardTitle className="text-sm font-bold flex items-center gap-2">
+                        <History className="h-4 w-4 text-primary" />
+                        Dernières Transactions d'Abonnement
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="flex flex-wrap items-center gap-1.5 p-3 border-b bg-muted/20">
+                        <span className="text-xs font-semibold text-muted-foreground">Filtres:</span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {[
+                            { key: "all", label: "Tous" },
+                            { key: "api", label: "API Paiement" },
+                            { key: "wave_manual", label: "Manuel" },
+                            { key: "referred", label: "Parrainage" },
+                            { key: "admin_validated", label: "Validé Admin" },
+                          ].map(({ key, label }) => (
                             <Button
+                              key={key}
+                              variant={filter === key ? "default" : "outline"}
                               size="sm"
-                              className="w-full h-8 text-xs gradient-primary text-white"
-                              onClick={() => handleApprovePayment(t)}
+                              className="h-7 text-[10px] px-2.5 rounded-lg"
+                              onClick={() => setFilter(key)}
                             >
-                              Approuver le paiement
+                              {label}
                             </Button>
-                          )}
+                          ))}
                         </div>
-                      ))
-                    ) : (
-                      <div className="p-8 text-center text-muted-foreground">Aucune transaction trouvée.</div>
-                    )}
-                  </div>
+                      </div>
 
-                  {/* Desktop Table View */}
-                  <div className="hidden md:block overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Utilisateur</TableHead>
-                        <TableHead>Plan</TableHead>
-                        <TableHead>Montant</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead>ID Transaction</TableHead>
-                        <TableHead>Téléphone</TableHead>
-                        <TableHead>Reçu</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loadingTransactions ? (
-                        <TableRow>
-                          <TableCell colSpan={9} className="text-center py-10">Chargement...</TableCell>
-                        </TableRow>
-                      ) : filteredTransactions.length > 0 ? (
-                        filteredTransactions.map((t) => (
-                          <TableRow key={t.id}>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{t.user_name}</p>
-                                <p className="text-xs text-muted-foreground">{t.user_email}</p>
+                      {/* Mobile Card View */}
+                      <div className="grid grid-cols-1 gap-2 md:hidden">
+                        {loadingTransactions ? (
+                          <div className="p-8 text-center text-muted-foreground text-xs">Chargement...</div>
+                        ) : filteredTransactions.length > 0 ? (
+                          filteredTransactions.map((t) => (
+                            <div key={t.id} className="p-4 border-b last:border-0 bg-card">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="min-w-0 flex-1 mr-2">
+                                  <p className="font-bold text-xs truncate">{t.user_name}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">{t.user_email}</p>
+                                </div>
+                                <Badge variant="outline" className="capitalize shrink-0 text-[9px]">{t.plan_name}</Badge>
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="capitalize">{t.plan_name}</Badge>
-                            </TableCell>
-                            <TableCell className="font-bold">{formatCurrency(t.price)}</TableCell>
-                            <TableCell>{formatDate(t.created_at)}</TableCell>
-                            <TableCell>
-                              {t.status === 'active' ? (
-                                <Badge className="bg-green-500 hover:bg-green-600">Réussi</Badge>
-                              ) : t.status === 'pending' ? (
-                                <Badge className="bg-orange-500 hover:bg-orange-600">En attente</Badge>
-                              ) : (
-                                <Badge variant="secondary" className="capitalize">{t.status}</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-xs font-mono opacity-60">{t.transaction_id || '-'}</TableCell>
-                            <TableCell className="text-sm font-medium">{t.sender_phone || '-'}</TableCell>
-                            <TableCell>
-                              {t.receipt_url ? (
-                                <a
-                                  href={t.receipt_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80 hover:underline font-semibold text-xs transition-colors"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                  Voir reçu
-                                </a>
-                              ) : (
-                                <span className="text-muted-foreground opacity-50">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
+
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-black text-sm">{formatCurrency(t.price)}</span>
+                                {t.status === 'active' ? (
+                                  <Badge className="bg-green-500 text-[9px] h-5">Réussi</Badge>
+                                ) : t.status === 'pending' ? (
+                                  <Badge className="bg-orange-500 text-[9px] h-5">En attente</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="capitalize text-[9px] h-5">{t.status}</Badge>
+                                )}
+                              </div>
+
+                              <div className="flex justify-between items-center text-[10px] text-muted-foreground mb-3">
+                                <span>{formatDate(t.created_at)}</span>
+                                {t.sender_phone && <span>{t.sender_phone}</span>}
+                              </div>
+
                               {t.status === 'pending' && (
                                 <Button
                                   size="sm"
-                                  className="h-8 text-xs gradient-primary text-white"
+                                  className="w-full h-8 text-[11px] font-bold gradient-primary text-white"
                                   onClick={() => handleApprovePayment(t)}
                                 >
-                                  Approuver
+                                  Approuver le paiement
                                 </Button>
                               )}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Aucune transaction trouvée.</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                  </div>
-                </CardContent>
-              </Card>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-8 text-center text-muted-foreground text-xs">Aucune transaction trouvée.</div>
+                        )}
+                      </div>
 
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Utilisateur</TableHead>
+                              <TableHead>Plan</TableHead>
+                              <TableHead>Montant</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Statut</TableHead>
+                              <TableHead>ID Transaction</TableHead>
+                              <TableHead>Téléphone</TableHead>
+                              <TableHead>Reçu</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {loadingTransactions ? (
+                              <TableRow>
+                                <TableCell colSpan={9} className="text-center py-10 text-xs">Chargement...</TableCell>
+                              </TableRow>
+                            ) : filteredTransactions.length > 0 ? (
+                              filteredTransactions.map((t) => (
+                                <TableRow key={t.id}>
+                                  <TableCell>
+                                    <div>
+                                      <p className="font-semibold text-xs">{t.user_name}</p>
+                                      <p className="text-[10px] text-muted-foreground">{t.user_email}</p>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className="capitalize text-[10px]">{t.plan_name}</Badge>
+                                  </TableCell>
+                                  <TableCell className="font-black text-xs">{formatCurrency(t.price)}</TableCell>
+                                  <TableCell className="text-xs">{formatDate(t.created_at)}</TableCell>
+                                  <TableCell>
+                                    {t.status === 'active' ? (
+                                      <Badge className="bg-green-500 hover:bg-green-600 text-[10px]">Réussi</Badge>
+                                    ) : t.status === 'pending' ? (
+                                      <Badge className="bg-orange-500 hover:bg-orange-600 text-[10px]">En attente</Badge>
+                                    ) : (
+                                      <Badge variant="secondary" className="capitalize text-[10px]">{t.status}</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-[10px] font-mono opacity-60">{t.transaction_id || '-'}</TableCell>
+                                  <TableCell className="text-xs font-semibold">{t.sender_phone || '-'}</TableCell>
+                                  <TableCell>
+                                    {t.receipt_url ? (
+                                      <a
+                                        href={t.receipt_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-primary hover:text-primary/80 hover:underline font-bold text-xs transition-colors"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                        Voir reçu
+                                      </a>
+                                    ) : (
+                                      <span className="text-muted-foreground opacity-50">-</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    {t.status === 'pending' && (
+                                      <Button
+                                        size="sm"
+                                        className="h-8 text-xs font-bold gradient-primary text-white"
+                                        onClick={() => handleApprovePayment(t)}
+                                      >
+                                        Approuver
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={9} className="text-center py-10 text-muted-foreground text-xs">Aucune transaction trouvée.</TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Section Trésorerie & Gains */}
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">1. Revenus & Performance Plateforme</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <Card className="shadow-soft bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-white border-none relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full translate-x-6 -translate-y-6 blur-lg" />
+                        <CardHeader className="pb-3">
+                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-white/95">Gain Cumulé SamaLocation</CardDescription>
+                          <CardTitle className="text-2xl font-black pt-1">
+                            {formatCurrency(ledgerStats.cumulative_revenue || 0)}
+                          </CardTitle>
+                          <p className="text-[10px] text-white/80 mt-1 leading-relaxed">
+                            Surplus loyers ({formatCurrency(ledgerStats.total_surplus || 0)}) + Abonnements net ({formatCurrency(ledgerStats.total_subscriptions_net || 0)})
+                          </p>
+                        </CardHeader>
+                      </Card>
+
+                      <Card className="shadow-soft bg-gradient-to-br from-green-50 to-green-100/50 border-green-200">
+                        <CardHeader className="pb-3">
+                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-green-700">Marge Collecte Loyer (0.5% Surplus)</CardDescription>
+                          <CardTitle className="text-2xl font-black text-green-600 pt-1">
+                            {formatCurrency(ledgerStats.total_surplus || 0)}
+                          </CardTitle>
+                          <p className="text-[10px] text-green-500 font-semibold mt-1">
+                            Gains de transaction sur le traitement des baux
+                          </p>
+                        </CardHeader>
+                      </Card>
+
+                      <Card className="shadow-soft bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
+                        <CardHeader className="pb-3">
+                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Revenus Abonnements (Brut PayDunya)</CardDescription>
+                          <CardTitle className="text-2xl font-black text-blue-600 pt-1">
+                            {formatCurrency(ledgerStats.total_subscriptions_gross || 0)}
+                          </CardTitle>
+                          <p className="text-[10px] text-blue-500 font-semibold mt-1">
+                            Net plateforme après 2% PayDunya : {formatCurrency(ledgerStats.total_subscriptions_net || 0)}
+                          </p>
+                        </CardHeader>
+                      </Card>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">2. Trésorerie & Fonds de Réserve (PayDunya)</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <Card className="shadow-soft bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200">
+                        <CardHeader className="pb-3">
+                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Total Portefeuilles Bailleurs</CardDescription>
+                          <CardTitle className="text-xl font-black text-amber-600 pt-1">
+                            {formatCurrency(ledgerStats.total_owner_balances || 0)}
+                          </CardTitle>
+                          <p className="text-[10px] text-amber-500 mt-1">
+                            Dette virtuelle totale due aux propriétaires
+                          </p>
+                        </CardHeader>
+                      </Card>
+
+                      <Card className="shadow-soft bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200">
+                        <CardHeader className="pb-3">
+                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Fonds de Réserve Requis PayDunya</CardDescription>
+                          <CardTitle className="text-xl font-black text-purple-600 pt-1">
+                            {formatCurrency(ledgerStats.reserved_funds || 0)}
+                          </CardTitle>
+                          <p className="text-[10px] text-purple-500 mt-1">
+                            Somme réelle à bloquer sur PayDunya (Solde Bailleurs - 2.5% + 2% PayDunya)
+                          </p>
+                        </CardHeader>
+                      </Card>
+
+                      <Card className="shadow-soft">
+                        <CardHeader className="pb-3">
+                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Volume loyers traités</CardDescription>
+                          <CardTitle className="text-xl font-black text-foreground pt-1">
+                            {formatCurrency(ledgerStats.total_rent_volume || 0)}
+                          </CardTitle>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Flux locatif global
+                          </p>
+                        </CardHeader>
+                      </Card>
+
+                      <Card className="shadow-soft">
+                        <CardHeader className="pb-3">
+                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Paiements validés</CardDescription>
+                          <CardTitle className="text-xl font-black text-foreground pt-1">
+                            {ledgerStats.total_transactions || 0}
+                          </CardTitle>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Nombre de transactions
+                          </p>
+                        </CardHeader>
+                      </Card>
+                    </div>
+
+                    {/* Calculateur de part SamaLocation en temps réel */}
+                    <Card className="shadow-soft bg-gradient-to-r from-muted/60 via-muted to-muted/60 border border-primary/10 mt-6 rounded-2xl">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-primary" />
+                          Calculateur de Part SamaLocation
+                        </CardTitle>
+                        <CardDescription className="text-[11px] text-muted-foreground">
+                          Saisissez le montant total actuel affiché sur votre console PayDunya. Le système déduira automatiquement les fonds réservés aux propriétaires pour vous indiquer vos bénéfices nets retirables.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                          <div className="space-y-1.5 flex-1 max-w-xs">
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Solde Réel PayDunya (FCFA)</label>
+                            <Input 
+                              type="number"
+                              placeholder="Ex: 500000"
+                              className="h-10 text-xs rounded-xl"
+                              value={realPayDunyaBalance}
+                              onChange={(e) => setRealPayDunyaBalance(e.target.value)}
+                            />
+                          </div>
+                          {realPayDunyaBalance && !isNaN(parseFloat(realPayDunyaBalance)) && (() => {
+                            const realVal = parseFloat(realPayDunyaBalance);
+                            const reserved = ledgerStats.reserved_funds || 0;
+                            const netEarnings = realVal - reserved;
+                            
+                            return (
+                              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background p-4 rounded-xl border border-primary/5 shadow-inner">
+                                <div>
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Fonds Réservés Propriétaires</p>
+                                  <p className="text-sm font-black text-foreground mt-0.5">{formatCurrency(reserved)}</p>
+                                  <p className="text-[9px] text-muted-foreground mt-0.5">Indispensable pour couvrir les virements</p>
+                                </div>
+                                <div className="border-t sm:border-t-0 sm:border-l pt-3 sm:pt-0 sm:pl-4">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Votre part (Bénéfice SamaLocation)</p>
+                                  <p className={`text-base font-black mt-0.5 ${netEarnings >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                    {formatCurrency(netEarnings)}
+                                  </p>
+                                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                                    {netEarnings >= 0 ? "Montant que vous pouvez retirer en toute sécurité" : "Attention: Déficit sur PayDunya par rapport aux soldes virtuels"}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* List of owners balances */}
+                  <Card className="shadow-soft">
+                    <CardHeader className="bg-secondary/10 border-b">
+                      <CardTitle className="text-sm font-bold">Soldes des Portefeuilles Bailleurs</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Propriétaire</TableHead>
+                              <TableHead>Contact</TableHead>
+                              <TableHead>Paiement Ligne</TableHead>
+                              <TableHead>Statut Compte</TableHead>
+                              <TableHead className="text-right">Solde Virtuel</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {loadingOwners ? (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8 text-xs text-muted-foreground">
+                                  Chargement en cours...
+                                </TableCell>
+                              </TableRow>
+                            ) : ownersWallets.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8 text-xs text-muted-foreground">
+                                  Aucun portefeuille bailleur trouvé.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              ownersWallets.map((owner) => {
+                                const handleForceWithdraw = async () => {
+                                  if (!window.confirm(`Êtes-vous sûr de vouloir forcer le virement de ${formatCurrency(owner.balance)} vers le numéro Wave/OM enregistré de ${owner.full_name} ?`)) {
+                                    return;
+                                  }
+
+                                  setActionLoadingOwnerId(owner.id);
+                                  try {
+                                    const res = await forceOwnerWithdrawal(owner.id);
+                                    if (res.status === "success") {
+                                      toast({
+                                        title: "Virement forcé réussi",
+                                        description: res.message || "Le transfert a été envoyé avec succès.",
+                                      });
+                                      loadOwnerBalancesData();
+                                    } else {
+                                      toast({
+                                        title: "Erreur",
+                                        description: res.message || "Échec du virement.",
+                                        variant: "destructive"
+                                      });
+                                    }
+                                  } catch (err: any) {
+                                    toast({
+                                      title: "Erreur réseau",
+                                      description: err.message || "Impossible de contacter le serveur.",
+                                      variant: "destructive"
+                                    });
+                                  } finally {
+                                    setActionLoadingOwnerId(null);
+                                  }
+                                };
+
+                                return (
+                                  <TableRow key={owner.id}>
+                                    <TableCell>
+                                      <div className="font-bold text-xs text-foreground">{owner.full_name}</div>
+                                      {owner.company_name && (
+                                        <div className="text-[10px] text-muted-foreground">{owner.company_name}</div>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      <div>{owner.email}</div>
+                                      <div className="text-[10px] text-muted-foreground">{owner.phone}</div>
+                                    </TableCell>
+                                    <TableCell>
+                                      {owner.online_payment_enabled ? (
+                                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-[10px]">Activé</Badge>
+                                      ) : (
+                                        <Badge variant="outline" className="text-muted-foreground text-[10px]">Désactivé</Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      {owner.is_blocked ? (
+                                        <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-[10px]">Suspendu</Badge>
+                                      ) : (
+                                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 font-medium text-[10px]">Actif</Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right font-black text-xs text-primary">
+                                      {formatCurrency(owner.balance, owner.currency || "XOF")}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-[10px] gap-1 text-primary border-primary/20 hover:bg-primary/5 rounded-lg"
+                                        disabled={parseFloat(owner.balance) <= 0 || actionLoadingOwnerId !== null}
+                                        onClick={handleForceWithdraw}
+                                      >
+                                        {actionLoadingOwnerId === owner.id ? (
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                          <ArrowUpRight className="w-3.5 h-3.5" />
+                                        )}
+                                        Virement forcé
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
           )}
 
