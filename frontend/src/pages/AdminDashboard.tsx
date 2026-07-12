@@ -21,8 +21,8 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import VerificationsManagement from "@/components/admin/VerificationsManagement";
 import { DocumentAudit } from "@/components/admin/DocumentAudit";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { History, ExternalLink, ArrowUpRight, Loader2 } from "lucide-react";
-import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getLiveAnalytics, getOwnerBalances, forceOwnerWithdrawal } from "@/lib/api";
+import { History, ExternalLink, ArrowUpRight, Loader2, Download } from "lucide-react";
+import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getLiveAnalytics, getOwnerBalances, forceOwnerWithdrawal, getAllReceipts, downloadReceipt } from "@/lib/api";
 import { CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -81,6 +81,11 @@ const AdminDashboard = () => {
   const [ledgerStats, setLedgerStats] = useState<any>({ total_surplus: 0, total_transactions: 0, total_rent_volume: 0 });
   const [loadingOwners, setLoadingOwners] = useState(false);
   const [actionLoadingOwnerId, setActionLoadingOwnerId] = useState<string | null>(null);
+  const [receiptsList, setReceiptsList] = useState<any[]>([]);
+  const [loadingReceiptsList, setLoadingReceiptsList] = useState(false);
+  const [receiptsPagination, setReceiptsPagination] = useState({ total: 0, pages: 1, current_page: 1 });
+  const [receiptsSearch, setReceiptsSearch] = useState("");
+  const [receiptsPage, setReceiptsPage] = useState(1);
 
   useEffect(() => {
     fetchAdminData();
@@ -170,16 +175,37 @@ const AdminDashboard = () => {
   const loadOwnerBalancesData = async () => {
     setLoadingOwners(true);
     try {
-      const response = await getOwnerBalances();
-      if (response.status === "success") {
-        setOwnersWallets(response.data.owners || []);
-        setLedgerStats(response.data.stats || { total_surplus: 0, total_transactions: 0, total_rent_volume: 0 });
+      const data = await getOwnerBalances();
+      if (data) {
+        setOwnersWallets(data.owners || []);
+        setLedgerStats(data.stats || { total_surplus: 0, total_transactions: 0, total_rent_volume: 0 });
       }
     } catch (error) {
       console.error("Error loading owner balances:", error);
     } finally {
       setLoadingOwners(false);
     }
+  };
+
+  const loadReceiptsList = async () => {
+    setLoadingReceiptsList(true);
+    try {
+      const data = await getAllReceipts({ page: receiptsPage, limit: 15, search: receiptsSearch });
+      if (data) {
+        setReceiptsList(data.receipts || []);
+        setReceiptsPagination(data.pagination || { total: 0, pages: 1, current_page: 1 });
+      }
+    } catch (error) {
+      console.error("Error loading receipts list:", error);
+    } finally {
+      setLoadingReceiptsList(false);
+    }
+  };
+
+  const handleSearchReceipts = (e: React.FormEvent) => {
+    e.preventDefault();
+    setReceiptsPage(1);
+    loadReceiptsList();
   };
 
   const loadLiveAnalytics = async () => {
@@ -209,10 +235,11 @@ const AdminDashboard = () => {
       loadOwnerBalancesData();
     } else if (activeTab === 'receipts') {
       loadRevenueStats();
+      loadReceiptsList();
     } else if (activeTab === 'live') {
       loadLiveAnalytics();
     }
-  }, [activeTab]);
+  }, [activeTab, receiptsPage]);
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fr-FR').format(num);
@@ -942,24 +969,16 @@ const AdminDashboard = () => {
 
                                   setActionLoadingOwnerId(owner.id);
                                   try {
-                                    const res = await forceOwnerWithdrawal(owner.id);
-                                    if (res.status === "success") {
-                                      toast({
-                                        title: "Virement forcé réussi",
-                                        description: res.message || "Le transfert a été envoyé avec succès.",
-                                      });
-                                      loadOwnerBalancesData();
-                                    } else {
-                                      toast({
-                                        title: "Erreur",
-                                        description: res.message || "Échec du virement.",
-                                        variant: "destructive"
-                                      });
-                                    }
+                                    await forceOwnerWithdrawal(owner.id);
+                                    toast({
+                                      title: "Virement forcé réussi",
+                                      description: "Le virement forcé a été exécuté avec succès.",
+                                    });
+                                    loadOwnerBalancesData();
                                   } catch (err: any) {
                                     toast({
-                                      title: "Erreur réseau",
-                                      description: err.message || "Impossible de contacter le serveur.",
+                                      title: "Erreur",
+                                      description: err.message || "Échec du virement.",
                                       variant: "destructive"
                                     });
                                   } finally {
@@ -1033,15 +1052,184 @@ const AdminDashboard = () => {
                 <p className="text-muted-foreground text-sm">Activité financière globale gérée par la plateforme</p>
               </div>
 
-              <Tabs defaultValue="admin-monthly" className="w-full max-w-full">
+              <Tabs defaultValue="list" className="w-full max-w-full">
                 <div className="overflow-x-auto mb-4">
                   <TabsList>
+                    <TabsTrigger value="list">Liste des reçus</TabsTrigger>
                     <TabsTrigger value="admin-monthly">Admin (Mois)</TabsTrigger>
                     <TabsTrigger value="admin-yearly">Admin (Année)</TabsTrigger>
                     <TabsTrigger value="daily">Loyer (Quotidien)</TabsTrigger>
                     <TabsTrigger value="monthly">Loyer (Mensuel)</TabsTrigger>
                   </TabsList>
                 </div>
+
+                <TabsContent value="list" className="w-full max-w-full space-y-4">
+                  {/* Barre de recherche */}
+                  <form onSubmit={handleSearchReceipts} className="flex gap-2 max-w-md">
+                    <Input 
+                      placeholder="Rechercher par N° Reçu, Propriétaire, Locataire..."
+                      value={receiptsSearch}
+                      onChange={(e) => setReceiptsSearch(e.target.value)}
+                      className="h-10 text-xs rounded-xl"
+                    />
+                    <Button type="submit" size="sm" className="rounded-xl h-10 px-4 text-xs font-bold">
+                      Rechercher
+                    </Button>
+                    {receiptsSearch && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        className="rounded-xl h-10 text-xs font-semibold"
+                        onClick={() => {
+                          setReceiptsSearch("");
+                          setReceiptsPage(1);
+                          setTimeout(() => loadReceiptsList(), 0);
+                        }}
+                      >
+                        Effacer
+                      </Button>
+                    )}
+                  </form>
+
+                  {/* Tableau des reçus */}
+                  <Card className="shadow-soft rounded-2xl overflow-hidden border">
+                    <CardContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>N° Reçu</TableHead>
+                              <TableHead>Propriétaire</TableHead>
+                              <TableHead>Locataire</TableHead>
+                              <TableHead>Bien</TableHead>
+                              <TableHead>Date Paiement</TableHead>
+                              <TableHead>Mode</TableHead>
+                              <TableHead className="text-right">Montant</TableHead>
+                              <TableHead className="text-center">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {loadingReceiptsList ? (
+                              <TableRow>
+                                <TableCell colSpan={8} className="text-center py-12 text-xs text-muted-foreground">
+                                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-primary" />
+                                  Chargement des reçus...
+                                </TableCell>
+                              </TableRow>
+                            ) : receiptsList.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={8} className="text-center py-12 text-xs text-muted-foreground">
+                                  Aucun reçu de loyer trouvé.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              receiptsList.map((r) => {
+                                const handleDownload = async () => {
+                                  try {
+                                    const blob = await downloadReceipt(r.id);
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = `Recu-${r.receipt_number}.pdf`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    window.URL.revokeObjectURL(url);
+                                  } catch (err) {
+                                    console.error("Error downloading PDF:", err);
+                                    toast({
+                                      title: "Erreur",
+                                      description: "Impossible de télécharger le PDF.",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                };
+
+                                return (
+                                  <TableRow key={r.id}>
+                                    <TableCell className="font-bold text-xs text-primary">{r.receipt_number}</TableCell>
+                                    <TableCell className="text-xs font-semibold">{r.owner_name}</TableCell>
+                                    <TableCell className="text-xs">{r.tenant_name}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">{r.property_name || 'N/A'}</TableCell>
+                                    <TableCell className="text-xs">
+                                      {r.payment_date ? new Date(r.payment_date).toLocaleDateString('fr-FR') : 'N/A'}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      <Badge variant="outline" className="text-[10px] bg-slate-50 uppercase">
+                                        {r.payment_method}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right text-xs font-black">
+                                      {formatCurrency(r.amount, r.currency || 'XOF')}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <div className="flex items-center justify-center gap-1">
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="h-8 w-8 p-0 rounded-xl"
+                                          onClick={handleDownload}
+                                          title="Télécharger le reçu PDF"
+                                        >
+                                          <Download className="w-3.5 h-3.5 text-primary" />
+                                        </Button>
+                                        {r.paydunya_token && (
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-8 w-8 p-0 rounded-xl"
+                                            asChild
+                                            title="Consulter le reçu PayDunya"
+                                          >
+                                            <a 
+                                              href={`${import.meta.env.VITE_PAYDUNYA_MODE === 'test' ? 'https://app.paydunya.com/sandbox-checkout/receipt/' : 'https://app.paydunya.com/checkout/receipt/'}${r.paydunya_token}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                            >
+                                              <ExternalLink className="w-3.5 h-3.5 text-indigo-500" />
+                                            </a>
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      {/* Pagination */}
+                      {receiptsPagination.pages > 1 && !loadingReceiptsList && (
+                        <div className="flex items-center justify-between p-4 border-t">
+                          <span className="text-xs text-muted-foreground">
+                            Page {receiptsPagination.current_page} sur {receiptsPagination.pages} ({receiptsPagination.total} reçus)
+                          </span>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline" size="sm"
+                              className="rounded-xl h-8 text-xs font-bold"
+                              disabled={receiptsPage <= 1}
+                              onClick={() => setReceiptsPage(p => p - 1)}
+                            >
+                              Précédent
+                            </Button>
+                            <Button
+                              variant="outline" size="sm"
+                              className="rounded-xl h-8 text-xs font-bold"
+                              disabled={receiptsPage >= receiptsPagination.pages}
+                              onClick={() => setReceiptsPage(p => p + 1)}
+                            >
+                              Suivant
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
                 {loadingRevenueStats ? (
                   <Card>

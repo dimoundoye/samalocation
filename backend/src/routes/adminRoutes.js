@@ -39,6 +39,7 @@ router.patch('/users/:userId/subscription', adminController.updateUserSubscripti
 router.get('/revenue-stats', adminController.getRevenueStats);
 router.get('/transactions', adminController.getRecentTransactions);
 router.get('/owners/balances', adminController.getOwnerBalances);
+router.get('/receipts/list', adminController.getAllReceipts);
 router.post('/owners/:ownerId/force-withdrawal', adminController.forceOwnerWithdrawal);
 
 // Activité en temps réel (flux d'événements)

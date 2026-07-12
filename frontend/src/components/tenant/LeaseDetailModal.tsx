@@ -19,8 +19,8 @@ export const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
         case "active":
             return (
-                <Badge className="bg-green-100 text-green-700 border-green-200 gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Actif
+                <Badge variant="outline" className="bg-white text-green-600 border-green-200 gap-1 font-bold">
+                    <CheckCircle2 className="w-3 h-3 text-green-500" /> Actif
                 </Badge>
             );
         case "pending":

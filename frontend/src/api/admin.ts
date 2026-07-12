@@ -90,3 +90,7 @@ export const forceOwnerWithdrawal = async (ownerId: string) => {
         method: "POST"
     });
 };
+
+export const getAllReceipts = async (params?: any) => {
+    return await baseClient("/admin/receipts/list", { params });
+};

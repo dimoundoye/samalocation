@@ -215,7 +215,7 @@ export const OwnerWalletTab = () => {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case "completed":
-                return <Badge className="bg-green-100 text-green-700 border-green-200">Réussi</Badge>;
+                return <Badge variant="outline" className="bg-white text-green-600 border-green-200 font-bold">Réussi</Badge>;
             case "failed":
                 return <Badge className="bg-red-100 text-red-700 border-red-200">Échoué</Badge>;
             default:
@@ -458,8 +458,8 @@ export const OwnerWalletTab = () => {
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Numéro de téléphone Wave/OM</Label>
                             <Input 
-                                type="text"
-                                placeholder="Ex: 77 123 45 67"
+                                type="number"
+                                placeholder="Ex: 771234567"
                                 className="rounded-xl h-10 text-xs"
                                 value={withdrawRecipient}
                                 onChange={(e) => setWithdrawRecipient(e.target.value)}

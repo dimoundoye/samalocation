@@ -118,8 +118,8 @@ export const TenantContractsTab = ({ currency = 'XOF' }: { currency?: string }) 
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {contract.status === 'active' ? (
-                                            <Badge className="bg-green-500 gap-1">
-                                                <CheckCircle className="h-3 w-3" /> Actif
+                                            <Badge variant="outline" className="bg-white text-green-600 border-green-200 gap-1 font-bold">
+                                                <CheckCircle className="h-3 w-3 text-green-500" /> Actif
                                             </Badge>
                                         ) : contract.status === 'pending_signature' ? (
                                             <Badge variant="outline" className="text-amber-600 border-amber-600 gap-1">

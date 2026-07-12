@@ -1010,6 +1010,71 @@ const adminController = {
             console.error('Error verifying document:', error);
             next(error);
         }
+    },
+
+    /**
+     * Récupérer tous les reçus de loyer (admin uniquement)
+     */
+    async getAllReceipts(req, res, next) {
+        try {
+            const limit = parseInt(req.query.limit) || 20;
+            const page = parseInt(req.query.page) || 1;
+            const offset = (page - 1) * limit;
+            const search = req.query.search || '';
+
+            let query = `
+                SELECT r.id, r.receipt_number, r.amount, r.payment_date, r.payment_method, r.month, r.year, r.currency,
+                       r.tenant_name, r.owner_name, p.name as property_name, lt.reference_id as paydunya_token
+                FROM receipts r
+                LEFT JOIN properties p ON r.property_id = p.id
+                LEFT JOIN ledger_transactions lt ON lt.owner_id = p.owner_id 
+                   AND ABS(EXTRACT(EPOCH FROM (lt.created_at - r.created_at))) < 10
+                   AND lt.amount = r.amount 
+                   AND lt.type = 'pay_rent'
+            `;
+            const params = [];
+
+            if (search) {
+                query += `
+                    WHERE r.receipt_number ILIKE $1 
+                       OR r.tenant_name ILIKE $1 
+                       OR r.owner_name ILIKE $1 
+                       OR p.name ILIKE $1
+                `;
+                params.push(`%${search}%`);
+            }
+
+            // Count query
+            let countQuery = `SELECT COUNT(*) FROM receipts r LEFT JOIN properties p ON r.property_id = p.id`;
+            if (search) {
+                countQuery += `
+                    WHERE r.receipt_number ILIKE $1 
+                       OR r.tenant_name ILIKE $1 
+                       OR r.owner_name ILIKE $1 
+                       OR p.name ILIKE $1
+                `;
+            }
+
+            const { rows: countRows } = await db.query(countQuery, params);
+            const total = parseInt(countRows[0].count);
+
+            query += ` ORDER BY r.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+            params.push(limit, offset);
+
+            const { rows: receipts } = await db.query(query, params);
+
+            return response.success(res, {
+                receipts,
+                pagination: {
+                    total,
+                    pages: Math.ceil(total / limit),
+                    current_page: page,
+                    limit
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
     }
 };
 

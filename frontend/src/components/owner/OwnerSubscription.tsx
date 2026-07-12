@@ -119,8 +119,8 @@ export const OwnerSubscription = () => {
                                         <AlertCircle className="h-3 w-3 mr-1" /> Expiré
                                     </Badge>
                                 ) : (
-                                    <Badge className="bg-green-500 hover:bg-green-600">
-                                        <CheckCircle2 className="h-3 w-3 mr-1" /> Actif
+                                    <Badge variant="outline" className="bg-white text-green-600 border-green-200 gap-1 font-bold">
+                                        <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" /> Actif
                                     </Badge>
                                 )}
                                 {subscription?.expires_at && (

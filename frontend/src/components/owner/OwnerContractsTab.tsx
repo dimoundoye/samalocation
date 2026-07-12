@@ -84,7 +84,7 @@ export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) =
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'active':
-                return <Badge className="bg-green-500">Actif</Badge>;
+                return <Badge variant="outline" className="bg-white text-green-600 border-green-200 font-bold">Actif</Badge>;
             case 'pending_signature':
                 return <Badge variant="outline" className="text-amber-600 border-amber-600">Attente signature</Badge>;
             case 'terminated':
