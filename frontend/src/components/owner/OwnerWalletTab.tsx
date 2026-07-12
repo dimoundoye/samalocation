@@ -244,17 +244,6 @@ export const OwnerWalletTab = () => {
                 </p>
             </div>
 
-            {/* Note d'information sur la devise */}
-            <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                <div>
-                    <p className="text-xs font-bold text-foreground">Note sur la devise de gestion</p>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                        Actuellement, toutes les transactions de votre portefeuille (loyers collectés en ligne et demandes de retrait) sont traitées et exprimées exclusivement en <strong className="text-foreground">Franc CFA (XOF)</strong>. Si votre profil utilise une autre devise, les montants affichés ici restent exprimés en Franc CFA pour garantir l'exactitude des virements.
-                    </p>
-                </div>
-            </div>
-
             {/* Cartes supérieures (Solde & Options) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Carte Solde avec dégradé premium */}
@@ -309,6 +298,17 @@ export const OwnerWalletTab = () => {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+
+            {/* Note d'information sur la devise (sur toute la longueur, en dessous des cartes) */}
+            <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div>
+                    <p className="text-xs font-bold text-foreground">Note sur la devise de gestion</p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                        Actuellement, toutes les transactions de votre portefeuille (loyers collectés en ligne et demandes de retrait) sont traitées et exprimées exclusivement en <strong className="text-foreground">Franc CFA (XOF)</strong>. Si votre profil utilise une autre devise, les montants affichés ici restent exprimés en Franc CFA pour garantir l'exactitude des virements.
+                    </p>
+                </div>
             </div>
 
             {/* Listes des Transactions & Historique */}
