@@ -251,6 +251,12 @@ const paymentController = {
 
             console.log('Working Payload:', JSON.stringify(payload));
 
+            // Si c'est un callback de déboursement / virement
+            if (payload.withdraw_mode || payload.disburse_tx_id || payload.disburse_id) {
+                console.log('--- PAYDUNYA DISBURSEMENT CALLBACK RECEIVED ---');
+                return res.status(200).send('Disbursement callback received');
+            }
+
             // Chercher le token partout (racine, invoice, ou query)
             const token = payload.token || 
                           (payload.invoice && payload.invoice.token) || 
@@ -258,8 +264,8 @@ const paymentController = {
                           req.query.token;
 
             if (!token) {
-                console.error('PayDunya Callback Error: Token not found in any expected field');
-                return res.status(400).send('Token missing');
+                console.warn('PayDunya Callback Warning: Token not found (ping or validation request)');
+                return res.status(200).send('Callback reachable');
             }
 
             // Vérifier le statut du paiement auprès de PayDunya (Sécurité)
