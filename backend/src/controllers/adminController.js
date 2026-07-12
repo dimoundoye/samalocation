@@ -598,15 +598,18 @@ const adminController = {
                     message: `Retrait forcé de ${amount} F CFA simulé avec succès.`
                 });
             } else {
-                // Production API PayDunya - flux en 2 étapes
-                const disburseBaseUrl = 'https://app.paydunya.com/api/v1/disburse';
+                // Production API PayDunya v2 - flux en 2 étapes
+                const disburseBaseUrl = 'https://app.paydunya.com/api/v2/disburse';
+                const backendUrl = process.env.BACKEND_URL || process.env.URL_BACKEND || process.env.API_URL || `https://${process.env.APP_DOMAIN || 'samalocation.com'}`;
+                const callbackUrl = `${backendUrl}/api/payment/callback`;
                 
                 try {
                     // Étape 1 : Obtenir le jeton de virement (get-invoice)
                     const getInvoiceRes = await axios.post(`${disburseBaseUrl}/get-invoice`, {
                         amount: netAmount,
                         account_alias: phone,
-                        service: 'wave-senegal'
+                        withdraw_mode: 'wave-senegal',
+                        callback_url: callbackUrl
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
@@ -624,7 +627,8 @@ const adminController = {
 
                     // Étape 2 : Confirmer et soumettre le virement (submit-invoice)
                     const submitInvoiceRes = await axios.post(`${disburseBaseUrl}/submit-invoice`, {
-                        disburse_token: disburseToken
+                        disburse_invoice: disburseToken,
+                        disburse_id: String(withdrawalId)
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
