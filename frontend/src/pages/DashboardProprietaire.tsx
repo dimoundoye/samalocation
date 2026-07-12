@@ -1025,7 +1025,11 @@ const DashboardProprietaire = () => {
                                     ? "Guide d'utilisation"
                                     : activeTab === "shared-dossiers"
                                       ? "Dossiers partagés"
-                                      : "Paramètres"}
+                                      : activeTab === "wallet"
+                                        ? "Mon Portefeuille"
+                                        : activeTab === "public-profile"
+                                          ? "Profil Public"
+                                          : "Paramètres"}
               </h2>
             </div>
 

@@ -10,13 +10,18 @@ import { formatCurrency } from "@/lib/utils";
 import { 
     Wallet, ArrowUpRight, ArrowDownLeft, ShieldCheck, 
     Loader2, Smartphone, History, CheckCircle2, 
-    XCircle, Clock, Lock
+    XCircle, Clock, Lock, Shield
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const OwnerWalletTab = () => {
     const { toast } = useToast();
+    const { user } = useAuth();
+    const activeContext = localStorage.getItem("active_context") || "personal";
+    const isInPatronContext = !!user?.parentId && activeContext !== "personal";
+
     const [loading, setLoading] = useState(true);
     const [walletData, setWalletData] = useState<any>({
         balance: 0,
@@ -38,8 +43,12 @@ export const OwnerWalletTab = () => {
     const [toggleLoading, setToggleLoading] = useState(false);
 
     useEffect(() => {
-        loadWalletData();
-    }, []);
+        if (!isInPatronContext) {
+            loadWalletData();
+        } else {
+            setLoading(false);
+        }
+    }, [isInPatronContext]);
 
     const loadWalletData = async () => {
         setLoading(true);
@@ -222,6 +231,37 @@ export const OwnerWalletTab = () => {
                 return <Badge className="bg-amber-100 text-amber-700 border-amber-200">En cours</Badge>;
         }
     };
+
+    if (isInPatronContext) {
+        return (
+            <div className="space-y-6">
+                <div>
+                    <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
+                        <Wallet className="w-8 h-8 text-primary" />
+                        Mon Portefeuille
+                    </h1>
+                    <p className="text-muted-foreground text-sm mt-1">
+                        Gérez vos gains locatifs, configurez les paiements de loyer en ligne et transférez vos fonds vers Wave ou Orange Money.
+                    </p>
+                </div>
+
+                <div className="flex flex-col items-center justify-center gap-6 py-20 text-center bg-background rounded-2xl border border-border/40 shadow-soft">
+                    <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center">
+                        <Shield className="h-10 w-10 text-muted-foreground/50" />
+                    </div>
+                    <div className="space-y-2 max-w-sm">
+                        <h3 className="text-lg font-bold">Mon Portefeuille</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Vous êtes actuellement dans l'espace de votre patron. Vous ne pouvez pas accéder au portefeuille de l'entreprise.
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Basculez vers votre espace personnel pour accéder à votre propre portefeuille.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
