@@ -88,7 +88,7 @@ export const getOwnerBalances = async () => {
 export const forceOwnerWithdrawal = async (ownerId: string, data?: { customPhone?: string; customProvider?: string }) => {
     return await baseClient(`/admin/owners/${ownerId}/force-withdrawal`, {
         method: "POST",
-        body: data
+        body: data ? JSON.stringify(data) : undefined
     });
 };
 
