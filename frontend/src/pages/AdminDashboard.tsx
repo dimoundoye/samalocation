@@ -1183,7 +1183,9 @@ const AdminDashboard = () => {
                                             title="Consulter le reçu PayDunya"
                                           >
                                             <a 
-                                              href={`${import.meta.env.VITE_PAYDUNYA_MODE === 'test' ? 'https://app.paydunya.com/sandbox-checkout/receipt/' : 'https://app.paydunya.com/checkout/receipt/'}${r.paydunya_token}`}
+                                              href={import.meta.env.VITE_PAYDUNYA_MODE === 'test'
+                                                ? `https://app.paydunya.com/sandbox-checkout/receipt/pdf/${r.paydunya_token}.pdf`
+                                                : `https://paydunya.com/checkout/receipt/pdf/${r.paydunya_token}.pdf`}
                                               target="_blank"
                                               rel="noopener noreferrer"
                                             >

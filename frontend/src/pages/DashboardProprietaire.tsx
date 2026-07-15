@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Plus, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature, Wallet } from "lucide-react";
+import { Home, Plus, Search, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature, Wallet } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams, useParams, useLocation } from "react-router-dom";
@@ -175,7 +175,21 @@ const DashboardProprietaire = () => {
     return localStorage.getItem("sidebarCollapsed") === "true";
   });
   const [tenantSearch, setTenantSearch] = useState("");
+  const [propertySearch, setPropertySearch] = useState("");
   const [tenantStatusFilter, setTenantStatusFilter] = useState<"active" | "inactive">("active");
+
+  const filteredProperties = useMemo(() => {
+    if (!propertySearch.trim()) return properties;
+    const query = propertySearch.toLowerCase();
+    return properties.filter((property) => {
+      return (
+        (property.name ?? "").toLowerCase().includes(query) ||
+        (property.address ?? "").toLowerCase().includes(query) ||
+        (property.description ?? "").toLowerCase().includes(query) ||
+        (property.property_type ?? "").toLowerCase().includes(query)
+      );
+    });
+  }, [properties, propertySearch]);
   const [createContractOpen, setCreateContractOpen] = useState(false);
   const [selectedTenantForContract, setSelectedTenantForContract] = useState<Tenant | null>(null);
 
@@ -1473,19 +1487,19 @@ const DashboardProprietaire = () => {
                           </div>
                         ) : (
                           receipts.slice(0, 5).map((activity: any) => (
-                            <div key={activity.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-                              <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10">
+                            <div key={activity.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10 shrink-0">
                                   <FileText className="h-5 w-5 text-primary" />
                                 </div>
-                                <div>
-                                  <p className="font-medium">{t('owner.stats.payment_received')}</p>
-                                  <p className="text-sm text-muted-foreground">{activity.tenant_name} - {activity.property_name}</p>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-sm sm:text-base truncate">{t('owner.stats.payment_received')}</p>
+                                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{activity.tenant_name} - {activity.property_name}</p>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p className="font-bold text-primary">{formatCurrency(activity.amount, ownerProfile?.currency || 'XOF')}</p>
-                                <p className="text-xs text-muted-foreground">{format(new Date(activity.payment_date), 'dd MMM yyyy', { locale: dateLocale })}</p>
+                              <div className="text-right shrink-0">
+                                <p className="font-bold text-primary text-sm sm:text-base whitespace-nowrap">{formatCurrency(activity.amount, ownerProfile?.currency || 'XOF')}</p>
+                                <p className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">{format(new Date(activity.payment_date), 'dd MMM yyyy', { locale: dateLocale })}</p>
                               </div>
                             </div>
                           ))
@@ -1500,20 +1514,31 @@ const DashboardProprietaire = () => {
             {/* Properties Tab */}
             {activeTab === "properties" && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-bold">{t('dashboard.sidebar.properties')}</h2>
                     <p className="text-sm text-muted-foreground mt-1">
                       {properties.length} {properties.length > 1 ? t('owner.properties_registered') : t('owner.property_registered')}
                     </p>
                   </div>
-                  <Button
-                    onClick={() => setAddPropertyOpen(true)}
-                    className="w-full sm:w-auto"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t('owner.add_property')}
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder={t('owner.search_property') || "Rechercher un bien..."}
+                        value={propertySearch}
+                        onChange={(e) => setPropertySearch(e.target.value)}
+                        className="pl-10 py-1 text-sm h-9"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => setAddPropertyOpen(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      {t('owner.add_property')}
+                    </Button>
+                  </div>
                 </div>
 
                 {properties.length === 0 ? (
@@ -1535,9 +1560,16 @@ const DashboardProprietaire = () => {
                       </Button>
                     </CardContent>
                   </Card>
+                ) : filteredProperties.length === 0 ? (
+                  <div className="text-center p-12 bg-neutral-50 dark:bg-neutral-900 rounded-2xl border border-dashed">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      {t('owner.no_property_found') || "Aucun bien ne correspond à votre recherche."}
+                    </p>
+                  </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {properties.map((property) => {
+                    {filteredProperties.map((property) => {
                       const photoUrl =
                         property.photos && property.photos.length > 0
                           ? property.photos[0]
@@ -1569,7 +1601,7 @@ const DashboardProprietaire = () => {
                                 <Badge variant="outline" className="capitalize text-[10px] sm:text-xs">{property.property_type}</Badge>
                                 {property.listing_type === 'vente' ? (
                                   <Badge variant="destructive" className="animate-pulse shadow-sm text-[10px] sm:text-xs">À VENDRE</Badge>
-                                ) : (
+                               ) : (
                                   <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm text-[10px] sm:text-xs">À LOUER</Badge>
                                 )}
                               </div>

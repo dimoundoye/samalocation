@@ -260,8 +260,8 @@ async function drawModernTemplate(doc, receiptData) {
     doc.fillColor('#64748b').fontSize(10).text('MONTANT TOTAL PAYÉ', 70, totalBoxY + 18);
     doc.fillColor(accentColor).fontSize(18).text(formatCurrency(receiptData.amount, receiptData.currency), 300, totalBoxY + 15, { bold: true, align: 'right', width: 240 });
 
-    doc.fillColor('#64748b').fontSize(8).text(`Arrêté la présente quittance à la somme de : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, totalBoxY + 55, { italic: true });
-    doc.y = totalBoxY + 70;
+    doc.fillColor(textColor).fontSize(9).text(`Arrêté la présente quittance à la somme de : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, totalBoxY + 55, { italic: true });
+    doc.y = totalBoxY + 75;
 
     if (receiptData.notes) {
         doc.moveDown(1);
@@ -338,7 +338,8 @@ async function drawMinimalTemplate(doc, receiptData) {
     doc.strokeColor(textColor).lineWidth(1).rect(50, doc.y, 512, 35).stroke();
     doc.fillColor(textColor).fontSize(12).text(`MONTANT PAYÉ : ${formatCurrency(receiptData.amount, receiptData.currency)}`, 65, doc.y + 11, { bold: true });
     doc.y += 35;
-    doc.moveDown(1.5);
+    doc.moveDown(1);
+    doc.fontSize(10).fillColor(textColor).text(`Soit : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, { italic: true }).moveDown(1.5);
 
     if (receiptData.notes) {
         doc.fontSize(9).fillColor('#444444').font('Helvetica-Oblique').text(`Notes: ${receiptData.notes}`, 50, doc.y);
@@ -426,7 +427,8 @@ async function drawCorporateTemplate(doc, receiptData) {
     doc.fillColor(primaryColor).fontSize(14).text(`MONTANT NET PERÇU :`, 70, amountY + 15, { bold: true });
     doc.fontSize(16).text(formatCurrency(receiptData.amount, receiptData.currency), 300, amountY + 14, { bold: true, align: 'right', width: 240 });
 
-    doc.y = amountY + 70;
+    doc.fillColor(textColor).fontSize(10).text(`Arrêté la présente quittance à la somme de : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, amountY + 52, { italic: true });
+    doc.y = amountY + 75;
 
     if (receiptData.notes) {
         doc.fontSize(9).fillColor(secondaryColor).font('Helvetica-Oblique').text(`Remarques: ${receiptData.notes}`);
@@ -449,8 +451,14 @@ function drawFooter(doc, receiptData) {
             50, bottom - 15, { align: 'center', width: 512 }
         );
     }
+    
+    const isOnline = receiptData && receiptData.payment_method && receiptData.payment_method.startsWith('En ligne');
+    const footerText = isOnline 
+        ? 'Quittance émise par la plateforme Samalocation, gérée par YAKIRIX (RCCM : SN.DKR.2026.A.14009 — NINEA : 012978435) en qualité de mandataire de collecte pour le compte du bailleur.'
+        : 'Ce reçu atteste du paiement du loyer pour la période mentionnée ci-dessus.';
+
     doc.fontSize(8).fillColor('#94a3b8').text(
-        'Ce reçu atteste du paiement du loyer pour la période mentionnée ci-dessus.',
+        footerText,
         50, bottom, { align: 'center', width: 512 }
     );
 }

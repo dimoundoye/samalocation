@@ -31,7 +31,7 @@ export const OfflineStatus = () => {
           {t('common.offline_mode', 'Mode Hors-ligne')}
         </AlertTitle>
         <AlertDescription className="text-xs">
-          {t('common.offline_message', 'Vous êtes actuellement déconnecté. Vous pouvez toujours consulter vos reçus et locataires précédemment chargés.')}
+          {t('common.offline_message', 'Vous êtes actuellement déconnecté.')}
         </AlertDescription>
       </Alert>
     </div>

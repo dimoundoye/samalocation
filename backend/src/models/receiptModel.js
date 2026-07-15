@@ -36,7 +36,7 @@ const Receipt = {
         try {
             // Get owner info
             const { rows: propRows } = await db.query(`
-                SELECT p.owner_id, up.full_name as owner_name, up.email as owner_email, up.phone as owner_phone,
+                SELECT p.owner_id, COALESCE(NULLIF(op.company_name, ''), up.full_name) as owner_name, up.email as owner_email, up.phone as owner_phone,
                        op.signature_url, op.receipt_template, op.receipt_logo_url, op.currency
                 FROM properties p
                 JOIN user_profiles up ON p.owner_id = up.id
@@ -109,7 +109,7 @@ const Receipt = {
                 COALESCE(r.tenant_name, up_direct.full_name, up_via_t.full_name) as tenant_name,
                 COALESCE(r.tenant_email, up_direct.email, up_via_t.email) as tenant_email,
                 COALESCE(r.tenant_phone, up_direct.phone, up_via_t.phone) as tenant_phone,
-                COALESCE(r.owner_name, owner.full_name) as owner_name,
+                COALESCE(NULLIF(r.owner_name, ''), NULLIF(owner_prof.company_name, ''), owner.full_name) as owner_name,
                 COALESCE(r.owner_email, owner.email) as owner_email,
                 COALESCE(r.owner_phone, owner.phone) as owner_phone,
                 COALESCE(r.currency, owner_prof.currency, 'XOF') as currency,
@@ -162,7 +162,7 @@ const Receipt = {
                 p.address as property_address,
                 pu.rent_period,
                 pu.monthly_rent as unit_base_rent,
-                owner.full_name as owner_name,
+                COALESCE(NULLIF(r.owner_name, ''), NULLIF(owner_prof.company_name, ''), owner.full_name) as owner_name,
                 owner_prof.currency
             FROM receipts r
             LEFT JOIN properties p ON r.property_id = p.id

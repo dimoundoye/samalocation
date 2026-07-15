@@ -57,6 +57,7 @@ const Index = () => {
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [appliedPropertyIds, setAppliedPropertyIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedType, setSelectedType] = useState("all");
   // ... (lines 41-118 remain unchanged in logic)
   useEffect(() => {
     loadFeaturedProperties();
@@ -188,13 +189,27 @@ const Index = () => {
                     <div className="hidden sm:block h-8 w-px bg-border/80" />
                     
                     <div className="w-full sm:w-auto min-w-[130px] shrink-0">
-                      <Select onValueChange={(val) => navigate(`/search?type=${val}`)}>
+                      <Select 
+                        value={selectedType} 
+                        onValueChange={(val) => {
+                          setSelectedType(val);
+                          const params = new URLSearchParams();
+                          if (searchQuery.trim()) {
+                            params.set("q", searchQuery.trim());
+                          }
+                          if (val && val !== "all") {
+                            params.set("type", val);
+                          }
+                          navigate(`/search?${params.toString()}`);
+                        }}
+                      >
                         <SelectTrigger className="border-0 focus:ring-0 shadow-none bg-transparent hover:bg-secondary/20 dark:hover:bg-secondary/10 h-10 px-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground transition-all">
                           <SelectValue placeholder={t('search.property_type') || "Type de bien"} />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border/50 shadow-strong bg-card dark:bg-card">
-                          <SelectItem value="apartment" className="rounded-lg cursor-pointer">{t('search.types.apartment') || "Appartement"}</SelectItem>
-                          <SelectItem value="house" className="rounded-lg cursor-pointer">{t('search.types.house') || "Maison"}</SelectItem>
+                          <SelectItem value="all" className="rounded-lg cursor-pointer">Tous les types</SelectItem>
+                          <SelectItem value="appartement" className="rounded-lg cursor-pointer">{t('search.types.apartment') || "Appartement"}</SelectItem>
+                          <SelectItem value="maison" className="rounded-lg cursor-pointer">{t('search.types.house') || "Maison"}</SelectItem>
                           <SelectItem value="villa" className="rounded-lg cursor-pointer">{t('search.types.villa') || "Villa"}</SelectItem>
                           <SelectItem value="studio" className="rounded-lg cursor-pointer">{t('search.types.studio') || "Studio"}</SelectItem>
                         </SelectContent>
@@ -202,7 +217,16 @@ const Index = () => {
                     </div>
 
                     <Button
-                      onClick={() => navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
+                      onClick={() => {
+                        const params = new URLSearchParams();
+                        if (searchQuery.trim()) {
+                          params.set("q", searchQuery.trim());
+                        }
+                        if (selectedType && selectedType !== "all") {
+                          params.set("type", selectedType);
+                        }
+                        navigate(`/search?${params.toString()}`);
+                      }}
                       className="h-12 w-full sm:w-12 rounded-xl gradient-accent shadow-medium hover:scale-105 transition-transform flex items-center justify-center shrink-0 animate-fade-in"
                     >
                       <span className="sm:hidden font-bold mr-2 text-base">{t('hero.search_button')}</span>

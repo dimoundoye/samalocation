@@ -38,7 +38,7 @@ const VerifyEmail = () => {
     }, [token]);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4 pb-28 sm:pb-4">
             <Card className="w-full max-w-md shadow-strong animate-scale-in">
                 <CardHeader className="text-center">
                     <div className="mx-auto mb-4">

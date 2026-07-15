@@ -587,10 +587,10 @@ const adminController = {
             const isTestMode = process.env.PAYDUNYA_MODE === 'test';
             if (isTestMode) {
                 // Simulation
-                await db.query('BEGIN');
+                await client.query('BEGIN');
                 await client.query("UPDATE withdrawals SET status = 'completed', transaction_id = $1 WHERE id = $2", [`FORCE-SIM-${Date.now()}`, withdrawalId]);
                 await client.query("UPDATE ledger_transactions SET status = 'completed' WHERE reference_id = $1", [withdrawalId]);
-                await db.query('COMMIT');
+                await client.query('COMMIT');
 
                 return response.success(res, {
                     withdrawal_id: withdrawalId,
@@ -641,10 +641,10 @@ const adminController = {
                     if (submitInvoiceRes.data.response_code === "00" || submitInvoiceRes.data.status === "success") {
                         const transactionId = submitInvoiceRes.data.transaction_id || `PD-${Date.now()}`;
                         
-                        await db.query('BEGIN');
+                        await client.query('BEGIN');
                         await client.query("UPDATE withdrawals SET status = 'completed', transaction_id = $1 WHERE id = $2", [transactionId, withdrawalId]);
                         await client.query("UPDATE ledger_transactions SET status = 'completed' WHERE reference_id = $1", [withdrawalId]);
-                        await db.query('COMMIT');
+                        await client.query('COMMIT');
 
                         return response.success(res, {
                             withdrawal_id: withdrawalId,
@@ -661,11 +661,11 @@ const adminController = {
                         console.error('Force transfer fail details:', JSON.stringify(apiError.response.data));
                     }
                     
-                    await db.query('BEGIN');
+                    await client.query('BEGIN');
                     await client.query("UPDATE withdrawals SET status = 'failed', error_message = $1 WHERE id = $2", [apiError.message, withdrawalId]);
                     await client.query("UPDATE ledger_transactions SET status = 'failed' WHERE reference_id = $1", [withdrawalId]);
                     await client.query("UPDATE owner_profiles SET balance = balance + $1 WHERE id = $2", [amount, ownerId]);
-                    await db.query('COMMIT');
+                    await client.query('COMMIT');
 
                     return response.error(res, `Le virement forcé a échoué : ${apiError.message}. Le solde a été restauré.`, 400);
                 }

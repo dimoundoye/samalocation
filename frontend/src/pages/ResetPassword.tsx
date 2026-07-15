@@ -54,7 +54,7 @@ const ResetPassword = () => {
 
     if (success) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4 pb-28 sm:pb-4">
                 <Card className="w-full max-w-md shadow-strong text-center py-8">
                     <CardHeader>
                         <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
@@ -79,7 +79,7 @@ const ResetPassword = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4 pb-28 sm:pb-4">
             <div className="absolute top-4 text-xs text-muted-foreground opacity-20">Diagnostic: ResetPassword Loaded</div>
             <Card className="w-full max-w-md shadow-strong animate-scale-in">
                 <CardHeader className="text-center">

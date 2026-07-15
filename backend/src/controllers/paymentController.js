@@ -289,6 +289,7 @@ const paymentController = {
             console.log('PayDunya Verification Result:', result.status);
 
             if (result.status === 'completed') {
+                const finalToken = result.token || result.invoice?.token || token;
                 const customData = result.custom_data || payload.custom_data || {};
                 const { paymentType } = customData;
 
@@ -336,7 +337,7 @@ const paymentController = {
                             platform_surplus: surplus,
                             status: 'completed',
                             description: `Encaissement loyer ${month}/${year} en ligne`,
-                            reference_id: token
+                            reference_id: finalToken
                         }, client);
 
                         // 4. Update Owner Balance
@@ -427,7 +428,7 @@ const paymentController = {
                     planName: subPlan,
                     price: price || (result.invoice && result.invoice.total_amount) || 0,
                     paymentMethod: 'paydunya',
-                    transactionId: token,
+                    transactionId: finalToken,
                     durationDays: durationDays || 30,
                     receiptUrl: receiptUrl
                 });

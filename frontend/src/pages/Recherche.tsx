@@ -64,6 +64,15 @@ const Recherche = () => {
     const query = params.get("q");
     if (query) {
       setSearchTerm(query);
+    } else {
+      setSearchTerm("");
+    }
+
+    const type = params.get("type");
+    if (type) {
+      setPropertyType(type);
+    } else {
+      setPropertyType("all");
     }
   }, [location.search]);
 

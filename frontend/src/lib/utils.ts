@@ -15,7 +15,7 @@ export function formatCurrency(amount: any, currency: string = 'XOF') {
     const formatted = new Intl.NumberFormat("fr-FR", {
       maximumFractionDigits: 0,
     }).format(value);
-    return `${formatted} F CFA`;
+    return `${formatted}\u00a0F\u00a0CFA`;
   }
 
   return new Intl.NumberFormat("fr-FR", {
