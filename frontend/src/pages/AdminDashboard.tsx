@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2, Receipt, ShieldAlert } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { UserGrowthChart } from "@/components/admin/UserGrowthChart";
@@ -81,6 +84,10 @@ const AdminDashboard = () => {
   const [ledgerStats, setLedgerStats] = useState<any>({ total_surplus: 0, total_transactions: 0, total_rent_volume: 0 });
   const [loadingOwners, setLoadingOwners] = useState(false);
   const [actionLoadingOwnerId, setActionLoadingOwnerId] = useState<string | null>(null);
+  const [selectedOwnerForWithdrawal, setSelectedOwnerForWithdrawal] = useState<any | null>(null);
+  const [forceWithdrawalPhone, setForceWithdrawalPhone] = useState("");
+  const [forceWithdrawalProvider, setForceWithdrawalProvider] = useState("wave");
+  const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [receiptsList, setReceiptsList] = useState<any[]>([]);
   const [loadingReceiptsList, setLoadingReceiptsList] = useState(false);
   const [receiptsPagination, setReceiptsPagination] = useState({ total: 0, pages: 1, current_page: 1 });
@@ -116,6 +123,41 @@ const AdminDashboard = () => {
         description: error.message || "Impossible de charger les données du tableau de bord.",
         variant: "destructive",
       });
+    }
+  };
+
+  const submitForcedWithdrawal = async () => {
+    if (!selectedOwnerForWithdrawal) return;
+    const cleanPhone = forceWithdrawalPhone.trim();
+    if (!cleanPhone) {
+      toast({
+        title: "Erreur",
+        description: "Le numéro de téléphone est requis.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setActionLoadingOwnerId(selectedOwnerForWithdrawal.id);
+    try {
+      await forceOwnerWithdrawal(selectedOwnerForWithdrawal.id, {
+        customPhone: cleanPhone,
+        customProvider: forceWithdrawalProvider
+      });
+      toast({
+        title: "Virement forcé initié",
+        description: `Le virement forcé de ${formatCurrency(selectedOwnerForWithdrawal.balance)} a été envoyé avec succès.`,
+      });
+      setWithdrawalModalOpen(false);
+      loadOwnerBalancesData();
+    } catch (err: any) {
+      toast({
+        title: "Erreur",
+        description: err.message || "Échec du virement.",
+        variant: "destructive"
+      });
+    } finally {
+      setActionLoadingOwnerId(null);
     }
   };
 
@@ -962,28 +1004,11 @@ const AdminDashboard = () => {
                               </TableRow>
                             ) : (
                               ownersWallets.map((owner) => {
-                                const handleForceWithdraw = async () => {
-                                  if (!window.confirm(`Êtes-vous sûr de vouloir forcer le virement de ${formatCurrency(owner.balance)} vers le numéro Wave/OM enregistré de ${owner.full_name} ?`)) {
-                                    return;
-                                  }
-
-                                  setActionLoadingOwnerId(owner.id);
-                                  try {
-                                    await forceOwnerWithdrawal(owner.id);
-                                    toast({
-                                      title: "Virement forcé réussi",
-                                      description: "Le virement forcé a été exécuté avec succès.",
-                                    });
-                                    loadOwnerBalancesData();
-                                  } catch (err: any) {
-                                    toast({
-                                      title: "Erreur",
-                                      description: err.message || "Échec du virement.",
-                                      variant: "destructive"
-                                    });
-                                  } finally {
-                                    setActionLoadingOwnerId(null);
-                                  }
+                                const handleForceWithdraw = () => {
+                                  setSelectedOwnerForWithdrawal(owner);
+                                  setForceWithdrawalPhone(owner.phone || "");
+                                  setForceWithdrawalProvider("wave");
+                                  setWithdrawalModalOpen(true);
                                 };
 
                                 return (
@@ -1807,6 +1832,88 @@ const AdminDashboard = () => {
         </div>
         </div>
       </main>
+
+      <Dialog open={withdrawalModalOpen} onOpenChange={setWithdrawalModalOpen}>
+        <DialogContent className="sm:max-w-[450px] rounded-3xl p-6 border-none shadow-strong bg-background overflow-hidden">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-2xl font-black flex items-center gap-3 tracking-tight">
+              <ShieldAlert className="h-7 w-7 text-destructive" />
+              Virement forcé
+            </DialogTitle>
+            <DialogDescription className="text-sm font-medium text-muted-foreground mt-2">
+              Reverser le solde de <strong>{selectedOwnerForWithdrawal?.full_name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="bg-muted/50 p-5 rounded-2xl border border-border/40">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                Montant total à reverser
+              </div>
+              <div className="text-3xl font-black text-foreground">
+                {selectedOwnerForWithdrawal && formatCurrency(selectedOwnerForWithdrawal.balance)}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="provider" className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                Opérateur de paiement
+              </Label>
+              <Select value={forceWithdrawalProvider} onValueChange={setForceWithdrawalProvider}>
+                <SelectTrigger id="provider" className="w-full h-12 rounded-xl bg-muted/30 border-border/80">
+                  <SelectValue placeholder="Choisir un opérateur" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border/60">
+                  <SelectItem value="wave">Wave Sénégal</SelectItem>
+                  <SelectItem value="orange_money">Orange Money Sénégal</SelectItem>
+                  <SelectItem value="free_money">Free Money Sénégal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                Numéro de téléphone bénéficiaire (Wave/OM/Free)
+              </Label>
+              <Input
+                id="phone"
+                type="text"
+                placeholder="Ex: 77 123 45 67"
+                value={forceWithdrawalPhone}
+                onChange={(e) => setForceWithdrawalPhone(e.target.value)}
+                className="h-12 rounded-xl bg-muted/30 border-border/80 text-base"
+              />
+              <p className="text-[10px] text-muted-foreground/80 mt-1 leading-relaxed">
+                Le numéro sera automatiquement converti au format national sénégalais de 9 chiffres requis par PayDunya.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-3">
+              <Button
+                variant="outline"
+                onClick={() => setWithdrawalModalOpen(false)}
+                className="flex-1 h-12 rounded-xl font-bold border-border/80 text-muted-foreground hover:bg-muted/40"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={submitForcedWithdrawal}
+                disabled={actionLoadingOwnerId !== null || !forceWithdrawalPhone.trim()}
+                className="flex-1 h-12 rounded-xl font-bold bg-destructive text-white hover:bg-destructive/95"
+              >
+                {actionLoadingOwnerId ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Envoi...
+                  </>
+                ) : (
+                  "Confirmer"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

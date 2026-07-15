@@ -519,6 +519,7 @@ const adminController = {
         
         try {
             const { ownerId } = req.params;
+            const { customPhone, customProvider } = req.body;
 
             // 1. Récupérer le solde
             const { rows: profiles } = await client.query(
@@ -543,7 +544,14 @@ const adminController = {
                 [ownerId]
             );
             
-            const phone = userProfiles[0]?.phone || '770000000';
+            const rawPhone = customPhone || userProfiles[0]?.phone || '770000000';
+            const phone = rawPhone.replace(/\D/g, '').slice(-9);
+
+            const provider = customProvider || 'wave';
+            let pdProvider = provider.toLowerCase();
+            if (pdProvider === 'orange_money') pdProvider = 'orange-money-senegal';
+            if (pdProvider === 'free_money') pdProvider = 'free-money-senegal';
+            if (pdProvider === 'wave') pdProvider = 'wave-senegal';
 
             // 3. Calculs des frais (2.5% utilisateur, 2% PayDunya)
             const fee = amount * FEE_RATE_USER;
@@ -557,7 +565,7 @@ const adminController = {
                 (owner_id, amount, fee, net_amount, provider, recipient_details, status) 
                 VALUES ($1, $2, $3, $4, $5, $6, $7) 
                 RETURNING *`,
-                [ownerId, amount, fee, netAmount, 'wave', phone, 'pending']
+                [ownerId, amount, fee, netAmount, provider, phone, 'pending']
             );
             const withdrawalId = wRows[0].id;
 
@@ -577,7 +585,7 @@ const adminController = {
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
                 [
                     ownerId, 'force_withdrawal', amount, fee, netAmount, estimatedSurplus, 'pending',
-                    `Virement forcé par l'admin suite à suspension`, withdrawalId
+                    `Virement fait par l'admin`, withdrawalId
                 ]
             );
 
@@ -608,7 +616,7 @@ const adminController = {
                     const getInvoiceRes = await axios.post(`${disburseBaseUrl}/get-invoice`, {
                         amount: netAmount,
                         account_alias: phone,
-                        withdraw_mode: 'wave-senegal',
+                        withdraw_mode: pdProvider,
                         callback_url: callbackUrl
                     }, {
                         headers: {

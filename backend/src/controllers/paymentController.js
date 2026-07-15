@@ -254,7 +254,68 @@ const paymentController = {
             // Si c'est un callback de déboursement / virement
             if (payload.withdraw_mode || payload.disburse_tx_id || payload.disburse_id) {
                 console.log('--- PAYDUNYA DISBURSEMENT CALLBACK RECEIVED ---');
-                return res.status(200).send('Disbursement callback received');
+                const disburseId = payload.disburse_id;
+                const status = payload.status;
+                const errorDescription = payload.description || payload.response_text || 'Échec du virement';
+                const transactionId = payload.transaction_id || payload.token || null;
+
+                if (disburseId) {
+                    const Withdrawal = require('../models/withdrawalModel');
+                    try {
+                        const withdrawal = await Withdrawal.findById(disburseId);
+                        if (withdrawal) {
+                            console.log(`Disbursement Callback: withdrawalId=${disburseId}, payloadStatus=${status}, currentDbStatus=${withdrawal.status}, amount=${withdrawal.amount}`);
+                            
+                            if (status === 'failed') {
+                                if (withdrawal.status === 'completed' || withdrawal.status === 'pending') {
+                                    const client = await db.connect();
+                                    try {
+                                        await client.query('BEGIN');
+                                        
+                                        // Mettre à jour le statut du retrait à échoué
+                                        await Withdrawal.updateStatus(disburseId, 'failed', { error_message: errorDescription }, client);
+                                        
+                                        // Mettre à jour la transaction correspondante dans le ledger à échoué
+                                        await client.query("UPDATE ledger_transactions SET status = 'failed' WHERE reference_id = $1", [disburseId]);
+                                        
+                                        // Recréditer le solde du propriétaire (montant brut initial du retrait)
+                                        await Owner.updateBalance(withdrawal.owner_id, withdrawal.amount, client);
+                                        
+                                        await client.query('COMMIT');
+                                        console.log(`[CALLBACK SUCCESS] Refunded failed withdrawal ${disburseId} of amount ${withdrawal.amount} to owner ${withdrawal.owner_id}`);
+                                    } catch (txError) {
+                                        await client.query('ROLLBACK');
+                                        console.error('Transaction Error while processing failed disburse callback:', txError.message);
+                                    } finally {
+                                        client.release();
+                                    }
+                                }
+                            } else if (status === 'success' || status === 'completed') {
+                                if (withdrawal.status === 'pending') {
+                                    const client = await db.connect();
+                                    try {
+                                        await client.query('BEGIN');
+                                        await Withdrawal.updateStatus(disburseId, 'completed', { transaction_id: transactionId }, client);
+                                        await client.query("UPDATE ledger_transactions SET status = 'completed' WHERE reference_id = $1", [disburseId]);
+                                        await client.query('COMMIT');
+                                        console.log(`[CALLBACK SUCCESS] Completed withdrawal ${disburseId}`);
+                                    } catch (txError) {
+                                        await client.query('ROLLBACK');
+                                        console.error('Transaction Error while processing success disburse callback:', txError.message);
+                                    } finally {
+                                        client.release();
+                                    }
+                                }
+                            }
+                        } else {
+                            console.warn(`Withdrawal not found for disburse_id: ${disburseId}`);
+                        }
+                    } catch (err) {
+                        console.error('Error during disbursement callback handling:', err.message);
+                    }
+                }
+
+                return res.status(200).send('Disbursement callback processed');
             }
 
             // Chercher le token partout (racine, invoice, ou query)

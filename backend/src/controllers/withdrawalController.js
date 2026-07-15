@@ -153,10 +153,11 @@ const withdrawalController = {
                 const callbackUrl = `${backendUrl}/api/payment/callback`;
                 
                 try {
+                    const sanitizedRecipient = recipientDetails.replace(/\D/g, '').slice(-9);
                     // Étape 1 : Obtenir le jeton de virement (get-invoice)
                     const getInvoiceRes = await axios.post(`${disburseBaseUrl}/get-invoice`, {
                         amount: netAmount,
-                        account_alias: recipientDetails,
+                        account_alias: sanitizedRecipient,
                         withdraw_mode: pdProvider,
                         callback_url: callbackUrl
                     }, {

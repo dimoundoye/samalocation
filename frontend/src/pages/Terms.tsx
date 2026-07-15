@@ -264,8 +264,24 @@ const Terms = () => {
                                 
                                 <div className="space-y-4">
                                     <p className="text-muted-foreground text-sm leading-relaxed">
-                                        La création de compte et la recherche de biens sont gratuites. Les frais éventuels liés aux services de génération de bail, de quittances de loyer récurrentes ou d'abonnements premium pour les bailleurs sont définis dans la grille tarifaire accessible sur le site.
+                                        La création de compte, la recherche de biens et la publication d'annonces de base sont gratuites. Les frais liés aux services complémentaires (comme la signature électronique de baux, les abonnements premium ou professionnel) sont spécifiés dans nos grilles tarifaires.
                                     </p>
+                                    
+                                    <div className="space-y-3 pl-4 border-l-2 border-primary/20 text-muted-foreground text-sm">
+                                        <p>
+                                            <strong>5.1 Frais de paiement en ligne (Locataires) :</strong> Les règlements de loyer effectués en ligne via la plateforme (par Wave, Orange Money, Free Money ou Carte Bancaire) sont soumis à des frais de service de <strong>2,5%</strong>. Ces frais sont à la charge exclusive du locataire et s'ajoutent au montant du loyer principal lors de la transaction.
+                                        </p>
+                                        <p>
+                                            <strong>5.2 Frais de retrait de fonds (Propriétaires) :</strong> Les virements de fonds du portefeuille virtuel d'un propriétaire vers son compte Mobile Money (Wave ou Orange Money) sont soumis à des frais de service de <strong>2,5%</strong>. Ces frais sont directement déduits du montant brut demandé lors du transfert.
+                                        </p>
+                                        <p>
+                                            <strong>5.3 Restitution des fonds pour comptes bloqués ou suspendus :</strong> En cas de suspension ou de blocage d'un compte propriétaire par l'administration suite à une infraction aux présentes CGU ou pour vérification de sécurité :
+                                            <br />
+                                            Les fonds accumulés sur le portefeuille virtuel du propriétaire restent sa propriété légale. Pour récupérer son solde, le propriétaire concerné doit contacter l'assistance de Samalocation par e-mail à l'adresse <strong>contact@samalocation.com</strong> ou par whatsapp au numéro <strong>+221 76 162 95 29</strong>.
+                                            <br />
+                                            Après validation des pièces d'identité et levée des doutes réglementaires, l'administration procédera à un virement du solde restant (sous déduction des frais de service de 2,5%) vers le compte Mobile Money enregistré et vérifié du propriétaire.
+                                        </p>
+                                    </div>
                                     <p className="text-muted-foreground text-sm leading-relaxed font-semibold">
                                         Pour toutes les opérations financières réalisées au Sénégal, les taxes locales applicables et commissions d'opérateurs de mobile money ou frais bancaires sont directement prélevés ou affichés lors de la transaction.
                                     </p>
