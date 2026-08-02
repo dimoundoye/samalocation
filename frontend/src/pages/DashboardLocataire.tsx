@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2 } from "lucide-react";
+import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, Eye, ExternalLink, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -26,10 +26,11 @@ import { TenantDocumentationTab } from "@/components/tenant/TenantDocumentationT
 import { TenantProfileSettings } from "@/components/tenant/TenantProfileSettings";
 import TenantLeasesTab from "@/components/tenant/TenantLeasesTab";
 import { LeaseDetailModal } from "@/components/tenant/LeaseDetailModal";
+import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
 import { format } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
-import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead } from "@/lib/api";
+import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, openReceiptInNewTab, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead } from "@/lib/api";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSocket } from "@/contexts/SocketContext";
 import { useTranslation } from "react-i18next";
@@ -387,6 +388,22 @@ const DashboardLocataire = () => {
       });
     } finally {
       setSharingDossier(false);
+    }
+  };
+
+  const [selectedPreviewReceipt, setSelectedPreviewReceipt] = useState<{ id: string; number?: string; date?: string } | null>(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+
+  const handlePreviewReceipt = async (receipt: any) => {
+    try {
+      await openReceiptInNewTab(receipt.id);
+    } catch (error) {
+      console.error("Error opening receipt in new tab:", error);
+      toast({
+        title: t('common.error'),
+        description: "Impossible d'ouvrir le reçu.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1050,15 +1067,28 @@ const DashboardLocataire = () => {
                                       </p>
                                     </div>
                                   </div>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleDownloadReceipt(receipt.id)}
-                                    className="w-full sm:w-auto bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 transition-all"
-                                  >
-                                    <Download className="h-4 w-4 mr-2" />
-                                    <span>{t('tenant.download_pdf')}</span>
-                                  </Button>
+                                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                                     <Button
+                                       size="sm"
+                                       variant="outline"
+                                       onClick={() => handlePreviewReceipt(receipt)}
+                                       className="flex-1 sm:flex-initial bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 transition-all font-semibold"
+                                       title="Ouvrir le reçu dans un nouvel onglet"
+                                     >
+                                       <ExternalLink className="h-4 w-4 mr-1.5" />
+                                       <span>Voir</span>
+                                     </Button>
+                                     <Button
+                                       size="sm"
+                                       variant="outline"
+                                       onClick={() => handleDownloadReceipt(receipt.id)}
+                                       className="flex-1 sm:flex-initial bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 transition-all"
+                                       title="Télécharger le PDF"
+                                     >
+                                       <Download className="h-4 w-4 mr-1.5" />
+                                       <span>PDF</span>
+                                     </Button>
+                                   </div>
                                 </div>
                               );
                             })}
@@ -1129,6 +1159,14 @@ const DashboardLocataire = () => {
         title={confirmConfig.title}
         description={confirmConfig.description}
         onConfirm={confirmConfig.onConfirm}
+      />
+
+      <ReceiptPreviewModal
+        open={previewModalOpen}
+        onOpenChange={setPreviewModalOpen}
+        receiptId={selectedPreviewReceipt?.id || null}
+        receiptNumber={selectedPreviewReceipt?.number}
+        paymentDate={selectedPreviewReceipt?.date}
       />
 
       {/* Detail Modal */}

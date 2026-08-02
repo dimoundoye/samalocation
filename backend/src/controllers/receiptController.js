@@ -235,14 +235,25 @@ const receiptController = {
             // Générer le PDF
             const doc = await generateReceiptPDF(receipt);
 
-            // Configurer les headers pour le téléchargement
+            // Configurer les headers pour le téléchargement ou l'affichage en ligne
+            const isInline = req.query.inline === 'true' || req.query.disposition === 'inline';
+            const disposition = isInline ? 'inline' : 'attachment';
+
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename=recu-${receipt.receipt_number}.pdf`);
+            res.setHeader('Content-Disposition', `${disposition}; filename=recu-${receipt.receipt_number}.pdf`);
+
+            // Log de succès
+            if (isInline) {
+                console.log(`✅ [SUCCÈS PREVISUALISATION] Reçu N° ${receipt.receipt_number} (ID: ${id}) ouvert en ligne par ${req.user?.full_name || 'Utilisateur'}`);
+            } else {
+                console.log(`✅ [SUCCÈS TÉLÉCHARGEMENT] Reçu N° ${receipt.receipt_number} (ID: ${id}) téléchargé par ${req.user?.full_name || 'Utilisateur'}`);
+            }
 
             // Streamer le PDF
             doc.pipe(res);
             doc.end();
         } catch (error) {
+            console.error(`❌ [ÉCHEC REÇU] Erreur lors de la prévisualisation/téléchargement du reçu ID ${req.params.id}:`, error);
             next(error);
         }
     },

@@ -651,7 +651,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
                                     <Label htmlFor="edit-description">Description</Label>
                                     <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
                                         <Sparkles className="h-2 w-2 text-primary" />
-                                        💡 Toutes vos infos sont prêtes — cliquez sur "Régénérer avec l'IA" pour une description optimale
+                                          Toutes vos infos sont prêtes — cliquez sur "Régénérer avec l'IA" pour une description optimale
                                     </p>
                                 </div>
                                 <Button

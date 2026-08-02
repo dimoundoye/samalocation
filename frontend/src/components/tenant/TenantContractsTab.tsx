@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, CheckCircle, Clock, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
+import { FileText, Download, ExternalLink, CheckCircle, Clock, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import {
     AlertDialog,
@@ -14,7 +14,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getTenantContracts, signContract, downloadContract } from "@/lib/api";
+import { getTenantContracts, signContract, downloadContract, openContractInNewTab } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -153,10 +153,19 @@ export const TenantContractsTab = ({ currency = 'XOF' }: { currency?: string }) 
                                 <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-4">
                                     <Button
                                         variant="outline"
+                                        className="gap-2 w-full sm:w-auto bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 font-semibold"
+                                        onClick={() => openContractInNewTab(contract.id)}
+                                        title="Ouvrir le contrat dans un nouvel onglet"
+                                    >
+                                        <ExternalLink className="h-4 w-4" /> Voir
+                                    </Button>
+                                    <Button
+                                        variant="outline"
                                         className="gap-2 w-full sm:w-auto"
                                         onClick={() => downloadContract(contract.id, contract.contract_number)}
+                                        title="Télécharger le PDF"
                                     >
-                                        <Download className="h-4 w-4" /> Voir le PDF
+                                        <Download className="h-4 w-4" /> PDF
                                     </Button>
 
                                     {!contract.tenant_signed && contract.status === 'pending_signature' && (

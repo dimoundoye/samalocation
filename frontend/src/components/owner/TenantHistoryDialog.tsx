@@ -15,10 +15,12 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText, Calendar, Share2 } from "lucide-react";
+import { useState } from "react";
+import { Download, FileText, Calendar, Share2, Eye, ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { Receipt, Tenant } from "@/types";
-import { downloadReceipt } from "@/lib/api";
+import { downloadReceipt, openReceiptInNewTab } from "@/lib/api";
+import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -49,6 +51,17 @@ export const TenantHistoryDialog = ({
     const getMonthName = (month: number, year: number) => {
         const date = new Date(year, month - 1, 1);
         return format(date, "MMMM yyyy", { locale: fr });
+    };
+
+    const [selectedPreviewReceipt, setSelectedPreviewReceipt] = useState<{ id: string; number?: string; date?: string } | null>(null);
+    const [previewOpen, setPreviewOpen] = useState(false);
+
+    const handlePreview = async (receipt: Receipt) => {
+        try {
+            await openReceiptInNewTab(receipt.id);
+        } catch (error) {
+            console.error("Error opening receipt:", error);
+        }
     };
 
     const handleDownload = async (receiptId: string, receiptNumber?: string, paymentDate?: string) => {
@@ -128,11 +141,21 @@ export const TenantHistoryDialog = ({
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex gap-2 pt-1 border-t">
+                                        <div className="flex gap-1.5 pt-1 border-t">
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="flex-1 h-9 text-xs gap-1.5 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10"
+                                                className="flex-1 h-9 text-xs gap-1 bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 font-semibold"
+                                                onClick={() => handlePreview(receipt)}
+                                                title="Ouvrir le reçu dans un nouvel onglet"
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                Voir
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="flex-1 h-9 text-xs gap-1 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10"
                                                 onClick={() => shareReceipt(receipt)}
                                             >
                                                 <Share2 className="h-3.5 w-3.5" />
@@ -141,11 +164,11 @@ export const TenantHistoryDialog = ({
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="flex-1 h-9 text-xs gap-1.5 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10"
+                                                className="flex-1 h-9 text-xs gap-1 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10"
                                                 onClick={() => handleDownload(receipt.id, receipt.receipt_number, receipt.payment_date)}
                                             >
                                                 <Download className="h-3.5 w-3.5" />
-                                                Télécharger
+                                                PDF
                                             </Button>
                                         </div>
                                     </div>
@@ -178,7 +201,17 @@ export const TenantHistoryDialog = ({
                                                     {formatCurrency(receipt.amount, currency)}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-2">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 text-xs bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 font-semibold"
+                                                            onClick={() => handlePreview(receipt)}
+                                                            title="Ouvrir le reçu dans un nouvel onglet"
+                                                        >
+                                                            <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                                                            Voir
+                                                        </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
@@ -194,8 +227,8 @@ export const TenantHistoryDialog = ({
                                                             className="h-8 bg-primary/5 text-primary hover:bg-primary/10 border-primary/20 shadow-sm"
                                                             onClick={() => handleDownload(receipt.id, receipt.receipt_number, receipt.payment_date)}
                                                         >
-                                                            <Download className="h-4 w-4 mr-2" />
-                                                            Télécharger
+                                                            <Download className="h-4 w-4 mr-1.5" />
+                                                            PDF
                                                         </Button>
                                                     </div>
                                                 </TableCell>
@@ -207,6 +240,14 @@ export const TenantHistoryDialog = ({
                         </>
                     )}
                 </div>
+
+                <ReceiptPreviewModal
+                    open={previewOpen}
+                    onOpenChange={setPreviewOpen}
+                    receiptId={selectedPreviewReceipt?.id || null}
+                    receiptNumber={selectedPreviewReceipt?.number}
+                    paymentDate={selectedPreviewReceipt?.date}
+                />
             </DialogContent>
         </Dialog>
     );

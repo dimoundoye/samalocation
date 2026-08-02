@@ -4,7 +4,45 @@ const { fr } = require('date-fns/locale');
 const nodeFetch = require('node-fetch');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { formatAmountInWords } = require('./numberToWords');
+
+/**
+ * Lit une image de signature depuis le disque ou le réseau et la convertit en Data URI Base64
+ */
+async function resolveSignatureDataUri(imageUrl) {
+    if (!imageUrl || typeof imageUrl !== 'string') return null;
+    const trimmed = imageUrl.trim();
+    if (!trimmed) return null;
+
+    if (trimmed.startsWith('data:image/')) return trimmed;
+
+    try {
+        if (trimmed.includes('/uploads/') || trimmed.startsWith('uploads/')) {
+            const parts = trimmed.split('/uploads/');
+            const relPath = parts[1] || parts[0];
+            const fullPath = path.join(__dirname, '../../uploads/', relPath);
+            if (fs.existsSync(fullPath)) {
+                const fileBuf = fs.readFileSync(fullPath);
+                const ext = path.extname(fullPath).toLowerCase().replace('.', '') || 'png';
+                const mime = ext === 'jpg' ? 'jpeg' : ext;
+                return `data:image/${mime};base64,${fileBuf.toString('base64')}`;
+            }
+        }
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+            const response = await nodeFetch(trimmed);
+            if (response.ok) {
+                const buffer = await response.buffer();
+                const contentType = response.headers.get('content-type') || 'image/png';
+                return `data:${contentType};base64,${buffer.toString('base64')}`;
+            }
+        }
+    } catch (err) {
+        console.error('Error resolving signature image to data URI:', err.message);
+    }
+    return null;
+}
 
 /**
  * Génère le PDF du contrat de location optimisé juridiquement
@@ -181,21 +219,37 @@ async function generateContractPDF(contractData) {
         .text('LE LOCATAIRE', 292, signatureY - 15);
 
     // Owner Signature
-    if (contractData.owner_signature && contractData.owner_signature.startsWith('http')) {
-        try {
-            const response = await nodeFetch(contractData.owner_signature);
-            if (response.ok) {
-                const buffer = await response.buffer();
-                doc.image(buffer, 60, signatureY + 20, { width: 100 });
-            } else {
-                doc.fontSize(7).font('Helvetica-Oblique').text('Signature archivee numeriquement', 60, signatureY + 30);
-            }
-        } catch (e) {
-            console.error('Signature fetch error:', e);
-            doc.fontSize(7).font('Helvetica-Oblique').text('Signature archivee numeriquement', 60, signatureY + 30);
+    let ownerSigDone = false;
+    if (contractData.owner_signature && typeof contractData.owner_signature === 'string') {
+        let sigUrl = contractData.owner_signature.trim();
+        if (sigUrl.startsWith('/') || sigUrl.startsWith('uploads')) {
+            let apiBase = process.env.API_URL || process.env.VITE_API_URL || 'http://localhost:5000';
+            if (apiBase.endsWith('/api')) apiBase = apiBase.slice(0, -4);
+            if (apiBase.endsWith('/')) apiBase = apiBase.slice(0, -1);
+            sigUrl = `${apiBase}${sigUrl.startsWith('/') ? sigUrl : '/' + sigUrl}`;
         }
-    } else if (contractData.owner_signature) {
-        doc.fontSize(7).font('Helvetica-Oblique').text('Signature archivee sur serveur', 60, signatureY + 30);
+        if (sigUrl.startsWith('http')) {
+            try {
+                const response = await nodeFetch(sigUrl);
+                if (response.ok) {
+                    const buffer = await response.buffer();
+                    doc.image(buffer, 60, signatureY + 20, { width: 100 });
+                    ownerSigDone = true;
+                }
+            } catch (e) {
+                console.error('Owner signature fetch error:', e);
+            }
+        }
+    }
+    if (!ownerSigDone) {
+        doc.fontSize(8).fillColor('#059669').font('Helvetica-Bold').text('SIGNE ELECTRONIQUEMENT', 60, signatureY + 20);
+        const ownerSignedAt = contractData.created_at ? new Date(contractData.created_at) : new Date();
+        const safeOwnerId = (contractData.id || contractData.contract_number || 'CONTRAT').toString();
+        doc.fillColor(textColor).font('Helvetica').fontSize(7)
+            .text(`Date : ${format(ownerSignedAt, 'dd/MM/yyyy HH:mm', { locale: fr })}`, 60, signatureY + 32)
+            .text(`Par le bailleur`, 60, signatureY + 41)
+            .text(`ID : ${safeOwnerId.substring(0, 13).toUpperCase()}`, 60, signatureY + 50);
+        doc.fontSize(6).font('Helvetica-Oblique').text('Signature electronique du bailleur integree au contrat.', 60, signatureY + 62, { width: 200 });
     }
 
     // Tenant Signature
@@ -264,7 +318,7 @@ async function generateContractPDF(contractData) {
  * @param {object} meta - Métadonnées (contract_number, owner_name, tenant_name, etc.)
  * @returns {PDFDocument}
  */
-async function generateCustomContractPDF(htmlContent, meta = {}) {
+function generateCustomContractPDF(htmlContent, meta = {}) {
     const ownerPassword = process.env.PDF_OWNER_PASSWORD || 'samalocation_default_secure_key_2026';
     const doc = new PDFDocument({ 
         margin: 50, 
@@ -681,17 +735,56 @@ async function generateCustomContractPDF(htmlContent, meta = {}) {
     return doc;
 }
 
+// ── Shared Puppeteer Browser Singleton (Fast Reuse) ───────────────────
+let cachedBrowser = null;
+let browserInitializing = null;
+
+async function getSharedBrowser() {
+    if (cachedBrowser && cachedBrowser.connected) {
+        return cachedBrowser;
+    }
+    if (browserInitializing) {
+        return await browserInitializing;
+    }
+    const puppeteer = require('puppeteer');
+    browserInitializing = (async () => {
+        try {
+            const browser = await puppeteer.launch({
+                headless: 'new',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--disable-gpu',
+                    '--no-first-run',
+                    '--no-zygote'
+                ]
+            });
+            browser.on('disconnected', () => {
+                cachedBrowser = null;
+                browserInitializing = null;
+            });
+            cachedBrowser = browser;
+            return browser;
+        } catch (err) {
+            cachedBrowser = null;
+            throw err;
+        } finally {
+            browserInitializing = null;
+        }
+    })();
+    return await browserInitializing;
+}
+
 /**
  * Génère un PDF depuis un contenu HTML personnalisé (TipTap/Rich Editor)
- * en utilisant Puppeteer (Chrome headless) pour un rendu identique au navigateur.
- * Résout les problèmes de police, espacement, listes et styles CSS.
+ * en utilisant Puppeteer (Chrome headless) optimisé pour un rendu instantané.
  * @param {string} htmlContent - HTML produit par TipTap
  * @param {object} meta - Métadonnées (contract_number, owner_name, tenant_name, etc.)
  * @returns {Promise<Buffer>} Buffer du PDF
  */
 async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
-    const puppeteer = require('puppeteer');
-
     // ── Generate QR code as data URI ──
     let qrDataUri = '';
     try {
@@ -710,11 +803,22 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
     const docHash = crypto.createHash('sha256').update(rawData).digest('hex');
 
     // ── Owner signature block ──
-    let ownerSignatureHtml = '<p style="color: #999; font-style: italic; margin: 0;">Signature archivee numeriquement</p>';
-    if (meta.owner_signature && typeof meta.owner_signature === 'string' && meta.owner_signature.startsWith('http')) {
-        ownerSignatureHtml = `<img src="${escapeHtml(meta.owner_signature)}" alt="Signature" style="max-height: 60px; max-width: 200px; display: block; margin: 0 auto;" />`;
-    } else if (meta.owner_signature) {
-        ownerSignatureHtml = '<p style="color: #999; font-style: italic; margin: 0;">Signature archivee sur serveur</p>';
+    let ownerSignatureHtml = '';
+    const ownerSignedDate = meta.created_at ? format(new Date(meta.created_at), 'dd/MM/yyyy HH:mm', { locale: fr }) : '';
+    const safeOwnerId = (meta.id || meta.contract_number || 'CONTRAT').toString().substring(0, 13).toUpperCase();
+
+    const ownerSigDataUri = await resolveSignatureDataUri(meta.owner_signature);
+
+    if (ownerSigDataUri) {
+        ownerSignatureHtml = `<img src="${ownerSigDataUri}" alt="Signature Bailleur" style="max-height: 75px; max-width: 220px; display: block; margin: 0 auto;" />`;
+    } else {
+        ownerSignatureHtml = `
+            <p style="color: #059669; font-weight: bold; font-size: 11pt; margin: 0 0 4px 0;">SIGNE ELECTRONIQUEMENT</p>
+            ${ownerSignedDate ? `<p style="font-size: 9pt; margin: 2px 0;">Date : ${ownerSignedDate}</p>` : ''}
+            <p style="font-size: 9pt; margin: 2px 0;">Par le bailleur : ${escapeHtml(meta.owner_name || '')}</p>
+            <p style="font-size: 9pt; margin: 2px 0;">ID : ${safeOwnerId}</p>
+            <p style="font-size: 8pt; font-style: italic; color: #666; margin-top: 4px;">Signature electronique du bailleur integree au contrat.</p>
+        `.trim();
     }
 
     // ── Tenant signature block ──
@@ -860,21 +964,30 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
 </body>
 </html>`;
 
-    const browser = await puppeteer.launch({
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
     try {
+        const browser = await getSharedBrowser();
         const page = await browser.newPage();
-        await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
-        const buffer = await page.pdf({
-            format: 'A4',
-            margin: { top: '40px', bottom: '40px', left: '50px', right: '50px' },
-            printBackground: true
+        try {
+            await page.setContent(fullHtml, { waitUntil: 'domcontentloaded' });
+            const buffer = await page.pdf({
+                format: 'A4',
+                margin: { top: '40px', bottom: '40px', left: '50px', right: '50px' },
+                printBackground: true
+            });
+            return buffer;
+        } finally {
+            await page.close();
+        }
+    } catch (browserErr) {
+        console.warn('Browser PDF rendering unavailable, using fallback renderer:', browserErr.message);
+        const doc = generateCustomContractPDF(htmlContent, meta);
+        return new Promise((resolve, reject) => {
+            const chunks = [];
+            doc.on('data', chunk => chunks.push(chunk));
+            doc.on('end', () => resolve(Buffer.concat(chunks)));
+            doc.on('error', reject);
+            doc.end();
         });
-        return buffer;
-    } finally {
-        await browser.close();
     }
 }
 

@@ -4,11 +4,11 @@ import { getNotifications, createNotification, markNotificationAsRead, markAllNo
 import { login, signup, getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword } from "../api/auth";
 import { getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile } from "../api/tenant";
 import { getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator, getPublicOwnerProfile } from "../api/owner";
-import { getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt } from "../api/receipts";
+import { getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, previewReceipt, openReceiptInNewTab, deleteReceipt } from "../api/receipts";
 import { createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser } from "../api/reports";
 import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting, verifyPDFDocument, getOwnerBalances, forceOwnerWithdrawal, getAllReceipts } from "../api/admin";
 import { getContactMessages, updateContactMessageStatus } from "../api/contact";
-import { createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract } from "../api/contracts";
+import { createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, previewContract, openContractInNewTab, verifyContract } from "../api/contracts";
 import { getMySubscription, notifyPayment } from "../api/subscription";
 import { getPropertyGroups, syncPropertyGroups } from "../api/propertyGroups";
 import { baseClient } from "../api/baseClient";
@@ -23,11 +23,11 @@ export {
     getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword,
     getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile,
     getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator, getPublicOwnerProfile,
-    getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, deleteReceipt,
+    getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, previewReceipt, openReceiptInNewTab, deleteReceipt,
     createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser,
     getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting, verifyPDFDocument, getOwnerBalances, forceOwnerWithdrawal, getAllReceipts,
     getContactMessages, updateContactMessageStatus,
-    createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, verifyContract,
+    createContract, getOwnerContracts, getTenantContracts, getContractDetails, signContract, downloadContract, previewContract, openContractInNewTab, verifyContract,
     getMySubscription, notifyPayment,
     getPropertyGroups, syncPropertyGroups
 };

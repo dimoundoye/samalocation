@@ -103,20 +103,37 @@ const contractController = {
                 return res.status(404).json({ message: "Contrat introuvable" });
             }
 
+            const isInline = req.query.inline === 'true' || req.query.disposition === 'inline';
+            const disposition = isInline ? 'inline' : 'attachment';
+
             if (contractData.custom_content) {
                 const buffer = await generateCustomContractPDFWithBrowser(contractData.custom_content, contractData);
                 res.setHeader('Content-Type', 'application/pdf');
-                res.setHeader('Content-Disposition', `attachment; filename=Contrat_${contractData.contract_number}.pdf`);
+                res.setHeader('Content-Disposition', `${disposition}; filename=Contrat_${contractData.contract_number}.pdf`);
+                
+                if (isInline) {
+                    console.log(`✅ [SUCCÈS PREVISUALISATION] Contrat N° ${contractData.contract_number} (ID: ${id}) ouvert en ligne`);
+                } else {
+                    console.log(`✅ [SUCCÈS TÉLÉCHARGEMENT] Contrat N° ${contractData.contract_number} (ID: ${id}) téléchargé`);
+                }
+                
                 res.send(buffer);
             } else {
                 const doc = await generateContractPDF(contractData);
                 res.setHeader('Content-Type', 'application/pdf');
-                res.setHeader('Content-Disposition', `attachment; filename=Contrat_${contractData.contract_number}.pdf`);
+                res.setHeader('Content-Disposition', `${disposition}; filename=Contrat_${contractData.contract_number}.pdf`);
+                
+                if (isInline) {
+                    console.log(`✅ [SUCCÈS PREVISUALISATION] Contrat N° ${contractData.contract_number} (ID: ${id}) ouvert en ligne`);
+                } else {
+                    console.log(`✅ [SUCCÈS TÉLÉCHARGEMENT] Contrat N° ${contractData.contract_number} (ID: ${id}) téléchargé`);
+                }
+                
                 doc.pipe(res);
                 doc.end();
             }
         } catch (error) {
-            console.error('CRITICAL ERROR in PDF Generation:', error);
+            console.error(`❌ [ÉCHEC CONTRAT] Erreur lors de la prévisualisation/téléchargement du contrat ID ${req.params.id}:`, error);
             if (!res.headersSent) {
                 res.status(500).json({
                     message: "Erreur lors de la génération du PDF",

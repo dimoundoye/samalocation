@@ -109,6 +109,14 @@ const Contract = {
     },
 
     async findById(id) {
+        if (!id) return null;
+
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+        const whereClause = isUuid 
+            ? 'WHERE c.id = $1' 
+            : 'WHERE c.id::text LIKE $1 OR c.contract_number = $2';
+        const params = isUuid ? [id] : [`${id}%`, id];
+
         const { rows } = await db.query(`
             SELECT c.*, 
                    c.id as contract_id,
@@ -134,8 +142,8 @@ const Contract = {
             LEFT JOIN owner_profiles op ON c.owner_id = op.user_profile_id
             LEFT JOIN properties p ON c.property_id = p.id
             LEFT JOIN property_units pu ON c.unit_id = pu.id
-            WHERE c.id = $1
-        `, [id]);
+            ${whereClause}
+        `, params);
         return rows[0] || null;
     },
 

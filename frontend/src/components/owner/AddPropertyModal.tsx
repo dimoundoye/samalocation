@@ -567,7 +567,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    <span className="font-semibold text-primary">💡 Astuce :</span> Le marqueur sur la carte définit la position précise du bien sur la carte de recherche.
+                    <span className="font-semibold text-primary">  Astuce :</span> Le marqueur sur la carte définit la position précise du bien sur la carte de recherche.
                   </p>
 
                   <div>
@@ -861,7 +861,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                       <Label htmlFor="description">Description</Label>
                       <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
                         <Sparkles className="h-2 w-2 text-primary" />
-                        💡 Toutes vos infos sont prêtes — cliquez sur "Générer avec l'IA" pour une description optimale
+                          Toutes vos infos sont prêtes — cliquez sur "Générer avec l'IA" pour une description optimale
                       </p>
                     </div>
                     <Button

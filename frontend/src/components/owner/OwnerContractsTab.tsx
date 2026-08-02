@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FileText, Download, Share2, Loader2, Info, Eye, AlertCircle, AlertTriangle, Send } from "lucide-react";
+import { Plus, Search, FileText, Download, Share2, Loader2, Info, Eye, ExternalLink, AlertCircle, AlertTriangle, Send } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { ContractModelPreview } from "./ContractModelPreview";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
-import { getOwnerContracts, downloadContract } from "@/lib/api";
+import { getOwnerContracts, downloadContract, openContractInNewTab } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -171,39 +171,48 @@ export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) =
                                             {getStatusBadge(contract.status)}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-2 py-2 border-y border-dashed">
+                                        <div className="grid grid-cols-3 gap-2 py-2.5 my-1 border-y border-dashed text-xs">
                                             <div>
                                                 <div className="text-[10px] text-muted-foreground uppercase">Locataire</div>
-                                                <div className="text-sm font-medium">{contract.tenant_name}</div>
+                                                <div className="text-sm font-medium truncate">{contract.tenant_name}</div>
                                             </div>
                                             <div>
                                                 <div className="text-[10px] text-muted-foreground uppercase">Loyer</div>
                                                 <div className="text-sm font-medium text-primary">{formatCurrency(contract.rent_amount, currency)}</div>
                                             </div>
+                                            <div>
+                                                <div className="text-[10px] text-muted-foreground uppercase">Début</div>
+                                                <div className="text-sm font-medium">{format(new Date(contract.start_date), 'dd/MM/yyyy', { locale: fr })}</div>
+                                            </div>
                                         </div>
 
-                                        <div className="flex justify-between items-center pt-1">
-                                            <div className="text-xs text-muted-foreground">
-                                                Début : {format(new Date(contract.start_date), 'dd/MM/yyyy', { locale: fr })}
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => shareContract(contract)}
-                                                    className="gap-2 h-8 text-primary border-primary/20 hover:bg-primary/5"
-                                                >
-                                                    <Share2 className="h-3.5 w-3.5" /> Partager
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => downloadContract(contract.id, contract.contract_number)}
-                                                    className="gap-2 h-8"
-                                                >
-                                                    <Download className="h-3.5 w-3.5" /> PDF
-                                                </Button>
-                                            </div>
+                                        <div className="flex items-center gap-2 pt-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => shareContract(contract)}
+                                                className="flex-1 gap-1.5 h-8 text-xs text-primary border-primary/20 hover:bg-primary/5 px-2"
+                                            >
+                                                <Share2 className="h-3.5 w-3.5" /> <span className="truncate">Partager</span>
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => openContractInNewTab(contract.id)}
+                                                className="flex-1 gap-1.5 h-8 text-xs bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 font-semibold px-2"
+                                                title="Ouvrir le contrat dans un nouvel onglet"
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5" /> <span className="truncate">Voir</span>
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => downloadContract(contract.id, contract.contract_number)}
+                                                className="flex-1 gap-1.5 h-8 text-xs px-2"
+                                                title="Télécharger le PDF"
+                                            >
+                                                <Download className="h-3.5 w-3.5" /> <span className="truncate">PDF</span>
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
@@ -264,6 +273,15 @@ export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) =
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
+                                                        onClick={() => openContractInNewTab(contract.id)}
+                                                        className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950"
+                                                        title="Ouvrir le contrat dans un nouvel onglet"
+                                                    >
+                                                        <ExternalLink className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
                                                         onClick={() => shareContract(contract)}
                                                         className="text-primary hover:text-primary hover:bg-primary/5"
                                                         title="Partager le contrat"
@@ -274,7 +292,7 @@ export const OwnerContractsTab = ({ currency = 'XOF' }: { currency?: string }) =
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => downloadContract(contract.id, contract.contract_number)}
-                                                        title="Télécharger"
+                                                        title="Télécharger le PDF"
                                                     >
                                                         <Download className="h-4 w-4" />
                                                     </Button>

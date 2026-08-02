@@ -5,13 +5,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
-    Building2, MapPin, Calendar, User, Receipt, FileText, Download, Loader2,
+    Building2, MapPin, Calendar, User, Receipt, FileText, Download, Eye, ExternalLink, Loader2,
     CheckCircle2, Clock, XCircle, CreditCard, AlertCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getTenantContracts } from "@/api/contracts";
-import { downloadReceipt } from "@/lib/api";
+import { downloadReceipt, openReceiptInNewTab, downloadContract, openContractInNewTab } from "@/lib/api";
+import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, cn } from "@/lib/utils";
 
@@ -122,6 +123,17 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
             console.error("Error loading lease details:", err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const [selectedPreviewReceipt, setSelectedPreviewReceipt] = useState<{ id: string; number?: string; date?: string } | null>(null);
+    const [previewModalOpen, setPreviewModalOpen] = useState(false);
+
+    const handlePreview = async (receipt: any) => {
+        try {
+            await openReceiptInNewTab(receipt.id);
+        } catch (e) {
+            console.error("Error opening receipt in new tab:", e);
         }
     };
 
@@ -380,15 +392,28 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                                                             {formatCurrency(r.amount || r.monthly_rent || 0, currency)}
                                                         </p>
                                                     </div>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="gap-2 h-8 text-xs"
-                                                        onClick={() => handleDownload(r.id)}
-                                                    >
-                                                        <Download className="w-3 h-3" />
-                                                        PDF
-                                                    </Button>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="gap-1.5 h-8 text-xs bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 font-semibold"
+                                                            onClick={() => handlePreview(r)}
+                                                            title="Ouvrir le reçu dans un nouvel onglet"
+                                                        >
+                                                            <ExternalLink className="w-3.5 h-3.5" />
+                                                            Voir
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="gap-1.5 h-8 text-xs"
+                                                            onClick={() => handleDownload(r.id)}
+                                                            title="Télécharger le PDF"
+                                                        >
+                                                            <Download className="w-3 h-3" />
+                                                            PDF
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             );
                                         })
@@ -410,14 +435,28 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                                                         Signé le : {c.signed_at ? format(new Date(c.signed_at), "dd/MM/yyyy") : "En attente"}
                                                     </p>
                                                 </div>
-                                                {c.pdf_url && (
-                                                    <Button size="sm" variant="outline" className="gap-2 h-8 text-xs" asChild>
-                                                        <a href={c.pdf_url} target="_blank" rel="noopener noreferrer">
-                                                            <Download className="w-3 h-3" />
-                                                            PDF
-                                                        </a>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="gap-1.5 h-8 text-xs bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 font-semibold"
+                                                        onClick={() => openContractInNewTab(c.id)}
+                                                        title="Ouvrir le contrat dans un nouvel onglet"
+                                                    >
+                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                        Voir
                                                     </Button>
-                                                )}
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="gap-1.5 h-8 text-xs"
+                                                        onClick={() => downloadContract(c.id, c.contract_number || 'bylocation')}
+                                                        title="Télécharger le PDF"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" />
+                                                        PDF
+                                                    </Button>
+                                                </div>
                                             </div>
                                         ))
                                     )}
@@ -427,6 +466,13 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                     </ScrollArea>
                 </Tabs>
             </DialogContent>
+            <ReceiptPreviewModal
+                open={previewModalOpen}
+                onOpenChange={setPreviewModalOpen}
+                receiptId={selectedPreviewReceipt?.id || null}
+                receiptNumber={selectedPreviewReceipt?.number}
+                paymentDate={selectedPreviewReceipt?.date}
+            />
         </Dialog>
     );
 };

@@ -25,7 +25,8 @@ import VerificationsManagement from "@/components/admin/VerificationsManagement"
 import { DocumentAudit } from "@/components/admin/DocumentAudit";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { History, ExternalLink, ArrowUpRight, Loader2, Download } from "lucide-react";
-import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getLiveAnalytics, getOwnerBalances, forceOwnerWithdrawal, getAllReceipts, downloadReceipt } from "@/lib/api";
+import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getLiveAnalytics, getOwnerBalances, forceOwnerWithdrawal, getAllReceipts, downloadReceipt, openReceiptInNewTab } from "@/lib/api";
+import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
 import { CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,6 +55,8 @@ const AdminDashboard = () => {
   });
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [selectedPreviewReceipt, setSelectedPreviewReceipt] = useState<{ id: string; number?: string; date?: string } | null>(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [filter, setFilter] = useState<string>("all");
 
@@ -1150,17 +1153,22 @@ const AdminDashboard = () => {
                               </TableRow>
                             ) : (
                               receiptsList.map((r) => {
+                                const handlePreview = async () => {
+                                  try {
+                                    await openReceiptInNewTab(r.id);
+                                  } catch (err) {
+                                    console.error("Error opening receipt PDF:", err);
+                                    toast({
+                                      title: "Erreur",
+                                      description: "Impossible d'ouvrir le reçu.",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                };
+
                                 const handleDownload = async () => {
                                   try {
-                                    const blob = await downloadReceipt(r.id);
-                                    const url = window.URL.createObjectURL(blob);
-                                    const a = document.createElement("a");
-                                    a.href = url;
-                                    a.download = `Recu-${r.receipt_number}.pdf`;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    window.URL.revokeObjectURL(url);
+                                    await downloadReceipt(r.id, r.receipt_number, r.payment_date);
                                   } catch (err) {
                                     console.error("Error downloading PDF:", err);
                                     toast({
@@ -1190,6 +1198,15 @@ const AdminDashboard = () => {
                                     </TableCell>
                                     <TableCell className="text-center">
                                       <div className="flex items-center justify-center gap-1">
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="h-8 w-8 p-0 rounded-xl hover:bg-teal-50 hover:text-teal-600 dark:hover:bg-teal-950"
+                                          onClick={handlePreview}
+                                          title="Ouvrir le reçu PDF dans un nouvel onglet ↗️"
+                                        >
+                                          <ExternalLink className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                                        </Button>
                                         <Button 
                                           variant="ghost" 
                                           size="sm" 
@@ -1914,6 +1931,14 @@ const AdminDashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ReceiptPreviewModal
+        open={previewModalOpen}
+        onOpenChange={setPreviewModalOpen}
+        receiptId={selectedPreviewReceipt?.id || null}
+        receiptNumber={selectedPreviewReceipt?.number}
+        paymentDate={selectedPreviewReceipt?.date}
+      />
     </div>
   );
 };
