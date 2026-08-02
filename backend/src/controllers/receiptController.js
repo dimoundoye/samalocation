@@ -204,7 +204,7 @@ const receiptController = {
                 });
             }
 
-            // Vérifier les permissions (locataire, propriétaire ou collaborateur/agent)
+            // Vérifier les permissions (locataire, propriétaire, administrateur ou collaborateur/agent)
             const db = require('../config/db');
             const { rows: properties } = await db.query(
                 'SELECT owner_id FROM properties WHERE id = $1',
@@ -213,8 +213,9 @@ const receiptController = {
 
             const isOwner = properties.length > 0 && (properties[0].owner_id === req.ownerId || properties[0].owner_id === userId);
             const isTenant = receipt.tenant_id === userId;
+            const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'ADMIN');
 
-            if (!isOwner && !isTenant) {
+            if (!isOwner && !isTenant && !isAdmin) {
                 return res.status(403).json({
                     status: 'error',
                     message: 'Non autorisé à télécharger ce reçu'
@@ -224,8 +225,8 @@ const receiptController = {
             // --- Restriction Branding ---
             // Vérifier si le propriétaire a droit au branding personnalisé
             const Subscription = require('../models/subscriptionModel');
-            const ownerId = properties[0].owner_id;
-            const hasBranding = await Subscription.hasAccessToFeature(ownerId, 'custom_branding');
+            const ownerId = properties.length > 0 ? properties[0].owner_id : (receipt.owner_id || null);
+            const hasBranding = ownerId ? await Subscription.hasAccessToFeature(ownerId, 'custom_branding') : false;
             
             if (!hasBranding) {
                 receipt.logo_url = null;

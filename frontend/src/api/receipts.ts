@@ -2,6 +2,7 @@ import { baseClient, API_BASE_URL } from "./baseClient";
 import { Receipt, CreateReceiptData } from "@/types";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { getTabLoaderHtml, getTabErrorHtml } from "@/lib/tabViewerHelpers";
 
 // Créer un reçu (propriétaire)
 export const createReceipt = async (data: CreateReceiptData) => {
@@ -112,27 +113,7 @@ export const openReceiptInNewTab = async (id: string) => {
     // Ouvrir l'onglet immédiatement pour éviter le blocage des popups par le navigateur
     const newTab = window.open("", "_blank");
     if (newTab) {
-        newTab.document.write(`
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <title>Chargement du reçu...</title>
-                    <style>
-                        body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; color: #334155; }
-                        .loader-container { text-align: center; }
-                        .spinner { border: 3px solid #e2e8f0; border-top: 3px solid #0d9488; border-radius: 50%; width: 36px; height: 36px; animation: spin 0.8s linear infinite; margin: 0 auto 16px auto; }
-                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                        .text { font-size: 14px; font-weight: 500; }
-                    </style>
-                </head>
-                <body>
-                    <div class="loader-container">
-                        <div class="spinner"></div>
-                        <div class="text">Chargement de la quittance...</div>
-                    </div>
-                </body>
-            </html>
-        `);
+        newTab.document.write(getTabLoaderHtml("Préparation de la quittance", "Veuillez patienter pendant la génération de votre reçu..."));
     }
 
     try {
@@ -146,17 +127,10 @@ export const openReceiptInNewTab = async (id: string) => {
     } catch (error: any) {
         console.error(`❌ [FRONTEND ERROR] Échec de la prévisualisation du reçu ${id}:`, error);
         if (newTab) {
-            newTab.document.title = "Erreur de prévisualisation";
-            newTab.document.body.innerHTML = `
-                <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: system-ui, sans-serif; background-color: #f8fafc;">
-                    <div style="text-align: center; padding: 32px 24px; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); max-width: 420px; width: 90%; border-top: 4px solid #ef4444;">
-                        <div style="width: 56px; height: 56px; background: #fee2e2; color: #dc2626; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px auto;">✕</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #991b1b; margin-bottom: 8px;">Échec de la prévisualisation</div>
-                        <div style="font-size: 14px; color: #475569; line-height: 1.5; margin-bottom: 20px;">${error?.message || "Impossible de charger la quittance de loyer."}</div>
-                        <button onclick="window.close()" style="background-color: #0f172a; color: #ffffff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">Fermer cet onglet</button>
-                    </div>
-                </div>
-            `;
+            const errorMsg = error?.message || "Impossible de charger la quittance de loyer. Le document est introuvable ou le serveur est indisponible.";
+            newTab.document.open();
+            newTab.document.write(getTabErrorHtml("Impossible d'afficher la quittance", errorMsg));
+            newTab.document.close();
         }
         throw error;
     }
