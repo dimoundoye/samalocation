@@ -21,7 +21,8 @@ import {
   Lightbulb,
   ArrowRight,
   Download,
-  TrendingUp
+  TrendingUp,
+  Ban
 } from "lucide-react";
 
 export const OwnerDocumentationTab = () => {
@@ -129,15 +130,29 @@ export const OwnerDocumentationTab = () => {
     },
     {
       id: "receipts",
-      title: "Générer une quittance",
+      title: "Générer une quittance de loyer",
       icon: <Receipt className="h-5 w-5 text-green-500" />,
       purpose: "La quittance est la preuve légale du paiement. Sur SamaLocation, elle est générée en 2 secondes, éliminant les carnets de quittances papier.",
       steps: [
-        "Allez sur la fiche du locataire.",
-        "Cliquez sur 'Reçu'.",
+        "Allez sur la fiche du locataire ou dans la grille de gestion mensuelle.",
+        "Cliquez sur 'Générer la quittance'.",
         "Vérifiez le montant et la période.",
-        "Validez. Le locataire reçoit une notification et le PDF est archivé."
+        "Validez. Le locataire reçoit une notification et le PDF est archivé dans son espace."
       ]
+    },
+    {
+      id: "cancel-receipt",
+      title: "Annuler une quittance avec motif (Anti-Fraude)",
+      icon: <Ban className="h-5 w-5 text-red-500" />,
+      purpose: "En cas d'erreur de montant, de doublon ou de chèque rejeté, vous pouvez annuler une quittance en toute sécurité. Pour lutter contre la fraude et préserver la conformité comptable, la quittance n'est jamais supprimée physiquement : son montant est automatiquement retiré de votre trésorerie et un motif d'annulation obligatoire est consigné de manière indélébile dans le journal d'activité.",
+      steps: [
+        "Allez dans l'onglet 'Locataires', puis ouvrez l'historique du locataire concerné.",
+        "Repérez la quittance et cliquez sur le bouton 'Annuler'.",
+        "Sélectionnez le motif principal (ex: 'Erreur de montant', 'Paiement rejeté / Chèque sans provision', 'Quittance générée en double') ou saisissez votre motif personnalisé.",
+        "Confirmez. La quittance prend le statut 'ANNULÉ', et son montant est soustrait de vos revenus et du Cash Flow.",
+        "Cliquez à tout moment sur le bouton 'Motif' dans l'historique pour consulter l'explication complète dans une fenêtre dédiée."
+      ],
+      tip: "Le locataire est automatiquement notifié et peut également consulter le motif d'annulation dans son espace personnel."
     },
     {
       id: "online-payment",
