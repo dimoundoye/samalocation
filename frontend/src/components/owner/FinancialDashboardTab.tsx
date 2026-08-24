@@ -63,6 +63,24 @@ const MONTH_NAMES = [
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"];
 
+const formatCompactNumber = (val: number): string => {
+    if (val === 0) return "0";
+    const abs = Math.abs(val);
+    if (abs >= 1_000_000_000) {
+        const formatted = (val / 1_000_000_000).toFixed(2).replace(/\.?0+$/, "");
+        return `${formatted}B`;
+    }
+    if (abs >= 1_000_000) {
+        const formatted = (val / 1_000_000).toFixed(2).replace(/\.?0+$/, "");
+        return `${formatted}M`;
+    }
+    if (abs >= 1_000) {
+        const formatted = (val / 1_000).toFixed(1).replace(/\.?0+$/, "");
+        return `${formatted}k`;
+    }
+    return val.toString();
+};
+
 const FinancialFolderTreePicker = ({
     groups,
     value,
@@ -815,10 +833,14 @@ export const FinancialDashboardTab: React.FC<FinancialDashboardTabProps> = ({
                     <CardContent className="p-4 pt-2">
                         <div className="h-[280px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                                    <YAxis tick={{ fontSize: 11 }} />
+                                    <YAxis
+                                        tick={{ fontSize: 10 }}
+                                        width={42}
+                                        tickFormatter={(val: number) => formatCompactNumber(val)}
+                                    />
                                     <Tooltip
                                         formatter={(val: number) => [formatCurrency(val, currency), ""]}
                                         contentStyle={{ backgroundColor: "#1e293b", color: "#fff", borderRadius: "8px", fontSize: "12px" }}

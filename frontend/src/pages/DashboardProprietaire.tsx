@@ -38,6 +38,24 @@ import {
   getPropertyGroups
 } from "@/lib/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+const formatCompactNumber = (val: number): string => {
+    if (val === 0) return "0";
+    const abs = Math.abs(val);
+    if (abs >= 1_000_000_000) {
+        const formatted = (val / 1_000_000_000).toFixed(2).replace(/\.?0+$/, "");
+        return `${formatted}B`;
+    }
+    if (abs >= 1_000_000) {
+        const formatted = (val / 1_000_000).toFixed(2).replace(/\.?0+$/, "");
+        return `${formatted}M`;
+    }
+    if (abs >= 1_000) {
+        const formatted = (val / 1_000).toFixed(1).replace(/\.?0+$/, "");
+        return `${formatted}k`;
+    }
+    return val.toString();
+};
 import { PenTool, ArrowRight } from "lucide-react";
 import { AddPropertyModal } from "@/components/owner/AddPropertyModal";
 import { EditPropertyModal } from "@/components/owner/EditPropertyModal";
