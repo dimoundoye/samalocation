@@ -18,6 +18,7 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 ## ✨ Fonctionnalités Clés
 
 ### 👤 Pour les Locataires
+
 - **Recherche Intelligente :** Filtres avancés par quartier, prix, type de bien, équipements, nombre de chambres **et nombre de pièces**.
 - **Carte Interactive :** Visualisation des biens via une carte intégrée (Leaflet).
 - **Messagerie Temps-Réel :** Chat direct avec les propriétaires pour poser des questions et organiser des visites.
@@ -27,10 +28,8 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 - **Signature électronique :** Signature électronique des contrats de location.
 - **Dossiers de candidature :** Création et gestion de dossiers de candidature pour les annonces.
 
-
-
-
 ### 🏠 Pour les Propriétaires
+
 - **Dashboard Complet :** Gestion centralisée de votre patrimoine immobilier.
 - **Publication d'Annonces :** Ajout de biens avec photos, descriptions détaillées et gestion des unités.
 - **Assistant IA :** Génération automatique de descriptions d'annonces optimisées via Google Gemini AI.
@@ -38,6 +37,7 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 - **Digitalisation Administrative :** Génération automatique de quittances de loyer au format PDF.
 - **Suivi de Maintenance :** Système de tickets pour gérer les réparations et demandes d'entretien.
 - **Gestion des Contrats :** Génération automatique de contrats de location au format PDF.
+- **Trésorerie & ROI :** Suivez la santé financière de votre patrimoine immobilier en temps réel.
 - **Gestion des États des lieux :** Génération automatique d'états des lieux au format PDF.
 - **Multi-collaborateur :** Gestion de plusieurs collaborateurs pour les agences immobilières.
 - **Signature électronique :** Signature électronique des contrats et reçus de location.
@@ -45,6 +45,7 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 - **Dossiers partagés :** Partage sécurisé des dossiers de candidature avec les locataires.
 
 ### 🛡️ Sécurité & IA
+
 - **Sécurité Serveur :** Configuration durcie via Nginx (CSP, HSTS, X-Frame-Options, X-Content-Type-Options).
 - **Recherche Smart :** Analyse du langage naturel pour la recherche de biens via l'IA.
 - **Authentification :** Sécurisée par JWT (JSON Web Tokens) et hachage de mots de passe (bcrypt).
@@ -54,6 +55,7 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 ## 🛠️ Stack Technique
 
 ### Frontend
+
 - **Framework :** [React](https://reactjs.org/) + [Vite](https://vitejs.dev/)
 - **Langage :** [TypeScript](https://www.typescriptlang.org/)
 - **Styling :** [Tailwind CSS](https://tailwindcss.com/) + [Shadcn/ui](https://ui.shadcn.com/)
@@ -63,6 +65,7 @@ Le marché locatif traditionnel peut être complexe et opaque. Samalocation simp
 - **Communication :** [Socket.io-client](https://socket.io/docs/v4/client-api/)
 
 ### Backend
+
 - **Runtime :** [Node.js](https://nodejs.org/)
 - **Framework API :** [Express.js](https://expressjs.com/)
 - **Base de Données :** [PostgreSQL](https://www.postgresql.org/)
@@ -100,24 +103,30 @@ samalocation/
 ## ⚙️ Installation & Configuration
 
 ### Prérequis
+
 - Node.js (v18+)
 - PostgreSQL
 - Comptes : Cloudinary, Google AI Studio (Gemini)
 
 ### Option 1 : Docker (Recommandé pour la production)
+
 1. Assurez-vous que Docker et Docker Compose sont installés.
 2. Lancez tout le projet : `docker-compose up -d --build`
 3. L'application sera accessible sur `http://localhost:8080`.
 
 ### Option 2 : Développement local
+
 #### Backend
+
 1. `cd backend`
 2. `npm install`
 3. Copiez le fichier `.env.example` en `.env` et remplissez les variables.
 4. Lancez le serveur : `npm run dev`
 
 #### Frontend
+
 1. `cd frontend`
+
 2. `npm install`
 3. Configurez le fichier `.env`.
 4. Lancez l'application : `npm run dev`

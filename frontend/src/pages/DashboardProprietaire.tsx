@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Plus, Search, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature, Wallet } from "lucide-react";
+import { Home, Plus, Search, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature, Wallet, DollarSign } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams, useParams, useLocation } from "react-router-dom";
@@ -57,6 +57,7 @@ import { OwnerSubscription } from "@/components/owner/OwnerSubscription";
 import { OwnerTeamTab } from "@/components/owner/OwnerTeamTab";
 import { FullActivityLogView } from "@/components/owner/OwnerActivityLog";
 import { CreateContractDialog } from "@/components/owner/CreateContractDialog";
+import { FinancialDashboardTab } from "@/components/owner/FinancialDashboardTab";
 import { format } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import { transformProperty } from "@/lib/property";
@@ -343,7 +344,17 @@ const DashboardProprietaire = () => {
       }
     });
 
-    // 6. Final check for root consistency
+    // 6. Sort root nodes & group children recursively by name alphabetically
+    const sortNodesRecursively = (nodes: any[]) => {
+      nodes.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr', { numeric: true, sensitivity: 'base' }));
+      nodes.forEach(node => {
+        if (node.children && node.children.length > 0) {
+          sortNodesRecursively(node.children);
+        }
+      });
+    };
+
+    sortNodesRecursively(rootNodes);
     return rootNodes;
   }, [properties, tenants, customGroups]);
 
@@ -874,6 +885,7 @@ const DashboardProprietaire = () => {
             { id: "tenants", label: t('dashboard.sidebar.tenants'), icon: Users },
             { id: "shared-dossiers", label: "Dossiers Partagés", icon: FolderOpen },
             { id: "management", label: t('dashboard.sidebar.management'), icon: PieChart },
+            { id: "financials", label: "Trésorerie & ROI", icon: DollarSign },
             { id: "maintenance", label: t('dashboard.sidebar.maintenance'), icon: Wrench },
             { id: "messages", label: t('dashboard.sidebar.messages'), icon: MessageSquare },
             { id: "public-profile", label: "Profil Public", icon: Globe },
@@ -1025,8 +1037,10 @@ const DashboardProprietaire = () => {
                       ? "Locataires"
                       : activeTab === "management"
                         ? "Gérance"
-                        : activeTab === "maintenance"
-                          ? "Maintenance"
+                        : activeTab === "financials"
+                          ? "Trésorerie & ROI"
+                          : activeTab === "maintenance"
+                            ? "Maintenance"
                           : activeTab === "messages"
                             ? "Messages"
                     : activeTab === "contracts"
@@ -1258,10 +1272,10 @@ const DashboardProprietaire = () => {
                       <CardTitle className="text-[11px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         {t('owner.stats.total_properties')}
                       </CardTitle>
-                      <Building2 className="h-5 w-5 text-primary" />
+                      <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl sm:text-3xl font-bold">{stats.totalProperties}</div>
+                      <div className="text-lg sm:text-2xl font-bold">{stats.totalProperties}</div>
                     </CardContent>
                   </Card>
 
@@ -1273,7 +1287,7 @@ const DashboardProprietaire = () => {
                       <Home className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-xl sm:text-3xl font-bold">{stats.occupiedUnits}</div>
+                      <div className="text-lg sm:text-2xl font-bold">{stats.occupiedUnits}</div>
                       <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                         {units.length > 0 ? Math.round((stats.occupiedUnits / units.length) * 100) : 0}% {t('owner.stats.occupancy_rate')}
                       </p>
@@ -1288,7 +1302,7 @@ const DashboardProprietaire = () => {
                       <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-xl sm:text-3xl font-bold">{stats.activeTenants}</div>
+                      <div className="text-lg sm:text-2xl font-bold">{stats.activeTenants}</div>
                     </CardContent>
                   </Card>
 
@@ -1301,7 +1315,7 @@ const DashboardProprietaire = () => {
                         <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-[15px] xs:text-lg sm:text-2xl md:text-3xl font-bold tracking-tight break-words">
+                        <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold tracking-tight text-primary leading-tight break-words">
                           {formatCurrency(totalYearlyRevenue, ownerProfile?.currency || 'XOF')}
                         </div>
                         <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 whitespace-nowrap">
@@ -1568,7 +1582,7 @@ const DashboardProprietaire = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                     {filteredProperties.map((property) => {
                       const photoUrl =
                         property.photos && property.photos.length > 0
@@ -1578,186 +1592,194 @@ const DashboardProprietaire = () => {
                       return (
                         <Card
                           key={property.id}
-                          className="shadow-soft hover:shadow-medium transition-shadow overflow-hidden"
+                          className="shadow-soft hover:shadow-medium transition-shadow overflow-hidden flex flex-col justify-between"
                         >
-                          {photoUrl && (
-                            <div className="h-48 overflow-hidden relative group">
-                              <img
-                                src={photoUrl}
-                                alt={property.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                              {property.photos && property.photos.length > 1 && (
-                                <Badge className="absolute top-2 right-2 bg-black/60 text-white">
-                                  +{property.photos.length - 1} {t('common.photos')}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                           <CardHeader className="p-4 sm:p-6">
-                            <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-lg sm:text-xl">
-                              <span className="font-bold tracking-tight text-neutral-800 dark:text-neutral-100">{property.name}</span>
-                              <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                                <Badge variant="outline" className="capitalize text-[10px] sm:text-xs">{property.property_type}</Badge>
-                                {property.listing_type === 'vente' ? (
-                                  <Badge variant="destructive" className="animate-pulse shadow-sm text-[10px] sm:text-xs">À VENDRE</Badge>
-                               ) : (
-                                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm text-[10px] sm:text-xs">À LOUER</Badge>
+                          <div>
+                            {photoUrl && (
+                              <div className="h-44 sm:h-48 overflow-hidden relative group">
+                                <img
+                                  src={photoUrl}
+                                  alt={property.name}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                                {property.photos && property.photos.length > 1 && (
+                                  <Badge className="absolute top-2 right-2 bg-black/60 text-white text-[10px]">
+                                    +{property.photos.length - 1} {t('common.photos')}
+                                  </Badge>
                                 )}
                               </div>
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {property.address}
-                            </p>
-                            {property.description && (
-                              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                                {property.description}
-                              </p>
                             )}
-                            {/* Afficher le numéro du propriétaire */}
-                            {(() => {
-                              const ownerProfile = property.owner_profiles
-                                ? Array.isArray(property.owner_profiles)
-                                  ? property.owner_profiles[0]
-                                  : property.owner_profiles
-                                : null;
-                              const ownerPhone =
-                                ownerProfile?.contact_phone || ownerProfile?.phone;
-                              return ownerPhone ? (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                                  <Phone className="h-4 w-4" />
-                                  <span>{ownerPhone}</span>
+                            <CardHeader className="p-4 sm:p-5">
+                              <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between text-base sm:text-lg">
+                                <span className="font-bold tracking-tight text-neutral-800 dark:text-neutral-100 line-clamp-1">{property.name}</span>
+                                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                  <Badge variant="outline" className="capitalize text-[10px] px-2 py-0.5">{property.property_type}</Badge>
+                                  {property.listing_type === 'vente' ? (
+                                    <Badge variant="destructive" className="animate-pulse shadow-sm text-[10px] px-2 py-0.5">À VENDRE</Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm text-[10px] px-2 py-0.5">À LOUER</Badge>
+                                  )}
                                 </div>
-                              ) : null;
-                            })()}
-                            <div className="space-y-2 mb-4">
-                              {property.listing_type === 'vente' ? (
-                                <div className="flex flex-col gap-1 p-3 bg-primary/5 rounded-xl border border-primary/10 shadow-inner">
-                                  <span className="text-[10px] text-primary/70 uppercase font-bold tracking-widest">{property.property_type === 'terrain' ? 'Prix du terrain' : 'Prix de vente'}</span>
-                                  <span className="text-xl font-black text-primary tracking-tight">
-                                    {property.sale_price ? formatCurrency(property.sale_price, ownerProfile?.currency || 'XOF') : 'Prix sur demande'}
-                                  </span>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex justify-between text-sm">
-                                    <span>{t('owner.total_units')}:</span>
-                                    <span className="font-semibold">
-                                      {property.property_units?.length || 0}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between text-sm">
-                                    <span>{t('owner.available_units')}:</span>
-                                    <span className="font-semibold text-green-600">
-                                      {property.property_units?.filter(
-                                        (u) => u.is_available
-                                      ).length || 0}
-                                    </span>
-                                  </div>
-                                  {property.property_type === "maison" &&
-                                    property.property_units &&
-                                    property.property_units.length > 0 && (
-                                      <div className="mt-2 pt-2 border-t">
-                                        <p className="text-xs text-muted-foreground mb-1">
-                                          {t('owner.unit_types')}:
-                                        </p>
-                                        <div className="flex flex-wrap gap-1">
-                                          {Array.from(
-                                            new Set(
-                                              property.property_units.map(
-                                                (u) => u.unit_type
-                                              )
-                                            )
-                                          ).map((type) => {
-                                            const count =
-                                              property.property_units.filter(
-                                                (u) => u.unit_type === type
-                                              ).length;
-                                            return (
-                                              <Badge
-                                                key={type}
-                                                variant="outline"
-                                                className="text-xs"
-                                              >
-                                                {count} {type}
-                                                {count > 1 ? "s" : ""}
-                                              </Badge>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    )}
-                                </>
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5">
+                              <p className="text-xs sm:text-sm text-muted-foreground mb-2 truncate">
+                                {property.address}
+                              </p>
+                              {property.description && (
+                                <p className="text-xs sm:text-sm text-muted-foreground mb-4 line-clamp-2">
+                                  {property.description}
+                                </p>
                               )}
-                            </div>
+                              {/* Afficher le numéro du propriétaire */}
+                              {(() => {
+                                const ownerProfile = property.owner_profiles
+                                  ? Array.isArray(property.owner_profiles)
+                                    ? property.owner_profiles[0]
+                                    : property.owner_profiles
+                                  : null;
+                                const ownerPhone =
+                                  ownerProfile?.contact_phone || ownerProfile?.phone;
+                                return ownerPhone ? (
+                                  <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-3">
+                                    <Phone className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate">{ownerPhone}</span>
+                                  </div>
+                                ) : null;
+                              })()}
+                              <div className="space-y-2 mb-4">
+                                {property.listing_type === 'vente' ? (
+                                  <div className="flex flex-col gap-1 p-2.5 sm:p-3 bg-primary/5 rounded-xl border border-primary/10 shadow-inner">
+                                    <span className="text-[10px] text-primary/70 uppercase font-bold tracking-widest">{property.property_type === 'terrain' ? 'Prix du terrain' : 'Prix de vente'}</span>
+                                    <span className="text-base sm:text-xl font-black text-primary tracking-tight truncate">
+                                      {property.sale_price ? formatCurrency(property.sale_price, ownerProfile?.currency || 'XOF') : 'Prix sur demande'}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex justify-between text-xs sm:text-sm">
+                                      <span>{t('owner.total_units')}:</span>
+                                      <span className="font-semibold">
+                                        {property.property_units?.length || 0}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between text-xs sm:text-sm">
+                                      <span>{t('owner.available_units')}:</span>
+                                      <span className="font-semibold text-green-600">
+                                        {property.property_units?.filter(
+                                          (u) => u.is_available
+                                        ).length || 0}
+                                      </span>
+                                    </div>
+                                    {property.property_type === "maison" &&
+                                      property.property_units &&
+                                      property.property_units.length > 0 && (
+                                        <div className="mt-2 pt-2 border-t">
+                                          <p className="text-xs text-muted-foreground mb-1">
+                                            {t('owner.unit_types')}:
+                                          </p>
+                                          <div className="flex flex-wrap gap-1">
+                                            {Array.from(
+                                              new Set(
+                                                property.property_units.map(
+                                                  (u) => u.unit_type
+                                                )
+                                              )
+                                            ).map((type) => {
+                                              const count =
+                                                property.property_units.filter(
+                                                  (u) => u.unit_type === type
+                                                ).length;
+                                              return (
+                                                <Badge
+                                                  key={type}
+                                                  variant="outline"
+                                                  className="text-[10px] px-1.5 py-0.5"
+                                                >
+                                                  {count} {type}
+                                                  {count > 1 ? "s" : ""}
+                                                </Badge>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
+                                  </>
+                                )}
+                              </div>
+                            </CardContent>
+                          </div>
 
-                            <div className="flex items-center justify-between pt-4 border-t">
-                              <div className="flex items-center gap-2">
+                          <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
+                            <div className="flex items-center justify-between pt-3 border-t gap-1.5 flex-wrap">
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 {property.is_published ? (
-                                  <Badge variant="default" className="bg-green-600">
+                                  <Badge variant="default" className="bg-green-600 text-[10px] px-2 py-0.5">
                                     {t('owner.published')}
                                   </Badge>
                                 ) : (
                                   <Badge
                                     variant="secondary"
-                                    className="bg-orange-100 text-orange-800"
+                                    className="bg-orange-100 text-orange-800 text-[10px] px-2 py-0.5"
                                   >
                                     {t('owner.draft')}
                                   </Badge>
                                 )}
                               </div>
-                              <Button
-                                size="sm"
-                                variant={property.is_published ? "outline" : "default"}
-                                onClick={async () => {
-                                  try {
-                                    await togglePropertyPublication(property.id);
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant={property.is_published ? "outline" : "default"}
+                                  className="h-8 text-xs px-2.5 font-semibold"
+                                  onClick={async () => {
+                                    try {
+                                      await togglePropertyPublication(property.id);
 
-                                    toast({
-                                      title: property.is_published
-                                        ? t('owner.property_unpublished')
-                                        : t('owner.property_published'),
-                                      description: property.is_published
-                                        ? t('owner.property_unpublished_desc')
-                                        : t('owner.property_published_desc'),
-                                    });
+                                      toast({
+                                        title: property.is_published
+                                          ? t('owner.property_unpublished')
+                                          : t('owner.property_published'),
+                                        description: property.is_published
+                                          ? t('owner.property_unpublished_desc')
+                                          : t('owner.property_published_desc'),
+                                      });
 
-                                    await loadData();
-                                  } catch (error) {
-                                    toast({
-                                      title: t('common.error'),
-                                      description: error.message,
-                                      variant: "destructive",
-                                    });
-                                  }
-                                }}
-                              >
-                                {property.is_published ? t('owner.unpublish') : t('owner.publish')}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setSelectedPropertyForEdit(property);
-                                  setEditPropertyOpen(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive"
-                                onClick={() => handleDeleteProperty(property.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                                      await loadData();
+                                    } catch (error) {
+                                      toast({
+                                        title: t('common.error'),
+                                        description: error.message,
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                >
+                                  {property.is_published ? t('owner.unpublish') : t('owner.publish')}
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                  onClick={() => {
+                                    setSelectedPropertyForEdit(property);
+                                    setEditPropertyOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-destructive hover:text-destructive/80"
+                                  onClick={() => handleDeleteProperty(property.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
+                            </CardContent>
+                          </Card>
+                        );
                     })}
                   </div>
                 )}
@@ -2414,6 +2436,15 @@ const DashboardProprietaire = () => {
                   />
                 )}
               </div>
+            )}
+
+            {/* Financials & ROI Tab */}
+            {activeTab === "financials" && (
+              <FinancialDashboardTab
+                properties={properties}
+                customGroups={customGroups}
+                currency={ownerProfile?.currency}
+              />
             )}
 
             {/* Maintenance Request Tab */}

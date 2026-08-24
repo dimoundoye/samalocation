@@ -20,10 +20,15 @@ import {
   Layers,
   Sparkles,
   AlertCircle,
-  Loader2
+  Loader2,
+  Folder,
+  FolderPlus,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { createProperty, createPropertyUnits, uploadPhotos, generateAIDescription, getMySubscription, getOwnerProperties } from "@/lib/api";
+import { getPropertyGroups, syncPropertyGroups } from "@/api/propertyGroups";
 import { useAuth } from "@/contexts/AuthContext";
 import { compressImage } from "@/lib/imageCompression";
 import LocationPicker from "./LocationPicker";
@@ -66,6 +71,21 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
   });
   const generalInfoRef = useRef<HTMLDivElement>(null);
 
+  const [customGroups, setCustomGroups] = useState<{ id: string; name: string; propertyIds: string[]; parentId?: string }[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("none");
+  const [newGroupName, setNewGroupName] = useState<string>("");
+  const [newGroupParentId, setNewGroupParentId] = useState<string>("none");
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroupExpand = (groupId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setOpenGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }));
+  };
+
   useEffect(() => {
     if (open) {
       loadSubscription();
@@ -74,15 +94,39 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
   const loadSubscription = async () => {
     try {
-      const [sub, props] = await Promise.all([
+      const [sub, props, groups] = await Promise.all([
         getMySubscription(),
-        getOwnerProperties()
+        getOwnerProperties(),
+        getPropertyGroups()
       ]);
       setSubscription(sub);
       setMyProperties(props || []);
+      setCustomGroups(groups || []);
     } catch (error) {
       console.error("Failed to load initial data:", error);
     }
+  };
+
+  const getFlatGroupOptions = (groups: { id: string; name: string; propertyIds: string[]; parentId?: string }[]) => {
+    const result: { id: string; name: string; label: string; depth: number }[] = [];
+
+    const addNodes = (parentId?: string, depth = 0) => {
+      const children = groups.filter(g => (parentId ? g.parentId === parentId : !g.parentId));
+      children.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+      children.forEach(group => {
+        const prefix = depth > 0 ? `${'\u00A0'.repeat(depth * 3)}↳ ` : '';
+        result.push({
+          id: group.id,
+          name: group.name,
+          label: `${prefix}${depth > 0 ? '📁 ' : '📁 '}${group.name}`,
+          depth
+        });
+        addNodes(group.id, depth + 1);
+      });
+    };
+
+    addNodes(undefined, 0);
+    return result;
   };
 
   // Pour les biens simples, on utilise directement les champs
@@ -290,6 +334,32 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         throw new Error("Erreur lors de la création de la propriété");
       }
 
+      // Rattacher le bien au dossier ou sous-dossier sélectionné (ou créer le nouveau dossier)
+      try {
+        if (selectedGroupId === "new" && newGroupName.trim()) {
+          const createdGroup = {
+            id: `group_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            name: newGroupName.trim(),
+            propertyIds: [property.id],
+            parentId: newGroupParentId !== "none" ? newGroupParentId : undefined
+          };
+          await syncPropertyGroups([...customGroups, createdGroup]);
+        } else if (selectedGroupId && selectedGroupId !== "none" && selectedGroupId !== "new") {
+          const updatedGroups = customGroups.map(g => {
+            if (g.id === selectedGroupId) {
+              const currentProps = g.propertyIds || [];
+              if (!currentProps.includes(property.id)) {
+                return { ...g, propertyIds: [...currentProps, property.id] };
+              }
+            }
+            return g;
+          });
+          await syncPropertyGroups(updatedGroups);
+        }
+      } catch (groupErr) {
+        console.error("Erreur lors du rattachement au dossier:", groupErr);
+      }
+
       toast({
         title: "Bien ajouté",
         description: "Votre bien a été ajouté avec succès. Vous pouvez le publier depuis la liste de vos biens.",
@@ -409,6 +479,9 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
       rooms_count: "",
       rent_period: "mois",
     });
+    setSelectedGroupId("none");
+    setNewGroupName("");
+    setNewGroupParentId("none");
     setUploading(false);
   };
 
@@ -527,6 +600,157 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                         placeholder="Ex: 123 Rue de la Paix, Centre Ville"
                       />
                     </div>
+                  </div>
+
+                  {/* Section Dossier / Groupe de biens */}
+                  <div className="border-t pt-4 mt-2 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Folder className="h-4 w-4 text-primary" />
+                      <Label className="font-semibold text-sm">Dossier / Immeuble de rattachement (Optionnel)</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span>Classez ce bien dans un dossier. Cliquez sur la flèche</span>
+                      <ChevronDown className="h-3 w-3 inline text-primary font-bold" />
+                      <span>pour afficher/masquer les sous-dossiers.</span>
+                    </p>
+
+                    {/* Arborescence interactive des dossiers */}
+                    <div
+                      className="border rounded-lg p-3 bg-muted/20 space-y-2 max-h-60 overflow-y-auto overscroll-contain touch-pan-y"
+                      onWheel={(e) => e.stopPropagation()}
+                      onTouchMove={(e) => e.stopPropagation()}
+                    >
+                      <div
+                        onClick={() => {
+                          setSelectedGroupId("none");
+                          setNewGroupName("");
+                          setNewGroupParentId("none");
+                        }}
+                        className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all ${
+                          selectedGroupId === "none"
+                            ? "bg-primary/10 border-2 border-primary font-bold text-primary shadow-sm"
+                            : "bg-background hover:bg-muted/60 border border-border"
+                        }`}
+                      >
+                        <span className="text-xs">-- Aucun dossier (Bien indépendant) --</span>
+                      </div>
+
+                      {(() => {
+                        const renderGroupNodes = (parentId?: string, depth = 0) => {
+                          const children = customGroups.filter(g => (parentId ? g.parentId === parentId : !g.parentId));
+                          children.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+                          if (children.length === 0) return null;
+
+                          return (
+                            <div className={`space-y-1.5 ${depth > 0 ? "ml-4 pl-2 border-l-2 border-primary/20" : ""}`}>
+                              {children.map(group => {
+                                const subChildren = customGroups.filter(g => g.parentId === group.id);
+                                const hasSub = subChildren.length > 0;
+                                const isCollapsed = !openGroups[group.id];
+                                const isSelected = selectedGroupId === group.id;
+
+                                return (
+                                  <div key={group.id} className="space-y-1">
+                                    <div
+                                      onClick={() => {
+                                        setSelectedGroupId(group.id);
+                                        setNewGroupName("");
+                                        setNewGroupParentId("none");
+                                      }}
+                                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
+                                        isSelected
+                                          ? "bg-primary/10 border-2 border-primary font-bold text-primary shadow-sm"
+                                          : "bg-background hover:bg-muted/60 border border-border"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        {hasSub ? (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => toggleGroupExpand(group.id, e)}
+                                            className="p-1 hover:bg-muted rounded transition-colors text-primary"
+                                            title={isCollapsed ? "Afficher les sous-dossiers" : "Masquer les sous-dossiers"}
+                                          >
+                                            {isCollapsed ? (
+                                              <ChevronRight className="h-4 w-4 text-primary font-bold" />
+                                            ) : (
+                                              <ChevronDown className="h-4 w-4 text-primary font-bold" />
+                                            )}
+                                          </button>
+                                        ) : depth > 0 ? (
+                                          <span className="text-xs text-muted-foreground font-mono">↳</span>
+                                        ) : null}
+
+                                        <Folder className={`h-4 w-4 ${depth === 0 ? "text-amber-500 fill-amber-100" : "text-amber-400 fill-amber-50"}`} />
+                                        <span className="text-xs font-medium">{group.name}</span>
+                                      </div>
+
+                                      {hasSub && (
+                                        <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-medium">
+                                          {subChildren.length} sous-dossier{subChildren.length > 1 ? "s" : ""}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Sub-folders displayed only when NOT collapsed */}
+                                    {hasSub && !isCollapsed && renderGroupNodes(group.id, depth + 1)}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        };
+
+                        return renderGroupNodes(undefined, 0);
+                      })()}
+
+                      <div
+                        onClick={() => setSelectedGroupId("new")}
+                        className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border border-dashed ${
+                          selectedGroupId === "new"
+                            ? "bg-primary/10 border-primary font-bold text-primary shadow-sm"
+                            : "border-primary/40 text-primary hover:bg-primary/5 bg-background"
+                        }`}
+                      >
+                        <FolderPlus className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-medium">+ Créer un nouveau dossier...</span>
+                      </div>
+                    </div>
+
+                    {selectedGroupId === "new" && (
+                      <div className="mt-3 p-3 bg-muted/40 rounded-lg border space-y-3 animate-in fade-in duration-200">
+                        <div>
+                          <Label htmlFor="new-group-name" className="text-xs font-medium">Nom du nouveau dossier *</Label>
+                          <Input
+                            id="new-group-name"
+                            placeholder="Ex: Immeuble Horizon, Résidence Les Palmiers..."
+                            value={newGroupName}
+                            onChange={(e) => setNewGroupName(e.target.value)}
+                            className="mt-1 bg-background"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-medium">Dossier parent (Optionnel - pour créer un sous-dossier)</Label>
+                          <Select
+                            value={newGroupParentId}
+                            onValueChange={setNewGroupParentId}
+                          >
+                            <SelectTrigger className="mt-1 bg-background">
+                              <SelectValue placeholder="Aucun (Dossier principal)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">-- Aucun (Dossier principal) --</SelectItem>
+                              {getFlatGroupOptions(customGroups).map((item) => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {item.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4">

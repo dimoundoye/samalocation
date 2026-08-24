@@ -28,6 +28,22 @@ const ownerController = {
     async updateProfile(req, res, next) {
         try {
             const userId = req.ownerId;
+            const { deleteMultipleFromCloudinary } = require('../utils/cloudinaryHelper');
+
+            const existingProfile = await Owner.findProfileById(userId);
+            if (existingProfile) {
+                const oldFiles = [];
+                if (req.body.logo_url && existingProfile.logo_url && req.body.logo_url !== existingProfile.logo_url) {
+                    oldFiles.push(existingProfile.logo_url);
+                }
+                if (req.body.signature_url && existingProfile.signature_url && req.body.signature_url !== existingProfile.signature_url) {
+                    oldFiles.push(existingProfile.signature_url);
+                }
+                if (oldFiles.length > 0) {
+                    deleteMultipleFromCloudinary(oldFiles);
+                }
+            }
+
             const profile = await Owner.updateProfile(userId, req.body);
 
             // Journal d'activité

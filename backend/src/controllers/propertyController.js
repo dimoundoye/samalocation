@@ -2,6 +2,7 @@ const Property = require('../models/propertyModel');
 const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
 const logActivity = require('../utils/logActivity');
+const { deleteMultipleFromCloudinary } = require('../utils/cloudinaryHelper');
 
 // Simple in-memory cache for public properties
 const propertyCache = new Map();
@@ -184,20 +185,38 @@ const propertyController = {
             const ownerId = req.ownerId;
             const propertyId = req.params.id;
 
+            // 1. Récupérer les informations du bien avant suppression pour extraire ses photos
+            const property = await Property.findById(propertyId);
+
+            // 2. Extraire toutes les photos associées
+            const photosToDelete = [];
+            if (property) {
+                if (property.photos && Array.isArray(property.photos)) {
+                    photosToDelete.push(...property.photos);
+                }
+                if (property.photo_url) {
+                    photosToDelete.push(property.photo_url);
+                }
+            }
+
+            // 3. Supprimer le bien de la base de données
             const success = await Property.delete(propertyId, ownerId);
             if (!success) {
                 return response.error(res, 'Property not found or not owned by you', 404);
             }
 
+            // 4. Nettoyer automatiquement les fichiers photos sur Cloudinary
+            await deleteMultipleFromCloudinary(photosToDelete);
+
             clearPropertyCache();
 
-            // Journal d'activité (les détails ont déjà été supprimés, on utilise l'ID)
+            // Journal d'activité
             await logActivity(req, {
                 action: 'DELETE',
                 entityType: 'property',
                 entityId: propertyId,
-                entityLabel: `Bien supprimé (ID: ${propertyId})`,
-                metadata: {}
+                entityLabel: `Bien "${property?.name || propertyId}" supprimé avec ses photos`,
+                metadata: { photosCount: photosToDelete.length }
             });
 
             return response.success(res, null, 'Property deleted successfully');

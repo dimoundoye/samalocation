@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,8 @@ import {
     AlertCircle,
     TrendingUp,
     Eye,
-    EyeOff
+    EyeOff,
+    CheckCircle2
 } from "lucide-react";
 import { getCollaborators, addCollaborator, updateCollaboratorPermissions, removeCollaborator } from "@/api/owner";
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +45,44 @@ import { OwnerActivityLog } from "@/components/owner/OwnerActivityLog";
 
 export const OwnerTeamTab = () => {
     const { toast } = useToast();
-    const { hasFeature, loading: subLoading } = useSubscription();
+    const { subscription, hasFeature, loading: subLoading } = useSubscription();
+
+    const isProfessional = useMemo(() => {
+        if (!subscription || !subscription.plan_name) return false;
+
+        if (subscription.status !== 'active') return false;
+
+        const plan = subscription.plan_name.toLowerCase();
+        const isProPlan = plan === 'professional' || plan === 'professionnel' || plan === 'agence' || plan === 'enterprise';
+        if (!isProPlan) return false;
+
+        if (subscription.expires_at) {
+            const expiryDate = new Date(subscription.expires_at);
+            const expiryEndOfDay = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate(), 23, 59, 59, 999).getTime();
+            if (new Date().getTime() > expiryEndOfDay) {
+                return false;
+            }
+        }
+
+        return true;
+    }, [subscription]);
+
+    const isProExpired = useMemo(() => {
+        if (!subscription || !subscription.plan_name) return false;
+        const plan = subscription.plan_name.toLowerCase();
+        const isProPlan = plan === 'professional' || plan === 'professionnel' || plan === 'agence' || plan === 'enterprise';
+        if (!isProPlan) return false;
+
+        if (subscription.status !== 'active') return true;
+
+        if (subscription.expires_at) {
+            const expiryDate = new Date(subscription.expires_at);
+            const expiryEndOfDay = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate(), 23, 59, 59, 999).getTime();
+            return new Date().getTime() > expiryEndOfDay;
+        }
+
+        return false;
+    }, [subscription]);
     const hasMultiUser = hasFeature('multi_user');
     const [collaborators, setCollaborators] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -162,6 +200,65 @@ export const OwnerTeamTab = () => {
             <div className="flex flex-col items-center justify-center p-12 space-y-4">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="text-muted-foreground animate-pulse">Chargement de votre équipe...</p>
+            </div>
+        );
+    }
+
+    if (!subLoading && !isProfessional) {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center bg-card border rounded-2xl shadow-sm my-4 space-y-5">
+                <div className="h-16 w-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+                    <Crown className="h-8 w-8 text-amber-500" />
+                </div>
+                <div className="space-y-2 max-w-md">
+                    <Badge className="bg-amber-500 text-white hover:bg-amber-600 gap-1 px-3 py-1 text-xs">
+                        <Crown className="h-3.5 w-3.5" /> Plan Professionnel
+                    </Badge>
+                    <h3 className="text-xl font-bold tracking-tight">
+                        {isProExpired
+                            ? "Abonnement Professionnel expiré"
+                            : "Gestion de l'Équipe & Collaborateurs"}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                        {isProExpired
+                            ? "Votre abonnement Professionnel est terminé. Veuillez renouveler votre abonnement pour rouvrir la gestion de vos collaborateurs et de votre équipe."
+                            : "La gestion multi-utilisateurs et l'invitation de gérants ou collaborateurs avec accès personnalisés sont réservées exclusivement aux abonnés au plan Professionnel."}
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-lg text-left text-xs bg-muted/50 p-4 rounded-xl border">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <span>Invitations illimitées</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <span>Gestion des permissions</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <span>Historique d'activité</span>
+                    </div>
+                </div>
+
+                <Button
+                    className="bg-primary hover:bg-primary/90 text-white gap-2 font-semibold px-6 h-11"
+                    onClick={() => {
+                        const subTab = document.querySelector('[data-value="subscription"]') as HTMLElement || document.querySelector('[data-tab="subscription"]') as HTMLElement;
+                        if (subTab) {
+                            subTab.click();
+                        } else {
+                            window.location.href = '/dashboard/proprietaire?tab=subscription';
+                        }
+                    }}
+                >
+                    <Crown className="h-4 w-4 text-amber-300" />
+                    <span>
+                        {isProExpired
+                            ? "Renouveler le plan Professionnel"
+                            : "Passer au plan Professionnel"}
+                    </span>
+                </Button>
             </div>
         );
     }

@@ -174,6 +174,138 @@ const maintenanceController = {
         } catch (error) {
             next(error);
         }
+    },
+
+    /**
+     * Update a maintenance request (Tenant Only)
+     */
+    async updateRequest(req, res, next) {
+        try {
+            const { id } = req.params;
+            const { title, description, priority, photos } = req.body;
+            const userId = req.user.id;
+            const { deleteMultipleFromCloudinary } = require('../utils/cloudinaryHelper');
+
+            const request = await MaintenanceRequest.findById(id);
+            if (!request) {
+                return response.error(res, 'Signalement non trouvé.', 404);
+            }
+
+            // Security: check if request belongs to tenant
+            const leases = await Tenant.findActiveLeasesByUserId(userId);
+            const isMine = leases.some(l => l.id === request.tenant_id);
+            if (!isMine) {
+                return response.error(res, 'Vous n\'êtes pas autorisé à modifier ce signalement.', 403);
+            }
+
+            // Clean up removed photos from Cloudinary
+            const oldPhotos = Array.isArray(request.photos) ? request.photos : [];
+            const newPhotos = Array.isArray(photos) ? photos : [];
+            const removedPhotos = oldPhotos.filter(oldUrl => !newPhotos.includes(oldUrl));
+            if (removedPhotos.length > 0) {
+                deleteMultipleFromCloudinary(removedPhotos);
+            }
+
+            const updated = await MaintenanceRequest.update(id, {
+                title: title || request.title,
+                description: description || request.description,
+                priority: priority || request.priority,
+                photos: newPhotos
+            });
+
+            // Notify Owner
+            try {
+                const { rows } = await db.query('SELECT owner_id FROM properties WHERE id = $1', [request.property_id]);
+                if (rows[0] && rows[0].owner_id) {
+                    await Notification.create({
+                        id: uuidv4(),
+                        user_id: rows[0].owner_id,
+                        type: 'maintenance',
+                        title: 'Signalement modifié par le locataire',
+                        message: `Le locataire a mis à jour le signalement "${title || request.title}".`,
+                        link: '/owner-dashboard?tab=maintenance'
+                    });
+                }
+            } catch (notifErr) {
+                console.error('Failed to notify owner of maintenance update:', notifErr);
+            }
+
+            // Log activity
+            await logActivity(req, {
+                action: 'UPDATE',
+                entityType: 'maintenance',
+                entityId: id,
+                entityLabel: `Signalement "${title || request.title}" modifié par le locataire`,
+                metadata: { title, priority }
+            });
+
+            return response.success(res, updated, 'Signalement mis à jour avec succès.');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Delete a maintenance request (Tenant Only)
+     */
+    async deleteRequest(req, res, next) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+            const { deleteMultipleFromCloudinary } = require('../utils/cloudinaryHelper');
+
+            const request = await MaintenanceRequest.findById(id);
+            if (!request) {
+                return response.error(res, 'Signalement non trouvé.', 404);
+            }
+
+            // Security: check if request belongs to tenant or owner
+            const leases = await Tenant.findActiveLeasesByUserId(userId);
+            const isMine = leases.some(l => l.id === request.tenant_id);
+
+            const { rows: ownerRows } = await db.query('SELECT owner_id FROM properties WHERE id = $1', [request.property_id]);
+            const isOwner = ownerRows[0] && (ownerRows[0].owner_id === req.ownerId || ownerRows[0].owner_id === userId);
+
+            if (!isMine && !isOwner) {
+                return response.error(res, 'Vous n\'êtes pas autorisé à supprimer ce signalement.', 403);
+            }
+
+            // Clean photos from Cloudinary
+            if (Array.isArray(request.photos) && request.photos.length > 0) {
+                deleteMultipleFromCloudinary(request.photos);
+            }
+
+            await MaintenanceRequest.delete(id);
+
+            // Notify Owner if deleted by tenant
+            if (isMine && ownerRows[0] && ownerRows[0].owner_id) {
+                try {
+                    await Notification.create({
+                        id: uuidv4(),
+                        user_id: ownerRows[0].owner_id,
+                        type: 'maintenance',
+                        title: 'Signalement supprimé par le locataire',
+                        message: `Le locataire a annulé/supprimé le signalement "${request.title}".`,
+                        link: '/owner-dashboard?tab=maintenance'
+                    });
+                } catch (notifErr) {
+                    console.error('Failed to notify owner of maintenance deletion:', notifErr);
+                }
+            }
+
+            // Log activity
+            await logActivity(req, {
+                action: 'DELETE',
+                entityType: 'maintenance',
+                entityId: id,
+                entityLabel: `Signalement "${request.title}" supprimé`,
+                metadata: {}
+            });
+
+            return response.success(res, null, 'Signalement supprimé avec succès.');
+        } catch (error) {
+            next(error);
+        }
     }
 };
 

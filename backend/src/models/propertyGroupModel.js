@@ -3,7 +3,7 @@ const db = require('../config/db');
 const PropertyGroup = {
     async findAllByOwnerId(ownerId) {
         const { rows } = await db.query(
-            'SELECT id, name, property_ids as "propertyIds", parent_id as "parentId" FROM property_groups WHERE owner_id = $1 ORDER BY created_at ASC',
+            'SELECT id, name, property_ids as "propertyIds", parent_id as "parentId" FROM property_groups WHERE owner_id = $1 ORDER BY LOWER(name) ASC, created_at ASC',
             [ownerId]
         );
         return rows.map(r => ({

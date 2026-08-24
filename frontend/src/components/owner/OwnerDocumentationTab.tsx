@@ -20,7 +20,8 @@ import {
   Monitor,
   Lightbulb,
   ArrowRight,
-  Download
+  Download,
+  TrendingUp
 } from "lucide-react";
 
 export const OwnerDocumentationTab = () => {
@@ -151,6 +152,21 @@ export const OwnerDocumentationTab = () => {
         "Pour retirer vos fonds cumulés, cliquez sur 'Retirer mes fonds' dans l'onglet 'Mon portefeuille', saisissez votre numéro de virement, le montant et confirmez avec votre mot de passe."
       ],
       tip: "Activer cette option réduit vos retards de paiement de 80% car vos locataires n'ont plus besoin de se déplacer ou de faire des transferts manuels."
+    },
+    {
+      id: "financial-dashboard",
+      title: "Trésorerie & Rentabilité (ROI)",
+      icon: <TrendingUp className="h-5 w-5 text-emerald-500" />,
+      purpose: "Suivez la santé financière de votre patrimoine immobilier en temps réel. Analysez vos loyers encaissés, enregistrez vos dépenses d'entretien et suivez votre Cash Flow Net ainsi que votre taux d'occupation par année, dossier ou bien.",
+      steps: [
+        "Allez dans l'onglet 'Trésorerie'.",
+        "Utilisez les filtres par Année (déterminés dynamiquement), par Dossier ou par Bien.",
+        "Consultez les cartes KPI : Cash Flow Net (Revenus - Dépenses), Loyers Encaissés, Dépenses Totales et Taux d'Occupation.",
+        "Visualisez l'histogramme des flux mensuels (Revenus vs Dépenses) et le diagramme circulaire de répartition des charges.",
+        "Pour ajouter une charge (travaux, réparation, taxe, etc.), cliquez sur '+ Ajouter dépense'.",
+        "Exportez vos données en CSV ou téléchargez un rapport PDF officiel complet avec diagrammes en 1 clic via le bouton 'Télécharger PDF'."
+      ],
+      tip: "Le rapport PDF téléchargé inclut l'en-tête officiel, vos diagrammes colorés et le détail de vos dépenses, idéal pour la comptabilité."
     },
     {
       id: "collaborators",

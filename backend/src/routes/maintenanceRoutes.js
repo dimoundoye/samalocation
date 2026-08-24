@@ -9,6 +9,8 @@ router.use(authMiddleware);
 // Tenant routes
 router.post('/', maintenanceController.create);
 router.get('/tenant', maintenanceController.getTenantRequests);
+router.put('/:id', maintenanceController.updateRequest);
+router.delete('/:id', maintenanceController.deleteRequest);
 
 // Owner routes
 router.get('/owner', maintenanceController.getOwnerRequests);

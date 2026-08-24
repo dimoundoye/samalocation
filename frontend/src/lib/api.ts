@@ -215,6 +215,19 @@ export const updateMaintenanceRequestStatus = async (id: string, status: string)
     });
 };
 
+export const updateMaintenanceRequest = async (id: string, requestData: any) => {
+    return baseClient(`/maintenance/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(requestData),
+    });
+};
+
+export const deleteMaintenanceRequest = async (id: string) => {
+    return baseClient(`/maintenance/${id}`, {
+        method: "DELETE",
+    });
+};
+
 
 // --- Favorites ---
 

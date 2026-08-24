@@ -152,6 +152,8 @@ const Pricing = () => {
                 "Consultation dossiers digitaux",
                 "Logements ILLIMITÉS",
                 "Gérance de locataires ILLIMITÉE",
+                "Trésorerie & Rentabilité (ROI)",
+                "Bilan Financier & Export PDF/CSV",
                 "Export de fichier Excel (Gérance)",
                 "Modèles de contrat personnalisés (import PDF/Word)",
                 "Gestion Multi-utilisateurs (Collaborateurs)",

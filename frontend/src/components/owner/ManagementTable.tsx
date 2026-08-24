@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import XLSX from "xlsx-js-style";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -62,6 +63,149 @@ interface ManagementTableProps {
     canSeeRevenue?: boolean;
 }
 
+const HierarchicalGroupSelector = ({
+    groups,
+    value,
+    onSelect,
+    excludeGroupId,
+    isDescendantFn,
+    rootLabel = "Aucun (Racine)"
+}: {
+    groups: { id: string; name: string; propertyIds: string[]; parentId?: string }[];
+    value: string;
+    onSelect: (groupId: string) => void;
+    excludeGroupId?: string;
+    isDescendantFn?: (parentId: string, childId: string) => boolean;
+    rootLabel?: string;
+}) => {
+    const [open, setOpen] = useState(false);
+    const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+
+    const toggleExpand = (groupId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setOpenMap(prev => ({
+            ...prev,
+            [groupId]: !prev[groupId]
+        }));
+    };
+
+    const selectedGroup = groups.find(g => g.id === value);
+    const displayLabel = value === "root" || value === "none" || !selectedGroup
+        ? rootLabel
+        : selectedGroup.name;
+
+    const renderTreeNodes = (parentId?: string, depth = 0) => {
+        let children = groups.filter(g => (parentId ? g.parentId === parentId : !g.parentId));
+        if (excludeGroupId && isDescendantFn) {
+            children = children.filter(g => g.id !== excludeGroupId && !isDescendantFn(excludeGroupId, g.id));
+        }
+        children.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+
+        if (children.length === 0) return null;
+
+        return (
+            <div className={`space-y-1 ${depth > 0 ? "ml-3 pl-2 border-l border-primary/20" : ""}`}>
+                {children.map(group => {
+                    const subChildren = groups.filter(g => g.parentId === group.id);
+                    const hasSub = subChildren.length > 0;
+                    const isCollapsed = !openMap[group.id];
+                    const isSelected = value === group.id;
+
+                    return (
+                        <div key={group.id} className="space-y-1">
+                            <div
+                                onClick={() => {
+                                    onSelect(group.id);
+                                    setOpen(false);
+                                }}
+                                className={`flex items-center justify-between p-1.5 rounded cursor-pointer text-xs transition-colors ${
+                                    isSelected
+                                        ? "bg-primary/10 font-bold text-primary border border-primary/30"
+                                        : "hover:bg-muted/80 bg-background border border-transparent"
+                                }`}
+                            >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    {hasSub ? (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => toggleExpand(group.id, e)}
+                                            className="p-0.5 hover:bg-muted rounded transition-colors text-primary shrink-0"
+                                            title={isCollapsed ? "Afficher les sous-dossiers" : "Masquer les sous-dossiers"}
+                                        >
+                                            {isCollapsed ? (
+                                                <ChevronRight className="h-3.5 w-3.5 text-primary font-bold" />
+                                            ) : (
+                                                <ChevronDown className="h-3.5 w-3.5 text-primary font-bold" />
+                                            )}
+                                        </button>
+                                    ) : depth > 0 ? (
+                                        <span className="text-[10px] text-muted-foreground font-mono shrink-0">↳</span>
+                                    ) : null}
+
+                                    <Folder className={`h-3.5 w-3.5 shrink-0 ${depth === 0 ? "text-amber-500 fill-amber-100" : "text-amber-400 fill-amber-50"}`} />
+                                    <span className="truncate">{group.name}</span>
+                                </div>
+
+                                {hasSub && (
+                                    <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0 ml-1">
+                                        {subChildren.length}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Render sub-folders only when NOT collapsed */}
+                            {hasSub && !isCollapsed && renderTreeNodes(group.id, depth + 1)}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between h-9 px-3 text-xs bg-background"
+                >
+                    <span className="truncate flex items-center gap-1.5">
+                        <Folder className="h-3.5 w-3.5 text-amber-500 fill-amber-100 shrink-0" />
+                        <span>{displayLabel}</span>
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50 ml-1" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-2 bg-popover shadow-lg border rounded-md" align="start">
+                <div
+                    className="space-y-1 max-h-60 overflow-y-auto overscroll-contain touch-pan-y"
+                    onWheel={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                >
+                    <div
+                        onClick={() => {
+                            onSelect("root");
+                            setOpen(false);
+                        }}
+                        className={`p-1.5 rounded cursor-pointer text-xs transition-colors ${
+                            value === "root" || value === "none"
+                                ? "bg-primary/10 font-bold text-primary border border-primary/30"
+                                : "hover:bg-muted/80 bg-background border border-transparent"
+                        }`}
+                    >
+                        {rootLabel}
+                    </div>
+
+                    {renderTreeNodes(undefined, 0)}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+};
+
 export const ManagementTable = ({
     tenants,
     receipts,
@@ -88,6 +232,7 @@ export const ManagementTable = ({
     const userGroupsKey = propUserGroupsKey || defaultGroupsKey;
 
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+    const [openGroupsInModal, setOpenGroupsInModal] = useState<Record<string, boolean>>({});
     const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
     const [newGroupParentId, setNewGroupParentId] = useState<string>("root");
@@ -99,6 +244,43 @@ export const ManagementTable = ({
         description: "",
         onConfirm: () => {},
     });
+
+    const toggleModalGroupExpand = (groupId: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setOpenGroupsInModal(prev => ({
+            ...prev,
+            [groupId]: !prev[groupId]
+        }));
+    };
+
+    const getFormattedGroupOptions = (
+        groups: { id: string; name: string; propertyIds: string[]; parentId?: string }[],
+        excludeGroupId?: string
+    ) => {
+        const result: { id: string; name: string; label: string; depth: number }[] = [];
+
+        const addNodes = (parentId?: string, depth = 0) => {
+            let children = groups.filter(g => (parentId ? g.parentId === parentId : !g.parentId));
+            if (excludeGroupId) {
+                children = children.filter(g => g.id !== excludeGroupId && !isDescendant(excludeGroupId, g.id));
+            }
+            children.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+
+            children.forEach(group => {
+                const prefix = depth > 0 ? `${'\u00A0'.repeat(depth * 3)}↳ ` : '';
+                result.push({
+                    id: group.id,
+                    name: group.name,
+                    label: `${prefix}📁 ${group.name}`,
+                    depth
+                });
+                addNodes(group.id, depth + 1);
+            });
+        };
+
+        addNodes(undefined, 0);
+        return result;
+    };
 
     const enterGroup = (groupId: string) => {
         onNavigationChange(prev => [...prev, groupId]);
@@ -357,55 +539,236 @@ export const ManagementTable = ({
     };
 
     const handleExport = () => {
-        const headers = ["Locataire", "Logement", "Unité", ...months.map(m => m.label), "Total Annuel"];
-        const rows: string[][] = [];
+        const monthNames = [
+            "JANVIER", "FÉVRIER", "MARS", "AVRIL", "MAI", "JUIN",
+            "JUILLET", "AOÛT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DÉCEMBRE"
+        ];
 
-        const collectRows = (nodes: any[], groupName = "") => {
-            if (!nodes) return;
-            nodes.forEach(node => {
-                const currentPath = groupName ? `${groupName} > ${node.name}` : node.name;
+        const grandMonthlyTotals = Array(12).fill(0);
+        let grandAnnualTotal = 0;
 
-                if (node.type === 'property') {
-                    (node.units || []).forEach(({ unit, tenant }: any) => {
-                        let annualTotal = 0;
-                        const monthlyAmounts = months.map(month => {
-                            const nodeReceipts = getReceiptsForMonth(unit?.id, tenant, month.id);
-                            const amount = nodeReceipts.reduce((sum, r) => sum + (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0), 0);
-                            annualTotal += amount;
-                            return amount.toString();
-                        });
-                        rows.push([
-                            tenant ? tenant.full_name : "VACANT",
-                            currentPath,
-                            unit?.unit_number || "N/A",
-                            ...monthlyAmounts,
-                            annualTotal.toString()
-                        ]);
-                    });
-                } else if (node.children) {
-                    collectRows(node.children, currentPath);
-                }
-            });
+        const ws_data: any[][] = [];
+
+        // Helper style definitions
+        const borderThin = {
+            top: { style: "thin", color: { rgb: "D1D5DB" } },
+            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+            left: { style: "thin", color: { rgb: "D1D5DB" } },
+            right: { style: "thin", color: { rgb: "D1D5DB" } }
         };
 
-        collectRows(groupedData);
+        const createCell = (val: any, style: any) => ({ v: val, s: style });
 
-        const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(";")).join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Gerance_${selectedYear}_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Title Row
+        ws_data.push([
+            createCell(`RAPPORT DE GÉRANCE FINANCIÈRE - ${selectedYear}`, {
+                font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "0B1B3D" } },
+                alignment: { horizontal: "left", vertical: "center" }
+            })
+        ]);
 
-        // Journal d'activité — Export Excel
+        ws_data.push([
+            createCell(`Généré le ${new Date().toLocaleDateString('fr-FR')} | Devise : ${currency}`, {
+                font: { italic: true, sz: 10, color: { rgb: "4B5563" } }
+            })
+        ]);
+
+        ws_data.push([]); // Empty separator
+
+        const processNode = (node: any, pathPrefix = "") => {
+            const propertyName = pathPrefix ? `${pathPrefix} > ${node.name}` : node.name;
+            const unitsList = node.units || [];
+
+            if (unitsList.length > 0) {
+                // Property Group Section Header Row (Blue banner)
+                ws_data.push([
+                    createCell(`PROPRIÉTÉ / DOSSIER : ${propertyName.toUpperCase()}`, {
+                        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } },
+                        fill: { fgColor: { rgb: "1E3A8A" } },
+                        alignment: { horizontal: "left", vertical: "center" }
+                    })
+                ]);
+
+                // Table Header Row
+                const headerRow: any[] = [
+                    "UNITÉ / LOCALISATION",
+                    "PRÉNOMS & NOMS",
+                    "TÉLÉPHONE",
+                    ...monthNames,
+                    "TOTAL ANNUEL"
+                ].map(h => createCell(h, {
+                    font: { bold: true, sz: 10, color: { rgb: "1F2937" } },
+                    fill: { fgColor: { rgb: "E5E7EB" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: borderThin
+                }));
+                ws_data.push(headerRow);
+
+                const propertyMonthlyTotals = Array(12).fill(0);
+                let propertyAnnualTotal = 0;
+
+                unitsList.forEach(({ unit, tenant }: any) => {
+                    let tenantAnnualTotal = 0;
+                    const unitName = unit?.unit_number ? `Unité ${unit.unit_number}` : (unit?.name || node.name);
+                    const tenantName = tenant ? tenant.full_name : "VACANT / DISPONIBLE";
+                    const phone = tenant?.phone || tenant?.contact_phone || "---";
+
+                    const row: any[] = [
+                        createCell(unitName, {
+                            font: { bold: true, sz: 10, color: { rgb: "111827" } },
+                            fill: { fgColor: { rgb: "F9FAFB" } },
+                            border: borderThin
+                        }),
+                        createCell(tenantName, {
+                            font: { bold: tenant ? true : false, sz: 10, color: tenant ? { rgb: "111827" } : { rgb: "9CA3AF" } },
+                            border: borderThin
+                        }),
+                        createCell(phone, {
+                            font: { sz: 10, color: { rgb: "4B5563" } },
+                            alignment: { horizontal: "center" },
+                            border: borderThin
+                        })
+                    ];
+
+                    months.forEach((month, idx) => {
+                        const nodeReceipts = getReceiptsForMonth(unit?.id, tenant, month.id);
+                        const amount = nodeReceipts.reduce((sum, r) => sum + (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0), 0);
+
+                        tenantAnnualTotal += amount;
+                        propertyMonthlyTotals[idx] += amount;
+                        grandMonthlyTotals[idx] += amount;
+
+                        if (amount > 0) {
+                            row.push(createCell(amount, {
+                                font: { bold: true, sz: 10, color: { rgb: "065F46" } },
+                                fill: { fgColor: { rgb: "ECFDF5" } },
+                                alignment: { horizontal: "right" },
+                                border: borderThin,
+                                z: "#,##0"
+                            }));
+                        } else {
+                            row.push(createCell(0, {
+                                font: { sz: 10, color: { rgb: "991B1B" } },
+                                fill: { fgColor: { rgb: "FEF2F2" } },
+                                alignment: { horizontal: "right" },
+                                border: borderThin
+                            }));
+                        }
+                    });
+
+                    propertyAnnualTotal += tenantAnnualTotal;
+                    grandAnnualTotal += tenantAnnualTotal;
+
+                    // Tenant Annual Total
+                    row.push(createCell(tenantAnnualTotal, {
+                        font: { bold: true, sz: 10, color: { rgb: "1F2937" } },
+                        fill: { fgColor: { rgb: "F3F4F6" } },
+                        alignment: { horizontal: "right" },
+                        border: borderThin,
+                        z: "#,##0"
+                    }));
+
+                    ws_data.push(row);
+                });
+
+                // Property TOTAL Row
+                const propertyTotalRow: any[] = [
+                    createCell(`TOTAL ${node.name.toUpperCase()}`, {
+                        font: { bold: true, sz: 10, color: { rgb: "111827" } },
+                        fill: { fgColor: { rgb: "D1D5DB" } },
+                        border: borderThin
+                    }),
+                    createCell("", { fill: { fgColor: { rgb: "D1D5DB" } }, border: borderThin }),
+                    createCell("", { fill: { fgColor: { rgb: "D1D5DB" } }, border: borderThin })
+                ];
+
+                propertyMonthlyTotals.forEach(amt => {
+                    propertyTotalRow.push(createCell(amt, {
+                        font: { bold: true, sz: 10, color: { rgb: "111827" } },
+                        fill: { fgColor: { rgb: "D1D5DB" } },
+                        alignment: { horizontal: "right" },
+                        border: borderThin,
+                        z: "#,##0"
+                    }));
+                });
+
+                propertyTotalRow.push(createCell(propertyAnnualTotal, {
+                    font: { bold: true, sz: 11, color: { rgb: "1E3A8A" } },
+                    fill: { fgColor: { rgb: "D1D5DB" } },
+                    alignment: { horizontal: "right" },
+                    border: borderThin,
+                    z: "#,##0"
+                }));
+
+                ws_data.push(propertyTotalRow);
+                ws_data.push([]); // Separator between properties
+            }
+
+            if (node.children) {
+                node.children.forEach((child: any) => processNode(child, propertyName));
+            }
+        };
+
+        (groupedData || []).forEach((node: any) => processNode(node));
+
+        // Grand Total Row (Navy Blue Banner)
+        const grandTotalRow: any[] = [
+            createCell(`TOTAL MENSUEL PORTAFEUILLE (${selectedYear})`, {
+                font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "0B1B3D" } },
+                border: borderThin
+            }),
+            createCell("", { fill: { fgColor: { rgb: "0B1B3D" } }, border: borderThin }),
+            createCell("", { fill: { fgColor: { rgb: "0B1B3D" } }, border: borderThin })
+        ];
+
+        grandMonthlyTotals.forEach(amt => {
+            grandTotalRow.push(createCell(amt, {
+                font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "0B1B3D" } },
+                alignment: { horizontal: "right" },
+                border: borderThin,
+                z: "#,##0"
+            }));
+        });
+
+        grandTotalRow.push(createCell(grandAnnualTotal, {
+            font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "0B1B3D" } },
+            alignment: { horizontal: "right" },
+            border: borderThin,
+            z: "#,##0"
+        }));
+
+        ws_data.push(grandTotalRow);
+
+        // Create Workbook
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+        // Column widths
+        ws["!cols"] = [
+            { wch: 24 }, // UNITÉ
+            { wch: 28 }, // NOM LOCATAIRE
+            { wch: 16 }, // TÉLÉPHONE
+            { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 },
+            { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 },
+            { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, // 12 MOIS
+            { wch: 18 }  // TOTAL ANNUEL
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, `Gérance ${selectedYear}`);
+
+        // Write native .xlsx file with styles
+        XLSX.writeFile(wb, `Gerance_Samalocation_${selectedYear}_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+        // Activity Log
         logFrontendActivity({
-            action: 'EXPORT',
-            entityType: 'gerance',
-            entityLabel: `Export Excel Gérance ${selectedYear} téléchargé`,
-            metadata: { year: selectedYear, rows: rows.length }
+            action: "EXPORT",
+            entityType: "gerance",
+            entityLabel: `Export Excel Gérance ${selectedYear} téléchargé avec styles`,
+            metadata: { year: selectedYear, annualTotal: grandAnnualTotal }
         });
     };
 
@@ -443,17 +806,12 @@ export const ManagementTable = ({
                                                 onChange={(e) => setNewGroupName(e.target.value)}
                                                 onKeyPress={(e) => e.key === 'Enter' && handleCreateGroup()}
                                             />
-                                            <Select value={newGroupParentId} onValueChange={setNewGroupParentId}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Groupe Parent" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="root">Aucun (Racine)</SelectItem>
-                                                    {customGroups.map(g => (
-                                                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <HierarchicalGroupSelector
+                                                groups={customGroups}
+                                                value={newGroupParentId}
+                                                onSelect={setNewGroupParentId}
+                                                rootLabel="Aucun (Racine)"
+                                            />
                                         </div>
                                         <Button className="w-full" onClick={handleCreateGroup}>Créer le groupe</Button>
                                     </div>
@@ -474,108 +832,140 @@ export const ManagementTable = ({
                                         {customGroups.length === 0 ? (
                                             <p className="text-sm text-muted-foreground">Aucun groupe créé.</p>
                                         ) : (
-                                            customGroups.map(group => (
-                                                <Card key={group.id} className="p-4 bg-muted/30">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        {editingGroupId === group.id ? (
-                                                            <div className="flex items-center gap-2 flex-1 mr-2">
-                                                                <Input
-                                                                    className="h-8 py-1 text-sm font-medium"
-                                                                    value={editingGroupName}
-                                                                    onChange={(e) => setEditingGroupName(e.target.value)}
-                                                                    onBlur={() => {
-                                                                        handleRenameGroup(group.id, editingGroupName);
-                                                                        setEditingGroupId(null);
-                                                                    }}
-                                                                    onKeyPress={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            handleRenameGroup(group.id, editingGroupName);
-                                                                            setEditingGroupId(null);
-                                                                        }
-                                                                    }}
-                                                                    autoFocus
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex-1 mr-2">
-                                                                <div className="flex items-center gap-2">
-                                                                    <h3 className="font-bold">{group.name}</h3>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-6 w-6 text-muted-foreground hover:text-primary"
-                                                                        onClick={() => {
-                                                                            setEditingGroupId(group.id);
-                                                                            setEditingGroupName(group.name);
-                                                                        }}
-                                                                    >
-                                                                        <Edit className="h-3.5 w-3.5" />
+                                            (() => {
+                                                const renderGroupCard = (group: any, depth = 0) => {
+                                                    const subGroups = customGroups.filter(g => g.parentId === group.id);
+                                                    subGroups.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+                                                    const hasSub = subGroups.length > 0;
+                                                    const isCollapsed = !openGroupsInModal[group.id];
+
+                                                    const filteredProperties = properties.filter(property => {
+                                                        const isInCurrentGroup = (group.propertyIds || []).includes(property.id);
+                                                        const isInOtherGroup = customGroups.some(g => g.id !== group.id && (g.propertyIds || []).includes(property.id));
+                                                        return isInCurrentGroup || !isInOtherGroup;
+                                                    });
+
+                                                    return (
+                                                        <div key={group.id} className={`space-y-2 ${depth > 0 ? "ml-4 border-l-2 border-primary/20 pl-3 mt-2" : ""}`}>
+                                                            <Card className={`p-4 transition-all ${depth > 0 ? "bg-background/80 border-primary/20" : "bg-muted/30"}`}>
+                                                                <div className="flex items-center justify-between mb-4">
+                                                                    {editingGroupId === group.id ? (
+                                                                        <div className="flex items-center gap-2 flex-1 mr-2">
+                                                                            <Input
+                                                                                className="h-8 py-1 text-sm font-medium"
+                                                                                value={editingGroupName}
+                                                                                onChange={(e) => setEditingGroupName(e.target.value)}
+                                                                                onBlur={() => {
+                                                                                    handleRenameGroup(group.id, editingGroupName);
+                                                                                    setEditingGroupId(null);
+                                                                                }}
+                                                                                onKeyPress={(e) => {
+                                                                                    if (e.key === 'Enter') {
+                                                                                        handleRenameGroup(group.id, editingGroupName);
+                                                                                        setEditingGroupId(null);
+                                                                                    }
+                                                                                }}
+                                                                                autoFocus
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex-1 mr-2">
+                                                                            <div className="flex items-center gap-2">
+                                                                                {hasSub ? (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={(e) => toggleModalGroupExpand(group.id, e)}
+                                                                                        className="p-1 hover:bg-muted rounded transition-colors text-primary"
+                                                                                        title={isCollapsed ? "Afficher les sous-dossiers" : "Masquer les sous-dossiers"}
+                                                                                    >
+                                                                                        {isCollapsed ? (
+                                                                                            <ChevronRight className="h-4 w-4 text-primary font-bold" />
+                                                                                        ) : (
+                                                                                            <ChevronDown className="h-4 w-4 text-primary font-bold" />
+                                                                                        )}
+                                                                                    </button>
+                                                                                ) : depth > 0 ? (
+                                                                                    <span className="text-xs text-muted-foreground font-mono">↳</span>
+                                                                                ) : null}
+
+                                                                                <h3 className="font-bold flex items-center gap-1.5">
+                                                                                    <span>{group.name}</span>
+                                                                                    {hasSub && (
+                                                                                        <span className="text-[10px] font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full border">
+                                                                                            {subGroups.length} sous-dossier{subGroups.length > 1 ? 's' : ''}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </h3>
+
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-6 w-6 text-muted-foreground hover:text-primary ml-1"
+                                                                                    onClick={() => {
+                                                                                        setEditingGroupId(group.id);
+                                                                                        setEditingGroupName(group.name);
+                                                                                    }}
+                                                                                >
+                                                                                    <Edit className="h-3.5 w-3.5" />
+                                                                                </Button>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-1.5 mt-1.5 max-w-[200px]">
+                                                                                 <span className="text-[10px] text-muted-foreground font-medium shrink-0">Déplacer dans :</span>
+                                                                                 <HierarchicalGroupSelector
+                                                                                     groups={customGroups}
+                                                                                     value={group.parentId || "root"}
+                                                                                     onSelect={(val) => handleMoveGroup(group.id, val)}
+                                                                                     excludeGroupId={group.id}
+                                                                                     isDescendantFn={isDescendant}
+                                                                                     rootLabel="Aucun (Racine)"
+                                                                                 />
+                                                                             </div>
+                                                                        </div>
+                                                                    )}
+                                                                    <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group.id)}>
+                                                                        <Trash2 className="h-4 w-4 text-destructive" />
                                                                     </Button>
                                                                 </div>
-                                                                <div className="flex items-center gap-1.5 mt-1.5">
-                                                                    <span className="text-[10px] text-muted-foreground font-medium">Déplacer dans :</span>
-                                                                    <Select
-                                                                        value={group.parentId || "root"}
-                                                                        onValueChange={(val) => handleMoveGroup(group.id, val)}
-                                                                    >
-                                                                        <SelectTrigger className="h-5 px-1.5 py-0 text-[10px] w-auto border border-input bg-background/50 hover:bg-background shadow-none">
-                                                                            <SelectValue />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="root" className="text-xs">Aucun (Racine)</SelectItem>
-                                                                            {customGroups
-                                                                                .filter(g => g.id !== group.id && !isDescendant(group.id, g.id))
-                                                                                .map(g => (
-                                                                                    <SelectItem key={g.id} value={g.id} className="text-xs">
-                                                                                        {g.name}
-                                                                                    </SelectItem>
-                                                                                ))
-                                                                            }
-                                                                        </SelectContent>
-                                                                    </Select>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    {filteredProperties.length === 0 ? (
+                                                                        <p className="text-xs text-muted-foreground italic col-span-2">
+                                                                            Aucun bien disponible à ajouter.
+                                                                        </p>
+                                                                    ) : (
+                                                                        filteredProperties.map(property => (
+                                                                            <div key={property.id} className="flex items-center space-x-2">
+                                                                                <Checkbox
+                                                                                    id={`${group.id}-${property.id}`}
+                                                                                    checked={(group.propertyIds || []).includes(property.id)}
+                                                                                    onCheckedChange={() => togglePropertyInGroup(group.id, property.id)}
+                                                                                />
+                                                                                <label
+                                                                                    htmlFor={`${group.id}-${property.id}`}
+                                                                                    className="text-sm font-medium leading-none cursor-pointer truncate"
+                                                                                    title={property.name}
+                                                                                >
+                                                                                    {property.name}
+                                                                                </label>
+                                                                            </div>
+                                                                        ))
+                                                                    )}
                                                                 </div>
-                                                            </div>
-                                                        )}
-                                                        <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group.id)}>
-                                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                                        </Button>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {(() => {
-                                                            const filteredProperties = properties.filter(property => {
-                                                                const isInCurrentGroup = (group.propertyIds || []).includes(property.id);
-                                                                const isInOtherGroup = customGroups.some(g => g.id !== group.id && (g.propertyIds || []).includes(property.id));
-                                                                return isInCurrentGroup || !isInOtherGroup;
-                                                            });
+                                                            </Card>
 
-                                                            if (filteredProperties.length === 0) {
-                                                                return (
-                                                                    <p className="text-xs text-muted-foreground italic col-span-2">
-                                                                        Aucun bien disponible à ajouter.
-                                                                    </p>
-                                                                );
-                                                            }
-
-                                                            return filteredProperties.map(property => (
-                                                                <div key={property.id} className="flex items-center space-x-2">
-                                                                    <Checkbox
-                                                                        id={`${group.id}-${property.id}`}
-                                                                        checked={(group.propertyIds || []).includes(property.id)}
-                                                                        onCheckedChange={() => togglePropertyInGroup(group.id, property.id)}
-                                                                    />
-                                                                    <label
-                                                                        htmlFor={`${group.id}-${property.id}`}
-                                                                        className="text-sm font-medium leading-none cursor-pointer truncate"
-                                                                        title={property.name}
-                                                                    >
-                                                                        {property.name}
-                                                                    </label>
+                                                            {/* Render sub-groups if expanded */}
+                                                            {hasSub && !isCollapsed && (
+                                                                <div className="space-y-2">
+                                                                    {subGroups.map(subGroup => renderGroupCard(subGroup, depth + 1))}
                                                                 </div>
-                                                            ));
-                                                        })()}
-                                                    </div>
-                                                </Card>
-                                            ))
+                                                            )}
+                                                        </div>
+                                                    );
+                                                };
+
+                                                const rootGroups = customGroups.filter(g => !g.parentId);
+                                                rootGroups.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+                                                return rootGroups.map(group => renderGroupCard(group, 0));
+                                            })()
                                         )}
                                     </div>
                                 </div>

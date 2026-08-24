@@ -96,6 +96,20 @@ const MaintenanceRequest = {
             [status, id]
         );
         return await this.findById(id);
+    },
+
+    async update(id, data) {
+        const { title, description, priority, photos } = data;
+        await db.query(
+            'UPDATE maintenance_requests SET title = $1, description = $2, priority = $3, photos = $4 WHERE id = $5',
+            [title, description, priority || 'medium', JSON.stringify(photos || []), id]
+        );
+        return await this.findById(id);
+    },
+
+    async delete(id) {
+        const { rowCount } = await db.query('DELETE FROM maintenance_requests WHERE id = $1', [id]);
+        return rowCount > 0;
     }
 };
 

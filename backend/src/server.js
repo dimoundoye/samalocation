@@ -31,6 +31,7 @@ const favoriteRoutes = require('./routes/favoriteRoutes');
 const propertyGroupRoutes = require('./routes/propertyGroupRoutes');
 const contractTemplateRoutes = require('./routes/contractTemplateRoutes');
 const withdrawalRoutes = require('./routes/withdrawalRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const securityMiddleware = require('./middleware/security');
 const { trackVisit } = require('./middleware/analyticsMiddleware');
@@ -176,6 +177,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/property-groups', propertyGroupRoutes);
 app.use('/api/contract-templates', contractTemplateRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 // ─── Keep-alive Cron Job (Every 14 minutes to prevent Supabase pausing) ───────
 cron.schedule('*/14 * * * *', async () => {

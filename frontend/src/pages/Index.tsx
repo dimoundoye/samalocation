@@ -40,6 +40,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import heroLuxuryImage from "@/assets/hero-luxury-villa.png";
+import hero3dImage from "@/assets/samalocation-hero-3d.jpg";
+import samalocationBg from "@/assets/hero20-clean-nobox.jpg";
 import property1 from "@/assets/property-1.jpg";
 import property2 from "@/assets/property-2.jpg";
 import { transformProperty, FormattedProperty } from "@/lib/property";
@@ -48,6 +50,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import SEO from "@/components/SEO";
 import { isRecent } from "@/lib/dateUtils";
+import { Sparkles, FileText, Lock } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -144,126 +147,110 @@ const Index = () => {
       />
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="relative overflow-visible pt-36 pb-20 md:pt-40 md:pb-28">
-        {/* Soft Background Ambient Light Glows */}
-        <div className="absolute top-1/4 left-[10%] w-[350px] h-[350px] bg-primary/10 dark:bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
-        <div className="absolute top-1/3 right-[10%] w-[400px] h-[400px] bg-accent/5 dark:bg-accent/10 blur-[120px] rounded-full pointer-events-none animate-pulse-slow" />
-        
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-center">
-            <div className="space-y-6 md:space-y-8 animate-slide-up">
-              <h1 className="text-4xl xs:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] sm:leading-tight text-primary dark:text-white">
-                {t('hero.title_part1')}
-                <br />
-                {t('hero.title_part2')}
-              </h1>
+      {/* Hero Section - Exact OriginKit Hero 20 */}
+      <section className="relative overflow-hidden min-h-[90vh] pt-36 pb-32 md:pt-44 md:pb-40 bg-[#FAF8F5] dark:bg-[#0d0d0e] flex flex-col items-center justify-start text-center">
+        {/* Left & Right Technical Grid Ruler Borders */}
+        <div className="absolute top-0 bottom-0 left-3 md:left-10 w-px border-r border-dashed border-neutral-300/80 dark:border-neutral-800 pointer-events-none z-20" />
+        <div className="absolute top-0 bottom-0 right-3 md:right-10 w-px border-r border-dashed border-neutral-300/80 dark:border-neutral-800 pointer-events-none z-20" />
 
-              <p className="text-lg md:text-xl text-muted-foreground max-w-lg leading-relaxed">
-                {t('hero.description')}
-              </p>
+        {/* 100% Responsive Samalocation Hero Artwork */}
+        <div className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-hidden flex items-end justify-center">
+          <img
+            src={samalocationBg}
+            alt="Samalocation Hero Artwork"
+            className="w-full h-[65%] sm:h-[75%] lg:h-[85%] xl:h-full object-contain xl:object-cover object-bottom xl:object-center opacity-85 sm:opacity-95 mix-blend-multiply dark:mix-blend-screen transition-all duration-300"
+          />
+        </div>
 
-              {/* Unified Search and Action Widget */}
-              <Tabs defaultValue="find" className="w-full max-w-xl relative z-20 pt-2">
-                <TabsList className="grid grid-cols-2 w-full max-w-[360px] h-12 bg-secondary/80 dark:bg-secondary/30 p-1.5 rounded-2xl mb-4 border border-border/40">
-                  <TabsTrigger value="find" className="rounded-xl font-bold text-sm h-9 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
-                    <Search className="h-4 w-4 mr-2" />
-                    Trouver un bien
-                  </TabsTrigger>
-                  <TabsTrigger value="list" className="rounded-xl font-bold text-sm h-9 transition-all data-[state=active]:bg-primary data-[state=active]:text-white">
-                    <Home className="h-4 w-4 mr-2" />
-                    Mettre en location
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="find" className="animate-scale-in">
-                  <div className="p-3 bg-card dark:bg-card border border-border/60 shadow-strong rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    <div className="flex-1 flex items-center gap-2 min-w-0 py-1">
-                      <SearchAutocomplete 
-                        placeholder={t('hero.search_placeholder') || "Quartier, ville..."}
-                        initialValue={searchQuery}
-                        onValueChange={setSearchQuery}
-                        className="w-full"
-                      />
-                    </div>
-                    <div className="hidden sm:block h-8 w-px bg-border/80" />
-                    
-                    <div className="w-full sm:w-auto min-w-[130px] shrink-0">
-                      <Select 
-                        value={selectedType} 
-                        onValueChange={(val) => {
-                          setSelectedType(val);
-                          const params = new URLSearchParams();
-                          if (searchQuery.trim()) {
-                            params.set("q", searchQuery.trim());
-                          }
-                          if (val && val !== "all") {
-                            params.set("type", val);
-                          }
-                          navigate(`/search?${params.toString()}`);
-                        }}
-                      >
-                        <SelectTrigger className="border-0 focus:ring-0 shadow-none bg-transparent hover:bg-secondary/20 dark:hover:bg-secondary/10 h-10 px-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground transition-all">
-                          <SelectValue placeholder={t('search.property_type') || "Type de bien"} />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-border/50 shadow-strong bg-card dark:bg-card">
-                          <SelectItem value="all" className="rounded-lg cursor-pointer">Tous les types</SelectItem>
-                          <SelectItem value="appartement" className="rounded-lg cursor-pointer">{t('search.types.apartment') || "Appartement"}</SelectItem>
-                          <SelectItem value="maison" className="rounded-lg cursor-pointer">{t('search.types.house') || "Maison"}</SelectItem>
-                          <SelectItem value="villa" className="rounded-lg cursor-pointer">{t('search.types.villa') || "Villa"}</SelectItem>
-                          <SelectItem value="studio" className="rounded-lg cursor-pointer">{t('search.types.studio') || "Studio"}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+        <div className="container mx-auto px-6 relative z-10 max-w-4xl">
+          <div className="flex flex-col items-center text-center space-y-6 md:space-y-7 animate-slide-up">
+            {/* Headline matching exact Archiflow model size */}
+            <h1 className="text-3xl xs:text-4xl md:text-5xl lg:text-6xl font-serif font-normal tracking-tight leading-[1.15] text-[#0B1B3D] dark:text-white max-w-3xl">
+              Gérez & Trouvez un logement <br className="hidden sm:inline" />
+              en toute confiance.
+            </h1>
 
-                    <Button
-                      onClick={() => {
-                        const params = new URLSearchParams();
-                        if (searchQuery.trim()) {
-                          params.set("q", searchQuery.trim());
-                        }
-                        if (selectedType && selectedType !== "all") {
-                          params.set("type", selectedType);
-                        }
-                        navigate(`/search?${params.toString()}`);
-                      }}
-                      className="h-12 w-full sm:w-12 rounded-xl gradient-accent shadow-medium hover:scale-105 transition-transform flex items-center justify-center shrink-0 animate-fade-in"
-                    >
-                      <span className="sm:hidden font-bold mr-2 text-base">{t('hero.search_button')}</span>
-                      <ArrowRight className="h-5 w-5 text-white" />
-                    </Button>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="list" className="animate-scale-in">
-                  <div className="p-5 bg-card dark:bg-card border border-border/60 shadow-strong rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="text-left space-y-1">
-                      <h4 className="font-bold text-base text-primary dark:text-white">Vous êtes propriétaire ?</h4>
-                      <p className="text-xs text-muted-foreground">Publiez vos annonces et gérez vos locataires simplement.</p>
-                    </div>
-                    <Button
-                      onClick={() => navigate("/auth?mode=signup&type=owner")}
-                      className="w-full sm:w-auto h-11 px-5 rounded-xl gradient-primary text-white font-bold shadow-medium hover:scale-105 transition-all flex items-center justify-center gap-2 shrink-0 animate-fade-in"
-                    >
-                      <Home className="h-4 w-4" />
-                      <span>{t('hero.list_property')}</span>
-                    </Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
+            {/* Subtitle */}
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-lg font-normal leading-relaxed opacity-85">
+              {t('hero.description')}
+            </p>
+
+            {/* Buttons in Samalocation Brand Style */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 w-full max-w-md">
+              <Button
+                onClick={() => navigate("/search")}
+                className="h-12 px-7 rounded-xl gradient-primary hover:opacity-95 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 w-full sm:w-auto"
+              >
+                <span>Explorer les biens</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button
+                onClick={() => navigate("/auth?mode=signup&type=owner")}
+                variant="outline"
+                className="h-12 px-7 rounded-xl border-primary/30 hover:bg-primary/5 text-primary dark:text-white font-bold text-sm flex items-center justify-center gap-2 w-full sm:w-auto"
+              >
+                <Home className="h-4 w-4 text-primary" />
+                <span>Mettre en location</span>
+              </Button>
             </div>
 
-            <div className="relative animate-fade-in hidden md:block md:-mt-16 lg:-mt-20">
-              <div className="absolute -inset-10 bg-accent/5 blur-3xl rounded-full" />
-              <div className="relative rounded-[2.5rem] border-[8px] border-white/50 dark:border-white/10 backdrop-blur-sm shadow-strong overflow-hidden animate-float max-h-[550px] aspect-[4/5] md:aspect-auto">
-                <img
-                  src={heroLuxuryImage}
-                  alt="Modern Luxury Real Estate"
-                  className="w-full h-full object-cover relative z-10"
-                  style={{
-                    filter: 'drop-shadow(20px 40px 30px rgba(0, 0, 0, 0.4))'
+            {/* Floating Search Bar Integration */}
+            <div className="w-full max-w-xl pt-6">
+              <div className="p-2.5 bg-white/90 dark:bg-neutral-900/90 border border-neutral-200 dark:border-neutral-800 shadow-xl backdrop-blur-xl rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="flex-1 flex items-center gap-2 min-w-0 px-2 py-1">
+                  <SearchAutocomplete 
+                    placeholder={t('hero.search_placeholder') || "Quartier, ville (Dakar, Saly...)"}
+                    initialValue={searchQuery}
+                    onValueChange={setSearchQuery}
+                    className="w-full text-left"
+                  />
+                </div>
+                <div className="hidden sm:block h-7 w-px bg-neutral-200 dark:bg-neutral-800" />
+                
+                <div className="w-full sm:w-auto min-w-[120px] shrink-0">
+                  <Select 
+                    value={selectedType} 
+                    onValueChange={(val) => {
+                      setSelectedType(val);
+                      const params = new URLSearchParams();
+                      if (searchQuery.trim()) {
+                        params.set("q", searchQuery.trim());
+                      }
+                      if (val && val !== "all") {
+                        params.set("type", val);
+                      }
+                      navigate(`/search?${params.toString()}`);
+                    }}
+                  >
+                    <SelectTrigger className="border-0 focus:ring-0 shadow-none bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 h-9 px-2 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+                      <SelectValue placeholder={t('search.property_type') || "Type de bien"} />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-neutral-200 bg-white dark:bg-neutral-900">
+                      <SelectItem value="all" className="rounded-lg cursor-pointer">Tous les types</SelectItem>
+                      <SelectItem value="appartement" className="rounded-lg cursor-pointer">{t('search.types.apartment') || "Appartement"}</SelectItem>
+                      <SelectItem value="maison" className="rounded-lg cursor-pointer">{t('search.types.house') || "Maison"}</SelectItem>
+                      <SelectItem value="villa" className="rounded-lg cursor-pointer">{t('search.types.villa') || "Villa"}</SelectItem>
+                      <SelectItem value="studio" className="rounded-lg cursor-pointer">{t('search.types.studio') || "Studio"}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    if (searchQuery.trim()) {
+                      params.set("q", searchQuery.trim());
+                    }
+                    if (selectedType && selectedType !== "all") {
+                      params.set("type", selectedType);
+                    }
+                    navigate(`/search?${params.toString()}`);
                   }}
-                />
+                  className="h-10 w-full sm:w-10 rounded-xl gradient-primary hover:opacity-95 text-white font-bold transition-all shadow-medium flex items-center justify-center shrink-0"
+                >
+                  <span className="sm:hidden font-bold mr-2 text-sm">Rechercher</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>

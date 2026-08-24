@@ -22,71 +22,71 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-4 left-1/2 -translate-x-1/2 w-[92%] max-w-7xl z-50 bg-background/80 dark:bg-card/75 backdrop-blur-md border border-border/50 rounded-2xl shadow-strong transition-all duration-300">
-      <div className="container mx-auto px-4 py-3 sm:px-6">
-        <div className="flex items-center justify-between">
+    <nav className="fixed top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-50 bg-background/85 dark:bg-card/85 backdrop-blur-md border border-border/50 rounded-2xl shadow-strong transition-all duration-300">
+      <div className="container mx-auto px-3 sm:px-6 py-2.5 sm:py-3">
+        <div className="flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-2 group shrink-0">
-            <img src="/logo-sl.png" alt="Logo" className="h-10 w-auto transition-transform group-hover:scale-105" />
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden lg:block tracking-tight">
+            <img src="/logo-sl.png" alt="Logo" className="h-9 sm:h-10 w-auto transition-transform group-hover:scale-105" />
+            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden sm:block tracking-tight">
               Samalocation
             </span>
           </Link>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className="hidden lg:flex items-center gap-6 mr-4">
-              <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.home')}</Link>
-              <Link to="/search" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.explore')}</Link>
-              <Link to="/about" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.about')}</Link>
-              <Link to="/pricing" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.pricing')}</Link>
-              <Link to="/contact" className="text-sm font-medium hover:text-primary transition-colors">{t('nav.contact')}</Link>
+          <div className="flex items-center gap-2 xl:gap-4 shrink-0">
+            <div className="hidden xl:flex items-center gap-5 mr-2">
+              <Link to="/" className="text-xs xl:text-sm font-medium hover:text-primary transition-colors">{t('nav.home')}</Link>
+              <Link to="/search" className="text-xs xl:text-sm font-medium hover:text-primary transition-colors">{t('nav.explore')}</Link>
+              <Link to="/about" className="text-xs xl:text-sm font-medium hover:text-primary transition-colors">{t('nav.about')}</Link>
+              <Link to="/pricing" className="text-xs xl:text-sm font-medium hover:text-primary transition-colors">{t('nav.pricing')}</Link>
+              <Link to="/contact" className="text-xs xl:text-sm font-medium hover:text-primary transition-colors">{t('nav.contact')}</Link>
               {user && (
-                <Link to="/favorites" className="text-sm font-medium text-red-500 hover:text-red-600 transition-colors flex items-center gap-1">
-                  <Heart className="h-4 w-4 fill-current" />
+                <Link to="/favorites" className="text-xs xl:text-sm font-medium text-red-500 hover:text-red-600 transition-colors flex items-center gap-1">
+                  <Heart className="h-3.5 w-3.5 fill-current" />
                   {t('nav.favorites') || "Favoris"}
                 </Link>
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-3">
-              <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <LanguageToggle />
                 <ThemeToggle />
               </div>
 
               {user ? (
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <NotificationBell />
                   <Button
                     variant="default"
                     onClick={() => navigate(getDashboardPath())}
-                    className="flex items-center gap-2 h-10 px-4"
+                    className="flex items-center gap-2 h-9 sm:h-10 px-2.5 sm:px-4 shrink-0 text-xs sm:text-sm font-semibold"
                   >
                     <LayoutDashboard className="h-4 w-4" />
-                    <span className="hidden md:inline">Mon espace</span>
+                    <span className="hidden sm:inline">Mon espace</span>
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Button
                     variant="ghost"
                     onClick={() => navigate("/auth?mode=login")}
-                    className="hidden sm:flex items-center gap-2"
+                    className="hidden sm:flex items-center gap-2 h-9 sm:h-10 px-3 text-xs sm:text-sm"
                   >
                     <LogIn className="h-4 w-4" />
                     {t('nav.login')}
                   </Button>
-                  {/* Mobile Login Button (only visible on mobile, redirects to login) */}
+                  {/* Mobile Login Button */}
                   <Button
                     onClick={() => navigate("/auth?mode=login")}
-                    className="flex sm:hidden gradient-accent text-white shadow-soft hover:shadow-medium transition-all h-10 w-10 p-0 items-center justify-center"
+                    className="flex sm:hidden gradient-accent text-white shadow-soft hover:shadow-medium transition-all h-9 w-9 p-0 items-center justify-center shrink-0"
                   >
                     <LogIn className="h-4 w-4" />
                   </Button>
 
-                  {/* Desktop/Tablet Signup Button (hidden on mobile) */}
+                  {/* Desktop/Tablet Signup Button */}
                   <Button
                     onClick={() => navigate("/auth?mode=signup")}
-                    className="hidden sm:flex gradient-accent text-white shadow-soft hover:shadow-medium transition-all h-10 px-4 items-center gap-2"
+                    className="hidden sm:flex gradient-accent text-white shadow-soft hover:shadow-medium transition-all h-9 sm:h-10 px-3 sm:px-4 items-center gap-2 shrink-0 text-xs sm:text-sm font-semibold"
                   >
                     <UserPlus className="h-4 w-4" />
                     <span>{t('nav.signup')}</span>
@@ -94,8 +94,8 @@ const Navbar = () => {
                 </div>
               )}
 
-              {/* Burger Menu for Mobile & Tablet */}
-              <div className="lg:hidden ml-1">
+              {/* Burger Menu for Mobile & Tablet (up to xl screens) */}
+              <div className="xl:hidden ml-0.5 shrink-0">
                 <Sheet open={open} onOpenChange={setOpen}>
                   <SheetTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-10 w-10">

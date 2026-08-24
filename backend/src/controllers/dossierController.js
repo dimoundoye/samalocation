@@ -26,6 +26,27 @@ const dossierController = {
     async saveDossier(req, res, next) {
         try {
             const userId = req.user.id;
+            const { deleteMultipleFromCloudinary } = require('../utils/cloudinaryHelper');
+
+            const existingDossier = await Dossier.findByUserId(userId);
+            if (existingDossier) {
+                const oldFiles = [];
+                if (req.body.cni_url && existingDossier.cni_url && req.body.cni_url !== existingDossier.cni_url) {
+                    oldFiles.push(existingDossier.cni_url);
+                }
+                if (req.body.tax_notice_url && existingDossier.tax_notice_url && req.body.tax_notice_url !== existingDossier.tax_notice_url) {
+                    oldFiles.push(existingDossier.tax_notice_url);
+                }
+                if (Array.isArray(existingDossier.payslips) && Array.isArray(req.body.payslips)) {
+                    existingDossier.payslips.forEach(oldUrl => {
+                        if (!req.body.payslips.includes(oldUrl)) oldFiles.push(oldUrl);
+                    });
+                }
+                if (oldFiles.length > 0) {
+                    deleteMultipleFromCloudinary(oldFiles);
+                }
+            }
+
             const dossier = await Dossier.save(userId, req.body);
             return response.success(res, dossier, 'Dossier mis à jour avec succès');
         } catch (error) {
