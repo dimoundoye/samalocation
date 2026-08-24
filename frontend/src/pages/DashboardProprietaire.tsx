@@ -916,6 +916,8 @@ const DashboardProprietaire = () => {
           ].filter(item => {
             // Collaborators (with parentId) shouldn't manage the team or billing
             if (user?.parentId && (item.id === "team" || item.id === "subscription")) return false;
+            // Collaborators without revenue permission shouldn't see Trésorerie & ROI
+            if (!canSeeRevenue && item.id === "financials") return false;
             return true;
           }).map((item) => {
             const unreadCount =
@@ -2458,11 +2460,21 @@ const DashboardProprietaire = () => {
 
             {/* Financials & ROI Tab */}
             {activeTab === "financials" && (
-              <FinancialDashboardTab
-                properties={properties}
-                customGroups={customGroups}
-                currency={ownerProfile?.currency}
-              />
+              canSeeRevenue ? (
+                <FinancialDashboardTab
+                  properties={properties}
+                  customGroups={customGroups}
+                  currency={ownerProfile?.currency}
+                />
+              ) : (
+                <Card className="p-8 text-center bg-muted/20 border-dashed max-w-lg mx-auto mt-8">
+                  <Shield className="h-12 w-12 text-amber-500 mx-auto mb-3" />
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Accès restreint</h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Seul le patron de l'agence ou les collaborateurs autorisés peuvent consulter les statistiques financières et la trésorerie.
+                  </p>
+                </Card>
+              )
             )}
 
             {/* Maintenance Request Tab */}

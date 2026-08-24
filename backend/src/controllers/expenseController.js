@@ -115,12 +115,23 @@ const expenseController = {
             const propertyId = req.query.property_id || null;
             const groupId = req.query.group_id || null;
 
-            // Fetch all owner-related IDs (user_profile_id and owner_profiles.id)
+            // Security check: if collaborator in agency context, verify revenue viewing permission
+            if (req.user?.parent_id && req.ownerId === req.user.parent_id) {
+                const canSeeRevenue = req.user.permissions?.can_view_revenue;
+                if (!canSeeRevenue) {
+                    return res.status(403).json({
+                        status: 'error',
+                        message: 'Accès non autorisé : Vous n\'avez pas la permission de consulter la trésorerie de l\'agence.'
+                    });
+                }
+            }
+
+            // Fetch owner-related IDs strictly for target ownerId
             const { rows: ownerRows } = await db.query(
-                `SELECT id, user_profile_id FROM owner_profiles WHERE id = $1 OR user_profile_id = $1 OR user_profile_id = $2`,
-                [ownerId, req.user?.id]
+                `SELECT id, user_profile_id FROM owner_profiles WHERE id = $1 OR user_profile_id = $1`,
+                [ownerId]
             );
-            const ownerIdsSet = new Set([ownerId, req.user?.id].filter(Boolean));
+            const ownerIdsSet = new Set([ownerId]);
             ownerRows.forEach(r => {
                 if (r.id) ownerIdsSet.add(r.id);
                 if (r.user_profile_id) ownerIdsSet.add(r.user_profile_id);
