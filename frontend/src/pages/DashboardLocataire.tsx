@@ -1019,13 +1019,13 @@ const DashboardLocataire = () => {
                   <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[280px] shrink-0 mb-6 border border-border/40">
                     <TabsTrigger 
                       value="receipts"
-                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
                     >
                       Mes reçus
                     </TabsTrigger>
                     <TabsTrigger 
                       value="leases"
-                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
                     >
                       Contrats
                     </TabsTrigger>
@@ -1184,13 +1184,13 @@ const DashboardLocataire = () => {
                   <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[260px] shrink-0 mb-6 border border-border/40">
                     <TabsTrigger 
                       value="profile"
-                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
                     >
                       {t('dashboard.common.profile')}
                     </TabsTrigger>
                     <TabsTrigger 
                       value="account"
-                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
                     >
                       {t('dashboard.common.account')}
                     </TabsTrigger>

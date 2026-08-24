@@ -1856,7 +1856,7 @@ const DashboardProprietaire = () => {
                         className={`flex-1 rounded-lg font-bold text-xs h-8 transition-all ${
                           tenantStatusFilter === "active"
                             ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                            : "bg-white text-slate-900 border border-border/40 shadow-sm hover:bg-white/90"
                         }`}
                         onClick={() => setTenantStatusFilter("active")}
                       >
@@ -1868,7 +1868,7 @@ const DashboardProprietaire = () => {
                         className={`flex-1 rounded-lg font-bold text-xs h-8 transition-all ${
                           tenantStatusFilter === "inactive"
                             ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                            : "bg-white text-slate-900 border border-border/40 shadow-sm hover:bg-white/90"
                         }`}
                         onClick={() => setTenantStatusFilter("inactive")}
                       >
