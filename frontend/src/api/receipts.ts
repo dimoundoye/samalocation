@@ -136,6 +136,14 @@ export const openReceiptInNewTab = async (id: string) => {
     }
 };
 
+// Annuler un reçu avec motif (propriétaire/agence)
+export const cancelReceipt = async (id: string, cancellation_reason: string) => {
+    return await baseClient(`/receipts/${id}/cancel`, {
+        method: "PATCH",
+        body: JSON.stringify({ cancellation_reason })
+    });
+};
+
 // Supprimer un reçu (propriétaire)
 export const deleteReceipt = async (id: string) => {
     return await baseClient(`/receipts/${id}`, {

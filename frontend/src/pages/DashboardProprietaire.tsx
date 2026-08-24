@@ -2601,6 +2601,7 @@ const DashboardProprietaire = () => {
         onOpenChange={setHistoryDialogOpen}
         tenant={selectedTenantForHistory}
         receipts={receipts}
+        onRefresh={loadData}
       />
 
       {selectedTenantForContract && (

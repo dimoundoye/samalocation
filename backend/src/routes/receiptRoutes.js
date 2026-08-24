@@ -16,6 +16,9 @@ router.get('/owner', authMiddleware, receiptController.getOwnerReceipts);
 // Télécharger un reçu en PDF
 router.get('/:id/download', authMiddleware, receiptController.downloadReceipt);
 
+// Annuler un reçu avec motif (propriétaire/agence)
+router.patch('/:id/cancel', authMiddleware, receiptController.cancelReceipt);
+
 // Supprimer un reçu (propriétaire seulement)
 router.delete('/:id', authMiddleware, receiptController.deleteReceipt);
 

@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
     Building2, MapPin, Calendar, User, Receipt, FileText, Download, Eye, ExternalLink, Loader2,
-    CheckCircle2, Clock, XCircle, CreditCard, AlertCircle
+    CheckCircle2, Clock, XCircle, CreditCard, AlertCircle, Info
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -58,14 +58,18 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [paymentLoading, setPaymentLoading] = useState(false);
 
+    const [reasonModalOpen, setReasonModalOpen] = useState(false);
+    const [selectedReasonReceipt, setSelectedReasonReceipt] = useState<any>(null);
+
     const getMonthName = (monthNum: number) => {
         const months = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
         return months[monthNum - 1] || "N/A";
     };
 
     const latestPaid = useMemo(() => {
-        if (receipts.length === 0) return null;
-        return [...receipts].sort((a, b) => {
+        const validReceipts = receipts.filter(r => r.status !== 'cancelled');
+        if (validReceipts.length === 0) return null;
+        return [...validReceipts].sort((a, b) => {
             const dateA = (a.year || 0) * 12 + (a.month || 1);
             const dateB = (b.year || 0) * 12 + (b.month || 1);
             return dateB - dateA;
@@ -382,13 +386,23 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                                     ) : (
                                         receipts.map((r: any) => {
                                             const periodLabel = r.period_label || (r.month && r.year ? `${getMonthName(r.month)} ${r.year}` : format(new Date(r.created_at), "MMMM yyyy", { locale: fr }));
+                                            const isCancelled = r.status === 'cancelled';
                                             return (
-                                                <div key={r.id} className="flex items-center justify-between p-3 border rounded-xl hover:bg-accent transition-colors">
+                                                <div key={r.id} className={`flex items-center justify-between p-3 border rounded-xl transition-colors ${
+                                                    isCancelled ? 'bg-red-50/50 border-red-200 dark:bg-red-950/20 dark:border-red-900/40 opacity-85' : 'hover:bg-accent'
+                                                }`}>
                                                     <div>
-                                                        <p className="text-sm font-semibold capitalize">
-                                                            {periodLabel}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-sm font-semibold capitalize">
+                                                                {periodLabel}
+                                                            </p>
+                                                            {isCancelled && (
+                                                                <Badge variant="destructive" className="text-[10px] font-bold uppercase bg-red-600 text-white">
+                                                                    ANNULÉ
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <p className={`text-xs ${isCancelled ? 'line-through text-muted-foreground' : 'text-muted-foreground'}`}>
                                                             {formatCurrency(r.amount || r.monthly_rent || 0, currency)}
                                                         </p>
                                                     </div>
@@ -403,16 +417,32 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                                                             <ExternalLink className="w-3.5 h-3.5" />
                                                             Voir
                                                         </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="gap-1.5 h-8 text-xs"
-                                                            onClick={() => handleDownload(r.id)}
-                                                            title="Télécharger le PDF"
-                                                        >
-                                                            <Download className="w-3 h-3" />
-                                                            PDF
-                                                        </Button>
+                                                        {isCancelled ? (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="gap-1.5 h-8 text-xs border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/60 font-semibold"
+                                                                onClick={() => {
+                                                                    setSelectedReasonReceipt(r);
+                                                                    setReasonModalOpen(true);
+                                                                }}
+                                                                title="Voir le motif d'annulation"
+                                                            >
+                                                                <Info className="w-3.5 h-3.5" />
+                                                                Motif
+                                                            </Button>
+                                                        ) : (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="gap-1.5 h-8 text-xs"
+                                                                onClick={() => handleDownload(r.id)}
+                                                                title="Télécharger le PDF"
+                                                            >
+                                                                <Download className="w-3 h-3" />
+                                                                PDF
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -473,6 +503,44 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                 receiptNumber={selectedPreviewReceipt?.number}
                 paymentDate={selectedPreviewReceipt?.date}
             />
+
+            {/* Modal Motif d'annulation */}
+            <Dialog open={reasonModalOpen} onOpenChange={setReasonModalOpen}>
+                <DialogContent className="max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                            <div className="p-2 bg-red-100 dark:bg-red-950/60 rounded-lg shrink-0">
+                                <Info className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            </div>
+                            <span>Motif d'annulation de la quittance</span>
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground mt-1">
+                            Quittance N° <span className="font-mono font-semibold text-foreground">{selectedReasonReceipt?.receipt_number}</span>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-3">
+                        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 space-y-2">
+                            <p className="text-xs font-bold text-red-800 dark:text-red-300 uppercase tracking-wide">
+                                Raison d'annulation :
+                            </p>
+                            <p className="text-sm font-medium text-red-950 dark:text-red-100 leading-relaxed whitespace-pre-wrap">
+                                "{selectedReasonReceipt?.cancellation_reason || 'Aucun motif renseigné'}"
+                            </p>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setReasonModalOpen(false)}
+                            className="w-full sm:w-auto"
+                        >
+                            Fermer
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Dialog>
     );
 };

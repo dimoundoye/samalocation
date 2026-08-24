@@ -496,6 +496,7 @@ export const ManagementTable = ({
         const year = parseInt(selectedYear);
         
         return receipts.filter(r => {
+            if (r.status === 'cancelled') return false;
             const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
             const rMonth = typeof r.month === 'string' ? parseInt(r.month) : r.month;
             

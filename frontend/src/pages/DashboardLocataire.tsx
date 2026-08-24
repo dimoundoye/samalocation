@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, Eye, ExternalLink, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, Eye, ExternalLink, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2, Info } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -79,6 +80,8 @@ const DashboardLocataire = () => {
   const [tenantProfile, setTenantProfile] = useState<any>(null);
   const [tenantData, setTenantData] = useState<any>(null);
   const [receipts, setReceipts] = useState<any[]>([]);
+  const [tenantReasonModalOpen, setTenantReasonModalOpen] = useState(false);
+  const [selectedTenantReasonReceipt, setSelectedTenantReasonReceipt] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [ownerProfile, setOwnerProfile] = useState<any>(null);
@@ -1012,19 +1015,19 @@ const DashboardLocataire = () => {
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">{t('dashboard.sidebar.contracts')}</h2>
 
-                <Tabs defaultValue="leases" className="w-full">
-                  <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[260px] shrink-0 mb-6 border border-border/40">
-                    <TabsTrigger 
-                      value="leases"
-                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
-                    >
-                      Contract
-                    </TabsTrigger>
+                <Tabs defaultValue="receipts" className="w-full">
+                  <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[280px] shrink-0 mb-6 border border-border/40">
                     <TabsTrigger 
                       value="receipts"
                       className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
                     >
-                      {t('dashboard.sidebar.documents')}
+                      Mes reçus
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="leases"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-background/50"
+                    >
+                      Contrats
                     </TabsTrigger>
                   </TabsList>
 
@@ -1048,18 +1051,28 @@ const DashboardLocataire = () => {
                           <div className="space-y-3">
                             {receipts.map((receipt) => {
                               const monthName = format(new Date(receipt.year, receipt.month - 1), 'MMMM yyyy', { locale: dateLocale });
+                              const isCancelled = receipt.status === 'cancelled';
                               return (
                                 <div
                                   key={receipt.id}
-                                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors gap-4"
+                                  className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg transition-colors gap-4 ${
+                                    isCancelled ? 'bg-red-50/50 border border-red-200 dark:bg-red-950/20 dark:border-red-900/40 opacity-85' : 'bg-secondary/30 hover:bg-secondary/50'
+                                  }`}
                                 >
                                   <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isCancelled ? 'bg-red-500' : 'bg-primary'}`}>
                                       <FileText className="h-5 w-5 text-white" />
                                     </div>
                                     <div>
-                                      <p className="font-medium text-sm sm:text-base">{t('tenant.receipt_n')} {receipt.receipt_number}</p>
-                                      <p className="text-xs sm:text-sm text-muted-foreground">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="font-medium text-sm sm:text-base">{t('tenant.receipt_n')} {receipt.receipt_number}</p>
+                                        {isCancelled && (
+                                          <Badge variant="destructive" className="text-[10px] font-bold uppercase bg-red-600 text-white">
+                                            ANNULÉ
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className={`text-xs sm:text-sm ${isCancelled ? 'line-through text-muted-foreground' : 'text-muted-foreground'}`}>
                                         {monthName} - {formatCurrencyLocal(receipt.amount, receipt.currency)}
                                       </p>
                                       <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
@@ -1078,17 +1091,33 @@ const DashboardLocataire = () => {
                                        <ExternalLink className="h-4 w-4 mr-1.5" />
                                        <span>Voir</span>
                                      </Button>
-                                     <Button
-                                       size="sm"
-                                       variant="outline"
-                                       onClick={() => handleDownloadReceipt(receipt.id)}
-                                       className="flex-1 sm:flex-initial bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 transition-all"
-                                       title="Télécharger le PDF"
-                                     >
-                                       <Download className="h-4 w-4 mr-1.5" />
-                                       <span>PDF</span>
-                                     </Button>
-                                   </div>
+                                     {isCancelled ? (
+                                       <Button
+                                         size="sm"
+                                         variant="outline"
+                                         onClick={() => {
+                                           setSelectedTenantReasonReceipt(receipt);
+                                           setTenantReasonModalOpen(true);
+                                         }}
+                                         className="flex-1 sm:flex-initial border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/60 font-semibold"
+                                         title="Voir le motif d'annulation"
+                                       >
+                                         <Info className="h-4 w-4 mr-1.5" />
+                                         <span>Motif</span>
+                                       </Button>
+                                     ) : (
+                                       <Button
+                                         size="sm"
+                                         variant="outline"
+                                         onClick={() => handleDownloadReceipt(receipt.id)}
+                                         className="flex-1 sm:flex-initial bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 transition-all"
+                                         title="Télécharger le PDF"
+                                       >
+                                         <Download className="h-4 w-4 mr-1.5" />
+                                         <span>PDF</span>
+                                       </Button>
+                                     )}
+                                  </div>
                                 </div>
                               );
                             })}
@@ -1096,6 +1125,44 @@ const DashboardLocataire = () => {
                         )}
                       </CardContent>
                     </Card>
+
+                    {/* Modal Motif d'annulation pour locataire */}
+                    <Dialog open={tenantReasonModalOpen} onOpenChange={setTenantReasonModalOpen}>
+                      <DialogContent className="max-w-md rounded-2xl">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                            <div className="p-2 bg-red-100 dark:bg-red-950/60 rounded-lg shrink-0">
+                              <Info className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            </div>
+                            <span>Motif d'annulation de la quittance</span>
+                          </DialogTitle>
+                          <DialogDescription className="text-xs text-muted-foreground mt-1">
+                            Quittance N° <span className="font-mono font-semibold text-foreground">{selectedTenantReasonReceipt?.receipt_number}</span>
+                          </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-3">
+                          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 space-y-2">
+                            <p className="text-xs font-bold text-red-800 dark:text-red-300 uppercase tracking-wide">
+                              Raison d'annulation :
+                            </p>
+                            <p className="text-sm font-medium text-red-950 dark:text-red-100 leading-relaxed whitespace-pre-wrap">
+                              "{selectedTenantReasonReceipt?.cancellation_reason || 'Aucun motif renseigné'}"
+                            </p>
+                          </div>
+                        </div>
+
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => setTenantReasonModalOpen(false)}
+                            className="w-full sm:w-auto"
+                          >
+                            Fermer
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </TabsContent>
                 </Tabs>
               </div>

@@ -208,6 +208,20 @@ const Receipt = {
         return true;
     },
 
+    async cancel(id, cancellationReason, cancelledBy) {
+        await db.query(
+            `UPDATE receipts 
+             SET status = 'cancelled', 
+                 cancellation_reason = $1, 
+                 cancelled_at = NOW(), 
+                 cancelled_by = $2, 
+                 updated_at = NOW() 
+             WHERE id = $3`,
+            [cancellationReason, cancelledBy, id]
+        );
+        return await this.findById(id);
+    },
+
     async migrate() {
         const queries = [
             "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS period_type VARCHAR(20) DEFAULT 'mois'",
@@ -219,7 +233,11 @@ const Receipt = {
             "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS owner_email VARCHAR(255)",
             "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS owner_phone VARCHAR(50)",
             "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS tenant_email VARCHAR(255)",
-            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS tenant_phone VARCHAR(50)"
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS tenant_phone VARCHAR(50)",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'valid'",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS cancellation_reason TEXT NULL",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP NULL",
+            "ALTER TABLE receipts ADD COLUMN IF NOT EXISTS cancelled_by VARCHAR(36) NULL"
         ];
 
         for (const sql of queries) {
@@ -232,5 +250,8 @@ const Receipt = {
         return true;
     }
 };
+
+// Run migration on load
+Receipt.migrate().catch(err => console.error("Receipt migration failed:", err));
 
 module.exports = Receipt;

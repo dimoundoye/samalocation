@@ -260,6 +260,91 @@ const receiptController = {
     },
 
     /**
+     * Annuler une quittance avec motif (norme A+B anti-fraude)
+     */
+    async cancelReceipt(req, res, next) {
+        try {
+            const { id } = req.params;
+            const { cancellation_reason } = req.body;
+            const ownerId = req.ownerId;
+            const userId = req.user.id;
+
+            if (!cancellation_reason || !cancellation_reason.trim()) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Un motif d\'annulation est obligatoire.'
+                });
+            }
+
+            const receipt = await Receipt.findById(id);
+            if (!receipt) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Reçu non trouvé'
+                });
+            }
+
+            // Vérifier que la propriété appartient au propriétaire / agence connecté
+            const db = require('../config/db');
+            const { rows: properties } = await db.query(
+                'SELECT owner_id FROM properties WHERE id = $1',
+                [receipt.property_id]
+            );
+
+            if (properties.length === 0 || (properties[0].owner_id !== ownerId && properties[0].owner_id !== userId)) {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Non autorisé à annuler cette quittance'
+                });
+            }
+
+            const cancelledReceipt = await Receipt.cancel(id, cancellation_reason.trim(), userId);
+
+            // Journal d'activité indélébile pour le patron / agence
+            try {
+                const tenantName = receipt.tenant_name || 'Locataire';
+                const propName = receipt.property_name || 'Bien';
+                const formattedAmount = Number(receipt.amount).toLocaleString('fr-FR');
+                await logActivity(req, {
+                    action: 'CANCEL',
+                    entityType: 'tenant',
+                    entityId: id,
+                    entityLabel: `Quittance N° ${receipt.receipt_number} de ${formattedAmount} F CFA ANNULÉE — ${tenantName} (${receipt.month}/${receipt.year}) | Motif: ${cancellation_reason.trim()}`,
+                    metadata: { 
+                        receipt_number: receipt.receipt_number, 
+                        amount: receipt.amount, 
+                        cancellation_reason: cancellation_reason.trim(),
+                        tenant_name: tenantName,
+                        property_name: propName,
+                        month: receipt.month,
+                        year: receipt.year
+                    }
+                });
+            } catch (logErr) { console.error('Failed to log activity:', logErr); }
+
+            // Envoyer une notification d'annulation au locataire
+            try {
+                if (receipt.tenant_id) {
+                    await db.query(
+                        `INSERT INTO notifications (id, user_id, type, title, message, created_at)
+                        VALUES (uuid_generate_v4(), $1, $2, $3, $4, NOW())`,
+                        [
+                            receipt.tenant_id,
+                            'receipt',
+                            'Quittance de loyer annulée',
+                            `La quittance N° ${receipt.receipt_number} (${receipt.month}/${receipt.year}) a été annulée par le propriétaire. Motif : ${cancellation_reason.trim()}`
+                        ]
+                    );
+                }
+            } catch (notifErr) { console.error('Failed to notify tenant:', notifErr); }
+
+            return response.success(res, cancelledReceipt, 'Quittance annulée avec succès.');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
      * Supprimer un reçu
      */
     async deleteReceipt(req, res, next) {

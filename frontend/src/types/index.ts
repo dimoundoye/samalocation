@@ -120,6 +120,9 @@ export interface Receipt {
     period_type?: 'mois' | 'semaine' | 'jour';
     start_date?: string;
     end_date?: string;
+    status?: 'valid' | 'cancelled' | string;
+    cancellation_reason?: string;
+    cancelled_at?: string;
     // Informations jointes
     tenant_name?: string;
     property_name?: string;
