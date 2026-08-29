@@ -20,29 +20,7 @@ const Terms = () => {
                         <p className="text-muted-foreground italic">Dernière mise à jour : 14 juillet 2026</p>
                     </div>
 
-                    {/* Alerte Vigilance */}
-                    <div className="mb-10 bg-red-500/10 border border-red-500/20 rounded-2xl p-6 md:p-8">
-                        <div className="flex items-start gap-4">
-                            <div className="bg-red-500 text-white p-2 rounded-lg">
-                                <Shield className="h-6 w-6" />
-                            </div>
-                            <div className="space-y-3">
-                                <h2 className="text-xl font-bold text-red-600"> AVERTISSEMENT : VIGILANCE ET SÉCURITÉ</h2>
-                                <p className="text-sm text-red-800 leading-relaxed font-medium">
-                                    Samalocation est une plateforme de mise en relation. Nous vous appelons à la plus grande prudence :
-                                </p>
-                                <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-red-700 font-semibold">
-                                    <li className="flex items-center gap-2"> Ne payez JAMAIS avant d'avoir visité le bien.</li>
-                                    <li className="flex items-center gap-2"> Exigez une visite physique en plein jour.</li>
-                                    <li className="flex items-center gap-2"> Ne transférez pas d'argent à distance (mobile money, virement) sans garantie.</li>
-                                    <li className="flex items-center gap-2"> Vérifiez physiquement l'identité de votre interlocuteur.</li>
-                                </ul>
-                                <p className="text-xs text-red-600/80 italic mt-2">
-                                    Samalocation ne pourra en aucun cas être tenu responsable des pertes financières liées à des transactions frauduleuses effectuées en dehors de la plateforme.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    
 
                     {/* Section de réassurance */}
                     <div className="mb-10 bg-primary/5 border border-primary/10 rounded-2xl p-6 md:p-8">
@@ -181,6 +159,30 @@ const Terms = () => {
                                         Les propriétaires et les locataires demeurent les seuls responsables de l'exécution physique du bail et de leurs obligations respectives.
                                     </p>
                                 </div>
+
+                                {/* Alerte Vigilance */}
+                    <div className="mb-10 bg-red-500/10 border border-red-500/20 rounded-2xl p-6 md:p-8">
+                        <div className="flex items-start gap-4">
+                            <div className="bg-red-500 text-white p-2 rounded-lg">
+                                <Shield className="h-6 w-6" />
+                            </div>
+                            <div className="space-y-3">
+                                <h2 className="text-xl font-bold text-red-600"> AVERTISSEMENT : VIGILANCE ET SÉCURITÉ</h2>
+                                <p className="text-sm text-red-800 leading-relaxed font-medium">
+                                    Samalocation est une plateforme de mise en relation. Nous vous appelons à la plus grande prudence :
+                                </p>
+                                <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-red-700 font-semibold">
+                                    <li className="flex items-center gap-2"> Ne payez JAMAIS avant d'avoir visité le bien.</li>
+                                    <li className="flex items-center gap-2"> Exigez une visite physique en plein jour.</li>
+                                    <li className="flex items-center gap-2"> Ne transférez pas d'argent à distance (mobile money, virement) sans garantie.</li>
+                                    <li className="flex items-center gap-2"> Vérifiez physiquement l'identité de votre interlocuteur.</li>
+                                </ul>
+                                <p className="text-xs text-red-600/80 italic mt-2">
+                                    Samalocation ne pourra en aucun cas être tenu responsable des pertes financières liées à des transactions frauduleuses effectuées en dehors de la plateforme.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                             </section>
 
                             {/* Section 2 */}

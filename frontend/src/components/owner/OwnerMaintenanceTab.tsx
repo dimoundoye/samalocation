@@ -131,99 +131,100 @@ export const OwnerMaintenanceTab = () => {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {Array.isArray(filteredRequests) && filteredRequests.map((request) => {
                         const status = getStatusInfo(request.status);
                         const StatusIcon = status.icon;
 
                         return (
-                            <Card key={request.id} className="overflow-hidden shadow-soft hover:shadow-md transition-all">
-                                <div className="p-1 md:p-0 flex flex-col md:flex-row">
-                                    {/* Left Status Bar */}
-                                    <div className={`w-full md:w-2 ${status.color.split(' ')[0]}`} />
+                            <Card key={request.id} className="overflow-hidden shadow-soft hover:shadow-md transition-all border border-border/60 flex flex-col justify-between">
+                                {/* Top status indicator bar */}
+                                <div className={`h-1.5 w-full ${status.color.split(' ')[0]}`} />
 
-                                    <div className="flex-1 p-5">
-                                        <div className="flex flex-col md:flex-row justify-between gap-4">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <Badge className={`${status.color} border-none`}>
-                                                        <StatusIcon className={`h-3 w-3 mr-1 ${request.status === 'in_progress' ? 'animate-spin' : ''}`} />
-                                                        {status.label}
-                                                    </Badge>
-                                                    <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                                                        Priorité : {request.priority === 'urgent' ? 'Urgent' :
-                                                            request.priority === 'high' ? 'Haute' :
-                                                                request.priority === 'medium' ? 'Moyenne' : 'Faible'}
-                                                    </Badge>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        Signalé le {request.created_at ? format(new Date(request.created_at), "PPP", { locale: fr }) : "Date inconnue"}
-                                                    </span>
-                                                </div>
-                                                <h3 className="text-xl font-bold mt-2">{request.title}</h3>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="outline" size="sm" className="gap-2" disabled={updatingId === request.id}>
-                                                            {updatingId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-                                                            Statut
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(request.id, 'pending')}>
-                                                            Mettre en attente
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(request.id, 'in_progress')}>
-                                                            Marquer "En cours"
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(request.id, 'resolved')}>
-                                                            Marquer "Résolu"
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem className="text-red-600" onClick={() => handleUpdateStatus(request.id, 'cancelled')}>
-                                                            Annuler
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                                    {/* Header info */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <Badge className={`${status.color} border-none font-semibold text-xs`}>
+                                                    <StatusIcon className={`h-3 w-3 mr-1 ${request.status === 'in_progress' ? 'animate-spin' : ''}`} />
+                                                    {status.label}
+                                                </Badge>
+                                                <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider">
+                                                    Priorité : {request.priority === 'urgent' ? 'Urgent' :
+                                                        request.priority === 'high' ? 'Haute' :
+                                                            request.priority === 'medium' ? 'Moyenne' : 'Faible'}
+                                                </Badge>
                                             </div>
                                         </div>
 
-                                        <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                            <div className="lg:col-span-2">
-                                                <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                                                    {request.description}
-                                                </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Signalé le {request.created_at ? format(new Date(request.created_at), "PPP", { locale: fr }) : "Date inconnue"}
+                                        </p>
 
-                                                {Array.isArray(request.photos) && request.photos.length > 0 && (
-                                                    <div className="flex flex-wrap gap-2 mt-4">
-                                                        {request.photos.map((url: string, idx: number) => (
-                                                            <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block">
-                                                                <img
-                                                                    src={url}
-                                                                    alt="Incident"
-                                                                    className="w-20 h-20 object-cover rounded-md border hover:opacity-80 transition-opacity"
-                                                                />
-                                                            </a>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                        <h3 className="text-lg font-bold text-foreground pt-0.5">{request.title}</h3>
+
+                                        <div>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs font-semibold" disabled={updatingId === request.id}>
+                                                        {updatingId === request.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
+                                                        Statut
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="start">
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(request.id, 'pending')}>
+                                                        Mettre en attente
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(request.id, 'in_progress')}>
+                                                        Marquer "En cours"
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(request.id, 'resolved')}>
+                                                        Marquer "Résolu"
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-red-600" onClick={() => handleUpdateStatus(request.id, 'cancelled')}>
+                                                        Annuler
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </div>
+
+                                    {/* Description */}
+                                    <div className="space-y-3 flex-1">
+                                        <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                                            {request.description}
+                                        </p>
+
+                                        {Array.isArray(request.photos) && request.photos.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 pt-1">
+                                                {request.photos.map((url: string, idx: number) => (
+                                                    <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                                                        <img
+                                                            src={url}
+                                                            alt="Incident"
+                                                            className="w-16 h-16 object-cover rounded-lg border hover:opacity-80 transition-opacity"
+                                                        />
+                                                    </a>
+                                                ))}
                                             </div>
+                                        )}
+                                    </div>
 
-                                            <div className="bg-muted/30 p-4 rounded-lg space-y-3 h-fit">
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <User className="h-4 w-4 text-primary" />
-                                                    <span className="font-semibold">{request.tenant_name}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground pl-6">
-                                                    <span>{request.tenant_phone}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-sm pt-2 border-t">
-                                                    <Home className="h-4 w-4 text-primary" />
-                                                    <span className="font-medium">{request.property_name}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground pl-6">
-                                                    <span>Unité : {request.unit_number}</span>
-                                                </div>
+                                    {/* Tenant & Property box */}
+                                    <div className="bg-muted/40 dark:bg-muted/20 p-3.5 rounded-xl space-y-2 border border-border/30 mt-2">
+                                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                            <User className="h-4 w-4 text-primary shrink-0" />
+                                            <span className="truncate">{request.tenant_name}</span>
+                                            {request.tenant_phone && (
+                                                <span className="text-xs font-normal text-muted-foreground ml-auto">{request.tenant_phone}</span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-start gap-2 text-xs text-muted-foreground border-t border-border/30 pt-2">
+                                            <Home className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-foreground">{request.property_name}</span>
+                                                {request.unit_number && <span>Unité : {request.unit_number}</span>}
                                             </div>
                                         </div>
                                     </div>

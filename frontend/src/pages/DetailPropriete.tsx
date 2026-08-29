@@ -803,16 +803,8 @@ const DetailPropriete = () => {
                     );
                   })}
                 </CarouselContent>
-                <div className="hidden md:block">
-                  <CarouselPrevious className="-left-12" />
-                  <CarouselNext className="-right-12" />
-                </div>
-                <div className="md:hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 opacity-50">
-                  <CarouselPrevious className="h-10 w-10 bg-white/80 shadow-strong border border-primary/10 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
-                </div>
-                <div className="md:hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-50">
-                  <CarouselNext className="h-10 w-10 bg-white/80 shadow-strong border border-primary/10 text-primary hover:bg-white transition-all scale-100 active:scale-90 flex items-center justify-center p-0" />
-                </div>
+                <CarouselPrevious className="left-1 sm:left-2 md:-left-12 h-9 w-9 sm:h-10 sm:w-10 bg-white/95 dark:bg-card/95 shadow-strong border border-primary/15 text-primary hover:bg-primary hover:text-white transition-all z-30 opacity-100 flex items-center justify-center p-0" />
+                <CarouselNext className="right-1 sm:right-2 md:-right-12 h-9 w-9 sm:h-10 sm:w-10 bg-white/95 dark:bg-card/95 shadow-strong border border-primary/15 text-primary hover:bg-primary hover:text-white transition-all z-30 opacity-100 flex items-center justify-center p-0" />
               </Carousel>
             )}
           </section>

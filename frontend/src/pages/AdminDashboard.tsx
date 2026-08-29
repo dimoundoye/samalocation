@@ -892,7 +892,7 @@ const AdminDashboard = () => {
                             {formatCurrency(ledgerStats.reserved_funds || 0)}
                           </CardTitle>
                           <p className="text-[10px] text-purple-500 mt-1">
-                            Somme réelle à bloquer sur PayDunya (Solde Bailleurs - 2.5% + 2% PayDunya)
+                            Somme réelle à bloquer sur PayDunya (Solde Bailleurs - 2,5% + 2% PayDunya)
                           </p>
                         </CardHeader>
                       </Card>

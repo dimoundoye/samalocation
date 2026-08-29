@@ -291,7 +291,7 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                                             <span>{formatCurrency(rentAmount, currency)}</span>
                                         </div>
                                         <div className="flex justify-between text-muted-foreground">
-                                            <span>Frais de service en ligne (2.5%) :</span>
+                                            <span>Frais de service en ligne (2,5%) :</span>
                                             <span>{formatCurrency(feeAmount, currency)}</span>
                                         </div>
                                         <div className="flex justify-between font-bold border-t pt-1.5 text-foreground">

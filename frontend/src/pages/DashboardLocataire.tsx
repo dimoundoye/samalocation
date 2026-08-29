@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, Eye, ExternalLink, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2, Info } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, Eye, ExternalLink, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2, Info, Calendar } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -80,7 +81,30 @@ const DashboardLocataire = () => {
   const [tenantProfile, setTenantProfile] = useState<any>(null);
   const [tenantData, setTenantData] = useState<any>(null);
   const [receipts, setReceipts] = useState<any[]>([]);
+  const [receiptMonthFilter, setReceiptMonthFilter] = useState<string>("all");
+  const [receiptYearFilter, setReceiptYearFilter] = useState<string>("all");
   const [tenantReasonModalOpen, setTenantReasonModalOpen] = useState(false);
+
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set<number>();
+    receipts.forEach((r: any) => {
+      if (r.year) yearsSet.add(r.year);
+      else if (r.created_at) yearsSet.add(new Date(r.created_at).getFullYear());
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [receipts]);
+
+  const filteredReceipts = useMemo(() => {
+    return receipts.filter((r: any) => {
+      const rYear = r.year || (r.created_at ? new Date(r.created_at).getFullYear() : null);
+      const rMonth = r.month || (r.created_at ? new Date(r.created_at).getMonth() + 1 : null);
+
+      if (receiptYearFilter !== "all" && rYear !== parseInt(receiptYearFilter)) return false;
+      if (receiptMonthFilter !== "all" && rMonth !== parseInt(receiptMonthFilter)) return false;
+
+      return true;
+    });
+  }, [receipts, receiptYearFilter, receiptMonthFilter]);
   const [selectedTenantReasonReceipt, setSelectedTenantReasonReceipt] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -1039,17 +1063,65 @@ const DashboardLocataire = () => {
 
                   <TabsContent value="receipts" className="space-y-6">
                     <Card className="shadow-soft">
-                      <CardHeader>
-                        <CardTitle>{t('dashboard.sidebar.documents')}</CardTitle>
+                      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/40 pb-4">
+                        <CardTitle className="text-lg font-bold">{t('dashboard.sidebar.documents')}</CardTitle>
+
+                        {/* Filtre par Date */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium shrink-0">
+                            <Calendar className="h-3.5 w-3.5 text-primary" />
+                            <span>Date :</span>
+                          </div>
+
+                          {/* Filtre Mois */}
+                          <Select value={receiptMonthFilter} onValueChange={setReceiptMonthFilter}>
+                            <SelectTrigger className="w-[130px] h-8 text-xs bg-background">
+                              <SelectValue placeholder="Tous les mois" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tous les mois</SelectItem>
+                              {["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"].map((m, idx) => (
+                                <SelectItem key={idx + 1} value={(idx + 1).toString()}>{m}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {/* Filtre Année */}
+                          <Select value={receiptYearFilter} onValueChange={setReceiptYearFilter}>
+                            <SelectTrigger className="w-[120px] h-8 text-xs bg-background">
+                              <SelectValue placeholder="Toutes années" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Toutes années</SelectItem>
+                              {availableYears.map(y => (
+                                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {(receiptMonthFilter !== "all" || receiptYearFilter !== "all") && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => {
+                                setReceiptMonthFilter("all");
+                                setReceiptYearFilter("all");
+                              }}
+                              className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              Réinitialiser
+                            </Button>
+                          )}
+                        </div>
                       </CardHeader>
-                      <CardContent>
-                        {receipts.length === 0 ? (
+                      <CardContent className="pt-6">
+                        {filteredReceipts.length === 0 ? (
                           <p className="text-center text-muted-foreground py-8">
-                            {t('tenant.no_receipts')}
+                            {receipts.length === 0 ? t('tenant.no_receipts') : "Aucun reçu ne correspond aux filtres de date sélectionnés."}
                           </p>
                         ) : (
                           <div className="space-y-3">
-                            {receipts.map((receipt) => {
+                            {filteredReceipts.map((receipt) => {
                               const monthName = format(new Date(receipt.year, receipt.month - 1), 'MMMM yyyy', { locale: dateLocale });
                               const isCancelled = receipt.status === 'cancelled';
                               return (

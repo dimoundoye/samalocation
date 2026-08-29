@@ -323,7 +323,7 @@ export const OwnerWalletTab = () => {
                                 Permet à vos locataires de payer directement en ligne sur la plateforme SamaLocation par Mobile Money (Wave, OM) ou Visa.
                             </p>
                             <p className="text-[10px] text-primary font-semibold mt-1">
-                                ℹ️ Les retraits de fonds de votre portefeuille vers votre numéro Mobile Money sont soumis à des frais de service de 2.5%.
+                                ℹ️ Les retraits de fonds de votre portefeuille vers votre numéro Mobile Money sont soumis à des frais de service de 2,5%.
                             </p>
                         </div>
                         <div className="flex items-center justify-between border-t pt-3">
@@ -528,7 +528,7 @@ export const OwnerWalletTab = () => {
                                     <span>{formatCurrency(rentAmount, currency)}</span>
                                 </div>
                                 <div className="flex justify-between text-muted-foreground">
-                                    <span>Frais de virement (2.5%) :</span>
+                                    <span>Frais de virement (2,5%) :</span>
                                     <span>{formatCurrency(feeAmount, currency)}</span>
                                 </div>
                                 <div className="flex justify-between font-bold border-t pt-1.5 text-foreground">

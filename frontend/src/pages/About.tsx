@@ -388,7 +388,7 @@ const About = () => {
               <div className="space-y-2">
                 <h3 className="font-bold text-lg">Comment retirer l'argent de mon portefeuille bailleur ?</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  Les propriétaires peuvent demander un retrait de leur solde à tout moment depuis l'onglet "Mon portefeuille". Les fonds sont virés instantanément sur le compte Mobile Money (Wave, Orange Money ou Free Money) de leur choix. Ces retraits sont soumis à des frais de service de 2.5%.
+                  Les propriétaires peuvent demander un retrait de leur solde à tout moment depuis l'onglet "Mon portefeuille". Les fonds sont virés instantanément sur le compte Mobile Money (Wave, Orange Money ou Free Money) de leur choix. Ces retraits sont soumis à des frais de service de 2,5%.
                 </p>
               </div>
               <div className="space-y-2">
