@@ -277,7 +277,8 @@ const resources = {
                     "studio": "Studio",
                     "room": "Chambre",
                     "garage": "Garage",
-                    "office": "Locale"
+                    "office": "Locale",
+                    "land": "Terrain"
                 },
                 "prices": {
                     "all": "Tous les prix",
@@ -746,7 +747,8 @@ const resources = {
                     "studio": "Studio",
                     "room": "Room",
                     "garage": "Garage",
-                    "office": "Office"
+                    "office": "Office",
+                    "land": "Land"
                 },
                 "prices": {
                     "all": "All prices",

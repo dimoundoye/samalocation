@@ -36,9 +36,10 @@ const subscriptionController = {
             `, [userId]);
             const receiptsThisMonth = parseInt(receiptRows[0].count);
 
-            // Get referral count
-            const { rows: userRows } = await db.query('SELECT referral_count FROM users WHERE id = $1', [userId]);
+            // Get referral info
+            const { rows: userRows } = await db.query('SELECT referral_count, referred_by FROM users WHERE id = $1', [userId]);
             const referralCount = userRows[0]?.referral_count || 0;
+            const referredBy = userRows[0]?.referred_by || null;
 
             // Get plan limits
             const PLANS = require('../config/plans');
@@ -65,6 +66,7 @@ const subscriptionController = {
                 receipts_this_month: receiptsThisMonth,
                 receipts_limit: sanitize(planConfig.limits.max_receipts_per_month),
                 referral_count: referralCount,
+                referred_by: referredBy,
                 limits: {
                     ...planConfig.limits,
                     max_properties: sanitize(planConfig.limits.max_properties),

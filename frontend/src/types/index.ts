@@ -138,6 +138,7 @@ export interface Report {
     reporter_email?: string;
     reported_id: string;
     reported_name?: string;
+    reported_email?: string;
     reported_is_blocked: boolean;
     reason: string;
     description?: string;
@@ -157,6 +158,7 @@ export interface AdminStatistics {
     pendingReportsCount: number;
     pendingVerificationsCount: number;
     pendingPaymentsCount: number;
+    pendingContactsCount?: number;
     subscriptions?: {
         premium: number;
         professionnel: number;

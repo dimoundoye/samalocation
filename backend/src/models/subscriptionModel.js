@@ -99,7 +99,9 @@ const Subscription = {
             receiptUrl
         } = data;
 
-        // On cherche la date d'expiration la plus lointaine parmi TOUS les abonnements actifs
+        const PLANS = require('../config/plans');
+        
+        // On cherche l'abonnement actif et la date d'expiration la plus lointaine
         const { rows: maxRows } = await db.query(`
             SELECT MAX(expires_at) as max_expiration 
             FROM subscriptions 
@@ -110,9 +112,22 @@ const Subscription = {
         let startDate = new Date();
         const maxExpiration = maxRows[0]?.max_expiration;
         
-        // Si on a déjà une date d'expiration dans le futur, on cumule à partir de là
+        // Si l'utilisateur a un abonnement actif non expiré
         if (maxExpiration && new Date(maxExpiration) > new Date()) {
-            startDate = new Date(maxExpiration);
+            const activeSub = await this.findActiveByUserId(userId);
+            const oldPlanKey = activeSub?.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE';
+            const newPlanKey = planName ? planName.toUpperCase() : 'FREE';
+            
+            const oldPlan = PLANS[oldPlanKey === 'PROFESSIONNEL' || oldPlanKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : oldPlanKey] || PLANS.FREE;
+            const newPlan = PLANS[newPlanKey === 'PROFESSIONNEL' || newPlanKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : newPlanKey] || PLANS.FREE;
+
+            // Si c'est le même plan (renouvellement), on cumule à la fin de la date d'expiration
+            // Si c'est un UPGRADE (plan supérieur/plus cher), le nouveau plan démarre IMMÉDIATEMENT AUJOURD'HUI
+            if (newPlan.price_monthly <= oldPlan.price_monthly) {
+                startDate = new Date(maxExpiration);
+            } else {
+                startDate = new Date(); // Upgrade immédiat pour la durée exacte achetée
+            }
         }
 
         // On expire l'ancien abonnement s'il y en a un
@@ -220,6 +235,21 @@ const Subscription = {
         const expiresAt = new Date(startDate);
         expiresAt.setDate(expiresAt.getDate() + (durationDays || 30));
 
+        // Déterminer le prix effectif (gestion intelligente du tarif annuel si tarif mensuel passé par erreur)
+        let finalPrice = price;
+        const isAnnualDuration = (durationDays || 30) >= 365;
+        if (finalPrice === undefined || finalPrice === null || (isAnnualDuration && (Number(finalPrice) === 15000 || Number(finalPrice) === 5000))) {
+            const planKey = (planName || 'PREMIUM').toUpperCase();
+            const configPlan = PLANS[planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL' ? 'PROFESSIONAL' : planKey] || PLANS.PREMIUM;
+            if (isAnnualDuration) {
+                finalPrice = configPlan.price_annual;
+            } else if (durationDays === 90) {
+                finalPrice = configPlan.price_monthly * 3;
+            } else {
+                finalPrice = configPlan.price_monthly;
+            }
+        }
+
         // 2. Vérifier s'il existe un abonnement 'pending' pour cet utilisateur
         // Priorité à l'ID spécifique s'il est fourni
         let pendingSubId = subscriptionId;
@@ -250,7 +280,7 @@ const Subscription = {
                 RETURNING *
             `, [
                 planName || 'PREMIUM',
-                price || 0,
+                finalPrice !== undefined ? finalPrice : (price || 0),
                 expiresAt,
                 pendingSubId,
                 userId
@@ -271,7 +301,7 @@ const Subscription = {
         `, [
             userId,
             planName || 'PREMIUM',
-            price || 0,
+            finalPrice !== undefined ? finalPrice : (price || 0),
             expiresAt
         ]);
 

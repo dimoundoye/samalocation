@@ -54,7 +54,7 @@ const User = {
 
     async findProfileById(id) {
         const { rows } = await db.query(`
-            SELECT up.*, u.is_setup_complete, u.parent_id, u.permissions, op.currency
+            SELECT up.*, u.is_setup_complete, u.parent_id, u.permissions, u.referred_by, u.referral_count, op.currency
             FROM user_profiles up
             JOIN users u ON up.id = u.id
             LEFT JOIN owner_profiles op ON up.id = op.id
@@ -263,7 +263,12 @@ const User = {
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP WITH TIME ZONE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(255)",
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires TIMESTAMP WITH TIME ZONE"
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires TIMESTAMP WITH TIME ZONE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(50)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL",
+            "CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by)",
+            "CREATE INDEX IF NOT EXISTS idx_users_parent_id ON users(parent_id)"
         ];
 
         for (const sql of queries) {

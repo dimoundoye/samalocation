@@ -10,3 +10,11 @@ export const updateContactMessageStatus = async (id: string, status: 'new' | 're
         body: JSON.stringify({ status })
     });
 };
+
+export const replyContactMessage = async (id: string, data: { replyMessage: string; replySubject?: string }) => {
+    return await baseClient(`/contact/${id}/reply`, {
+        method: "POST",
+        body: JSON.stringify(data)
+    });
+};
+

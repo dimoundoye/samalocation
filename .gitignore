@@ -38,3 +38,5 @@ samal2728987.sql
 backend/test_output*.pdf
 *.test.pdf
 
+# Video
+video/

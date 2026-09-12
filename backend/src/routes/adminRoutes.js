@@ -48,6 +48,9 @@ router.get('/events', adminController.getEvents);
 // Analytics en direct
 router.get('/analytics/live', adminController.getLiveAnalytics);
 
+// Performance & Usage IA (avec filtres par mois/année)
+router.get('/ai/performance', adminController.getAIPerformance);
+
 // Paramètres de la plateforme
 router.get('/platform/settings', adminController.getPlatformSettings);
 router.patch('/platform/settings', adminController.updatePlatformSettings);

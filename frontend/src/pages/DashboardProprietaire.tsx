@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Plus, Search, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature, Wallet, DollarSign } from "lucide-react";
+import { Home, Plus, Search, Users, Settings, LogOut, MessageSquare, TrendingUp, Menu, Building2, Send, Phone, Trash2, Edit, ArrowLeft, History, PieChart, ChevronLeft, ChevronRight, BarChart3, Wrench, Folder, FolderOpen, AlertCircle, AlertTriangle, FileText, Shield, CreditCard, Users2, Briefcase, User as UserIcon, Clock, CheckCircle2, X, Globe, HelpCircle, Gift, Copy, Share2, Receipt as ReceiptIcon, FileSignature, Wallet, DollarSign } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams, useParams, useLocation } from "react-router-dom";
@@ -68,7 +68,7 @@ import { EditTenantDialog } from "@/components/owner/EditTenantDialog";
 import { CreateReceiptDialog } from "@/components/owner/CreateReceiptDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { TenantHistoryDialog } from "@/components/owner/TenantHistoryDialog";
-import { ManagementTable } from "@/components/owner/ManagementTable";
+import { ManagementTable, HierarchicalGroupSelector } from "@/components/owner/ManagementTable";
 import { OwnerMaintenanceTab } from "@/components/owner/OwnerMaintenanceTab";
 import { OwnerContractsTab } from "@/components/owner/OwnerContractsTab";
 import { OwnerSubscription } from "@/components/owner/OwnerSubscription";
@@ -195,20 +195,60 @@ const DashboardProprietaire = () => {
   });
   const [tenantSearch, setTenantSearch] = useState("");
   const [propertySearch, setPropertySearch] = useState("");
+  const [propertyGroupFilter, setPropertyGroupFilter] = useState<string>("all");
+  const [tenantGroupFilter, setTenantGroupFilter] = useState<string>("all");
   const [tenantStatusFilter, setTenantStatusFilter] = useState<"active" | "inactive">("active");
 
+  const activeOwnerId = useMemo(() => {
+    if (user?.parentId && activeContext !== "personal") {
+      return user.parentId;
+    }
+    return user?.id;
+  }, [user?.id, user?.parentId, activeContext]);
+
+  const userGroupsKey = useMemo(() => activeOwnerId ? `owner_property_groups_v1_${activeOwnerId}` : "owner_property_groups_v1_guest", [activeOwnerId]);
+  const [customGroups, setCustomGroups] = useState<{ id: string; name: string; propertyIds: string[]; parentId?: string }[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(true);
+
   const filteredProperties = useMemo(() => {
-    if (!propertySearch.trim()) return properties;
-    const query = propertySearch.toLowerCase();
     return properties.filter((property) => {
-      return (
-        (property.name ?? "").toLowerCase().includes(query) ||
-        (property.address ?? "").toLowerCase().includes(query) ||
-        (property.description ?? "").toLowerCase().includes(query) ||
-        (property.property_type ?? "").toLowerCase().includes(query)
-      );
+      // 1. Filtre par Dossier / Groupe
+      if (propertyGroupFilter !== "all") {
+        if (propertyGroupFilter === "ungrouped") {
+          // Biens qui ne sont dans AUCUN groupe
+          const isInAnyGroup = (customGroups || []).some(g => (g.propertyIds || []).includes(property.id));
+          if (isInAnyGroup) return false;
+        } else {
+          // Bien doit être dans le dossier sélectionné ou l'un de ses sous-dossiers
+          const getAllDescendantIds = (parentId: string): string[] => {
+            const children = (customGroups || []).filter(g => g.parentId === parentId);
+            return [parentId, ...children.flatMap(c => getAllDescendantIds(c.id))];
+          };
+          const relevantGroupIds = getAllDescendantIds(propertyGroupFilter);
+          const isIncluded = (customGroups || [])
+            .filter(g => relevantGroupIds.includes(g.id))
+            .some(g => (g.propertyIds || []).includes(property.id));
+          if (!isIncluded) {
+            return false;
+          }
+        }
+      }
+
+      // 2. Filtre par recherche textuelle
+      if (propertySearch.trim()) {
+        const query = propertySearch.toLowerCase();
+        const matchesQuery = (
+          (property.name ?? "").toLowerCase().includes(query) ||
+          (property.address ?? "").toLowerCase().includes(query) ||
+          (property.description ?? "").toLowerCase().includes(query) ||
+          (property.property_type ?? "").toLowerCase().includes(query)
+        );
+        if (!matchesQuery) return false;
+      }
+
+      return true;
     });
-  }, [properties, propertySearch]);
+  }, [properties, propertySearch, propertyGroupFilter, customGroups]);
   const [createContractOpen, setCreateContractOpen] = useState(false);
   const [selectedTenantForContract, setSelectedTenantForContract] = useState<Tenant | null>(null);
 
@@ -222,17 +262,6 @@ const DashboardProprietaire = () => {
     setShowOnboarding(newValue);
     localStorage.setItem("show_onboarding_guide", String(newValue));
   };
-
-  const activeOwnerId = useMemo(() => {
-    if (user?.parentId && activeContext !== "personal") {
-      return user.parentId;
-    }
-    return user?.id;
-  }, [user?.id, user?.parentId, activeContext]);
-
-  const userGroupsKey = useMemo(() => activeOwnerId ? `owner_property_groups_v1_${activeOwnerId}` : "owner_property_groups_v1_guest", [activeOwnerId]);
-  const [customGroups, setCustomGroups] = useState<{ id: string; name: string; propertyIds: string[]; parentId?: string }[]>([]);
-  const [loadingGroups, setLoadingGroups] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const years = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -1099,7 +1128,7 @@ const DashboardProprietaire = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 pb-32 md:p-8 md:pb-8">
+        <div className="flex-1 overflow-y-auto p-4 pb-32 md:p-8 md:pb-24">
           <div
             className={`${activeTab === "management" ? "max-w-full" : "max-w-7xl"
               } mx-auto`}
@@ -1135,6 +1164,12 @@ const DashboardProprietaire = () => {
                       const isGracePeriod = expiryEndOfDay > 0 && diffMs < 0 && diffMs > -GRACE_MS;
                       const isExpiringSoon = expiryEndOfDay > 0 && diffMs > 0 && diffMs < (7 * 24 * 60 * 60 * 1000);
 
+                      // Déterminer le type d'abonnement actif
+                      const isFreePrice = parseFloat(subscription.price) === 0;
+                      const isParrainReward = isFreePrice && (subscription.referral_count || 0) > 0;
+                      const hasReferredBy = !!user?.referred_by || !!(subscription as any)?.referred_by;
+                      const isFilleulWelcome = isFreePrice && hasReferredBy && (subscription.referral_count || 0) === 0;
+
                       return (
                         <Alert className={isFullyExpired || isGracePeriod
                           ? `bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl shadow-md border-2 ${isGracePeriod ? 'animate-pulse' : ''}`
@@ -1159,7 +1194,13 @@ const DashboardProprietaire = () => {
                                     ? "Action requise : Abonnement expiré !"
                                     : isExpiringSoon
                                       ? "Votre abonnement expire bientôt !"
-                                      : (subscription.price === 0 ? "Récompense de parrainage activée !" : "Paiement validé avec succès !")
+                                      : isParrainReward
+                                        ? "Récompense de parrainage activée !"
+                                        : isFilleulWelcome
+                                          ? "Cadeau de bienvenue activé !"
+                                          : isFreePrice
+                                            ? "Abonnement offert par SamaLocation !"
+                                            : "Paiement validé avec succès !"
                                 }
                               </AlertTitle>
                               <AlertDescription className="text-sm opacity-90">
@@ -1169,9 +1210,13 @@ const DashboardProprietaire = () => {
                                     ? `Votre plan ${subscription.plan_name} est terminé, mais Samalocation vous offre 3 jours de sursis pour régulariser. Profitez-en pour renouveler dès maintenant.`
                                     : isExpiringSoon
                                       ? `Attention, votre accès ${subscription.plan_name} se termine dans quelques jours.`
-                                      : (subscription.price === 0
+                                      : isParrainReward
                                         ? `Félicitations ! Vous profitez de ${subscription.referral_count} mois de plan ${subscription.plan_name} offerts grâce à vos parrainages.`
-                                        : `Votre abonnement ${subscription.plan_name} est actif.`)
+                                        : isFilleulWelcome
+                                          ? `Bienvenue ! Vous profitez d'un mois de plan ${subscription.plan_name} offert grâce au code de votre parrain.`
+                                          : isFreePrice
+                                            ? `Félicitations ! Votre plan ${subscription.plan_name} vous a été gracieusement offert par l'administration.`
+                                            : `Votre abonnement ${subscription.plan_name} est actif.`
                                 }
                                 {subscription.expires_at && (
                                   <span> {isFullyExpired || isGracePeriod ? "Était valide jusqu'au" : "Fin de l'offre"} : <strong>{format(new Date(subscription.expires_at), 'dd MMMM yyyy', { locale: fr })}</strong>.</span>
@@ -1555,16 +1600,37 @@ const DashboardProprietaire = () => {
                       {properties.length} {properties.length > 1 ? t('owner.properties_registered') : t('owner.property_registered')}
                     </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                    {/* Filtre par Dossier / Arborescence interactive */}
+                    <div className="w-full sm:w-60">
+                      <HierarchicalGroupSelector
+                        groups={customGroups}
+                        value={propertyGroupFilter}
+                        onSelect={(id) => setPropertyGroupFilter(id === "root" ? "all" : id)}
+                        rootLabel={`Tous les dossiers (${properties.length})`}
+                        className="h-10 text-xs sm:text-sm bg-background border-border/80 rounded-xl shadow-sm"
+                      />
+                    </div>
+
+                    {/* Recherche textuelle */}
                     <div className="relative w-full sm:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder={t('owner.search_property') || "Rechercher un bien..."}
                         value={propertySearch}
                         onChange={(e) => setPropertySearch(e.target.value)}
-                        className="pl-10 py-1 text-sm h-9"
+                        className="pl-10 py-1 text-sm h-10 rounded-xl"
                       />
+                      {propertySearch && (
+                        <button
+                          onClick={() => setPropertySearch("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
+
                     <Button
                       onClick={() => setAddPropertyOpen(true)}
                       className="w-full sm:w-auto"
@@ -1595,11 +1661,25 @@ const DashboardProprietaire = () => {
                     </CardContent>
                   </Card>
                 ) : filteredProperties.length === 0 ? (
-                  <div className="text-center p-12 bg-neutral-50 dark:bg-neutral-900 rounded-2xl border border-dashed">
+                  <div className="text-center p-12 bg-neutral-50 dark:bg-neutral-900 rounded-2xl border border-dashed flex flex-col items-center justify-center">
                     <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-muted-foreground">
-                      {t('owner.no_property_found') || "Aucun bien ne correspond à votre recherche."}
+                    <p className="text-muted-foreground mb-4">
+                      {t('owner.no_property_found') || "Aucun bien ne correspond à vos critères de recherche ou au dossier sélectionné."}
                     </p>
+                    {(propertySearch || propertyGroupFilter !== "all") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setPropertySearch("");
+                          setPropertyGroupFilter("all");
+                        }}
+                        className="rounded-xl text-xs font-semibold"
+                      >
+                        <X className="mr-1.5 h-3.5 w-3.5" />
+                        Réinitialiser tous les filtres
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
@@ -1629,18 +1709,40 @@ const DashboardProprietaire = () => {
                                 )}
                               </div>
                             )}
-                            <CardHeader className="p-4 sm:p-5">
-                              <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between text-base sm:text-lg">
-                                <span className="font-bold tracking-tight text-neutral-800 dark:text-neutral-100 line-clamp-1">{property.name}</span>
-                                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                                  <Badge variant="outline" className="capitalize text-[10px] px-2 py-0.5">{property.property_type}</Badge>
-                                  {property.listing_type === 'vente' ? (
-                                    <Badge variant="destructive" className="animate-pulse shadow-sm text-[10px] px-2 py-0.5">À VENDRE</Badge>
-                                  ) : (
-                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm text-[10px] px-2 py-0.5">À LOUER</Badge>
-                                  )}
-                                </div>
-                              </CardTitle>
+                            <CardHeader className="p-4 sm:p-5 space-y-2.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <h3 className="font-bold tracking-tight text-neutral-800 dark:text-neutral-100 text-base sm:text-lg leading-snug line-clamp-2">
+                                  {property.name}
+                                </h3>
+                              </div>
+
+                              {/* Badges de statut et dossier */}
+                              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                {/* Badge Dossier / Groupe s'il existe */}
+                                {(() => {
+                                  const group = customGroups.find(g => (g.propertyIds || []).includes(property.id));
+                                  return group ? (
+                                    <Badge 
+                                      variant="secondary" 
+                                      className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border-primary/20 flex items-center gap-1 cursor-pointer hover:bg-primary/20 transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPropertyGroupFilter(group.id);
+                                      }}
+                                      title={`Filtrer par le dossier ${group.name}`}
+                                    >
+                                      <Folder className="h-2.5 w-2.5 shrink-0" />
+                                      <span className="truncate max-w-[120px]">{group.name}</span>
+                                    </Badge>
+                                  ) : null;
+                                })()}
+                                <Badge variant="outline" className="capitalize text-[10px] px-2 py-0.5 shrink-0">{property.property_type}</Badge>
+                                {property.listing_type === 'vente' ? (
+                                  <Badge variant="destructive" className="animate-pulse shadow-sm text-[10px] px-2 py-0.5 shrink-0">À VENDRE</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm text-[10px] px-2 py-0.5 shrink-0">À LOUER</Badge>
+                                )}
+                              </div>
                             </CardHeader>
                             <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5">
                               <p className="text-xs sm:text-sm text-muted-foreground mb-2 truncate">
@@ -1816,14 +1918,33 @@ const DashboardProprietaire = () => {
                       {tenants.length} {tenants.length > 1 ? t('owner.tenants_registered') : t('owner.tenant_registered')}
                     </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                    {/* Filtre par Dossier / Arborescence interactive */}
+                    <div className="w-full sm:w-60">
+                      <HierarchicalGroupSelector
+                        groups={customGroups}
+                        value={tenantGroupFilter}
+                        onSelect={(id) => setTenantGroupFilter(id === "root" ? "all" : id)}
+                        rootLabel={`Tous les dossiers (${tenants.length})`}
+                        className="h-9 text-xs bg-background border-border/80 rounded-xl shadow-sm"
+                      />
+                    </div>
+
                     <div className="relative w-full sm:w-64">
                       <Input
                         placeholder={t('owner.search_tenant')}
                         value={tenantSearch}
                         onChange={(e) => setTenantSearch(e.target.value)}
-                        className="pl-3 py-1 text-sm h-9"
+                        className="pl-3 py-1 text-sm h-9 rounded-xl"
                       />
+                      {tenantSearch && (
+                        <button
+                          onClick={() => setTenantSearch("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                     <Button
                       className="w-full sm:w-auto"
@@ -1880,6 +2001,25 @@ const DashboardProprietaire = () => {
                     {(() => {
                       const filteredTenants = tenants.filter(
                         (t) => {
+                          // 1. Filtre par Dossier / Groupe (via la propriété rattachée au locataire)
+                          if (tenantGroupFilter !== "all") {
+                            if (tenantGroupFilter === "ungrouped") {
+                              const isInAnyGroup = (customGroups || []).some(g => (g.propertyIds || []).includes(t.property_id));
+                              if (isInAnyGroup) return false;
+                            } else {
+                              const getAllDescendantIds = (parentId: string): string[] => {
+                                const children = (customGroups || []).filter(g => g.parentId === parentId);
+                                return [parentId, ...children.flatMap(c => getAllDescendantIds(c.id))];
+                              };
+                              const relevantGroupIds = getAllDescendantIds(tenantGroupFilter);
+                              const isIncluded = (customGroups || [])
+                                .filter(g => relevantGroupIds.includes(g.id))
+                                .some(g => (g.propertyIds || []).includes(t.property_id));
+                              if (!isIncluded) return false;
+                            }
+                          }
+
+                          // 2. Recherche textuelle
                           const search = tenantSearch.toLowerCase();
                           const matchesSearch = (
                             (t.full_name ?? "").toLowerCase().includes(search) ||
@@ -1899,14 +2039,28 @@ const DashboardProprietaire = () => {
 
                       if (filteredTenants.length === 0) {
                         return (
-                          <div className="text-center py-12">
-                            <p className="text-muted-foreground text-sm">
-                              {tenantSearch
-                                ? t('owner.no_tenant_found')
+                          <div className="text-center py-12 flex flex-col items-center justify-center">
+                            <p className="text-muted-foreground text-sm mb-4">
+                              {tenantSearch || tenantGroupFilter !== "all"
+                                ? "Aucun locataire ne correspond à vos critères de recherche ou au dossier sélectionné."
                                 : tenantStatusFilter === "active"
                                   ? "Aucun locataire actif pour le moment."
                                   : "Aucun locataire inactif enregistré."}
                             </p>
+                            {(tenantSearch || tenantGroupFilter !== "all") && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setTenantSearch("");
+                                  setTenantGroupFilter("all");
+                                }}
+                                className="rounded-xl text-xs font-semibold"
+                              >
+                                <X className="mr-1.5 h-3.5 w-3.5" />
+                                Réinitialiser tous les filtres
+                              </Button>
+                            )}
                           </div>
                         );
                       }
@@ -2067,7 +2221,25 @@ const DashboardProprietaire = () => {
                                         </div>
                                       </div>
                                     </TableCell>
-                                    <TableCell>{tenant.property_name}</TableCell>
+                                    <TableCell>
+                                      <div className="flex flex-col gap-1 items-start">
+                                        <span className="font-medium text-slate-800 dark:text-slate-200">{tenant.property_name}</span>
+                                        {(() => {
+                                          const group = customGroups.find(g => (g.propertyIds || []).includes(tenant.property_id));
+                                          return group ? (
+                                            <Badge
+                                              variant="secondary"
+                                              className="text-[9px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20 flex items-center gap-1 cursor-pointer hover:bg-primary/20"
+                                              onClick={() => setTenantGroupFilter(group.id)}
+                                              title={`Filtrer par le dossier ${group.name}`}
+                                            >
+                                              <Folder className="h-2.5 w-2.5" />
+                                              <span>{group.name}</span>
+                                            </Badge>
+                                          ) : null;
+                                        })()}
+                                      </div>
+                                    </TableCell>
                                     <TableCell>
                                       {formatCurrency(tenant.monthly_rent, ownerProfile?.currency || 'XOF')}
                                     </TableCell>

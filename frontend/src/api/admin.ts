@@ -10,8 +10,16 @@ export const getRecentUsers = async (limit = 10, since?: string) => {
     return await baseClient(url);
 };
 
-export const getUserGrowthData = async (days = 30) => {
-    return await baseClient(`/admin/users/growth?days=${days}`);
+export const getUserGrowthData = async (options?: number | { period?: 'month' | 'year' | 'day'; year?: number; days?: number }) => {
+    if (typeof options === 'number') {
+        return await baseClient(`/admin/users/growth?days=${options}`);
+    }
+    const params = new URLSearchParams();
+    if (options?.period) params.append('period', options.period);
+    if (options?.year) params.append('year', options.year.toString());
+    if (options?.days) params.append('days', options.days.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return await baseClient(`/admin/users/growth${query}`);
 };
 
 export const getPropertiesOverview = async () => {
@@ -43,8 +51,8 @@ export const getAdminTransactions = async (limit = 20) => {
     return await baseClient(`/admin/transactions?limit=${limit}`);
 };
 
-export const getRevenueStats = async () => {
-    return await baseClient("/admin/revenue-stats");
+export const getRevenueStats = async (params?: { year?: number | string }) => {
+    return await baseClient("/admin/revenue-stats", { params });
 };
 
 export const getAdminEvents = async (limit = 20) => {
@@ -94,4 +102,13 @@ export const forceOwnerWithdrawal = async (ownerId: string, data?: { customPhone
 
 export const getAllReceipts = async (params?: any) => {
     return await baseClient("/admin/receipts/list", { params });
+};
+
+export const getAIPerformance = async (options?: { period?: 'all' | 'month' | 'year'; year?: number; month?: number }) => {
+    const params = new URLSearchParams();
+    if (options?.period) params.append('period', options.period);
+    if (options?.year) params.append('year', options.year.toString());
+    if (options?.month) params.append('month', options.month.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return await baseClient(`/admin/ai/performance${query}`);
 };

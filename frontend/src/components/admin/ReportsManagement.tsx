@@ -8,12 +8,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { AlertTriangle, Ban, CheckCircle, Clock, Shield } from "lucide-react";
 import { getAllReports, getReportStatistics, updateReport, blockUser, unblockUser } from "@/lib/api";
+import { sendAdminEmail } from "@/api/adminEmails";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Report } from "@/types";
 
-export const ReportsManagement = () => {
+interface ReportsManagementProps {
+  onStatsUpdate?: () => void;
+}
+
+export const ReportsManagement = ({ onStatsUpdate }: ReportsManagementProps = {}) => {
   const { toast } = useToast();
   const [reports, setReports] = useState<Report[]>([]);
   const [statistics, setStatistics] = useState<any>(null);
@@ -23,6 +28,7 @@ export const ReportsManagement = () => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [blockReason, setBlockReason] = useState("");
   const [blocking, setBlocking] = useState(false);
+  const [notifyByEmail, setNotifyByEmail] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -58,6 +64,7 @@ export const ReportsManagement = () => {
         description: "Le statut du signalement a été modifié",
       });
       loadData();
+      onStatsUpdate?.();
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -82,9 +89,28 @@ export const ReportsManagement = () => {
       await blockUser(selectedReport.reported_id, blockReason.trim());
       await updateReport(selectedReport.id, 'resolved', 'Compte bloqué');
 
+      // Envoi de l'e-mail officiel de suspension si l'option est active et l'email disponible
+      if (notifyByEmail && selectedReport.reported_email) {
+        try {
+          await sendAdminEmail({
+            templateId: 'account_suspended',
+            targetAudience: 'custom',
+            customRecipientEmail: selectedReport.reported_email,
+            customRecipientName: selectedReport.reported_name,
+            templateData: {
+              userName: selectedReport.reported_name,
+              reason: blockReason.trim(),
+              date: new Date().toLocaleDateString('fr-FR')
+            }
+          });
+        } catch (emailErr) {
+          console.warn("Échec envoi notification email de suspension:", emailErr);
+        }
+      }
+
       toast({
         title: "Compte bloqué",
-        description: `${selectedReport.reported_name} a été bloqué`,
+        description: `${selectedReport.reported_name} a été bloqué${notifyByEmail && selectedReport.reported_email ? ' et notifié par e-mail' : ''}`,
       });
 
       setBlockDialogOpen(false);
@@ -348,6 +374,19 @@ export const ReportsManagement = () => {
                 onChange={(e) => setBlockReason(e.target.value)}
                 rows={4}
               />
+            </div>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                type="checkbox"
+                id="notify-email"
+                checked={notifyByEmail}
+                onChange={(e) => setNotifyByEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+              />
+              <label htmlFor="notify-email" className="text-xs text-muted-foreground cursor-pointer select-none">
+                Informer officiellement l'utilisateur par e-mail avec le motif de la suspension
+              </label>
             </div>
           </div>
 

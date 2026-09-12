@@ -268,7 +268,9 @@ const authController = {
                     parentId: profile.parent_id,
                     setupRequired: !profile.is_setup_complete,
                     permissions: profile.permissions,
-                    currency: profile.currency
+                    currency: profile.currency,
+                    referral_count: profile.referral_count,
+                    referred_by: profile.referred_by
                 }
             });
         } catch (error) {

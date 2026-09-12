@@ -231,6 +231,10 @@ const Index = () => {
                       <SelectItem value="maison" className="rounded-lg cursor-pointer">{t('search.types.house') || "Maison"}</SelectItem>
                       <SelectItem value="villa" className="rounded-lg cursor-pointer">{t('search.types.villa') || "Villa"}</SelectItem>
                       <SelectItem value="studio" className="rounded-lg cursor-pointer">{t('search.types.studio') || "Studio"}</SelectItem>
+                      <SelectItem value="chambre" className="rounded-lg cursor-pointer">{t('search.types.room') || "Chambre"}</SelectItem>
+                      <SelectItem value="garage" className="rounded-lg cursor-pointer">{t('search.types.garage') || "Garage"}</SelectItem>
+                      <SelectItem value="locale" className="rounded-lg cursor-pointer">{t('search.types.office') || "Local"}</SelectItem>
+                      <SelectItem value="terrain" className="rounded-lg cursor-pointer">{t('search.types.land') || "Terrain"}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

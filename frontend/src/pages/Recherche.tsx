@@ -248,6 +248,7 @@ const Recherche = () => {
                       <SelectItem value="chambre">{t('search.types.room')}</SelectItem>
                       <SelectItem value="garage">{t('search.types.garage')}</SelectItem>
                       <SelectItem value="locale">{t('search.types.office')}</SelectItem>
+                      <SelectItem value="terrain">{t('search.types.land')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -299,6 +300,7 @@ const Recherche = () => {
                                 <SelectItem value="chambre">{t('search.types.room')}</SelectItem>
                                 <SelectItem value="garage">{t('search.types.garage')}</SelectItem>
                                 <SelectItem value="locale">{t('search.types.office')}</SelectItem>
+                                <SelectItem value="terrain">{t('search.types.land')}</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>

@@ -61,6 +61,13 @@ const adminController = {
                 WHERE status = 'pending'
             `);
 
+            // Messages de support en attente
+            const { rows: pendingContacts } = await db.query(`
+                SELECT COUNT(*) as count
+                FROM contact_messages
+                WHERE status = 'new'
+            `);
+
             // Statistiques d'abonnements (par plan)
             const { rows: subStats } = await db.query(`
                 SELECT 
@@ -72,15 +79,20 @@ const adminController = {
                 GROUP BY plan_name
             `);
 
-            // Revenu total (historique des paiements validés)
+            // Revenu total (historique des paiements validés PayDunya uniquement)
             const { rows: totalRevenue } = await db.query(`
-                SELECT SUM(price) as total FROM subscriptions WHERE status IN ('active', 'expired')
+                SELECT COALESCE(SUM(price), 0) as total 
+                FROM subscriptions 
+                WHERE status IN ('active', 'expired')
+                AND payment_method = 'paydunya'
             `);
 
-            // Revenu du mois en cours (paiements effectués ce mois-ci)
+            // Revenu du mois en cours (paiements PayDunya effectués ce mois-ci)
             const { rows: currentMonthRevenue } = await db.query(`
-                SELECT SUM(price) as total FROM subscriptions 
+                SELECT COALESCE(SUM(price), 0) as total 
+                FROM subscriptions 
                 WHERE status IN ('active', 'expired')
+                AND payment_method = 'paydunya'
                 AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())
                 AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())
             `);
@@ -110,6 +122,7 @@ const adminController = {
                 pendingReportsCount: parseInt(pendingReports[0]?.count || 0),
                 pendingVerificationsCount: parseInt(pendingVerifications[0]?.count || 0),
                 pendingPaymentsCount: parseInt(pendingPayments[0]?.count || 0),
+                pendingContactsCount: parseInt(pendingContacts[0]?.count || 0),
                 subscriptions,
                 revenue: {
                     active: parseFloat(currentMonthRevenue[0]?.total || 0),
@@ -164,13 +177,52 @@ const adminController = {
      */
     async getUserGrowth(req, res, next) {
         try {
-            const days = parseInt(req.query.days) || 30;
+            const period = req.query.period || (req.query.days ? 'day' : 'month');
+            const selectedYear = req.query.year ? parseInt(req.query.year) : null;
 
+            if (period === 'year') {
+                const { rows } = await db.query(`
+                    SELECT 
+                        EXTRACT(YEAR FROM u.created_at)::int as year,
+                        up.role,
+                        COUNT(*)::int as count
+                    FROM user_profiles up
+                    JOIN users u ON up.id = u.id
+                    GROUP BY year, up.role
+                    ORDER BY year ASC
+                `);
+                return response.success(res, rows);
+            }
+
+            if (period === 'month') {
+                let query = `
+                    SELECT 
+                        TO_CHAR(u.created_at, 'YYYY-MM') as month_key,
+                        EXTRACT(YEAR FROM u.created_at)::int as year,
+                        EXTRACT(MONTH FROM u.created_at)::int as month,
+                        up.role,
+                        COUNT(*)::int as count
+                    FROM user_profiles up
+                    JOIN users u ON up.id = u.id
+                `;
+                const params = [];
+                if (selectedYear) {
+                    query += ` WHERE EXTRACT(YEAR FROM u.created_at) = $1`;
+                    params.push(selectedYear);
+                }
+                query += ` GROUP BY month_key, year, month, up.role ORDER BY month_key ASC`;
+
+                const { rows } = await db.query(query, params);
+                return response.success(res, rows);
+            }
+
+            // Mode 'day' (rétro-compatibilité)
+            const days = parseInt(req.query.days) || 30;
             const { rows: growth } = await db.query(`
                 SELECT 
                     DATE(u.created_at) as date,
                     up.role,
-                    COUNT(*) as count
+                    COUNT(*)::int as count
                 FROM user_profiles up
                 JOIN users u ON up.id = u.id
                 WHERE u.created_at >= NOW() - ($1::text || ' days')::INTERVAL
@@ -202,10 +254,12 @@ const adminController = {
             // Par type
             const { rows: byType } = await db.query(`
                 SELECT 
-                    property_type,
+                    LOWER(TRIM(property_type)) as property_type,
                     COUNT(*) as count
                 FROM properties
-                GROUP BY property_type
+                WHERE property_type IS NOT NULL
+                GROUP BY LOWER(TRIM(property_type))
+                ORDER BY count DESC
             `);
 
             // Propriétés récentes
@@ -377,6 +431,8 @@ const adminController = {
      */
     async getRevenueStats(req, res, next) {
         try {
+            const selectedYear = req.query.year && req.query.year !== 'all' ? parseInt(req.query.year) : null;
+
             // --- VOLUME DES REÇUS (Mouvements de loyers sur la plateforme) ---
             
             // Statistiques par jour (30 derniers jours)
@@ -390,28 +446,45 @@ const adminController = {
                 ORDER BY date ASC
             `);
 
-            // Statistiques par mois (12 derniers mois)
-            const { rows: monthly } = await db.query(`
-                SELECT 
-                    DATE_TRUNC('month', created_at) as date,
-                    SUM(amount) as total
-                FROM receipts
-                WHERE created_at >= NOW() - INTERVAL '12 months'
-                GROUP BY DATE_TRUNC('month', created_at)
-                ORDER BY date ASC
-            `);
+            // Statistiques par mois (filtre par année si spécifié, sinon 12 derniers mois)
+            const monthlyQuery = selectedYear 
+                ? `SELECT 
+                     DATE_TRUNC('month', created_at) as date,
+                     SUM(amount) as total
+                   FROM receipts
+                   WHERE (year = $1 OR EXTRACT(YEAR FROM created_at) = $1)
+                   GROUP BY DATE_TRUNC('month', created_at)
+                   ORDER BY date ASC`
+                : `SELECT 
+                     DATE_TRUNC('month', created_at) as date,
+                     SUM(amount) as total
+                   FROM receipts
+                   WHERE created_at >= NOW() - INTERVAL '12 months'
+                   GROUP BY DATE_TRUNC('month', created_at)
+                   ORDER BY date ASC`;
+
+            const { rows: monthly } = await db.query(monthlyQuery, selectedYear ? [selectedYear] : []);
 
             // Statistiques par année
             const { rows: yearly } = await db.query(`
                 SELECT 
-                    EXTRACT(YEAR FROM created_at)::text as date,
+                    COALESCE(year, EXTRACT(YEAR FROM created_at)::int)::text as date,
                     SUM(amount) as total
                 FROM receipts
-                GROUP BY EXTRACT(YEAR FROM created_at)
+                GROUP BY COALESCE(year, EXTRACT(YEAR FROM created_at)::int)
                 ORDER BY date ASC
             `);
 
-            // --- REVENUS ADMIN (Abonnements payés) ---
+            // Années disponibles dans les reçus
+            const { rows: yearsRows } = await db.query(`
+                SELECT DISTINCT COALESCE(year, EXTRACT(YEAR FROM created_at)::int) as year
+                FROM receipts
+                WHERE year IS NOT NULL OR created_at IS NOT NULL
+                ORDER BY year DESC
+            `);
+            const availableYears = yearsRows.map(r => r.year).filter(Boolean);
+
+            // --- REVENUS ADMIN (Abonnements payés via PayDunya uniquement) ---
 
             // Revenu admin mensuel (12 derniers mois) - avec déduction des 2% de frais de PayDunya
             const { rows: adminMonthly } = await db.query(`
@@ -420,6 +493,7 @@ const adminController = {
                     SUM(price * 0.98) as total
                 FROM subscriptions
                 WHERE status IN ('active', 'expired') AND price > 0
+                AND payment_method = 'paydunya'
                 AND created_at >= NOW() - INTERVAL '12 months'
                 GROUP BY DATE_TRUNC('month', created_at)
                 ORDER BY date ASC
@@ -432,6 +506,7 @@ const adminController = {
                     SUM(price * 0.98) as total
                 FROM subscriptions
                 WHERE status IN ('active', 'expired') AND price > 0
+                AND payment_method = 'paydunya'
                 GROUP BY EXTRACT(YEAR FROM created_at)
                 ORDER BY date ASC
             `);
@@ -440,6 +515,7 @@ const adminController = {
                 daily,
                 monthly,
                 yearly,
+                availableYears,
                 adminMonthly,
                 adminYearly
             });
@@ -473,13 +549,14 @@ const adminController = {
                  WHERE status = 'completed'`
             );
 
-            // Récupérer les revenus des abonnements payés via PayDunya
+            // Récupérer les revenus des abonnements payés via PayDunya uniquement
             const { rows: subStats } = await db.query(
                 `SELECT 
                     COALESCE(SUM(price), 0) as total_subscriptions_gross,
                     COALESCE(SUM(price * 0.98), 0) as total_subscriptions_net
                  FROM subscriptions 
-                 WHERE status IN ('active', 'expired') AND price > 0`
+                 WHERE status IN ('active', 'expired') AND price > 0
+                 AND payment_method = 'paydunya'`
             );
             const totalSurplus = parseFloat(stats[0].total_surplus) || 0;
             const totalRentVolume = parseFloat(stats[0].total_rent_volume) || 0;
@@ -810,6 +887,29 @@ const adminController = {
         }
     },
     /**
+     * Obtenir la performance et l'utilisation de l'IA avec filtres (par mois, par an, tout)
+     */
+    async getAIPerformance(req, res, next) {
+        try {
+            const period = req.query.period || 'all';
+            const year = req.query.year ? parseInt(req.query.year) : null;
+            const month = req.query.month ? parseInt(req.query.month) : null;
+
+            const AIUsage = require('../models/aiUsageModel');
+            const stats = await AIUsage.getStats({ period, year, month });
+
+            return response.success(res, stats.map(s => ({
+                action: s.action,
+                count: parseInt(s.count),
+                last_used: s.last_used,
+                total_tokens: parseInt(s.total_tokens || 0)
+            })));
+        } catch (error) {
+            console.error('Error getting AI performance:', error);
+            next(error);
+        }
+    },
+    /**
      * Obtenir tous les paramètres de la plateforme
      */
     async getPlatformSettings(req, res, next) {
@@ -1050,6 +1150,7 @@ const adminController = {
             const page = parseInt(req.query.page) || 1;
             const offset = (page - 1) * limit;
             const search = req.query.search || '';
+            const year = req.query.year && req.query.year !== 'all' ? parseInt(req.query.year) : null;
 
             let query = `
                 SELECT r.id, r.receipt_number, r.amount, r.payment_date, r.payment_method, r.month, r.year, r.currency,
@@ -1061,31 +1162,28 @@ const adminController = {
                    AND lt.amount = r.amount 
                    AND lt.type = 'pay_rent'
             `;
+            const conditions = [];
             const params = [];
 
             if (search) {
-                query += `
-                    WHERE r.receipt_number ILIKE $1 
-                       OR r.tenant_name ILIKE $1 
-                       OR r.owner_name ILIKE $1 
-                       OR p.name ILIKE $1
-                `;
                 params.push(`%${search}%`);
+                conditions.push(`(r.receipt_number ILIKE $${params.length} 
+                    OR r.tenant_name ILIKE $${params.length} 
+                    OR r.owner_name ILIKE $${params.length} 
+                    OR p.name ILIKE $${params.length})`);
             }
 
-            // Count query
-            let countQuery = `SELECT COUNT(*) FROM receipts r LEFT JOIN properties p ON r.property_id = p.id`;
-            if (search) {
-                countQuery += `
-                    WHERE r.receipt_number ILIKE $1 
-                       OR r.tenant_name ILIKE $1 
-                       OR r.owner_name ILIKE $1 
-                       OR p.name ILIKE $1
-                `;
+            if (year) {
+                params.push(year);
+                conditions.push(`(r.year = $${params.length} OR EXTRACT(YEAR FROM r.created_at) = $${params.length})`);
             }
 
+            const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+            query += ` ${whereClause}`;
+
+            let countQuery = `SELECT COUNT(*) FROM receipts r LEFT JOIN properties p ON r.property_id = p.id ${whereClause}`;
             const { rows: countRows } = await db.query(countQuery, params);
-            const total = parseInt(countRows[0].count);
+            const total = parseInt(countRows[0]?.count || 0);
 
             query += ` ORDER BY r.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
             params.push(limit, offset);

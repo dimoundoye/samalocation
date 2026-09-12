@@ -16,7 +16,11 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const VerificationsManagement = () => {
+interface VerificationsManagementProps {
+    onStatsUpdate?: () => void;
+}
+
+const VerificationsManagement = ({ onStatsUpdate }: VerificationsManagementProps = {}) => {
     const { toast } = useToast();
     const [verifications, setVerifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -46,6 +50,7 @@ const VerificationsManagement = () => {
                 description: `Le statut a été mis à jour avec succès.`,
             });
             fetchVerifications(currentTab);
+            onStatsUpdate?.();
         } catch (error: any) {
             toast({
                 title: "Erreur",

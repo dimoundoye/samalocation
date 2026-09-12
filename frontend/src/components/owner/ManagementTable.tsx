@@ -63,13 +63,14 @@ interface ManagementTableProps {
     canSeeRevenue?: boolean;
 }
 
-const HierarchicalGroupSelector = ({
+export const HierarchicalGroupSelector = ({
     groups,
     value,
     onSelect,
     excludeGroupId,
     isDescendantFn,
-    rootLabel = "Aucun (Racine)"
+    rootLabel = "Tous les dossiers",
+    className
 }: {
     groups: { id: string; name: string; propertyIds: string[]; parentId?: string }[];
     value: string;
@@ -77,6 +78,7 @@ const HierarchicalGroupSelector = ({
     excludeGroupId?: string;
     isDescendantFn?: (parentId: string, childId: string) => boolean;
     rootLabel?: string;
+    className?: string;
 }) => {
     const [open, setOpen] = useState(false);
     const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
@@ -91,7 +93,7 @@ const HierarchicalGroupSelector = ({
     };
 
     const selectedGroup = groups.find(g => g.id === value);
-    const displayLabel = value === "root" || value === "none" || !selectedGroup
+    const displayLabel = value === "root" || value === "none" || value === "all" || !selectedGroup
         ? rootLabel
         : selectedGroup.name;
 
@@ -170,10 +172,10 @@ const HierarchicalGroupSelector = ({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between h-9 px-3 text-xs bg-background"
+                    className={cn("w-full justify-between h-9 px-3 text-xs bg-background", className)}
                 >
                     <span className="truncate flex items-center gap-1.5">
-                        <Folder className="h-3.5 w-3.5 text-amber-500 fill-amber-100 shrink-0" />
+                        <Folder className="h-4 w-4 text-amber-500 fill-amber-100 shrink-0" />
                         <span>{displayLabel}</span>
                     </span>
                     <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50 ml-1" />
@@ -187,16 +189,17 @@ const HierarchicalGroupSelector = ({
                 >
                     <div
                         onClick={() => {
-                            onSelect("root");
+                            onSelect(value === "all" || rootLabel.includes("Tous") ? "all" : "root");
                             setOpen(false);
                         }}
-                        className={`p-1.5 rounded cursor-pointer text-xs transition-colors ${
-                            value === "root" || value === "none"
+                        className={`p-1.5 rounded cursor-pointer text-xs transition-colors flex items-center gap-1.5 ${
+                            value === "root" || value === "none" || value === "all"
                                 ? "bg-primary/10 font-bold text-primary border border-primary/30"
                                 : "hover:bg-muted/80 bg-background border border-transparent"
                         }`}
                     >
-                        {rootLabel}
+                        <Folder className="h-4 w-4 text-primary shrink-0" />
+                        <span>{rootLabel}</span>
                     </div>
 
                     {renderTreeNodes(undefined, 0)}

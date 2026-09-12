@@ -99,6 +99,26 @@ const Favorite = {
             console.error('Error checking favorite status:', error.message);
             return false;
         }
+    },
+
+    async migrate() {
+        try {
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS favorites (
+                    id UUID PRIMARY KEY,
+                    user_id UUID NOT NULL,
+                    property_id UUID NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, property_id)
+                )
+            `);
+            await db.query('CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id)');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_favorites_property_id ON favorites(property_id)');
+            return true;
+        } catch (error) {
+            console.error('Migration error (favorites):', error.message);
+            return false;
+        }
     }
 };
 

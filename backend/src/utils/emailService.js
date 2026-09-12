@@ -38,13 +38,16 @@ const transporter = nodemailer.createTransport({
 
 const sendEmail = async (to, subject, html) => {
     try {
-        const fromEmail = process.env.RESEND_FROM || process.env.SMTP_FROM || 'onboarding@resend.dev';
+        const rawFrom = process.env.RESEND_FROM || process.env.SMTP_FROM || 'noreply@samalocation.com';
+        // Extraire l'adresse e-mail propre au cas où elle contient déjà des chevrons ou un nom
+        const cleanEmail = rawFrom.includes('<') ? (rawFrom.match(/<([^>]+)>/)?.[1] || rawFrom).trim() : rawFrom.trim();
+        const fromFormatted = `Samalocation <${cleanEmail}>`;
 
         // PRIORITÉ 1: Utiliser Resend si la clé API est configurée
         if (resend) {
             try {
                 const { data, error } = await resend.emails.send({
-                    from: fromEmail,
+                    from: fromFormatted,
                     to,
                     subject,
                     html,
@@ -67,7 +70,7 @@ const sendEmail = async (to, subject, html) => {
         }
 
         await transporter.sendMail({
-            from: `"Samalocation" <${process.env.SMTP_FROM || 'noreply@samalocation.com'}>`,
+            from: `"Samalocation" <${cleanEmail}>`,
             to,
             subject,
             html,
@@ -121,7 +124,7 @@ const sendResetPasswordEmail = async (email, token) => {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
             <h2 style="color: #2D3FE2; text-align: center;">Réinitialisation de votre mot de passe</h2>
             <p>Bonjour,</p>
-            <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte SamaLocation. Veuillez cliquer sur le bouton ci-dessous pour choisir un nouveau mot de passe :</p>
+            <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte Samalocation. Veuillez cliquer sur le bouton ci-dessous pour choisir un nouveau mot de passe :</p>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${resetUrl}" style="background-color: #2D3FE2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Réinitialiser mon mot de passe</a>
             </div>

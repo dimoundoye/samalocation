@@ -595,7 +595,7 @@ export const FinancialDashboardTab: React.FC<FinancialDashboardTabProps> = ({
                 </table>
 
                 <div class="footer">
-                    Document officiel généré par SamaLocation — Plateforme de Gestion Immobilière
+                    Document officiel généré par Samalocation — Plateforme de Gestion Immobilière
                 </div>
 
                 <script>

@@ -122,7 +122,13 @@ const Owner = {
         const queries = [
             "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'XOF'",
             "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS balance DECIMAL(12, 2) DEFAULT 0.00",
-            "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS online_payment_enabled BOOLEAN DEFAULT FALSE"
+            "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS online_payment_enabled BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS prestations JSONB DEFAULT '[]'",
+            "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS horaires JSONB DEFAULT '{}'",
+            "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}'",
+            "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS banner_url TEXT",
+            "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS external_email TEXT",
+            "ALTER TABLE owner_profiles ADD COLUMN IF NOT EXISTS website TEXT"
         ];
 
         for (const sql of queries) {

@@ -10,11 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2, Receipt, ShieldAlert } from "lucide-react";
+import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2, Receipt, ShieldAlert, Mail } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { UserGrowthChart } from "@/components/admin/UserGrowthChart";
 import { PropertyStatsChart } from "@/components/admin/PropertyStatsChart";
 import { PropertyTypeChart } from "@/components/admin/PropertyTypeChart";
+import { AIPerformanceCard } from "@/components/admin/AIPerformanceCard";
 import { ActivityFeed } from "@/components/admin/ActivityFeed";
 import UsersManagement from "@/components/admin/UsersManagement";
 import PropertiesManagement from "@/components/admin/PropertiesManagement";
@@ -22,6 +23,7 @@ import ReportsManagement from "@/components/admin/ReportsManagement";
 import ContactsManagement from "@/components/admin/ContactsManagement";
 import AdminSettings from "@/components/admin/AdminSettings";
 import VerificationsManagement from "@/components/admin/VerificationsManagement";
+import AdminEmailsManagement from "@/components/admin/AdminEmailsManagement";
 import { DocumentAudit } from "@/components/admin/DocumentAudit";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { History, ExternalLink, ArrowUpRight, Loader2, Download } from "lucide-react";
@@ -51,7 +53,8 @@ const AdminDashboard = () => {
     newPropertiesCount: 0,
     pendingReportsCount: 0,
     pendingVerificationsCount: 0,
-    pendingPaymentsCount: 0
+    pendingPaymentsCount: 0,
+    pendingContactsCount: 0
   });
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -78,6 +81,7 @@ const AdminDashboard = () => {
 
   const [revenueStats, setRevenueStats] = useState<{ daily: any[], monthly: any[], yearly: any[], adminMonthly: any[], adminYearly: any[] }>({ daily: [], monthly: [], yearly: [], adminMonthly: [], adminYearly: [] });
   const [loadingRevenueStats, setLoadingRevenueStats] = useState(false);
+  const [revenuePeriod, setRevenuePeriod] = useState<"monthly" | "yearly">("monthly");
   const [liveAnalytics, setLiveAnalytics] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState("");
@@ -96,9 +100,37 @@ const AdminDashboard = () => {
   const [receiptsPagination, setReceiptsPagination] = useState({ total: 0, pages: 1, current_page: 1 });
   const [receiptsSearch, setReceiptsSearch] = useState("");
   const [receiptsPage, setReceiptsPage] = useState(1);
+  const [receiptsYearFilter, setReceiptsYearFilter] = useState<string>("all");
+
+  const availableReceiptYears = useMemo(() => {
+    const fromStats = (revenueStats as any)?.availableYears;
+    if (fromStats && Array.isArray(fromStats) && fromStats.length > 0) {
+      return fromStats;
+    }
+    const currentYear = new Date().getFullYear();
+    return [currentYear, currentYear - 1, currentYear - 2];
+  }, [revenueStats]);
+
+  const totalPendingNotifications = useMemo(() => {
+    return (
+      (statistics.pendingReportsCount || 0) +
+      (statistics.pendingVerificationsCount || 0) +
+      (statistics.pendingPaymentsCount || 0) +
+      (statistics.pendingContactsCount || 0) +
+      (statistics.newUsersCount || 0) +
+      (statistics.newPropertiesCount || 0)
+    );
+  }, [statistics]);
 
   useEffect(() => {
     fetchAdminData();
+
+    // Actualisation périodique des notifications toutes les 30 secondes
+    const timer = setInterval(() => {
+      fetchAdminData();
+    }, 30000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const fetchAdminData = async () => {
@@ -205,10 +237,11 @@ const AdminDashboard = () => {
     }
   };
 
-  const loadRevenueStats = async () => {
+  const loadRevenueStats = async (year?: string) => {
     setLoadingRevenueStats(true);
     try {
-      const data = await getRevenueStats();
+      const activeYear = year !== undefined ? year : (receiptsYearFilter !== "all" ? receiptsYearFilter : undefined);
+      const data = await getRevenueStats(activeYear ? { year: activeYear } : undefined);
       setRevenueStats(data);
     } catch (error: any) {
       console.error("Error loading revenue stats:", error);
@@ -232,10 +265,16 @@ const AdminDashboard = () => {
     }
   };
 
-  const loadReceiptsList = async () => {
+  const loadReceiptsList = async (page = receiptsPage, year?: string) => {
     setLoadingReceiptsList(true);
     try {
-      const data = await getAllReceipts({ page: receiptsPage, limit: 15, search: receiptsSearch });
+      const activeYear = year !== undefined ? year : (receiptsYearFilter !== "all" ? receiptsYearFilter : undefined);
+      const data = await getAllReceipts({ 
+        page, 
+        limit: 15, 
+        search: receiptsSearch,
+        year: activeYear
+      });
       if (data) {
         setReceiptsList(data.receipts || []);
         setReceiptsPagination(data.pagination || { total: 0, pages: 1, current_page: 1 });
@@ -250,7 +289,7 @@ const AdminDashboard = () => {
   const handleSearchReceipts = (e: React.FormEvent) => {
     e.preventDefault();
     setReceiptsPage(1);
-    loadReceiptsList();
+    loadReceiptsList(1);
   };
 
   const loadLiveAnalytics = async () => {
@@ -279,12 +318,12 @@ const AdminDashboard = () => {
       loadRevenueStats();
       loadOwnerBalancesData();
     } else if (activeTab === 'receipts') {
-      loadRevenueStats();
-      loadReceiptsList();
+      loadRevenueStats(receiptsYearFilter !== "all" ? receiptsYearFilter : undefined);
+      loadReceiptsList(receiptsPage, receiptsYearFilter !== "all" ? receiptsYearFilter : undefined);
     } else if (activeTab === 'live') {
       loadLiveAnalytics();
     }
-  }, [activeTab, receiptsPage]);
+  }, [activeTab, receiptsPage, receiptsYearFilter]);
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fr-FR').format(num);
@@ -317,6 +356,7 @@ const AdminDashboard = () => {
           { id: "audit", label: "Audit Documents", icon: ShieldAlert },
           { id: "reports", label: "Signalements", icon: AlertTriangle },
           { id: "support", label: "Messages Support", icon: MessageSquare },
+          { id: "emails", label: "Emails & Diffusions", icon: Mail },
           { id: "finances", label: "Finances", icon: CreditCard },
           { id: "receipts", label: "Reçus", icon: Receipt },
           { id: "settings", label: "Paramètres", icon: Settings },
@@ -332,7 +372,9 @@ const AdminDashboard = () => {
                   ? statistics.pendingVerificationsCount
                   : item.id === "finances"
                     ? statistics.pendingPaymentsCount
-                    : 0;
+                    : item.id === "support"
+                      ? (statistics.pendingContactsCount || 0)
+                      : 0;
 
           return (
             <button
@@ -352,6 +394,8 @@ const AdminDashboard = () => {
                   // Le badge disparaît temporairement — rechargé à l'actualisation suivante
                   setStatistics(prev => ({ ...prev, pendingPaymentsCount: 0 }));
                   loadTransactions();
+                } else if (item.id === "support" || item.id === "reports" || item.id === "verifications") {
+                  fetchAdminData();
                 }
               }}
               className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition-colors ${activeTab === item.id
@@ -425,9 +469,9 @@ const AdminDashboard = () => {
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-9 w-9 relative" aria-label="Notifications">
                     <Bell className="h-5 w-5 text-primary" />
-                    {(statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount) > 0 && (
+                    {totalPendingNotifications > 0 && (
                       <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 bg-red-500 border border-background text-[9px] font-bold text-white">
-                        {statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount > 9 ? '9+' : statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount}
+                        {totalPendingNotifications > 9 ? '9+' : totalPendingNotifications}
                       </Badge>
                     )}
                   </Button>
@@ -454,7 +498,7 @@ const AdminDashboard = () => {
                           <AlertTriangle className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold">{statistics.pendingReportsCount} signalements en attente</p>
+                          <p className="text-sm font-semibold">{statistics.pendingReportsCount} signalement{statistics.pendingReportsCount > 1 ? 's' : ''} en attente</p>
                           <p className="text-xs text-muted-foreground italic">Appuyez pour examiner</p>
                         </div>
                       </button>
@@ -465,12 +509,45 @@ const AdminDashboard = () => {
                           <Shield className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold">{statistics.pendingVerificationsCount} vérifications d'identité</p>
+                          <p className="text-sm font-semibold">{statistics.pendingVerificationsCount} vérification{statistics.pendingVerificationsCount > 1 ? 's' : ''} d'identité</p>
                           <p className="text-xs text-muted-foreground italic">Profils à valider</p>
                         </div>
                       </button>
                     )}
-                    {(statistics.pendingReportsCount === 0 && statistics.pendingVerificationsCount === 0 && statistics.pendingPaymentsCount === 0) && (
+                    {(statistics.pendingContactsCount || 0) > 0 && (
+                      <button onClick={() => { navigate("/admin-dashboard/support"); setMobileMenuOpen(false); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 shrink-0">
+                          <MessageSquare className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.pendingContactsCount} message{statistics.pendingContactsCount! > 1 ? 's' : ''} de support</p>
+                          <p className="text-xs text-muted-foreground italic">À traiter dans Support</p>
+                        </div>
+                      </button>
+                    )}
+                    {statistics.newUsersCount > 0 && (
+                      <button onClick={() => { navigate("/admin-dashboard/users"); setMobileMenuOpen(false); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 shrink-0">
+                          <Users className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.newUsersCount} nouvel utilisateur{statistics.newUsersCount > 1 ? 's' : ''}</p>
+                          <p className="text-xs text-muted-foreground italic tracking-tight">Inscrits récemment</p>
+                        </div>
+                      </button>
+                    )}
+                    {statistics.newPropertiesCount > 0 && (
+                      <button onClick={() => { navigate("/admin-dashboard/properties"); setMobileMenuOpen(false); }} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 shrink-0">
+                          <Building2 className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.newPropertiesCount} nouvelle{statistics.newPropertiesCount > 1 ? 's' : ''} propriété{statistics.newPropertiesCount > 1 ? 's' : ''}</p>
+                          <p className="text-xs text-muted-foreground italic tracking-tight">Ajoutées récemment</p>
+                        </div>
+                      </button>
+                    )}
+                    {totalPendingNotifications === 0 && (
                       <div className="p-8 text-center text-muted-foreground">
                         <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
                         <p className="text-sm">Tout est à jour !</p>
@@ -484,7 +561,7 @@ const AdminDashboard = () => {
           </div>
         </header>
 
-        <div className="p-4 md:p-8">
+        <div className="p-4 pb-32 md:p-8 md:pb-28">
         <div className="max-w-7xl mx-auto">
 
           {/* Desktop Header - Notifications + Theme */}
@@ -494,9 +571,9 @@ const AdminDashboard = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="icon" className="rounded-full shadow-soft hover:shadow-medium border-primary/20">
                     <Bell className="h-5 w-5 text-primary" />
-                    {(statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount) > 0 && (
+                    {totalPendingNotifications > 0 && (
                       <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 border-2 border-background animate-pulse text-white">
-                        {statistics.pendingReportsCount + statistics.pendingVerificationsCount + statistics.pendingPaymentsCount}
+                        {totalPendingNotifications}
                       </Badge>
                     )}
                   </Button>
@@ -523,7 +600,7 @@ const AdminDashboard = () => {
                           <AlertTriangle className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold">{statistics.pendingReportsCount} signalements en attente</p>
+                          <p className="text-sm font-semibold">{statistics.pendingReportsCount} signalement{statistics.pendingReportsCount > 1 ? 's' : ''} en attente</p>
                           <p className="text-xs text-muted-foreground italic tracking-tight">Appuyez pour examiner</p>
                         </div>
                       </button>
@@ -534,12 +611,45 @@ const AdminDashboard = () => {
                           <Shield className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold">{statistics.pendingVerificationsCount} vérifications d'identité</p>
+                          <p className="text-sm font-semibold">{statistics.pendingVerificationsCount} vérification{statistics.pendingVerificationsCount > 1 ? 's' : ''} d'identité</p>
                           <p className="text-xs text-muted-foreground italic tracking-tight">Profils à valider</p>
                         </div>
                       </button>
                     )}
-                    {(statistics.pendingReportsCount === 0 && statistics.pendingVerificationsCount === 0 && statistics.pendingPaymentsCount === 0) && (
+                    {(statistics.pendingContactsCount || 0) > 0 && (
+                      <button onClick={() => navigate("/admin-dashboard/support")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center text-purple-600">
+                          <MessageSquare className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.pendingContactsCount} message{statistics.pendingContactsCount! > 1 ? 's' : ''} de support</p>
+                          <p className="text-xs text-muted-foreground italic tracking-tight">À traiter dans Messages Support</p>
+                        </div>
+                      </button>
+                    )}
+                    {statistics.newUsersCount > 0 && (
+                      <button onClick={() => navigate("/admin-dashboard/users")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center text-blue-600">
+                          <Users className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.newUsersCount} nouvel utilisateur{statistics.newUsersCount > 1 ? 's' : ''}</p>
+                          <p className="text-xs text-muted-foreground italic tracking-tight">Inscrits récemment</p>
+                        </div>
+                      </button>
+                    )}
+                    {statistics.newPropertiesCount > 0 && (
+                      <button onClick={() => navigate("/admin-dashboard/properties")} className="w-full text-left p-4 hover:bg-secondary/50 border-b flex items-start gap-3 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center text-amber-600">
+                          <Building2 className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{statistics.newPropertiesCount} nouvelle{statistics.newPropertiesCount > 1 ? 's' : ''} propriété{statistics.newPropertiesCount > 1 ? 's' : ''}</p>
+                          <p className="text-xs text-muted-foreground italic tracking-tight">Ajoutées récemment</p>
+                        </div>
+                      </button>
+                    )}
+                    {totalPendingNotifications === 0 && (
                       <div className="p-8 text-center text-muted-foreground">
                         <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
                         <p className="text-sm">Tout est à jour !</p>
@@ -584,7 +694,7 @@ const AdminDashboard = () => {
                 <h1 className="text-2xl md:text-3xl font-bold mb-2">Vérification des propriétaires</h1>
                 <p className="text-muted-foreground">Examinez les pièces d'identité et validez les profils</p>
               </div>
-              <VerificationsManagement />
+              <VerificationsManagement onStatsUpdate={fetchAdminData} />
             </div>
           )}
 
@@ -594,7 +704,7 @@ const AdminDashboard = () => {
                 <h1 className="text-2xl md:text-3xl font-bold mb-2">Gestion des signalements</h1>
                 <p className="text-muted-foreground">Traitez les signalements et modérez le contenu</p>
               </div>
-              <ReportsManagement />
+              <ReportsManagement onStatsUpdate={fetchAdminData} />
             </div>
           )}
 
@@ -604,7 +714,13 @@ const AdminDashboard = () => {
                 <h1 className="text-2xl md:text-3xl font-bold mb-2">Messages de support</h1>
                 <p className="text-muted-foreground">Gérez les messages reçus via le formulaire de contact</p>
               </div>
-              <ContactsManagement />
+              <ContactsManagement onStatsUpdate={fetchAdminData} />
+            </div>
+          )}
+
+          {activeTab === "emails" && (
+            <div>
+              <AdminEmailsManagement />
             </div>
           )}
 
@@ -658,9 +774,75 @@ const AdminDashboard = () => {
               {financeSubTab === "subscriptions" ? (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center bg-primary/5 px-4 py-3 rounded-xl border border-primary/10">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase">Revenu Brut estimé ce mois (Abonnements)</span>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">Revenu PayDunya encaissé ce mois (Abonnements)</span>
                     <span className="text-lg font-black text-primary">{formatCurrency(statistics.revenue?.active || 0)}</span>
                   </div>
+
+                  {/* Graphique Revenus PayDunya (Mensuel & Annuel) */}
+                  <Card className="shadow-soft bg-card">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2 flex-wrap border-b">
+                      <div>
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-primary" />
+                          Évolution des Revenus PayDunya (Net)
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Abonnements confirmés en ligne via PayDunya (-2% frais de passerelle)
+                        </CardDescription>
+                      </div>
+                      <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-xl border">
+                        <Button
+                          size="sm"
+                          variant={revenuePeriod === "monthly" ? "default" : "ghost"}
+                          className="h-7 text-[11px] rounded-lg font-bold"
+                          onClick={() => setRevenuePeriod("monthly")}
+                        >
+                          Mensuel (12 mois)
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={revenuePeriod === "yearly" ? "default" : "ghost"}
+                          className="h-7 text-[11px] rounded-lg font-bold"
+                          onClick={() => setRevenuePeriod("yearly")}
+                        >
+                          Annuel
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      {loadingRevenueStats ? (
+                        <div className="flex items-center justify-center h-48 text-xs text-muted-foreground">
+                          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Chargement des données...
+                        </div>
+                      ) : (
+                        <div className="w-full aspect-[4/3] md:aspect-[3/1]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={revenuePeriod === "monthly" ? revenueStats.adminMonthly : revenueStats.adminYearly}>
+                              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                              <XAxis
+                                dataKey="date"
+                                tickFormatter={(val) => revenuePeriod === "monthly" ? new Date(val).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }) : val}
+                                style={{ fontSize: 10 }}
+                              />
+                              <YAxis
+                                tickFormatter={(val) => `${val / 1000}k`}
+                                style={{ fontSize: 10 }}
+                              />
+                              <Tooltip
+                                formatter={(val: any) => [formatCurrency(val), "Revenu Net PayDunya"]}
+                                labelFormatter={(label) => revenuePeriod === "monthly" ? new Date(label).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : label}
+                              />
+                              <Bar
+                                dataKey="total"
+                                fill="hsl(var(--primary))"
+                                radius={[4, 4, 0, 0]}
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
 
                   <Card className="shadow-soft">
                     <CardHeader className="bg-secondary/10 border-b">
@@ -830,40 +1012,46 @@ const AdminDashboard = () => {
                   {/* Section Trésorerie & Gains */}
                   <div className="space-y-2">
                     <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">1. Revenus & Performance Plateforme</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <Card className="shadow-soft bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-white border-none relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full translate-x-6 -translate-y-6 blur-lg" />
-                        <CardHeader className="pb-3">
-                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-white/95">Gain Cumulé SamaLocation</CardDescription>
-                          <CardTitle className="text-2xl font-black pt-1">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-6">
+                      <Card className="shadow-soft bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-white border-none relative overflow-hidden flex flex-col justify-between">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full translate-x-6 -translate-y-6 blur-lg pointer-events-none" />
+                        <CardHeader className="p-3 sm:p-5">
+                          <CardDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/95 truncate">
+                            Gain Cumulé SamaLocation
+                          </CardDescription>
+                          <CardTitle className="text-base sm:text-xl lg:text-2xl font-black pt-0.5 truncate text-white">
                             {formatCurrency(ledgerStats.cumulative_revenue || 0)}
                           </CardTitle>
-                          <p className="text-[10px] text-white/80 mt-1 leading-relaxed">
-                            Surplus loyers ({formatCurrency(ledgerStats.total_surplus || 0)}) + Abonnements net ({formatCurrency(ledgerStats.total_subscriptions_net || 0)})
+                          <p className="text-[9px] sm:text-[10px] text-white/80 mt-1 leading-tight line-clamp-2">
+                            Surplus ({formatCurrency(ledgerStats.total_surplus || 0)}) + Abo ({formatCurrency(ledgerStats.total_subscriptions_net || 0)})
                           </p>
                         </CardHeader>
                       </Card>
 
-                      <Card className="shadow-soft bg-gradient-to-br from-green-50 to-green-100/50 border-green-200">
-                        <CardHeader className="pb-3">
-                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-green-700">Marge Collecte Loyer (0.5% Surplus)</CardDescription>
-                          <CardTitle className="text-2xl font-black text-green-600 pt-1">
+                      <Card className="shadow-soft bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 border-green-200 dark:border-green-900/50 flex flex-col justify-between">
+                        <CardHeader className="p-3 sm:p-5">
+                          <CardDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-green-700 dark:text-green-400 truncate">
+                            Marge Collecte Loyer
+                          </CardDescription>
+                          <CardTitle className="text-base sm:text-xl lg:text-2xl font-black text-green-600 dark:text-green-400 pt-0.5 truncate">
                             {formatCurrency(ledgerStats.total_surplus || 0)}
                           </CardTitle>
-                          <p className="text-[10px] text-green-500 font-semibold mt-1">
-                            Gains de transaction sur le traitement des baux
+                          <p className="text-[9px] sm:text-[10px] text-green-600/80 dark:text-green-400/80 font-medium mt-1 leading-tight line-clamp-2">
+                            0.5% surplus sur baux
                           </p>
                         </CardHeader>
                       </Card>
 
-                      <Card className="shadow-soft bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
-                        <CardHeader className="pb-3">
-                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Revenus Abonnements (Brut PayDunya)</CardDescription>
-                          <CardTitle className="text-2xl font-black text-blue-600 pt-1">
+                      <Card className="shadow-soft bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-900/50 col-span-2 sm:col-span-1 md:col-span-1 flex flex-col justify-between">
+                        <CardHeader className="p-3 sm:p-5">
+                          <CardDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 truncate">
+                            Revenus Abonnements
+                          </CardDescription>
+                          <CardTitle className="text-base sm:text-xl lg:text-2xl font-black text-blue-600 dark:text-blue-400 pt-0.5 truncate">
                             {formatCurrency(ledgerStats.total_subscriptions_gross || 0)}
                           </CardTitle>
-                          <p className="text-[10px] text-blue-500 font-semibold mt-1">
-                            Net plateforme après 2% PayDunya : {formatCurrency(ledgerStats.total_subscriptions_net || 0)}
+                          <p className="text-[9px] sm:text-[10px] text-blue-600/80 dark:text-blue-400/80 font-medium mt-1 leading-tight line-clamp-2">
+                            Net après 2% PayDunya : {formatCurrency(ledgerStats.total_subscriptions_net || 0)}
                           </p>
                         </CardHeader>
                       </Card>
@@ -872,50 +1060,58 @@ const AdminDashboard = () => {
 
                   <div className="space-y-2 pt-2">
                     <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">2. Trésorerie & Fonds de Réserve (PayDunya)</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                      <Card className="shadow-soft bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200">
-                        <CardHeader className="pb-3">
-                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Total Portefeuilles Bailleurs</CardDescription>
-                          <CardTitle className="text-xl font-black text-amber-600 pt-1">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-6">
+                      <Card className="shadow-soft bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 border-amber-200 dark:border-amber-900/50 flex flex-col justify-between">
+                        <CardHeader className="p-3 sm:p-5">
+                          <CardDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 truncate">
+                            Total Portefeuilles
+                          </CardDescription>
+                          <CardTitle className="text-sm sm:text-lg lg:text-xl font-black text-amber-600 dark:text-amber-400 pt-0.5 truncate">
                             {formatCurrency(ledgerStats.total_owner_balances || 0)}
                           </CardTitle>
-                          <p className="text-[10px] text-amber-500 mt-1">
-                            Dette virtuelle totale due aux propriétaires
+                          <p className="text-[9px] sm:text-[10px] text-amber-600/80 dark:text-amber-400/80 mt-1 leading-tight line-clamp-2">
+                            Dette virtuelle bailleurs
                           </p>
                         </CardHeader>
                       </Card>
 
-                      <Card className="shadow-soft bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200">
-                        <CardHeader className="pb-3">
-                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Fonds de Réserve Requis PayDunya</CardDescription>
-                          <CardTitle className="text-xl font-black text-purple-600 pt-1">
+                      <Card className="shadow-soft bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-900/20 border-purple-200 dark:border-purple-900/50 flex flex-col justify-between">
+                        <CardHeader className="p-3 sm:p-5">
+                          <CardDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 truncate">
+                            Fonds de Réserve
+                          </CardDescription>
+                          <CardTitle className="text-sm sm:text-lg lg:text-xl font-black text-purple-600 dark:text-purple-400 pt-0.5 truncate">
                             {formatCurrency(ledgerStats.reserved_funds || 0)}
                           </CardTitle>
-                          <p className="text-[10px] text-purple-500 mt-1">
-                            Somme réelle à bloquer sur PayDunya (Solde Bailleurs - 2,5% + 2% PayDunya)
+                          <p className="text-[9px] sm:text-[10px] text-purple-600/80 dark:text-purple-400/80 mt-1 leading-tight line-clamp-2">
+                            À bloquer sur PayDunya
                           </p>
                         </CardHeader>
                       </Card>
 
-                      <Card className="shadow-soft">
-                        <CardHeader className="pb-3">
-                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Volume loyers traités</CardDescription>
-                          <CardTitle className="text-xl font-black text-foreground pt-1">
+                      <Card className="shadow-soft flex flex-col justify-between">
+                        <CardHeader className="p-3 sm:p-5">
+                          <CardDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+                            Volume Loyers Traités
+                          </CardDescription>
+                          <CardTitle className="text-sm sm:text-lg lg:text-xl font-black text-foreground pt-0.5 truncate">
                             {formatCurrency(ledgerStats.total_rent_volume || 0)}
                           </CardTitle>
-                          <p className="text-[10px] text-muted-foreground mt-1">
+                          <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1 leading-tight line-clamp-2">
                             Flux locatif global
                           </p>
                         </CardHeader>
                       </Card>
 
-                      <Card className="shadow-soft">
-                        <CardHeader className="pb-3">
-                          <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Paiements validés</CardDescription>
-                          <CardTitle className="text-xl font-black text-foreground pt-1">
+                      <Card className="shadow-soft flex flex-col justify-between">
+                        <CardHeader className="p-3 sm:p-5">
+                          <CardDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+                            Paiements Validés
+                          </CardDescription>
+                          <CardTitle className="text-sm sm:text-lg lg:text-xl font-black text-foreground pt-0.5 truncate">
                             {ledgerStats.total_transactions || 0}
                           </CardTitle>
-                          <p className="text-[10px] text-muted-foreground mt-1">
+                          <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1 leading-tight line-clamp-2">
                             Nombre de transactions
                           </p>
                         </CardHeader>
@@ -951,19 +1147,19 @@ const AdminDashboard = () => {
                             const netEarnings = realVal - reserved;
                             
                             return (
-                              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background p-4 rounded-xl border border-primary/5 shadow-inner">
+                              <div className="flex-1 grid grid-cols-2 gap-3 sm:gap-4 bg-background p-3.5 sm:p-4 rounded-xl border border-primary/5 shadow-inner">
                                 <div>
-                                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Fonds Réservés Propriétaires</p>
-                                  <p className="text-sm font-black text-foreground mt-0.5">{formatCurrency(reserved)}</p>
-                                  <p className="text-[9px] text-muted-foreground mt-0.5">Indispensable pour couvrir les virements</p>
+                                  <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">Fonds Réservés</p>
+                                  <p className="text-xs sm:text-sm font-black text-foreground mt-0.5 truncate">{formatCurrency(reserved)}</p>
+                                  <p className="text-[8px] sm:text-[9px] text-muted-foreground mt-0.5 line-clamp-2">Indispensable pour virements</p>
                                 </div>
-                                <div className="border-t sm:border-t-0 sm:border-l pt-3 sm:pt-0 sm:pl-4">
-                                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Votre part (Bénéfice SamaLocation)</p>
-                                  <p className={`text-base font-black mt-0.5 ${netEarnings >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                <div className="border-l pl-3 sm:pl-4">
+                                  <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-primary truncate">Votre Part Nette</p>
+                                  <p className={`text-xs sm:text-base font-black mt-0.5 truncate ${netEarnings >= 0 ? "text-green-600" : "text-red-600"}`}>
                                     {formatCurrency(netEarnings)}
                                   </p>
-                                  <p className="text-[9px] text-muted-foreground mt-0.5">
-                                    {netEarnings >= 0 ? "Montant que vous pouvez retirer en toute sécurité" : "Attention: Déficit sur PayDunya par rapport aux soldes virtuels"}
+                                  <p className="text-[8px] sm:text-[9px] text-muted-foreground mt-0.5 line-clamp-2">
+                                    {netEarnings >= 0 ? "Montant retirable" : "Déficit PayDunya"}
                                   </p>
                                 </div>
                               </div>
@@ -1075,19 +1271,41 @@ const AdminDashboard = () => {
 
           {activeTab === "receipts" && (
             <div className="animate-fade-in w-full max-w-full overflow-hidden">
-              <div className="mb-6">
-                <h1 className="text-xl md:text-3xl font-bold mb-2">Volume des Reçus Délivrés</h1>
-                <p className="text-muted-foreground text-sm">Activité financière globale gérée par la plateforme</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h1 className="text-xl md:text-3xl font-bold mb-2">Volume des Reçus Délivrés</h1>
+                  <p className="text-muted-foreground text-sm">Activité financière globale gérée par la plateforme</p>
+                </div>
+                {/* Filtre par Année */}
+                <div className="flex items-center gap-2 bg-card p-1.5 px-3 rounded-2xl border shadow-soft self-start sm:self-auto">
+                  <span className="text-xs font-bold text-muted-foreground">Année :</span>
+                  <Select
+                    value={receiptsYearFilter}
+                    onValueChange={(val) => {
+                      setReceiptsYearFilter(val);
+                      setReceiptsPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[130px] h-8 rounded-xl text-xs font-bold border-none bg-secondary/50">
+                      <SelectValue placeholder="Choisir l'année" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="all">Toutes</SelectItem>
+                      {availableReceiptYears.map((y: number) => (
+                        <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <Tabs defaultValue="list" className="w-full max-w-full">
                 <div className="overflow-x-auto mb-4">
                   <TabsList>
                     <TabsTrigger value="list">Liste des reçus</TabsTrigger>
-                    <TabsTrigger value="admin-monthly">Admin (Mois)</TabsTrigger>
-                    <TabsTrigger value="admin-yearly">Admin (Année)</TabsTrigger>
                     <TabsTrigger value="daily">Loyer (Quotidien)</TabsTrigger>
                     <TabsTrigger value="monthly">Loyer (Mensuel)</TabsTrigger>
+                    <TabsTrigger value="yearly">Loyer (Annuel)</TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -1283,80 +1501,6 @@ const AdminDashboard = () => {
                   </Card>
                 ) : (
                   <>
-                    <TabsContent value="admin-monthly" className="w-full max-w-full">
-                      <Card className="shadow-soft bg-card border-l-4 border-l-primary/50 w-full max-w-full">
-                        <CardHeader>
-                          <CardTitle className="text-sm font-bold flex items-center justify-between gap-2">
-                            <span className="truncate">Revenu Samalocation (Mensuel)</span>
-                            <Badge variant="outline" className="shrink-0 text-[10px] text-primary border-primary/20">ADMIN</Badge>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0 w-full max-w-full">
-                          <div className="w-full aspect-[4/3] md:aspect-[3/1]">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={revenueStats.adminMonthly}>
-                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                                <XAxis
-                                  dataKey="date"
-                                  tickFormatter={(val) => new Date(val).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })}
-                                  style={{ fontSize: 10 }}
-                                />
-                                <YAxis
-                                  tickFormatter={(val) => `${val / 1000}k`}
-                                  style={{ fontSize: 10 }}
-                                />
-                                <Tooltip
-                                  formatter={(val: any) => [formatCurrency(val), "Revenu Admin"]}
-                                  labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-                                />
-                                <Bar
-                                  dataKey="total"
-                                  fill="hsl(var(--primary))"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="admin-yearly" className="w-full max-w-full">
-                      <Card className="shadow-soft bg-card border-l-4 border-l-primary/50 w-full max-w-full">
-                        <CardHeader>
-                          <CardTitle className="text-sm font-bold flex items-center justify-between gap-2">
-                            <span className="truncate">Revenu Samalocation (Annuel)</span>
-                            <Badge variant="outline" className="shrink-0 text-[10px] text-primary border-primary/20">ANNUEL</Badge>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0 w-full max-w-full">
-                          <div className="w-full aspect-[4/3] md:aspect-[3/1]">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={revenueStats.adminYearly}>
-                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                                <XAxis
-                                  dataKey="date"
-                                  style={{ fontSize: 10 }}
-                                />
-                                <YAxis
-                                  tickFormatter={(val) => `${val / 1000}k`}
-                                  style={{ fontSize: 10 }}
-                                />
-                                <Tooltip
-                                  formatter={(val: any) => [formatCurrency(val), "Revenu Admin"]}
-                                />
-                                <Bar
-                                  dataKey="total"
-                                  fill="hsl(var(--primary))"
-                                  radius={[4, 4, 0, 0]}
-                                />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
                     <TabsContent value="daily" className="w-full max-w-full">
                       <Card className="shadow-soft bg-card w-full max-w-full">
                         <CardHeader>
@@ -1403,7 +1547,11 @@ const AdminDashboard = () => {
                     <TabsContent value="monthly" className="w-full max-w-full">
                       <Card className="shadow-soft bg-card w-full max-w-full">
                         <CardHeader>
-                          <CardTitle className="text-sm font-medium">Volume mensuel géré (12 mois)</CardTitle>
+                          <CardTitle className="text-sm font-medium">
+                            {receiptsYearFilter !== "all" 
+                              ? `Volume mensuel géré (${receiptsYearFilter})` 
+                              : "Volume mensuel géré (12 derniers mois)"}
+                          </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0 w-full max-w-full">
                           <div className="w-full aspect-[4/3] md:aspect-[3/1]">
@@ -1422,6 +1570,39 @@ const AdminDashboard = () => {
                                 <Tooltip
                                   formatter={(val: any) => [formatCurrency(val), "Volume"]}
                                   labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                                />
+                                <Bar
+                                  dataKey="total"
+                                  fill="#8b5cf6"
+                                  radius={[4, 4, 0, 0]}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="yearly" className="w-full max-w-full">
+                      <Card className="shadow-soft bg-card w-full max-w-full">
+                        <CardHeader>
+                          <CardTitle className="text-sm font-medium">Volume annuel géré</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0 w-full max-w-full">
+                          <div className="w-full aspect-[4/3] md:aspect-[3/1]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={revenueStats.yearly}>
+                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                <XAxis
+                                  dataKey="date"
+                                  style={{ fontSize: 10 }}
+                                />
+                                <YAxis
+                                  tickFormatter={(val) => `${val / 1000}k`}
+                                  style={{ fontSize: 10 }}
+                                />
+                                <Tooltip
+                                  formatter={(val: any) => [formatCurrency(val), "Volume"]}
                                 />
                                 <Bar
                                   dataKey="total"
@@ -1469,55 +1650,55 @@ const AdminDashboard = () => {
               </div>
 
               {/* Live Info Card */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6">
                 <Card className="shadow-soft overflow-hidden border-green-500/20 bg-green-500/5 col-span-1">
-                  <CardContent className="p-6 flex flex-col items-center justify-center text-center space-y-2">
+                  <CardContent className="p-3.5 sm:p-6 flex flex-col items-center justify-center text-center space-y-1.5 sm:space-y-2">
                     <div className="relative">
-                      <Users className="h-10 w-10 text-green-600" />
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-ping" />
+                      <Users className="h-6 w-6 sm:h-10 sm:w-10 text-green-600" />
+                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 rounded-full border-2 border-white animate-ping" />
                     </div>
                     <div>
-                      <span className="text-3xl font-black text-green-700">{liveAnalytics?.online_now || 0}</span>
-                      <p className="text-xs font-bold text-green-600 uppercase tracking-tighter">Connectés en direct</p>
+                      <span className="text-xl sm:text-3xl font-black text-green-700">{liveAnalytics?.online_now || 0}</span>
+                      <p className="text-[9px] sm:text-xs font-bold text-green-600 uppercase tracking-tighter">En direct</p>
                     </div>
                   </CardContent>
                 </Card>
 
                 {[
-                  { title: "Dernières 24h", data: liveAnalytics?.daily },
-                  { title: "30 derniers jours", data: liveAnalytics?.monthly },
+                  { title: "24h", fullTitle: "Dernières 24h", data: liveAnalytics?.daily },
+                  { title: "30 jours", fullTitle: "30 derniers jours", data: liveAnalytics?.monthly },
                 ].map((period, idx) => (
                   <Card key={idx} className="shadow-soft overflow-hidden border-primary/10">
-                    <CardHeader className="bg-primary/5 py-4 border-b">
-                      <CardTitle className="text-sm font-bold uppercase tracking-wider">{period.title}</CardTitle>
+                    <CardHeader className="bg-primary/5 py-2.5 sm:py-4 px-3.5 sm:px-6 border-b">
+                      <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider truncate">{period.title}</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-3">
+                    <CardContent className="p-3.5 sm:p-6 space-y-2 sm:space-y-3">
                       <div className="flex justify-between items-end">
-                        <span className="text-muted-foreground text-xs">Visites</span>
-                        <span className="text-xl font-black">{formatNumber(period.data?.total || 0)}</span>
+                        <span className="text-muted-foreground text-[10px] sm:text-xs">Visites</span>
+                        <span className="text-sm sm:text-xl font-black">{formatNumber(period.data?.total || 0)}</span>
                       </div>
                       <div className="flex justify-between items-end">
-                        <span className="text-muted-foreground text-xs">Uniques</span>
-                        <span className="text-lg font-bold text-blue-600">{formatNumber(period.data?.unique_visitors || 0)}</span>
+                        <span className="text-muted-foreground text-[10px] sm:text-xs">Uniques</span>
+                        <span className="text-xs sm:text-lg font-bold text-blue-600">{formatNumber(period.data?.unique_visitors || 0)}</span>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
 
                 <Card className="shadow-soft overflow-hidden border-red-500/10">
-                  <CardHeader className="bg-red-500/5 py-4 border-b">
-                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-red-600">Robots (Mois)</CardTitle>
+                  <CardHeader className="bg-red-500/5 py-2.5 sm:py-4 px-3.5 sm:px-6 border-b">
+                    <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider text-red-600 truncate">Robots</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-end pt-2">
-                        <span className="text-red-500 text-xs font-bold flex items-center gap-1">
-                          <Bot className="h-3 w-3" />
-                          Identifiés
-                        </span>
-                        <Badge variant="destructive" className="bg-red-500/10 text-red-600 border-red-500/20">
-                          {formatNumber(liveAnalytics?.monthly?.bots || 0)}
-                        </Badge>
-                      </div>
+                  <CardContent className="p-3.5 sm:p-6">
+                    <div className="flex justify-between items-end pt-1 sm:pt-2">
+                      <span className="text-red-500 text-[10px] sm:text-xs font-bold flex items-center gap-1">
+                        <Bot className="h-3 w-3" />
+                        Identifiés
+                      </span>
+                      <Badge variant="destructive" className="bg-red-500/10 text-red-600 border-red-500/20 text-[10px] px-1.5 py-0.5">
+                        {formatNumber(liveAnalytics?.monthly?.bots || 0)}
+                      </Badge>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -1628,59 +1809,59 @@ const AdminDashboard = () => {
           {activeTab === "overview" && (
             <>
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 mb-6 md:mb-8">
                 <Card className="shadow-soft hover:shadow-medium transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Total Utilisateurs</p>
-                        <p className="text-2xl font-bold">{formatNumber(statistics.totalUsers)}</p>
+                  <CardContent className="p-3.5 sm:p-5 md:p-6">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] sm:text-xs md:text-sm text-muted-foreground mb-0.5 sm:mb-1 font-medium truncate">Total Utilisateurs</p>
+                        <p className="text-lg sm:text-xl md:text-2xl font-black tracking-tight">{formatNumber(statistics.totalUsers)}</p>
                       </div>
-                      <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center">
-                        <Users className="h-6 w-6 text-white" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
+                        <Users className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="shadow-soft hover:shadow-medium transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Propriétaires</p>
-                        <p className="text-2xl font-bold">{formatNumber(statistics.owners)}</p>
+                  <CardContent className="p-3.5 sm:p-5 md:p-6">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] sm:text-xs md:text-sm text-muted-foreground mb-0.5 sm:mb-1 font-medium truncate">Propriétaires</p>
+                        <p className="text-lg sm:text-xl md:text-2xl font-black tracking-tight">{formatNumber(statistics.owners)}</p>
                       </div>
-                      <div className="w-12 h-12 rounded-lg bg-purple-500 flex items-center justify-center">
-                        <Users className="h-6 w-6 text-white" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="shadow-soft hover:shadow-medium transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Locataires</p>
-                        <p className="text-2xl font-bold">{formatNumber(statistics.tenants)}</p>
-                      </div>
-                      <div className="w-12 h-12 rounded-lg bg-orange-500 flex items-center justify-center">
-                        <Users className="h-6 w-6 text-white" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-purple-500 flex items-center justify-center shrink-0">
+                        <Users className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="shadow-soft hover:shadow-medium transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Propriétés Publiées</p>
-                        <p className="text-2xl font-bold">{formatNumber(statistics.publishedProperties)}</p>
-                        <p className="text-xs text-muted-foreground">/ {formatNumber(statistics.totalProperties)} total</p>
+                  <CardContent className="p-3.5 sm:p-5 md:p-6">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] sm:text-xs md:text-sm text-muted-foreground mb-0.5 sm:mb-1 font-medium truncate">Locataires</p>
+                        <p className="text-lg sm:text-xl md:text-2xl font-black tracking-tight">{formatNumber(statistics.tenants)}</p>
                       </div>
-                      <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center">
-                        <Building2 className="h-6 w-6 text-white" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-orange-500 flex items-center justify-center shrink-0">
+                        <Users className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-soft hover:shadow-medium transition-shadow">
+                  <CardContent className="p-3.5 sm:p-5 md:p-6">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] sm:text-xs md:text-sm text-muted-foreground mb-0.5 sm:mb-1 font-medium truncate">Propriétés Publiées</p>
+                        <p className="text-lg sm:text-xl md:text-2xl font-black tracking-tight">{formatNumber(statistics.publishedProperties)}</p>
+                        <p className="text-[9px] sm:text-[11px] md:text-xs text-muted-foreground truncate">/ {formatNumber(statistics.totalProperties)} total</p>
+                      </div>
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg bg-green-500 flex items-center justify-center shrink-0">
+                        <Building2 className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white" />
                       </div>
                     </div>
                   </CardContent>
@@ -1688,85 +1869,103 @@ const AdminDashboard = () => {
               </div>
 
               {/* Finance Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 mb-6 md:mb-8">
                 <Card className="shadow-soft bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
-                  <CardContent className="p-6 text-primary">
-                    <div className="flex items-center gap-4 mb-2">
-                      <div className="p-2 bg-primary/20 rounded-lg">
-                        <DollarSign className="h-5 w-5" />
+                  <CardContent className="p-3.5 sm:p-5 md:p-6 text-primary">
+                    <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-2">
+                      <div className="p-1 sm:p-1.5 md:p-2 bg-primary/20 rounded-lg shrink-0">
+                        <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5" />
                       </div>
-                      <span className="font-bold text-sm uppercase tracking-wider">Revenu Actuel</span>
+                      <span className="font-bold text-[10px] sm:text-xs md:text-sm uppercase tracking-wider truncate">Revenu Actuel</span>
                     </div>
-                    <p className="text-3xl font-black">{formatCurrency(statistics.revenue?.active || 0)}</p>
-                    <p className="text-xs opacity-70">Abonnements actifs ce mois</p>
+                    <p className="text-sm sm:text-xl md:text-2xl lg:text-3xl font-black tracking-tight truncate">{formatCurrency(statistics.revenue?.active || 0)}</p>
+                    <p className="text-[9px] sm:text-[11px] md:text-xs opacity-70 truncate">Encaissé PayDunya ce mois</p>
                   </CardContent>
                 </Card>
 
                 <Card className="shadow-soft">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-4 mb-2">
-                      <CreditCard className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium text-muted-foreground">Revenu Total</span>
+                  <CardContent className="p-3.5 sm:p-5 md:p-6">
+                    <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-2">
+                      <div className="p-1 sm:p-1.5 md:p-2 bg-secondary rounded-lg shrink-0">
+                        <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-muted-foreground" />
+                      </div>
+                      <span className="text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider truncate">Revenu Total</span>
                     </div>
-                    <p className="text-2xl font-bold">{formatCurrency(statistics.revenue?.total || 0)}</p>
-                    <p className="text-xs text-muted-foreground">Depuis le lancement</p>
+                    <p className="text-sm sm:text-xl md:text-2xl font-bold tracking-tight truncate">{formatCurrency(statistics.revenue?.total || 0)}</p>
+                    <p className="text-[9px] sm:text-[11px] md:text-xs text-muted-foreground truncate">Encaissé PayDunya (total)</p>
                   </CardContent>
                 </Card>
 
                 <Card className="shadow-soft">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-4 mb-2">
-                      <PieChart className="h-5 w-5 text-accent" />
-                      <span className="text-sm font-medium text-muted-foreground">Abonnés Premium</span>
+                  <CardContent className="p-3.5 sm:p-5 md:p-6">
+                    <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-2">
+                      <div className="p-1 sm:p-1.5 md:p-2 bg-accent/10 rounded-lg shrink-0">
+                        <PieChart className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-accent" />
+                      </div>
+                      <span className="text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider truncate">Abonnés Premium</span>
                     </div>
-                    <p className="text-2xl font-bold">{formatNumber(statistics.subscriptions?.premium || 0)}</p>
-                    <p className="text-xs text-muted-foreground">Offre 5 000 F / mois</p>
+                    <p className="text-sm sm:text-xl md:text-2xl font-bold tracking-tight truncate">{formatNumber(statistics.subscriptions?.premium || 0)}</p>
+                    <p className="text-[9px] sm:text-[11px] md:text-xs text-muted-foreground truncate">Offre 5 000 F / mois</p>
                   </CardContent>
                 </Card>
 
                 <Card className="shadow-soft">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-4 mb-2">
-                      <Shield className="h-5 w-5 text-yellow-500" />
-                      <span className="text-sm font-medium text-muted-foreground">Abonnés Pro</span>
+                  <CardContent className="p-3.5 sm:p-5 md:p-6">
+                    <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-2">
+                      <div className="p-1 sm:p-1.5 md:p-2 bg-yellow-500/10 rounded-lg shrink-0">
+                        <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-yellow-500" />
+                      </div>
+                      <span className="text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider truncate">Abonnés Pro</span>
                     </div>
-                    <p className="text-2xl font-bold">{formatNumber(statistics.subscriptions?.professionnel || 0)}</p>
-                    <p className="text-xs text-muted-foreground">Offre 15 000 F / mois</p>
+                    <p className="text-sm sm:text-xl md:text-2xl font-bold tracking-tight truncate">{formatNumber(statistics.subscriptions?.professionnel || 0)}</p>
+                    <p className="text-[9px] sm:text-[11px] md:text-xs text-muted-foreground truncate">Offre 15 000 F / mois</p>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Nouveaux utilisateurs */}
-              <Card className="shadow-soft mb-6">
-                <CardHeader>
-                  <CardTitle>Nouveaux utilisateurs</CardTitle>
+              <Card className="shadow-soft mb-6 overflow-hidden">
+                <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base sm:text-lg font-bold">Nouveaux utilisateurs</CardTitle>
+                    <Badge variant="outline" className="text-xs font-semibold">{recentUsers.length}</Badge>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-3 sm:p-6 pt-0">
+                  <div className="space-y-2 sm:space-y-3">
                     {recentUsers.length > 0 ? (
                       recentUsers.map((user) => (
-                        <div key={user.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg animate-fade-in-up">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                              <Users className="h-5 w-5 text-white" />
+                        <div key={user.id} className="flex items-center justify-between gap-2 sm:gap-4 p-2.5 sm:p-4 bg-secondary/30 rounded-xl hover:bg-secondary/50 transition-colors">
+                          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                              <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                             </div>
-                            <div>
-                              <p className="font-semibold">{user.full_name}</p>
-                              <p className="text-[10px] font-bold text-primary">{user.customId}</p>
-                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-bold text-xs sm:text-sm text-foreground truncate">{user.full_name || 'Utilisateur'}</p>
+                                {user.customId && (
+                                  <span className="text-[9px] sm:text-[10px] font-mono px-1 py-0.2 bg-primary/10 text-primary rounded font-bold shrink-0">
+                                    {user.customId}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{user.email}</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <Badge variant={user.role === 'owner' ? 'default' : 'secondary'}>
+                          <div className="shrink-0">
+                            <Badge 
+                              variant={user.role === 'owner' ? 'default' : 'secondary'}
+                              className="text-[10px] sm:text-xs px-2 py-0.5 whitespace-nowrap"
+                            >
                               {user.role === 'owner' ? 'Propriétaire' : 'Locataire'}
                             </Badge>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-10 bg-secondary/10 rounded-lg border-2 border-dashed border-secondary">
-                        <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
-                        <p className="text-muted-foreground">Aucun nouvel utilisateur depuis votre dernière visite.</p>
+                      <div className="text-center py-8 bg-secondary/10 rounded-xl border border-dashed border-border">
+                        <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-30" />
+                        <p className="text-xs sm:text-sm text-muted-foreground">Aucun nouvel utilisateur depuis votre dernière visite.</p>
                       </div>
                     )}
                   </div>
@@ -1781,41 +1980,7 @@ const AdminDashboard = () => {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <Card className="shadow-soft mb-6">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Bot className="h-5 w-5 text-indigo-500" />
-                        Performance de l'IA
-                      </CardTitle>
-                      <Badge variant="outline" className="text-[10px] uppercase">Google Gemini 1.5 Pro</Badge>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        {[
-                          { label: "Descriptions", action: "description_generation" },
-                          { label: "Recherche Smart", action: "smart_search" },
-                          { label: "Chat Support", action: "chat" }
-                        ].map((ai) => {
-                          const stats = statistics.aiUsage?.find(s => s.action === ai.action);
-                          return (
-                            <div key={ai.action} className="p-4 rounded-xl bg-secondary/20 border border-secondary transition-all hover:border-indigo-500/30">
-                              <span className="text-xs text-muted-foreground block mb-1">{ai.label}</span>
-                              <div className="flex items-end justify-between">
-                                <span className="text-2xl font-bold">{stats?.count || 0}</span>
-                                <Zap className="h-4 w-4 text-yellow-500 opacity-50" />
-                              </div>
-                              {stats?.last_used && (
-                                <span className="text-[10px] text-muted-foreground mt-2 block flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {new Date(stats.last_used).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <AIPerformanceCard />
 
                   <ActivityFeed />
                 </div>

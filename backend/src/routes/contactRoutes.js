@@ -58,4 +58,47 @@ router.patch('/:id/status', authMiddleware, adminMiddleware, async (req, res) =>
     }
 });
 
+// POST /api/contact/:id/reply - Admin route to send an email reply to contact message
+router.post('/:id/reply', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { replyMessage, replySubject } = req.body;
+
+        if (!replyMessage || replyMessage.trim().length === 0) {
+            return response.error(res, 'Le message de réponse ne peut pas être vide.', 400);
+        }
+
+        const { rows } = await db.query('SELECT * FROM contact_messages WHERE id = $1', [req.params.id]);
+        if (rows.length === 0) {
+            return response.error(res, 'Message non trouvé.', 404);
+        }
+
+        const contactMsg = rows[0];
+        const emailTemplates = require('../utils/emailTemplates');
+        const { sendEmail } = require('../utils/emailService');
+
+        const emailData = emailTemplates.getSupportReplyTemplate({
+            userName: contactMsg.name,
+            originalSubject: contactMsg.subject,
+            originalMessage: contactMsg.message,
+            replyContent: replyMessage.trim()
+        });
+
+        const subjectToSend = replySubject || emailData.subject;
+        const sent = await sendEmail(contactMsg.email, subjectToSend, emailData.html);
+
+        if (!sent) {
+            return response.error(res, 'Échec de l\'envoi de l\'e-mail.', 500);
+        }
+
+        // Met à jour automatiquement le statut en "replied"
+        await db.query('UPDATE contact_messages SET status = $1 WHERE id = $2', ['replied', req.params.id]);
+
+        return response.success(res, null, 'Réponse envoyée avec succès par e-mail.');
+    } catch (error) {
+        console.error('Error replying to contact message:', error);
+        return response.error(res, error.message, 500);
+    }
+});
+
 module.exports = router;
+

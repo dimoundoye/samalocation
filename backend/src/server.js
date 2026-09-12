@@ -21,6 +21,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const adminEmailRoutes = require('./routes/adminEmailRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const dossierRoutes = require('./routes/dossierRoutes');
@@ -47,6 +48,10 @@ const Subscription = require('./models/subscriptionModel');
 const PropertyGroup = require('./models/propertyGroupModel');
 const ContractTemplate = require('./models/contractTemplateModel');
 const ActivityLog = require('./models/activityLogModel');
+const Favorite = require('./models/favoriteModel');
+const TeamInvitation = require('./models/teamInvitationModel');
+const AIUsage = require('./models/aiUsageModel');
+const migrateEmailLogs = require('./migrations/migrate_email_logs');
 
 const app = express();
 const server = require('http').createServer(app);
@@ -166,6 +171,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/emails', adminEmailRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/dossier', dossierRoutes);
@@ -235,6 +241,10 @@ server.listen(PORT, async () => {
         await PropertyGroup.migrate();
         await ContractTemplate.migrate();
         await ActivityLog.migrate();
+        await Favorite.migrate();
+        await TeamInvitation.migrate();
+        await AIUsage.migrate();
+        await migrateEmailLogs();
         console.log('  [DB] ✅ Migrations terminées.\n');
     } catch (err) {
         console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
