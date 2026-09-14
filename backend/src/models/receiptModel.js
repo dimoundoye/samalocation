@@ -19,7 +19,6 @@ const Receipt = {
         } = data;
 
         const id = uuidv4();
-        const receipt_number = await this.generateReceiptNumber();
 
         // Fetch names, signature and template
         let owner_signature = null;
@@ -75,12 +74,26 @@ const Receipt = {
             console.error("Error fetching details for receipt creation:", error);
         }
 
-        await db.query(
-            `INSERT INTO receipts 
-            (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
-            [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone]
-        );
+        let retries = 3;
+        while (retries > 0) {
+            const receipt_number = await this.generateReceiptNumber();
+            try {
+                await db.query(
+                    `INSERT INTO receipts 
+                    (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+                    [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone]
+                );
+                break;
+            } catch (err) {
+                if (err.code === '23505' && (err.constraint === 'receipts_receipt_number_key' || err.message?.includes('receipt_number')) && retries > 1) {
+                    console.warn(`⚠️ Collision de numéro de reçu (${receipt_number}), nouvelle tentative avec un nouveau numéro...`);
+                    retries--;
+                    continue;
+                }
+                throw err;
+            }
+        }
 
         return this.findById(id);
     },
@@ -88,17 +101,43 @@ const Receipt = {
     async generateReceiptNumber() {
         const year = new Date().getFullYear();
         const month = String(new Date().getMonth() + 1).padStart(2, '0');
+        const prefix = `REC-${year}${month}-`;
 
-        // PostgreSQL: EXTRACT au lieu de YEAR()/MONTH()
+        // Récupérer tous les numéros existants du mois pour trouver la séquence maximale
         const { rows } = await db.query(
-            'SELECT COUNT(*) as count FROM receipts WHERE EXTRACT(YEAR FROM created_at) = $1 AND EXTRACT(MONTH FROM created_at) = $2',
-            [year, new Date().getMonth() + 1]
+            'SELECT receipt_number FROM receipts WHERE receipt_number LIKE $1',
+            [`${prefix}%`]
         );
 
-        const count = parseInt(rows[0].count) + 1;
-        const sequence = String(count).padStart(4, '0');
+        let maxSeq = 0;
+        for (const row of rows) {
+            if (row.receipt_number) {
+                const parts = row.receipt_number.split('-');
+                if (parts.length >= 3) {
+                    const seq = parseInt(parts[2], 10);
+                    if (!isNaN(seq) && seq > maxSeq) {
+                        maxSeq = seq;
+                    }
+                }
+            }
+        }
 
-        return `REC-${year}${month}-${sequence}`;
+        let nextSeq = maxSeq + 1;
+        let candidate = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+
+        // Sécurité supplémentaire : vérifier l'unicité du numéro candidat
+        let exists = true;
+        while (exists) {
+            const check = await db.query('SELECT 1 FROM receipts WHERE receipt_number = $1', [candidate]);
+            if (check.rows.length === 0) {
+                exists = false;
+            } else {
+                nextSeq++;
+                candidate = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+            }
+        }
+
+        return candidate;
     },
 
     async findById(id) {
