@@ -32,5 +32,14 @@ module.exports = {
             throw new Error("Socket.io not initialized!");
         }
         return io;
+    },
+    emitToWorkspace: (workspaceId, event, data = {}) => {
+        try {
+            if (io && workspaceId) {
+                io.to(String(workspaceId)).emit(event, data);
+            }
+        } catch (err) {
+            console.error('[SOCKET] Error emitting to workspace:', err.message);
+        }
     }
 };

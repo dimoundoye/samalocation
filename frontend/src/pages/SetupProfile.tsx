@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, CheckCircle2, Loader2, Key, Phone, Mail, UserCircle } from "lucide-react";
+import { LogOut, CheckCircle2, Loader2, Key, Phone, Mail, UserCircle, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { completeSetup } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +14,7 @@ const SetupProfile = () => {
     const navigate = useNavigate();
     const { user, signOut } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -48,6 +50,7 @@ const SetupProfile = () => {
         }
 
         setLoading(true);
+        setErrorMessage(null);
 
         try {
             await completeSetup({
@@ -61,7 +64,9 @@ const SetupProfile = () => {
             setSetupDone(true);
             toast.success("Un e-mail de confirmation vous a été envoyé !");
         } catch (error: any) {
-            toast.error("La configuration du profil a échoué. Veuillez réessayer.");
+            const msg = error.data?.message || error.message || "La configuration du profil a échoué. Veuillez réessayer.";
+            setErrorMessage(msg);
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
@@ -142,9 +147,26 @@ const SetupProfile = () => {
                                     type="email"
                                     placeholder="votre@email.com"
                                     value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, email: e.target.value });
+                                        if (errorMessage) setErrorMessage(null);
+                                    }}
+                                    className={errorMessage ? "border-destructive focus-visible:ring-destructive" : ""}
                                     required
                                 />
+                                {errorMessage && (
+                                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-xs text-destructive flex items-start gap-2 mt-1.5 animate-in fade-in">
+                                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                        <div className="space-y-1">
+                                            <p className="font-semibold">{errorMessage}</p>
+                                            {errorMessage.includes("déjà") && (
+                                                <p className="text-[11px] text-destructive/90 leading-relaxed">
+                                                    Si vous possédez déjà un compte avec cette adresse, demandez à votre propriétaire de vous affecter directement avec votre e-mail ou votre identifiant, ou utilisez une autre adresse e-mail.
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-2">

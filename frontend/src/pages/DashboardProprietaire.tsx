@@ -183,7 +183,6 @@ const DashboardProprietaire = () => {
     }
     setActiveContext(context);
     loadData();
-    loadReceipts();
     toast({
       title: "Changement de compte",
       description: context === "personal" ? "Basculement vers votre compte personnel." : "Basculement vers le compte de l'entreprise.",
@@ -601,6 +600,46 @@ const DashboardProprietaire = () => {
       socket.off("new_message", handleNewMessage);
     };
   }, [socket, selectedChat, toast]);
+
+  // Synchronisation en temps réel de l'espace de travail (biens, locataires, quittances, contrats, groupes)
+  useEffect(() => {
+    if (!socket) return;
+
+    // Rejoindre la room de l'espace actif si en mode entreprise/agence
+    if (activeContext && activeContext !== "personal") {
+      socket.emit("join", activeContext);
+    }
+
+    const handleWorkspaceUpdated = (payload: { entity: string; action: string; id?: string }) => {
+      console.log("[SOCKET] 🔄 Mise à jour de l'espace en temps réel reçue :", payload);
+      // Recharger immédiatement les données du dashboard sans recharger la page
+      loadData();
+    };
+
+    socket.on("workspace_updated", handleWorkspaceUpdated);
+
+    return () => {
+      socket.off("workspace_updated", handleWorkspaceUpdated);
+    };
+  }, [socket, activeContext]);
+
+  // Rafraîchissement automatique lors du retour sur l'onglet ou l'application
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        console.log("[VISIBILITY] Onglet redevenu actif, synchronisation des données...");
+        loadData();
+      }
+    };
+
+    window.addEventListener("focus", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (activeTab === "messages") {

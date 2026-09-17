@@ -41,6 +41,10 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 if (user.parentId) {
                     newSocket.emit('join', user.parentId);
                 }
+                const activeContext = localStorage.getItem('active_context');
+                if (activeContext && activeContext !== 'personal') {
+                    newSocket.emit('join', activeContext);
+                }
             });
 
             newSocket.on('connect_error', (err) => {

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X, Building2, Layers, Share2, Facebook, Link as LinkIcon, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X, Building2, Layers, Share2, Facebook, Link as LinkIcon, Send, Loader2, ZoomIn, ZoomOut, RotateCcw, Eye } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -75,6 +75,8 @@ const DetailPropriete = () => {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [hasDossier, setHasDossier] = useState(false);
   const [sharingDossier, setSharingDossier] = useState(false);
 
@@ -249,31 +251,53 @@ const DetailPropriete = () => {
     return [];
   }, [property]);
 
-  // Préparer les photos pour la galerie (même si property n'est pas encore chargé)
-  const coverPhoto = property?.cover_photo || property?.photo_url || propertyFallback;
-  const galleryPhotos: string[] = property?.photos?.filter((url: string) => url && url !== coverPhoto) ?? [];
-
-  // Toutes les photos pour la galerie modale (photo de couverture + galerie)
+  // Préparer toutes les photos pour la galerie sans doublons
   const allPhotos = useMemo(() => {
-    if (!coverPhoto) return [];
-    const photos = [coverPhoto];
-    if (galleryPhotos.length > 0) {
-      photos.push(...galleryPhotos);
+    const list: string[] = [];
+    if (property?.cover_photo) list.push(property.cover_photo);
+    if (property?.photo_url) {
+      const formatted = formatImageUrl(property.photo_url);
+      if (formatted) list.push(formatted);
     }
-    return photos;
-  }, [coverPhoto, galleryPhotos]);
+    if (Array.isArray(property?.photos)) {
+      property.photos.forEach((p: string) => {
+        if (!p) return;
+        const formatted = formatImageUrl(p);
+        if (formatted) list.push(formatted);
+      });
+    }
 
-  // Navigation au clavier pour la galerie
+    const unique = Array.from(new Set(list.filter(Boolean)));
+    if (unique.length === 0) {
+      return propertyFallback ? [propertyFallback] : [];
+    }
+    return unique;
+  }, [property?.cover_photo, property?.photo_url, property?.photos]);
+
+  // Navigation au clavier et raccourcis pour la galerie
   useEffect(() => {
     if (!galleryOpen || allPhotos.length === 0) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight") {
+        e.preventDefault();
         setSelectedImageIndex((prev) => (prev + 1) % allPhotos.length);
+        setZoomLevel(1);
       } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
         setSelectedImageIndex((prev) => (prev - 1 + allPhotos.length) % allPhotos.length);
+        setZoomLevel(1);
       } else if (e.key === "Escape") {
         setGalleryOpen(false);
+      } else if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        setZoomLevel((prev) => Math.min(Math.round((prev + 0.25) * 100) / 100, 3));
+      } else if (e.key === "-") {
+        e.preventDefault();
+        setZoomLevel((prev) => Math.max(Math.round((prev - 0.25) * 100) / 100, 0.75));
+      } else if (e.key === "0" || e.key === "r") {
+        e.preventDefault();
+        setZoomLevel(1);
       }
     };
 
@@ -299,20 +323,46 @@ const DetailPropriete = () => {
     );
   }
 
-
   const openGallery = (index: number) => {
     setSelectedImageIndex(index);
+    setZoomLevel(1);
     setGalleryOpen(true);
   };
 
   const nextImage = () => {
     if (allPhotos.length === 0) return;
     setSelectedImageIndex((prev) => (prev + 1) % allPhotos.length);
+    setZoomLevel(1);
   };
 
   const previousImage = () => {
     if (allPhotos.length === 0) return;
     setSelectedImageIndex((prev) => (prev - 1 + allPhotos.length) % allPhotos.length);
+    setZoomLevel(1);
+  };
+
+  const zoomIn = () => setZoomLevel((prev) => Math.min(Math.round((prev + 0.25) * 100) / 100, 3));
+  const zoomOut = () => setZoomLevel((prev) => Math.max(Math.round((prev - 0.25) * 100) / 100, 0.75));
+  const resetZoom = () => setZoomLevel(1);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setTouchStartX(e.touches[0].clientX);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null || allPhotos.length <= 1) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX - touchEndX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        nextImage();
+      } else {
+        previousImage();
+      }
+    }
+    setTouchStartX(null);
   };
 
   const handleShare = (platform?: 'whatsapp' | 'facebook' | 'copy') => {
@@ -420,7 +470,7 @@ const DetailPropriete = () => {
                   <Carousel className="w-full" opts={{ loop: true }}>
                     <CarouselContent>
                       {allPhotos.map((photo, index) => (
-                        <CarouselItem key={index} className="relative aspect-video md:aspect-[16/10] overflow-hidden cursor-pointer" onClick={() => openGallery(index)}>
+                        <CarouselItem key={index} className="relative aspect-[4/3] sm:aspect-[16/10] md:aspect-[16/10] overflow-hidden cursor-pointer" onClick={() => openGallery(index)}>
                           <img
                             src={photo}
                             alt={`${property.name} - Photo ${index + 1}`}
@@ -431,17 +481,28 @@ const DetailPropriete = () => {
                     </CarouselContent>
                     {allPhotos.length > 1 && (
                       <>
-                        <div className="absolute inset-y-0 left-0 flex items-center pl-2 md:pl-4 pointer-events-none">
-                          <CarouselPrevious className="relative pointer-events-auto h-8 w-8 md:h-10 md:w-10 bg-white/20 hover:bg-white/40 border-none text-white backdrop-blur-sm" />
-                        </div>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 md:pr-4 pointer-events-none">
-                          <CarouselNext className="relative pointer-events-auto h-8 w-8 md:h-10 md:w-10 bg-white/20 hover:bg-white/40 border-none text-white backdrop-blur-sm" />
-                        </div>
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-medium tracking-wide">
-                          {allPhotos.length} photos
-                        </div>
+                        <CarouselPrevious
+                          className="left-3 md:left-5 top-1/2 -translate-y-1/2 h-10 w-10 md:h-12 md:w-12 rounded-full bg-black/60 hover:bg-black/85 text-white border border-white/30 backdrop-blur-md shadow-xl transition-all hover:scale-110 z-20 flex items-center justify-center [&_svg]:h-5 [&_svg]:w-5 md:[&_svg]:h-6 md:[&_svg]:w-6 cursor-pointer"
+                        />
+                        <CarouselNext
+                          className="right-3 md:right-5 top-1/2 -translate-y-1/2 h-10 w-10 md:h-12 md:w-12 rounded-full bg-black/60 hover:bg-black/85 text-white border border-white/30 backdrop-blur-md shadow-xl transition-all hover:scale-110 z-20 flex items-center justify-center [&_svg]:h-5 [&_svg]:w-5 md:[&_svg]:h-6 md:[&_svg]:w-6 cursor-pointer"
+                        />
                       </>
                     )}
+
+                    {/* Bouton pour ouvrir la galerie plein écran */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openGallery(0);
+                      }}
+                      className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-black/60 hover:bg-black/85 text-white backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow-md hover:scale-105 z-10 border border-white/20"
+                      title="Agrandir et voir en plein écran"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>{allPhotos.length > 1 ? `Voir les ${allPhotos.length} photos` : "Agrandir"}</span>
+                    </button>
                   </Carousel>
                 </div>
 
@@ -880,79 +941,160 @@ const DetailPropriete = () => {
       </Dialog>
 
       {/* Galerie d'images modale */}
-      <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] p-0 gap-0 bg-black/95 border-none shadow-2xl rounded-2xl overflow-hidden">
+      <Dialog open={galleryOpen} onOpenChange={(open) => {
+        setGalleryOpen(open);
+        if (!open) setZoomLevel(1);
+      }}>
+        <DialogContent className="max-w-[96vw] w-[96vw] h-[92vh] max-h-[92vh] p-0 gap-0 bg-neutral-950/98 border border-white/10 shadow-2xl rounded-2xl overflow-hidden !flex !flex-col text-white select-none [&>button:last-child]:hidden">
           {allPhotos.length > 0 && selectedImageIndex < allPhotos.length && (
-            <div className="relative w-full h-full flex items-center justify-center">
-              {/* Bouton fermer */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-4 right-4 z-50 text-white hover:bg-white/20"
-                onClick={() => setGalleryOpen(false)}
-              >
-                <X className="h-6 w-6" />
-              </Button>
+            <div className="flex flex-col h-full w-full overflow-hidden">
+              {/* Barre supérieure d'actions */}
+              <div className="h-14 px-4 sm:px-6 flex items-center justify-between border-b border-white/10 bg-black/40 backdrop-blur-md shrink-0 z-30">
+                <div className="flex items-center gap-3 min-w-0">
+                  <h3 className="text-sm sm:text-base font-semibold text-white truncate max-w-[180px] sm:max-w-md">
+                    {property.name}
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white/90 shrink-0">
+                    {allPhotos.length > 1 ? `${selectedImageIndex + 1} / ${allPhotos.length}` : "1 photo disponible"}
+                  </span>
+                </div>
 
-              {/* Navigation gauche */}
-              {allPhotos.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-4 z-50 text-white hover:bg-white/20 h-12 w-12"
-                  onClick={previousImage}
-                >
-                  <ChevronLeft className="h-8 w-8" />
-                </Button>
-              )}
+                <div className="flex items-center gap-1 sm:gap-2">
+                  {/* Zoom out */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={zoomLevel <= 0.75}
+                    onClick={zoomOut}
+                    className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10 rounded-full disabled:opacity-30"
+                    title="Dézoomer (-)"
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
 
-              {/* Image principale */}
-              <div className="w-full h-full flex items-center justify-center p-4 lg:p-8">
-                <img
-                  src={allPhotos[selectedImageIndex]}
-                  alt={`Photo ${selectedImageIndex + 1}`}
-                  className="max-w-full max-h-full object-contain shadow-2xl transition-all duration-300 rounded-xl"
-                />
+                  {/* Zoom reset */}
+                  <button
+                    type="button"
+                    onClick={resetZoom}
+                    className="px-2 py-1 text-xs font-mono rounded bg-white/10 hover:bg-white/20 text-white/90 transition-colors"
+                    title="Réinitialiser le zoom (0)"
+                  >
+                    {Math.round(zoomLevel * 100)}%
+                  </button>
+
+                  {/* Zoom in */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={zoomLevel >= 3}
+                    onClick={zoomIn}
+                    className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10 rounded-full disabled:opacity-30"
+                    title="Zoomer (+)"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+
+                  <div className="h-4 w-px bg-white/20 mx-1" />
+
+                  {/* Bouton fermer */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setGalleryOpen(false)}
+                    className="h-9 w-9 text-white/90 hover:text-white hover:bg-white/20 rounded-full"
+                    title="Fermer (Échap)"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
 
-              {/* Navigation droite */}
-              {allPhotos.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-4 z-50 text-white hover:bg-white/20 h-12 w-12"
-                  onClick={nextImage}
-                >
-                  <ChevronRight className="h-8 w-8" />
-                </Button>
-              )}
+              {/* Scène principale de visualisation */}
+              <div
+                className="flex-1 relative flex items-center justify-center overflow-hidden min-h-0 min-w-0 bg-black/60 p-2 sm:p-6"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                {/* Navigation gauche */}
+                {allPhotos.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      previousImage();
+                    }}
+                    className="absolute left-3 sm:left-6 z-30 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-black/70 hover:bg-black/95 text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                    aria-label="Photo précédente"
+                    title="Photo précédente (←)"
+                  >
+                    <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7" />
+                  </button>
+                )}
 
-              {/* Compteur d'images */}
-              {allPhotos.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-full text-sm">
-                  {selectedImageIndex + 1} / {allPhotos.length}
+                {/* Conteneur image */}
+                <div className="w-full h-full flex items-center justify-center overflow-auto min-h-0 min-w-0 p-2">
+                  <img
+                    src={allPhotos[selectedImageIndex]}
+                    alt={`${property.name} - Photo ${selectedImageIndex + 1}`}
+                    style={{
+                      transform: `scale(${zoomLevel})`,
+                      transformOrigin: "center center",
+                    }}
+                    className={`max-w-[85vw] max-h-[66vh] sm:max-h-[70vh] object-contain rounded-xl shadow-2xl transition-transform duration-200 select-none ${
+                      zoomLevel > 1 ? "cursor-zoom-out" : "cursor-zoom-in"
+                    }`}
+                    onClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 1.75))}
+                    title={zoomLevel > 1 ? "Cliquer pour dézoomer" : "Cliquer pour zoomer"}
+                  />
                 </div>
-              )}
 
-              {/* Miniatures en bas (optionnel) */}
-              {allPhotos.length > 1 && allPhotos.length <= 10 && (
-                <div className="hidden md:flex absolute bottom-8 left-1/2 transform -translate-x-1/2 gap-2 px-4 shadow-strong">
-                  {allPhotos.map((photo, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedImageIndex(index)}
-                      className={`w-16 h-16 rounded overflow-hidden border-2 transition-all ${index === selectedImageIndex
-                        ? "border-white scale-110"
-                        : "border-white/30 hover:border-white/60"
+                {/* Navigation droite */}
+                {allPhotos.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nextImage();
+                    }}
+                    className="absolute right-3 sm:right-6 z-30 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-black/70 hover:bg-black/95 text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                    aria-label="Photo suivante"
+                    title="Photo suivante (→)"
+                  >
+                    <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7" />
+                  </button>
+                )}
+              </div>
+
+              {/* Miniatures en bas */}
+              {allPhotos.length > 1 && (
+                <div className="h-20 sm:h-24 px-4 flex items-center justify-center border-t border-white/10 bg-black/50 backdrop-blur-md shrink-0 z-30">
+                  <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto py-2 max-w-full no-scrollbar">
+                    {allPhotos.map((photo, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          setSelectedImageIndex(index);
+                          setZoomLevel(1);
+                        }}
+                        className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
+                          index === selectedImageIndex
+                            ? "border-primary ring-2 ring-primary scale-105 opacity-100"
+                            : "border-white/20 opacity-60 hover:opacity-100 hover:border-white/50"
                         }`}
-                    >
-                      <img
-                        src={photo}
-                        alt={`Miniature ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
+                        aria-label={`Aller à la photo ${index + 1}`}
+                      >
+                        <img
+                          src={photo}
+                          alt={`Miniature ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

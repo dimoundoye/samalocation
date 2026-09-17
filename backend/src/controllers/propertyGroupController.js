@@ -1,5 +1,6 @@
 const PropertyGroup = require('../models/propertyGroupModel');
 const response = require('../utils/response');
+const { emitToWorkspace } = require('../utils/socket');
 
 const propertyGroupController = {
     async getGroups(req, res, next) {
@@ -22,6 +23,7 @@ const propertyGroupController = {
             }
 
             const updatedGroups = await PropertyGroup.bulkSync(ownerId, groups);
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'groups', action: 'sync' });
             return response.success(res, updatedGroups, 'Groups synchronized successfully');
         } catch (error) {
             next(error);

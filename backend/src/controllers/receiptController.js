@@ -2,6 +2,7 @@ const Receipt = require('../models/receiptModel');
 const { generateReceiptPDF } = require('../utils/pdfGenerator');
 const response = require('../utils/response');
 const logActivity = require('../utils/logActivity');
+const { emitToWorkspace } = require('../utils/socket');
 
 const receiptController = {
     /**
@@ -113,6 +114,7 @@ const receiptController = {
             });
 
             console.log('✅ Receipt created successfully:', receipt);
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'receipts', action: 'create', id: receipt.id });
 
             // Créer une notification pour le locataire
             try {

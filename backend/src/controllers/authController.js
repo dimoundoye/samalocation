@@ -418,8 +418,24 @@ const authController = {
                 return response.error(res, 'Le mot de passe doit contenir au moins 8 caractères', 400);
             }
 
+            const cleanEmail = email.trim().toLowerCase();
+
+            // Vérifier si cette adresse email est déjà utilisée par un autre compte
+            const { rows: existingUsers } = await db.query(
+                'SELECT id FROM users WHERE LOWER(email) = $1 AND id != $2',
+                [cleanEmail, userId]
+            );
+
+            if (existingUsers.length > 0) {
+                return response.error(
+                    res,
+                    'Cette adresse e-mail est déjà associée à un compte SamaLocation existant.',
+                    400
+                );
+            }
+
             // Update profile info
-            await User.finalizeProfile(userId, { name, email, phone });
+            await User.finalizeProfile(userId, { name: name.trim(), email: cleanEmail, phone: phone.trim() });
 
             // Générer un token de vérification d'email (même mécanisme que l'inscription normale)
             const verificationToken = crypto.randomBytes(32).toString('hex');
@@ -450,7 +466,13 @@ const authController = {
 
             return response.success(res, null, 'Configuration terminée ! Un e-mail de confirmation vous a été envoyé.');
         } catch (error) {
-
+            if (error.code === '23505' && (error.constraint?.includes('email') || error.message?.includes('email'))) {
+                return response.error(
+                    res,
+                    'Cette adresse e-mail est déjà associée à un compte SamaLocation existant.',
+                    400
+                );
+            }
             next(error);
         }
     },

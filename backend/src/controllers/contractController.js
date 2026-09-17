@@ -2,6 +2,7 @@ const Contract = require('../models/contractModel');
 const { generateContractPDF, generateCustomContractPDFWithBrowser } = require('../utils/contractGenerator');
 const path = require('path');
 const logActivity = require('../utils/logActivity');
+const { emitToWorkspace } = require('../utils/socket');
 
 const contractController = {
     async createContract(req, res, next) {
@@ -13,6 +14,7 @@ const contractController = {
                 contract_type: req.body.contract_type || 'standard'
             };
             const contract = await Contract.create(contractData);
+            emitToWorkspace(owner_id, 'workspace_updated', { entity: 'contracts', action: 'create', id: contract.id });
 
             // Journal d'activité
             const tenantName = req.body.tenant_name || 'Locataire inconnu';
@@ -87,6 +89,8 @@ const contractController = {
             } else {
                 return res.status(403).json({ message: 'Non autorisé' });
             }
+
+            emitToWorkspace(contract.owner_id, 'workspace_updated', { entity: 'contracts', action: 'sign', id });
 
             res.json(result);
         } catch (error) {

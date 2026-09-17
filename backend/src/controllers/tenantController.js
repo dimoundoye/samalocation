@@ -3,6 +3,7 @@ const Property = require('../models/propertyModel');
 const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
 const logActivity = require('../utils/logActivity');
+const { emitToWorkspace } = require('../utils/socket');
 
 const tenantController = {
     /**
@@ -118,6 +119,7 @@ const tenantController = {
             });
 
             console.log('Tenant created:', newTenant);
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'tenants', action: 'create', id: newTenant.id });
 
             // Journal d'activité
             const { rows: propNameRows } = await db.query(
@@ -159,6 +161,7 @@ const tenantController = {
             }
 
             const updated = await Tenant.update(id, data);
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'tenants', action: 'update', id });
 
             // Journal d'activité
             await logActivity(req, {
@@ -195,6 +198,7 @@ const tenantController = {
             }
 
             await Tenant.delete(id);
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'tenants', action: 'delete', id });
 
             // Journal d'activité
             await logActivity(req, {

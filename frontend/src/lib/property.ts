@@ -32,19 +32,47 @@ export interface FormattedProperty extends RawProperty {
   currency: string;
 }
 
-const getSafePhotosArray = (photos: any) => {
+const getSafePhotosArray = (photos: any): string[] => {
   if (!photos) return [];
 
   if (Array.isArray(photos)) {
-    return photos;
+    return photos
+      .map((p) => {
+        if (typeof p === "string") return p.trim();
+        if (p && typeof p === "object") return String(p.url || p.src || p.path || "").trim();
+        return "";
+      })
+      .filter((p) => p.length > 0);
   }
 
-  try {
-    const parsed = typeof photos === 'string' ? JSON.parse(photos) : photos;
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+  if (typeof photos === "string") {
+    const trimmed = photos.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((p) => {
+            if (typeof p === "string") return p.trim();
+            if (p && typeof p === "object") return String(p.url || p.src || p.path || "").trim();
+            return "";
+          })
+          .filter((p) => p.length > 0);
+      }
+    } catch {
+      // Not JSON
+    }
+
+    // Handle Postgres array format "{url1,url2}" or comma/newline/semicolon separated strings
+    const cleaned = trimmed.replace(/^[{\[]|[}\]]$/g, "");
+    return cleaned
+      .split(/[\n,;]+/)
+      .map((url) => url.replace(/^[",'\s]+|[",'\s]+$/g, "").trim())
+      .filter((url) => url.length > 0);
   }
+
+  return [];
 };
 
 const getSafeEquipmentsArray = (equipments: any) => {

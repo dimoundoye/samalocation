@@ -36,46 +36,44 @@ const Contract = {
             custom_template_id
         } = data;
 
-        const contract_number = await this.generateContractNumber();
-
-        // Helper to handle empty strings as null for date/number fields
-        const nullIfEmpty = (val) => (val === "" || val === undefined) ? null : val;
-
-        // Fetch owner's current signature
-        let owner_signature = null;
-        try {
-            const { rows: ownerRows } = await db.query('SELECT signature_url FROM owner_profiles WHERE user_profile_id = $1', [owner_id]);
-            if (ownerRows[0]) {
-                owner_signature = ownerRows[0].signature_url;
+        let contract = null;
+        let retries = 3;
+        while (retries > 0) {
+            const contract_number = await this.generateContractNumber();
+            try {
+                const { rows } = await db.query(
+                    `INSERT INTO rental_contracts 
+                    (tenant_id, owner_id, property_id, unit_id, start_date, duration_months, rent_amount, deposit_amount, 
+                    payment_day, payment_method, notes, contract_number, status, contract_type,
+                    owner_id_type, owner_id_number, owner_id_date, owner_dob, owner_birthplace, owner_phone, owner_email,
+                    tenant_id_type, tenant_id_number, tenant_id_date, tenant_dob, tenant_birthplace, tenant_phone, tenant_email,
+                    detailed_address, property_type, property_details, charges_info, occupancy_limit, inventory, document_hash, owner_signed, owner_signed_at, owner_signature,
+                    owner_name, tenant_name, custom_content, custom_template_id) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending_signature', $13, 
+                    $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, TRUE, CURRENT_TIMESTAMP, $35,
+                    $36, $37, $38, $39) 
+                    RETURNING *`,
+                    [
+                        tenant_id, owner_id, property_id, unit_id, start_date, duration_months || 12, rent_amount, deposit_amount,
+                        payment_day || 5, payment_method, notes, contract_number, contract_type || 'standard',
+                        owner_id_type, owner_id_number, nullIfEmpty(owner_id_date), nullIfEmpty(owner_dob), owner_birthplace, owner_phone, owner_email,
+                        tenant_id_type, tenant_id_number, nullIfEmpty(tenant_id_date), nullIfEmpty(tenant_dob), tenant_birthplace, tenant_phone, tenant_email,
+                        detailed_address, property_type || 'Appartement', property_details || '', charges_info || {}, nullIfEmpty(occupancy_limit), inventory || {}, document_hash,
+                        owner_signature,
+                        owner_name, tenant_name, nullIfEmpty(custom_content), nullIfEmpty(custom_template_id)
+                    ]
+                );
+                contract = rows[0];
+                break;
+            } catch (err) {
+                if (err.code === '23505' && (err.constraint?.includes('contract_number') || err.message?.includes('contract_number')) && retries > 1) {
+                    console.warn(`⚠️ Collision de numéro de contrat (${contract_number}), nouvelle tentative avec un nouveau numéro...`);
+                    retries--;
+                    continue;
+                }
+                throw err;
             }
-        } catch (error) {
-            console.error("Error fetching owner signature for contract creation:", error);
         }
-
-        const { rows } = await db.query(
-            `INSERT INTO rental_contracts 
-            (tenant_id, owner_id, property_id, unit_id, start_date, duration_months, rent_amount, deposit_amount, 
-            payment_day, payment_method, notes, contract_number, status, contract_type,
-            owner_id_type, owner_id_number, owner_id_date, owner_dob, owner_birthplace, owner_phone, owner_email,
-            tenant_id_type, tenant_id_number, tenant_id_date, tenant_dob, tenant_birthplace, tenant_phone, tenant_email,
-            detailed_address, property_type, property_details, charges_info, occupancy_limit, inventory, document_hash, owner_signed, owner_signed_at, owner_signature,
-            owner_name, tenant_name, custom_content, custom_template_id) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending_signature', $13, 
-            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, TRUE, CURRENT_TIMESTAMP, $35,
-            $36, $37, $38, $39) 
-            RETURNING *`,
-            [
-                tenant_id, owner_id, property_id, unit_id, start_date, duration_months || 12, rent_amount, deposit_amount,
-                payment_day || 5, payment_method, notes, contract_number, contract_type || 'standard',
-                owner_id_type, owner_id_number, nullIfEmpty(owner_id_date), nullIfEmpty(owner_dob), owner_birthplace, owner_phone, owner_email,
-                tenant_id_type, tenant_id_number, nullIfEmpty(tenant_id_date), nullIfEmpty(tenant_dob), tenant_birthplace, tenant_phone, tenant_email,
-                detailed_address, property_type || 'Appartement', property_details || '', charges_info || {}, nullIfEmpty(occupancy_limit), inventory || {}, document_hash,
-                owner_signature,
-                owner_name, tenant_name, nullIfEmpty(custom_content), nullIfEmpty(custom_template_id)
-            ]
-        );
-
-        const contract = rows[0];
 
         // Notify tenant
         try {
@@ -87,7 +85,7 @@ const Contract = {
                     user_id: tenantRows[0].user_id,
                     type: 'contract_created',
                     title: 'Nouveau contrat',
-                    message: `Un nouveau contrat de bail (${contract_number}) a été créé pour vous. Merci de le signer.`,
+                    message: `Un nouveau contrat de bail (${contract.contract_number}) a été créé pour vous. Merci de le signer.`,
                     link: '/tenant-dashboard'
                 });
             }
@@ -100,12 +98,43 @@ const Contract = {
 
     async generateContractNumber() {
         const year = new Date().getFullYear();
+        const prefix = `CONT-${year}-`;
+
+        // Récupérer tous les numéros de contrat de l'année pour trouver la séquence maximale
         const { rows } = await db.query(
-            'SELECT COUNT(*) as count FROM rental_contracts WHERE EXTRACT(YEAR FROM created_at) = $1',
-            [year]
+            'SELECT contract_number FROM rental_contracts WHERE contract_number LIKE $1',
+            [`${prefix}%`]
         );
-        const count = parseInt(rows[0].count) + 1;
-        return `CONT-${year}-${String(count).padStart(4, '0')}`;
+
+        let maxSeq = 0;
+        for (const row of rows) {
+            if (row.contract_number) {
+                const parts = row.contract_number.split('-');
+                if (parts.length >= 3) {
+                    const seq = parseInt(parts[2], 10);
+                    if (!isNaN(seq) && seq > maxSeq) {
+                        maxSeq = seq;
+                    }
+                }
+            }
+        }
+
+        let nextSeq = maxSeq + 1;
+        let candidate = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+
+        // Sécurité supplémentaire : vérifier l'unicité
+        let exists = true;
+        while (exists) {
+            const check = await db.query('SELECT 1 FROM rental_contracts WHERE contract_number = $1', [candidate]);
+            if (check.rows.length === 0) {
+                exists = false;
+            } else {
+                nextSeq++;
+                candidate = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+            }
+        }
+
+        return candidate;
     },
 
     async findById(id) {

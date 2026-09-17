@@ -3,6 +3,7 @@ const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
 const logActivity = require('../utils/logActivity');
 const { deleteMultipleFromCloudinary } = require('../utils/cloudinaryHelper');
+const { emitToWorkspace } = require('../utils/socket');
 
 // Simple in-memory cache for public properties
 const propertyCache = new Map();
@@ -112,6 +113,7 @@ const propertyController = {
 
             const newProperty = await Property.create(propertyData);
             clearPropertyCache();
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'properties', action: 'create', id: newProperty.id });
 
             // Journal d'activité
             await logActivity(req, {
@@ -142,6 +144,7 @@ const propertyController = {
             }
 
             clearPropertyCache();
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'properties', action: 'update', id: propertyId });
 
             // Journal d'activité
             await logActivity(req, {
@@ -172,6 +175,7 @@ const propertyController = {
             }
 
             clearPropertyCache();
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'properties', action: 'update', id: property_id });
             return response.success(res, null, 'Units added successfully', 201);
         } catch (error) {
             next(error);
@@ -209,6 +213,7 @@ const propertyController = {
             await deleteMultipleFromCloudinary(photosToDelete);
 
             clearPropertyCache();
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'properties', action: 'delete', id: propertyId });
 
             // Journal d'activité
             await logActivity(req, {
@@ -240,6 +245,7 @@ const propertyController = {
             }
 
             clearPropertyCache();
+            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'properties', action: 'update', id: propertyId });
 
             // Journal d'activité
             await logActivity(req, {
