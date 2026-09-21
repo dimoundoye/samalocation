@@ -38,6 +38,19 @@ const transporter = nodemailer.createTransport({
 
 const sendEmail = async (to, subject, html) => {
     try {
+        if (!to || typeof to !== 'string') {
+            return false;
+        }
+
+        const normalizedTo = to.trim().toLowerCase();
+
+        // Règle stricte : Ne jamais envoyer d'e-mail aux adresses factices générées par l'application (ex: qn35739@samalocation.com)
+        // Les vraies adresses (comme admin@samalocation.com, contact@samalocation.com) continuent de recevoir les e-mails normalement
+        if (/^[a-z]{2}\d+@samalocation\.com$/i.test(normalizedTo)) {
+            console.log(`[EmailService] ⛔ Envoi annulé pour ${to} : identifiant locataire factice généré par l'application (sans boîte de réception).`);
+            return false;
+        }
+
         const rawFrom = process.env.RESEND_FROM || process.env.SMTP_FROM || 'noreply@samalocation.com';
         // Extraire l'adresse e-mail propre au cas où elle contient déjà des chevrons ou un nom
         const cleanEmail = rawFrom.includes('<') ? (rawFrom.match(/<([^>]+)>/)?.[1] || rawFrom).trim() : rawFrom.trim();

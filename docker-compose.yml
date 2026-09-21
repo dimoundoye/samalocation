@@ -32,11 +32,11 @@ services:
     volumes:
       - ./backups:/backups
     environment:
-      - POSTGRES_HOST=aws-1-eu-west-1.pooler.supabase.com
-      - POSTGRES_PORT=6543
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=postgres.oleotkybcuvndaoevvrj
-      - POSTGRES_PASSWORD=n9Zh6cSHscySTlDG
+      - POSTGRES_HOST=${SUPABASE_DB_HOST:-aws-1-eu-west-1.pooler.supabase.com}
+      - POSTGRES_PORT=${SUPABASE_DB_PORT:-6543}
+      - POSTGRES_DB=${SUPABASE_DB_NAME:-postgres}
+      - POSTGRES_USER=${SUPABASE_DB_USER:-postgres.oleotkybcuvndaoevvrj}
+      - POSTGRES_PASSWORD=${SUPABASE_DB_PASS}
       - PGSSLMODE=require
       - SCHEDULE=@daily
       - BACKUP_KEEP_DAYS=7

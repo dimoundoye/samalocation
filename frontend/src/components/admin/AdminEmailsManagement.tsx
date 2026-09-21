@@ -265,13 +265,23 @@ export const AdminEmailsManagement = () => {
 
     // Envoi effectif de la campagne
     const handleSendCampaign = async () => {
-        if (targetAudience === 'custom' && (!customRecipientEmail || !customRecipientEmail.includes('@'))) {
-            toast({
-                title: "Adresse e-mail requise",
-                description: "Veuillez renseigner une adresse e-mail valide pour la cible personnalisée.",
-                variant: "destructive"
-            });
-            return;
+        if (targetAudience === 'custom') {
+            if (!customRecipientEmail || !customRecipientEmail.includes('@')) {
+                toast({
+                    title: "Adresse e-mail requise",
+                    description: "Veuillez renseigner une adresse e-mail valide pour la cible personnalisée.",
+                    variant: "destructive"
+                });
+                return;
+            }
+            if (/^[a-z]{2}\d+@samalocation\.com$/i.test(customRecipientEmail.trim().toLowerCase())) {
+                toast({
+                    title: "Adresse générée par l'application",
+                    description: "Cette adresse est un identifiant automatique pour un locataire sans boîte mail. Les vraies adresses (comme admin@samalocation.com) sont bien autorisées.",
+                    variant: "destructive"
+                });
+                return;
+            }
         }
 
         try {
@@ -843,9 +853,15 @@ export const AdminEmailsManagement = () => {
                         </div>
 
                         {targetAudience !== 'custom' && (
-                            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 p-2.5 rounded border border-amber-500/20">
-                                ⚠️ Attention : Cet e-mail sera expédié à l'ensemble des utilisateurs correspondant à cette catégorie. L'opération ne peut pas être annulée une fois lancée.
-                            </p>
+                            <div className="space-y-2">
+                                <p className="text-xs text-muted-foreground bg-primary/5 p-2.5 rounded-lg border border-primary/10 flex items-center gap-1.5">
+                                    <span>🛡️</span>
+                                    <span>Les adresses locataires factices générées par l'application (ex: <em>qn12345@samalocation.com</em>) sont automatiquement exclues. Les vraies adresses (ex: <em>admin@samalocation.com</em>) reçoivent bien leurs e-mails.</span>
+                                </p>
+                                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 p-2.5 rounded border border-amber-500/20">
+                                    ⚠️ Attention : Cet e-mail sera expédié à l'ensemble des utilisateurs correspondant à cette catégorie. L'opération ne peut pas être annulée une fois lancée.
+                                </p>
+                            </div>
                         )}
                     </div>
 

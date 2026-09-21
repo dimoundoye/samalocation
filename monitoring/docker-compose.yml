@@ -27,9 +27,9 @@ services:
     image: postgres:15-alpine
     container_name: umami-db
     environment:
-      POSTGRES_DB: umami
-      POSTGRES_USER: umami_user
-      POSTGRES_PASSWORD: umami_password_secure
+      POSTGRES_DB: ${UMAMI_DB_NAME:-umami}
+      POSTGRES_USER: ${UMAMI_DB_USER:-umami_user}
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD}
     volumes:
       - umami-db-data:/var/lib/postgresql/data
     restart: always
@@ -38,9 +38,9 @@ services:
     image: ghcr.io/umami-software/umami:postgresql-latest
     container_name: umami
     environment:
-      DATABASE_URL: postgresql://umami_user:umami_password_secure@umami-db:5432/umami
+      DATABASE_URL: postgresql://${UMAMI_DB_USER:-umami_user}:${UMAMI_DB_PASSWORD}@umami-db:5432/${UMAMI_DB_NAME:-umami}
       DATABASE_TYPE: postgresql
-      APP_SECRET: mon_secret_ultra_prive_umami_123
+      APP_SECRET: ${UMAMI_APP_SECRET}
     ports:
       - "3000:3000"
     depends_on:

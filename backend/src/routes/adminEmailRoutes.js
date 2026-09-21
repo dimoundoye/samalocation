@@ -160,19 +160,28 @@ router.post('/send', async (req, res) => {
             if (!customRecipientEmail) {
                 return response.error(res, 'L\'adresse e-mail destinataire est requise.', 400);
             }
+            const cleanCustomEmail = customRecipientEmail.trim();
+            if (/^[a-z]{2}\d+@samalocation\.com$/i.test(cleanCustomEmail)) {
+                return response.error(res, 'Impossible d\'envoyer un e-mail à cette adresse : c\'est un identifiant factice généré par l\'application sans boîte de réception.', 400);
+            }
             recipients = [{
-                email: customRecipientEmail.trim(),
+                email: cleanCustomEmail,
                 name: customRecipientName || 'Utilisateur',
                 custom_id: 'SL-USER',
                 referral_count: 0
             }];
         } else {
-            // Requête ciblée selon l'audience
+            // Requête ciblée selon l'audience (en excluant uniquement les identifiants locataires factices générés automatiquement)
             let query = `
                 SELECT u.id, u.email, u.custom_id, u.referral_count, up.full_name as name, up.role
                 FROM users u
                 LEFT JOIN user_profiles up ON u.id = up.id
-                WHERE u.email IS NOT NULL AND u.email != ''
+                WHERE u.email IS NOT NULL 
+                  AND u.email != ''
+                  AND NOT (
+                    LOWER(u.email) = LOWER(u.custom_id) || '@samalocation.com'
+                    OR u.email ~* '^[a-z]{2}[0-9]+@samalocation\\.com$'
+                  )
             `;
 
             const params = [];
@@ -183,45 +192,42 @@ router.post('/send', async (req, res) => {
             }
 
             const { rows } = await db.query(query, params);
-            recipients = rows;
+            // Double filtre de sécurité pour éliminer uniquement les adresses factices générées
+            recipients = rows.filter(r => r.email && !/^[a-z]{2}\d+@samalocation\.com$/i.test(r.email.trim().toLowerCase()));
         }
 
         if (recipients.length === 0) {
-            return response.error(res, 'Aucun destinataire trouvé pour cette audience.', 400);
+            return response.error(res, 'Aucun destinataire avec une adresse e-mail valide trouvé pour cette audience.', 400);
         }
 
-        console.log(`[AdminEmail] Début d'envoi campagne ${templateId} à ${recipients.length} destinataire(s) (Cible: ${targetAudience})...`);
+        console.log(`[AdminEmail] Début d'envoi campagne ${templateId} à ${recipients.length} destinataire(s) valides (Cible: ${targetAudience})...`);
 
         let sentSuccessCount = 0;
         let sentErrorCount = 0;
         let lastSubject = customSubject || '';
 
-        // Envoi par lots (batches) de 5 avec temporisation douce
-        const batchSize = 5;
-        for (let i = 0; i < recipients.length; i += batchSize) {
-            const batch = recipients.slice(i, i + batchSize);
+        // Envoi séquentiel avec temporisation de 600ms pour respecter le rate-limit de Resend (max 2/sec ou 10/sec) et éviter l'erreur 429
+        for (let i = 0; i < recipients.length; i++) {
+            const user = recipients[i];
+            try {
+                const content = generateEmailContent(templateId, templateData, user);
+                const subjectToSend = customSubject || content.subject;
+                lastSubject = subjectToSend;
 
-            await Promise.all(batch.map(async (user) => {
-                try {
-                    const content = generateEmailContent(templateId, templateData, user);
-                    const subjectToSend = customSubject || content.subject;
-                    lastSubject = subjectToSend;
-
-                    const ok = await sendEmail(user.email, subjectToSend, content.html);
-                    if (ok) {
-                        sentSuccessCount++;
-                    } else {
-                        sentErrorCount++;
-                    }
-                } catch (err) {
-                    console.error(`[AdminEmail] Erreur pour ${user.email}:`, err.message);
+                const ok = await sendEmail(user.email, subjectToSend, content.html);
+                if (ok) {
+                    sentSuccessCount++;
+                } else {
                     sentErrorCount++;
                 }
-            }));
+            } catch (err) {
+                console.error(`[AdminEmail] Erreur pour ${user.email}:`, err.message);
+                sentErrorCount++;
+            }
 
-            // Pause de 200ms entre les lots si ce n'est pas le dernier
-            if (i + batchSize < recipients.length) {
-                await new Promise(r => setTimeout(r, 200));
+            // Pause de 600ms entre chaque envoi si ce n'est pas le dernier
+            if (i < recipients.length - 1) {
+                await new Promise(r => setTimeout(r, 600));
             }
         }
 

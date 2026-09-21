@@ -5,9 +5,9 @@ require('dotenv').config();
 
 async function initDB() {
     const connection = await mysql.createConnection({
-        host: '127.0.0.1',
-        user: 'root',
-        password: 'Passer@2026#',
+        host: process.env.DB_HOST || '127.0.0.1',
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASS || '',
         multipleStatements: true // Essential for running multiple SQL commands
     });
 

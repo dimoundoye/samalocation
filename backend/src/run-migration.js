@@ -12,7 +12,7 @@ async function runMigration() {
     const connection = await mysql.createConnection({
         host: '127.0.0.1',
         user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASS || 'Passer@2026#', // Using DB_PASS as seen in db.js
+        password: process.env.DB_PASS || '',
         database: process.env.DB_NAME || 'samalocation',
         multipleStatements: true
     });

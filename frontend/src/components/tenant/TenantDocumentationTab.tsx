@@ -16,7 +16,9 @@ import {
   Lightbulb,
   ArrowRight,
   Info,
-  CheckCircle2
+  CheckCircle2,
+  Share2,
+  Shield
 } from "lucide-react";
 
 export const TenantDocumentationTab = () => {
@@ -36,6 +38,35 @@ export const TenantDocumentationTab = () => {
         "Attendez la réponse du propriétaire via la messagerie ou par email."
       ],
       tip: "Complétez bien votre dossier! Un dossier complet a 5x plus de chances d'être accepté."
+    },
+    {
+      id: "share-dossier",
+      title: "Partager son dossier locataire",
+      icon: <Share2 className="h-5 w-5 text-indigo-500" />,
+      purpose: "Transmettre vos justificatifs (CNI, bulletins de salaire, garant...) de manière sécurisée et chiffrée à un bailleur ou une agence pour postuler en 1 clic sans renvoyer de documents.",
+      steps: [
+        "Rendez-vous dans l'onglet 'Mon Dossier' pour renseigner votre profil et téléverser vos pièces (CNI, bulletins de salaire, justificatif de domicile, garant).",
+        "Cliquez sur 'Enregistrer le dossier' pour sauvegarder vos documents dans votre coffre-fort chiffré.",
+        "Ouvrez la messagerie avec le propriétaire du logement qui vous intéresse dans l'onglet 'Messages'.",
+        "Cliquez sur le bouton 'Partager mon dossier' (avec l'icône de bouclier) situé en haut à droite de la conversation.",
+        "Le bailleur reçoit immédiatement un accès sécurisé à votre dossier pour étudier votre candidature.",
+        "Consultez les accès accordés et révoquez-les à tout moment depuis la section 'Partages actifs' de votre dossier."
+      ],
+      subSections: [
+        {
+          title: "Partage rapide dans le Chat",
+          content: "Dans l'onglet 'Messages', ouvrez la discussion avec le bailleur et cliquez sur 'Partager mon dossier' dans l'en-tête. Un message automatique de confirmation lui est aussitôt transmis."
+        },
+        {
+          title: "Partage sécurisé via la messagerie",
+          content: "Pour protéger vos données sensibles (CNI, fiches de paie), la candidature 'Demander à louer' initie la discussion. Vous partagez ensuite votre dossier en 1 clic grâce au bouton dédié dans la conversation dès que vous le souhaitez."
+        },
+        {
+          title: "Contrôle & Révocation des accès",
+          content: "Dans l'onglet 'Mon Dossier', le bloc 'Partages actifs' affiche la liste des propriétaires autorisés avec la date de partage. Vous pouvez cliquer sur l'icône corbeille pour supprimer l'accès à tout instant."
+        }
+      ],
+      tip: "Un dossier digital complété à 100% avec des pièces lisibles multiplie par 5 vos chances d'être retenu !"
     },
     {
       id: "payments-receipts",
@@ -143,6 +174,21 @@ export const TenantDocumentationTab = () => {
               <Button variant="secondary" className="w-full text-primary font-bold gap-2" asChild>
                 <Link to="/contact">
                   Contacter le support <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border bg-card">
+            <CardContent className="p-6">
+              <Share2 className="h-8 w-8 text-primary mb-3" />
+              <h3 className="font-bold text-base mb-1">Dossier Digital</h3>
+              <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                Préparez vos documents une seule fois et partagez votre dossier en 1 clic aux propriétaires.
+              </p>
+              <Button variant="outline" size="sm" className="w-full font-semibold gap-1 text-xs" asChild>
+                <Link to="/tenant-dashboard/dossier">
+                  Gérer mon dossier <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
             </CardContent>

@@ -11,7 +11,7 @@ import { SocketProvider } from "@/contexts/SocketContext";
 import { HelmetProvider } from "react-helmet-async";
 import { OfflineStatus } from "./components/OfflineStatus";
 import ScrollToTop from "./components/ScrollToTop";
-import Chatbot from "./components/Chatbot";
+// import Chatbot from "./components/Chatbot";
 
 // Lazy loading components for performance
 const Index = lazy(() => import("./pages/Index"));
@@ -183,7 +183,7 @@ const App = () => (
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
-                <Chatbot />
+                {/* <Chatbot /> */}
                 <OfflineStatus />
               </SocketProvider>
             </AuthProvider>
