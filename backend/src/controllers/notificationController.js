@@ -1,6 +1,7 @@
 const Notification = require('../models/notificationModel');
 const response = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
+const db = require('../config/db');
 
 const notificationController = {
     /**
@@ -24,6 +25,40 @@ const notificationController = {
     async createNotification(req, res, next) {
         try {
             const { user_id, type, title, message, link } = req.body;
+
+            if (!user_id || !title || !message) {
+                return response.error(res, 'user_id, title et message sont requis', 400);
+            }
+            if (String(title).length > 150 || String(message).length > 1000) {
+                return response.error(res, 'Notification trop longue', 400);
+            }
+
+            // Anti-phishing : uniquement des liens internes à l'application ("/chemin", jamais "//domaine")
+            if (link && (typeof link !== 'string' || !link.startsWith('/') || link.startsWith('//') || link.includes('\\'))) {
+                return response.error(res, 'Lien invalide', 400);
+            }
+
+            const isAdmin = req.user.role === 'admin';
+            if (!isAdmin) {
+                // Les types système sont réservés à la plateforme
+                if (['system', 'admin_alert'].includes(type)) {
+                    return response.error(res, 'Type de notification non autorisé', 403);
+                }
+
+                // Un propriétaire ne peut notifier que les locataires de ses propres biens
+                const { rows: allowed } = await db.query(
+                    `SELECT 1 FROM tenants t
+                     JOIN property_units pu ON t.unit_id = pu.id
+                     JOIN properties p ON pu.property_id = p.id
+                     WHERE t.user_id = $1 AND (p.owner_id = $2 OR p.owner_id = $3)
+                     LIMIT 1`,
+                    [user_id, req.ownerId, req.user.id]
+                );
+                if (allowed.length === 0) {
+                    return response.error(res, 'Non autorisé à notifier cet utilisateur', 403);
+                }
+            }
+
             const notification = await Notification.create({
                 id: uuidv4(),
                 user_id,

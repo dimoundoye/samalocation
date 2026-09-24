@@ -130,35 +130,46 @@ const Subscription = {
             }
         }
 
-        // On expire l'ancien abonnement s'il y en a un
-        await db.query(`
-            UPDATE subscriptions 
-            SET status = 'expired' 
-            WHERE user_id = $1 AND status = 'active'
-        `, [userId]);
-
-        // On crée le nouvel abonnement
         const expiresAt = new Date(startDate);
         expiresAt.setDate(expiresAt.getDate() + durationDays);
 
-        const { rows } = await db.query(`
-            INSERT INTO subscriptions (
-                user_id, plan_name, status, price, 
-                payment_method, transaction_id, expires_at, receipt_url
-            ) 
-            VALUES ($1, $2, 'active', $3, $4, $5, $6, $7) 
-            RETURNING *
-        `, [
-            userId,
-            planName,
-            price,
-            paymentMethod,
-            transactionId,
-            expiresAt,
-            receiptUrl
-        ]);
+        // Expiration de l'ancien abonnement + création du nouveau dans une même transaction :
+        // si l'INSERT échoue (ex. transaction PayDunya déjà enregistrée), l'ancien reste actif.
+        const client = await db.connect();
+        try {
+            await client.query('BEGIN');
 
-        return rows[0];
+            await client.query(`
+                UPDATE subscriptions
+                SET status = 'expired'
+                WHERE user_id = $1 AND status = 'active'
+            `, [userId]);
+
+            const { rows } = await client.query(`
+                INSERT INTO subscriptions (
+                    user_id, plan_name, status, price,
+                    payment_method, transaction_id, expires_at, receipt_url
+                )
+                VALUES ($1, $2, 'active', $3, $4, $5, $6, $7)
+                RETURNING *
+            `, [
+                userId,
+                planName,
+                price,
+                paymentMethod,
+                transactionId,
+                expiresAt,
+                receiptUrl
+            ]);
+
+            await client.query('COMMIT');
+            return rows[0];
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
     },
 
     /**
@@ -370,6 +381,21 @@ const Subscription = {
             console.log('✅ Migration: admin_notes and receipt_url columns added to subscriptions table');
         } catch (err) {
             console.error('Migration error (subscriptions):', err.message);
+        }
+
+        // Anti-rejeu : une transaction PayDunya ne peut activer qu'un seul abonnement
+        try {
+            await db.query(`
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_paydunya_transaction
+                ON subscriptions (transaction_id)
+                WHERE payment_method = 'paydunya' AND transaction_id IS NOT NULL
+            `);
+        } catch (err) {
+            console.error(
+                '⚠️ Migration: index unique PayDunya non créé (doublons existants ?). ' +
+                "Vérifier avec : SELECT transaction_id, COUNT(*) FROM subscriptions WHERE payment_method = 'paydunya' GROUP BY 1 HAVING COUNT(*) > 1;",
+                err.message
+            );
         }
     }
 };

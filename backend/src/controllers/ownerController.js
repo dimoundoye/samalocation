@@ -67,10 +67,22 @@ const ownerController = {
     async getPublicProfile(req, res, next) {
         try {
             const { id } = req.params;
-            const profile = await Owner.findProfileById(id);
-            
-            if (!profile) {
+            const fullProfile = await Owner.findProfileById(id);
+
+            if (!fullProfile) {
                 return response.error(res, 'Propriétaire non trouvé', 404);
+            }
+
+            // Route publique : liste blanche stricte. Ne jamais exposer les pièces d'identité,
+            // la signature, le selfie de vérification ou le solde du portefeuille.
+            const PUBLIC_FIELDS = [
+                'id', 'company_name', 'full_name', 'phone', 'address', 'bio', 'logo_url',
+                'banner_url', 'prestations', 'horaires', 'social_links', 'external_email',
+                'website', 'verification_status', 'is_verified', 'currency', 'created_at'
+            ];
+            const profile = {};
+            for (const field of PUBLIC_FIELDS) {
+                if (fullProfile[field] !== undefined) profile[field] = fullProfile[field];
             }
 
             // Fetch published properties

@@ -6,6 +6,18 @@ const Ledger = require('../models/ledgerModel');
 const Owner = require('../models/ownerModel');
 const Receipt = require('../models/receiptModel');
 const db = require('../config/db');
+const crypto = require('crypto');
+
+/**
+ * Vérifie le hash envoyé par PayDunya (SHA-512 de la MASTER KEY), en temps constant.
+ */
+const isValidPaydunyaHash = (receivedHash) => {
+    const masterKey = process.env.PAYDUNYA_MASTER_KEY;
+    if (!masterKey || typeof receivedHash !== 'string') return false;
+    const expected = Buffer.from(crypto.createHash('sha512').update(masterKey).digest('hex'));
+    const received = Buffer.from(receivedHash.toLowerCase());
+    return expected.length === received.length && crypto.timingSafeEqual(expected, received);
+};
 
 const IS_TEST_MODE = process.env.PAYDUNYA_MODE === 'test';
 const PAYDUNYA_BASE_URL = IS_TEST_MODE 
@@ -254,6 +266,13 @@ const paymentController = {
             // Si c'est un callback de déboursement / virement
             if (payload.withdraw_mode || payload.disburse_tx_id || payload.disburse_id) {
                 console.log('--- PAYDUNYA DISBURSEMENT CALLBACK RECEIVED ---');
+
+                // Sécurité : ce callback modifie des soldes, il doit provenir de PayDunya.
+                // PayDunya signe ses notifications avec hash = SHA-512(MASTER_KEY).
+                if (!isValidPaydunyaHash(payload.hash || req.body.hash)) {
+                    console.warn('[SECURITY] Disbursement callback rejeté : hash PayDunya absent ou invalide.');
+                    return res.status(403).send('Invalid signature');
+                }
                 const disburseId = payload.disburse_id;
                 const status = payload.status;
                 const errorDescription = payload.description || payload.response_text || 'Échec du virement';
@@ -271,10 +290,14 @@ const paymentController = {
                                     const client = await db.connect();
                                     try {
                                         await client.query('BEGIN');
-                                        
-                                        // Mettre à jour le statut du retrait à échoué
-                                        await Withdrawal.updateStatus(disburseId, 'failed', { error_message: errorDescription }, client);
-                                        
+
+                                        // Passage à 'failed' conditionnel et atomique : un seul callback peut déclencher le remboursement
+                                        const markedFailed = await Withdrawal.markFailed(disburseId, errorDescription, ['completed', 'pending'], client);
+                                        if (!markedFailed) {
+                                            await client.query('ROLLBACK');
+                                            return res.status(200).send('Disbursement already processed');
+                                        }
+
                                         // Mettre à jour la transaction correspondante dans le ledger à échoué
                                         await client.query("UPDATE ledger_transactions SET status = 'failed' WHERE reference_id = $1", [disburseId]);
                                         
@@ -481,18 +504,37 @@ const paymentController = {
                     return res.status(400).send('Incomplete custom_data');
                 }
 
+                // Idempotence : un même token PayDunya ne peut activer qu'un seul abonnement (anti-rejeu)
+                const { rows: alreadyProcessed } = await db.query(
+                    'SELECT id FROM subscriptions WHERE transaction_id = $1 LIMIT 1',
+                    [finalToken]
+                );
+                if (alreadyProcessed.length > 0) {
+                    console.log(`Subscription already activated for token ${finalToken}, callback ignored.`);
+                    return res.status(200).send('OK');
+                }
+
                 const subPlan = (planId || 'PREMIUM').toUpperCase();
                 const receiptUrl = result.receipt_url || payload.receipt_url;
                 console.log(`Activating ${subPlan} for User ${userId}. Receipt: ${receiptUrl}`);
 
-                await Subscription.createSubscription(userId, {
-                    planName: subPlan,
-                    price: price || (result.invoice && result.invoice.total_amount) || 0,
-                    paymentMethod: 'paydunya',
-                    transactionId: finalToken,
-                    durationDays: durationDays || 30,
-                    receiptUrl: receiptUrl
-                });
+                try {
+                    await Subscription.createSubscription(userId, {
+                        planName: subPlan,
+                        price: price || (result.invoice && result.invoice.total_amount) || 0,
+                        paymentMethod: 'paydunya',
+                        transactionId: finalToken,
+                        durationDays: durationDays || 30,
+                        receiptUrl: receiptUrl
+                    });
+                } catch (subError) {
+                    // Index unique : un callback simultané a déjà activé cet abonnement
+                    if (subError.code === '23505') {
+                        console.log(`Subscription already activated for token ${finalToken} (concurrent callback), ignored.`);
+                        return res.status(200).send('OK');
+                    }
+                    throw subError;
+                }
 
                 // Envoyer un mail de confirmation avec le lien du reçu
                 try {

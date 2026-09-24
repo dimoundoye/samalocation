@@ -42,21 +42,6 @@ const withdrawalController = {
                 return response.error(res, `Le montant minimum de retrait est de ${MIN_WITHDRAWAL} F CFA.`, 400);
             }
 
-            // 1.3 Validation de la limite quotidienne cumulée (2 000 000 F CFA)
-            const LIMIT_DAILY = 2000000;
-            const { rows: dailySum } = await client.query(
-                `SELECT COALESCE(SUM(amount), 0) as total_today 
-                 FROM withdrawals 
-                 WHERE owner_id = $1 
-                   AND status IN ('pending', 'completed') 
-                   AND created_at >= NOW() - INTERVAL '24 hours'`,
-                [userId]
-            );
-            const totalWithdrawnToday = parseFloat(dailySum[0].total_today);
-            if (totalWithdrawnToday + parsedAmount > LIMIT_DAILY) {
-                return response.error(res, `Limite de retrait quotidienne dépassée. Vous ne pouvez pas retirer plus de ${LIMIT_DAILY} F CFA par tranche de 24h. Vous avez déjà retiré ${totalWithdrawnToday} F CFA aujourd'hui.`, 400);
-            }
-
             // 2. Vérification du mot de passe
             const { rows: users } = await client.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
             if (users.length === 0) {
@@ -68,9 +53,14 @@ const withdrawalController = {
                 return response.error(res, 'Mot de passe de confirmation incorrect.', 401);
             }
 
-            // 3. Vérification du solde du propriétaire
-            const { rows: profiles } = await client.query('SELECT balance, currency FROM owner_profiles WHERE id = $1', [userId]);
+            // Début de la transaction : toutes les vérifications de solde/limite se font
+            // sous verrou pour empêcher les retraits concurrents (double dépense).
+            await client.query('BEGIN');
+
+            // 3. Vérification du solde du propriétaire (ligne verrouillée jusqu'au COMMIT)
+            const { rows: profiles } = await client.query('SELECT balance, currency FROM owner_profiles WHERE id = $1 FOR UPDATE', [userId]);
             if (profiles.length === 0) {
+                await client.query('ROLLBACK');
                 return response.error(res, 'Profil propriétaire non trouvé.', 404);
             }
 
@@ -78,15 +68,29 @@ const withdrawalController = {
             const currentBalance = parseFloat(ownerProfile.balance);
 
             if (currentBalance < parsedAmount) {
+                await client.query('ROLLBACK');
                 return response.error(res, 'Solde insuffisant pour effectuer ce retrait.', 400);
+            }
+
+            // 3.1 Validation de la limite quotidienne cumulée (2 000 000 F CFA), sous le même verrou
+            const LIMIT_DAILY = 2000000;
+            const { rows: dailySum } = await client.query(
+                `SELECT COALESCE(SUM(amount), 0) as total_today
+                 FROM withdrawals
+                 WHERE owner_id = $1
+                   AND status IN ('pending', 'completed')
+                   AND created_at >= NOW() - INTERVAL '24 hours'`,
+                [userId]
+            );
+            const totalWithdrawnToday = parseFloat(dailySum[0].total_today);
+            if (totalWithdrawnToday + parsedAmount > LIMIT_DAILY) {
+                await client.query('ROLLBACK');
+                return response.error(res, `Limite de retrait quotidienne dépassée. Vous ne pouvez pas retirer plus de ${LIMIT_DAILY} F CFA par tranche de 24h. Vous avez déjà retiré ${totalWithdrawnToday} F CFA aujourd'hui.`, 400);
             }
 
             // 4. Calculs des frais (2.5% utilisateur, 2% PayDunya)
             const fee = parsedAmount * FEE_RATE_USER;
             const netAmount = parsedAmount - fee;
-
-            // Début de la transaction en base de données
-            await client.query('BEGIN');
 
             // 5. Créer la demande de retrait en statut 'pending'
             const withdrawal = await Withdrawal.create({
@@ -132,12 +136,12 @@ const withdrawalController = {
                 // Mode simulation (Sandbox / Test)
                 console.log(`[SIMULATION] Transfert de ${netAmount} F CFA vers ${recipientDetails} via ${pdProvider}`);
                 
-                await db.query('BEGIN');
+                await client.query('BEGIN');
                 // Confirmer le retrait
-                await Withdrawal.updateStatus(withdrawal.id, 'completed', { transaction_id: `SIM-TX-${Date.now()}` });
+                await Withdrawal.updateStatus(withdrawal.id, 'completed', { transaction_id: `SIM-TX-${Date.now()}` }, client);
                 // Confirmer la transaction du ledger
-                await db.query("UPDATE ledger_transactions SET status = 'completed' WHERE reference_id = $1", [withdrawal.id]);
-                await db.query('COMMIT');
+                await client.query("UPDATE ledger_transactions SET status = 'completed' WHERE reference_id = $1", [withdrawal.id]);
+                await client.query('COMMIT');
 
                 return response.success(res, {
                     withdrawal_id: withdrawal.id,
@@ -151,7 +155,8 @@ const withdrawalController = {
                 const disburseBaseUrl = 'https://app.paydunya.com/api/v2/disburse';
                 const backendUrl = process.env.BACKEND_URL || process.env.URL_BACKEND || process.env.API_URL || `https://${process.env.APP_DOMAIN || 'samalocation.com'}`;
                 const callbackUrl = `${backendUrl}/api/payment/callback`;
-                
+                let payoutSubmitted = false;
+
                 try {
                     const sanitizedRecipient = recipientDetails.replace(/\D/g, '').slice(-9);
                     // Étape 1 : Obtenir le jeton de virement (get-invoice)
@@ -190,11 +195,12 @@ const withdrawalController = {
 
                     if (submitInvoiceRes.data.response_code === "00" || submitInvoiceRes.data.status === "success") {
                         const transactionId = submitInvoiceRes.data.transaction_id || `PD-${Date.now()}`;
-                        
-                        await db.query('BEGIN');
-                        await Withdrawal.updateStatus(withdrawal.id, 'completed', { transaction_id: transactionId });
-                        await db.query("UPDATE ledger_transactions SET status = 'completed' WHERE reference_id = $1", [withdrawal.id]);
-                        await db.query('COMMIT');
+                        payoutSubmitted = true;
+
+                        await client.query('BEGIN');
+                        await Withdrawal.updateStatus(withdrawal.id, 'completed', { transaction_id: transactionId }, client);
+                        await client.query("UPDATE ledger_transactions SET status = 'completed' WHERE reference_id = $1", [withdrawal.id]);
+                        await client.query('COMMIT');
 
                         return response.success(res, {
                             withdrawal_id: withdrawal.id,
@@ -211,12 +217,35 @@ const withdrawalController = {
                         console.error('PayDunya Transfer API Response:', JSON.stringify(apiError.response.data));
                     }
                     
-                    // En cas d'erreur de l'API, on annule et on recrédite le propriétaire
-                    await db.query('BEGIN');
-                    await Withdrawal.updateStatus(withdrawal.id, 'failed', { error_message: apiError.message });
-                    await db.query("UPDATE ledger_transactions SET status = 'failed' WHERE reference_id = $1", [withdrawal.id]);
-                    await Owner.updateBalance(userId, parsedAmount); // Recréditer le solde
-                    await db.query('COMMIT');
+                    // Si le virement a déjà été accepté par PayDunya, l'erreur vient de notre base :
+                    // on ne recrédite surtout pas (l'argent est parti), on laisse le retrait à vérifier manuellement.
+                    await client.query('ROLLBACK').catch(() => {});
+                    if (payoutSubmitted) {
+                        console.error(`[WITHDRAWAL] ⚠️ Retrait ${withdrawal.id} envoyé par PayDunya mais non finalisé en base — vérification manuelle requise.`);
+                        return response.error(res, 'Votre retrait a été envoyé mais sa confirmation a échoué. Notre équipe va le vérifier.', 500);
+                    }
+
+                    // En cas d'erreur de l'API, on annule et on recrédite le propriétaire (une seule fois)
+                    await client.query('BEGIN');
+                    const markedFailed = await Withdrawal.markFailed(withdrawal.id, apiError.message, ['pending'], client);
+                    if (markedFailed) {
+                        await client.query("UPDATE ledger_transactions SET status = 'failed' WHERE reference_id = $1", [withdrawal.id]);
+                        await Owner.updateBalance(userId, parsedAmount, client); // Recréditer le solde
+                    }
+                    await client.query('COMMIT');
+
+                    // Retrait déjà traité entre-temps par un callback PayDunya : on renvoie son état réel
+                    if (!markedFailed) {
+                        const current = await Withdrawal.findById(withdrawal.id);
+                        if (current?.status === 'completed') {
+                            return response.success(res, {
+                                withdrawal_id: withdrawal.id,
+                                status: 'completed',
+                                transaction_id: current.transaction_id,
+                                message: 'Votre retrait a été envoyé avec succès.'
+                            });
+                        }
+                    }
 
                     return response.error(res, `Le transfert a échoué : ${apiError.message}. Votre solde a été recrédité.`, 400);
                 }

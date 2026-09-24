@@ -141,14 +141,18 @@ const Contract = {
         if (!id) return null;
 
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
-        const whereClause = isUuid 
-            ? 'WHERE c.id = $1' 
-            : 'WHERE c.id::text LIKE $1 OR c.contract_number = $2';
-        const params = isUuid ? [id] : [`${id}%`, id];
+        // Recherche par préfixe d'ID autorisée uniquement avec au moins 8 caractères hexadécimaux,
+        // sinon un préfixe court ("0", "a"...) permettrait d'énumérer tous les contrats.
+        const isSafePrefix = /^[0-9a-f-]{8,}$/i.test(String(id));
+        const whereClause = isUuid
+            ? 'WHERE c.id = $1'
+            : (isSafePrefix ? 'WHERE c.id::text LIKE $1 OR c.contract_number = $2' : 'WHERE c.contract_number = $1');
+        const params = isUuid ? [id] : (isSafePrefix ? [`${id}%`, id] : [id]);
 
         const { rows } = await db.query(`
             SELECT c.*, 
                    c.id as contract_id,
+                   t.user_id as tenant_user_id,
                    t.full_name as live_tenant_name, t.email as live_tenant_email, t.phone as live_tenant_phone,
                    up_owner.full_name as live_owner_name, up_owner.email as live_owner_email, up_owner.phone as live_owner_phone,
                    COALESCE(NULLIF(c.owner_name, ''), up_owner.full_name) as owner_name,

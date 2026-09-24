@@ -22,19 +22,22 @@ async function resolveSignatureDataUri(imageUrl) {
         if (trimmed.includes('/uploads/') || trimmed.startsWith('uploads/')) {
             const parts = trimmed.split('/uploads/');
             const relPath = parts[1] || parts[0];
-            const fullPath = path.join(__dirname, '../../uploads/', relPath);
-            if (fs.existsSync(fullPath)) {
+            const uploadsDir = path.resolve(__dirname, '../../uploads');
+            const fullPath = path.resolve(uploadsDir, relPath);
+            // Anti path-traversal : le fichier doit rester dans le dossier uploads
+            if (fullPath.startsWith(uploadsDir + path.sep) && fs.existsSync(fullPath)) {
                 const fileBuf = fs.readFileSync(fullPath);
                 const ext = path.extname(fullPath).toLowerCase().replace('.', '') || 'png';
                 const mime = ext === 'jpg' ? 'jpeg' : ext;
                 return `data:image/${mime};base64,${fileBuf.toString('base64')}`;
             }
         }
-        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-            const response = await nodeFetch(trimmed);
-            if (response.ok) {
+        // Anti-SSRF : seules les images hébergées sur Cloudinary sont téléchargées côté serveur
+        if (trimmed.startsWith('https://res.cloudinary.com/')) {
+            const response = await nodeFetch(trimmed, { redirect: 'error' });
+            const contentType = response.headers.get('content-type') || '';
+            if (response.ok && contentType.startsWith('image/')) {
                 const buffer = await response.buffer();
-                const contentType = response.headers.get('content-type') || 'image/png';
                 return `data:${contentType};base64,${buffer.toString('base64')}`;
             }
         }
@@ -221,23 +224,15 @@ async function generateContractPDF(contractData) {
     // Owner Signature
     let ownerSigDone = false;
     if (contractData.owner_signature && typeof contractData.owner_signature === 'string') {
-        let sigUrl = contractData.owner_signature.trim();
-        if (sigUrl.startsWith('/') || sigUrl.startsWith('uploads')) {
-            let apiBase = process.env.API_URL || process.env.VITE_API_URL || 'http://localhost:5000';
-            if (apiBase.endsWith('/api')) apiBase = apiBase.slice(0, -4);
-            if (apiBase.endsWith('/')) apiBase = apiBase.slice(0, -1);
-            sigUrl = `${apiBase}${sigUrl.startsWith('/') ? sigUrl : '/' + sigUrl}`;
-        }
-        if (sigUrl.startsWith('http')) {
+        // Résolution sécurisée (uploads locaux confinés + Cloudinary uniquement)
+        const sigDataUri = await resolveSignatureDataUri(contractData.owner_signature);
+        if (sigDataUri) {
             try {
-                const response = await nodeFetch(sigUrl);
-                if (response.ok) {
-                    const buffer = await response.buffer();
-                    doc.image(buffer, 60, signatureY + 20, { width: 100 });
-                    ownerSigDone = true;
-                }
+                const base64 = sigDataUri.split(',')[1];
+                doc.image(Buffer.from(base64, 'base64'), 60, signatureY + 20, { width: 100 });
+                ownerSigDone = true;
             } catch (e) {
-                console.error('Owner signature fetch error:', e);
+                console.error('Owner signature render error:', e);
             }
         }
     }
@@ -957,7 +952,7 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
 </head>
 <body>
   <div class="header">
-    Contrat n&deg; : ${meta.contract_number || ''} | ${escapeHtml(meta.owner_name || '')} - ${escapeHtml(meta.tenant_name || '')}
+    Contrat n&deg; : ${escapeHtml(meta.contract_number || '')} | ${escapeHtml(meta.owner_name || '')} - ${escapeHtml(meta.tenant_name || '')}
   </div>
   ${htmlContent}
   ${signaturePageHtml}
@@ -968,6 +963,22 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
         const browser = await getSharedBrowser();
         const page = await browser.newPage();
         try {
+            // Sécurité (anti-SSRF) : le HTML vient de l'utilisateur. Pas de JavaScript, et aucune
+            // requête réseau hormis les data: URIs et les images Cloudinary.
+            await page.setJavaScriptEnabled(false);
+            await page.setRequestInterception(true);
+            page.on('request', (request) => {
+                const url = request.url();
+                const isAllowed = url.startsWith('data:')
+                    || url === 'about:blank'
+                    || (url.startsWith('https://res.cloudinary.com/') && request.resourceType() === 'image');
+                if (isAllowed) {
+                    request.continue();
+                } else {
+                    console.warn(`[PDF] Requête bloquée pendant le rendu du contrat : ${url.substring(0, 200)}`);
+                    request.abort();
+                }
+            });
             await page.setContent(fullHtml, { waitUntil: 'domcontentloaded' });
             const buffer = await page.pdf({
                 format: 'A4',

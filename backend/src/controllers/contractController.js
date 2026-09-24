@@ -4,6 +4,16 @@ const path = require('path');
 const logActivity = require('../utils/logActivity');
 const { emitToWorkspace } = require('../utils/socket');
 
+/**
+ * Rôle de l'utilisateur connecté vis-à-vis d'un contrat : 'owner', 'tenant', 'admin' ou null
+ */
+const getContractAccess = (req, contract) => {
+    if (req.ownerId === contract.owner_id || req.user.id === contract.owner_id) return 'owner';
+    if (contract.tenant_user_id && req.user.id === contract.tenant_user_id) return 'tenant';
+    if (req.user.role === 'admin') return 'admin';
+    return null;
+};
+
 const contractController = {
     async createContract(req, res, next) {
         try {
@@ -62,11 +72,10 @@ const contractController = {
                 return res.status(404).json({ message: 'Contrat non trouvé' });
             }
 
-            // Security check: only owner (including collaborators) or tenant can see details
-            if (req.ownerId !== contract.owner_id && req.user.id !== contract.tenant_user_id) {
+            // Security check: only owner (including collaborators), tenant or admin can see details
+            if (!getContractAccess(req, contract)) {
                 return res.status(403).json({ message: 'Non autorisé' });
             }
-            // Simplified check for now
             res.json(contract);
         } catch (error) {
             next(error);
@@ -81,10 +90,11 @@ const contractController = {
             if (!contract) return res.status(404).json({ message: 'Contrat non trouvé' });
 
             let result;
-            if (req.user.role === 'owner' && req.ownerId === contract.owner_id) {
+            const access = getContractAccess(req, contract);
+            if (access === 'owner' && req.user.role === 'owner') {
                 result = await Contract.signByOwner(id);
-            } else if (req.user.role === 'tenant') {
-                // Need to verify if this user is indeed the tenant for this contract
+            } else if (access === 'tenant') {
+                // Seul le locataire rattaché à ce contrat peut le signer
                 result = await Contract.signByTenant(id);
             } else {
                 return res.status(403).json({ message: 'Non autorisé' });
@@ -105,6 +115,10 @@ const contractController = {
 
             if (!contractData) {
                 return res.status(404).json({ message: "Contrat introuvable" });
+            }
+
+            if (!getContractAccess(req, contractData)) {
+                return res.status(403).json({ message: 'Non autorisé' });
             }
 
             const isInline = req.query.inline === 'true' || req.query.disposition === 'inline';

@@ -35,6 +35,21 @@ const Withdrawal = {
         return rows[0];
     },
 
+    /**
+     * Passe un retrait en 'failed' uniquement s'il est dans l'un des statuts attendus.
+     * Opération atomique : renvoie true pour un seul appelant, ce qui empêche un double remboursement.
+     */
+    async markFailed(id, errorMessage, fromStatuses, client = db) {
+        const { rows } = await client.query(
+            `UPDATE withdrawals
+            SET status = 'failed', error_message = $1, updated_at = NOW()
+            WHERE id = $2 AND status = ANY($3::text[])
+            RETURNING id`,
+            [errorMessage, id, fromStatuses]
+        );
+        return rows.length > 0;
+    },
+
     async findById(id) {
         const { rows } = await db.query('SELECT * FROM withdrawals WHERE id = $1', [id]);
         return rows[0] || null;

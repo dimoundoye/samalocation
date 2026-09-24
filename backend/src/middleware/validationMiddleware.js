@@ -1,5 +1,6 @@
 const { validationResult, body } = require('express-validator');
 const response = require('../utils/response');
+const { SIGNUP_ROLES } = require('../config/roles');
 
 /**
  * Middleware pour valider les résultats de express-validator
@@ -20,6 +21,7 @@ const signupValidation = [
     body('password').isLength({ min: 8 }).withMessage('Le mot de passe doit contenir au moins 8 caractères'),
     body('name').notEmpty().withMessage('Le nom est requis').trim().escape(),
     body('phone').optional().trim().escape(),
+    body('role').isIn(SIGNUP_ROLES).withMessage('Rôle invalide'),
     validate
 ];
 

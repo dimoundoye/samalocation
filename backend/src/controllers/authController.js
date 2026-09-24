@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const db = require('../config/db');
+const { SIGNUP_ROLES } = require('../config/roles');
 
 /**
  * Generate a custom ID: 2 uppercase letters + 5 digits
@@ -66,6 +67,11 @@ const authController = {
         try {
             let { email, password, name, phone, role, companyName, referralCode } = req.body;
             email = email?.toLowerCase();
+
+            // Seuls les rôles publics sont autorisés à l'inscription (jamais 'admin')
+            if (!SIGNUP_ROLES.includes(role)) {
+                return response.error(res, 'Rôle invalide.', 400);
+            }
 
             const existingUser = await User.findByEmail(email);
             if (existingUser) {

@@ -13,10 +13,16 @@ async function fetchImageSource(imageUrl) {
     try {
         if (imageUrl.includes('/uploads/')) {
             const parts = imageUrl.split('/uploads/');
-            if (parts[1]) return path.join(__dirname, '../../uploads/', parts[1]);
-        } else if (imageUrl.startsWith('http')) {
-            const response = await fetch(imageUrl);
-            if (response.ok) return await response.buffer();
+            const uploadsDir = path.resolve(__dirname, '../../uploads');
+            const fullPath = parts[1] ? path.resolve(uploadsDir, parts[1]) : null;
+            // Anti path-traversal : le fichier doit rester dans le dossier uploads
+            if (fullPath && fullPath.startsWith(uploadsDir + path.sep)) return fullPath;
+        } else if (imageUrl.startsWith('https://res.cloudinary.com/')) {
+            // Anti-SSRF : seules les images Cloudinary sont téléchargées côté serveur
+            const response = await fetch(imageUrl, { redirect: 'error' });
+            if (response.ok && (response.headers.get('content-type') || '').startsWith('image/')) {
+                return await response.buffer();
+            }
         }
     } catch (e) {
         console.error("Error fetching image source:", e);

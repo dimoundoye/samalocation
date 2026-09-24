@@ -31,6 +31,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 reconnectionDelayMax: 5000, // Limiter le délai max de reconnexion
                 transports: ['websocket'],
                 timeout: 20000, // Augmenter le timeout pour les réseaux lents
+                // Le serveur exige un JWT valide ; fonction pour relire le token à chaque (re)connexion
+                auth: (cb) => cb({ token: localStorage.getItem('auth_token') }),
             });
 
             newSocket.on('connect', () => {
