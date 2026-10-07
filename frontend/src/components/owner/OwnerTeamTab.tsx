@@ -274,7 +274,7 @@ export const OwnerTeamTab = () => {
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
                         <Button 
-                            className="gradient-primary text-white shadow-soft hover:scale-105 transition-all"
+                            className="bg-primary hover:bg-primary/90 text-white shadow-soft hover:scale-105 transition-all"
                             disabled={!hasMultiUser}
                         >
                             <UserPlus className="h-4 w-4 mr-2" />
@@ -319,7 +319,7 @@ export const OwnerTeamTab = () => {
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button type="submit" className="w-full gradient-primary text-white" disabled={isSubmitting}>
+                                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white" disabled={isSubmitting}>
                                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     Envoyer l'invitation
                                 </Button>

@@ -289,7 +289,7 @@ const Pricing = () => {
                                     onClick={() => handlePlanSelect(plan)}
                                     disabled={loading || isDisabled || (isSubscriptionActive && planWeights[plan.id.toUpperCase()] < currentWeight)}
                                     className={`w-full h-12 rounded-xl text-base font-bold transition-all hover:scale-105 ${plan.highlight
-                                        ? "gradient-primary shadow-medium text-white"
+                                        ? "bg-primary hover:bg-primary/90 shadow-medium text-white"
                                         : "bg-white border-2 border-primary text-primary hover:bg-primary hover:text-white dark:bg-card"
                                         } ${(isSubscriptionActive && planWeights[plan.id.toUpperCase()] < currentWeight) ? "opacity-50 grayscale cursor-not-allowed border-muted text-muted-foreground" : ""}`}
                                 >

@@ -76,6 +76,7 @@ const adminController = {
                     SUM(price) as revenue
                 FROM subscriptions
                 WHERE status = 'active'
+                  AND (DATE(expires_at) >= CURRENT_DATE - INTERVAL '3 days' OR expires_at IS NULL)
                 GROUP BY plan_name
             `);
 
@@ -442,6 +443,7 @@ const adminController = {
                     SUM(amount) as total
                 FROM receipts
                 WHERE created_at >= NOW() - INTERVAL '30 days'
+                  AND COALESCE(status, 'valid') <> 'cancelled'
                 GROUP BY DATE(created_at)
                 ORDER BY date ASC
             `);
@@ -453,6 +455,7 @@ const adminController = {
                      SUM(amount) as total
                    FROM receipts
                    WHERE (year = $1 OR EXTRACT(YEAR FROM created_at) = $1)
+                     AND COALESCE(status, 'valid') <> 'cancelled'
                    GROUP BY DATE_TRUNC('month', created_at)
                    ORDER BY date ASC`
                 : `SELECT 
@@ -460,6 +463,7 @@ const adminController = {
                      SUM(amount) as total
                    FROM receipts
                    WHERE created_at >= NOW() - INTERVAL '12 months'
+                     AND COALESCE(status, 'valid') <> 'cancelled'
                    GROUP BY DATE_TRUNC('month', created_at)
                    ORDER BY date ASC`;
 
@@ -471,6 +475,7 @@ const adminController = {
                     COALESCE(year, EXTRACT(YEAR FROM created_at)::int)::text as date,
                     SUM(amount) as total
                 FROM receipts
+                WHERE COALESCE(status, 'valid') <> 'cancelled'
                 GROUP BY COALESCE(year, EXTRACT(YEAR FROM created_at)::int)
                 ORDER BY date ASC
             `);

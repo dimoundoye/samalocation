@@ -38,7 +38,7 @@ const NotFound = () => {
           <div className="flex flex-col gap-3 w-full">
             <Button
               size="lg"
-              className="gradient-primary text-white h-12 sm:h-13 px-6 rounded-xl shadow-md hover:shadow-primary/25 hover:scale-[1.01] transition-all font-bold text-sm sm:text-base w-full justify-center"
+              className="bg-primary hover:bg-primary/90 text-white h-12 sm:h-13 px-6 rounded-xl shadow-md hover:shadow-primary/25 hover:scale-[1.01] transition-all font-bold text-sm sm:text-base w-full justify-center"
               onClick={() => navigate("/")}
             >
               <Home className="mr-2.5 h-4 w-4 sm:h-5 sm:w-5" />

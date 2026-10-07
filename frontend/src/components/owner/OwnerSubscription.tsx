@@ -86,7 +86,7 @@ export const OwnerSubscription = () => {
                 </div>
                 <Button
                     onClick={() => navigate("/pricing")}
-                    className="gradient-primary text-white shadow-medium hover:scale-105 transition-all"
+                    className="bg-primary hover:bg-primary/90 text-white shadow-medium hover:scale-105 transition-all"
                 >
                     Voir tous les plans
                 </Button>
@@ -228,7 +228,7 @@ export const OwnerSubscription = () => {
                         </div>
                         <Button 
                             onClick={shareReferral}
-                            className="w-full sm:w-auto font-bold h-11 px-6 rounded-xl flex items-center gap-2 shadow-sm gradient-primary text-white"
+                            className="w-full sm:w-auto font-bold h-11 px-6 rounded-xl flex items-center gap-2 shadow-sm bg-primary hover:bg-primary/90 text-white"
                         >
                             <Share2 className="h-4 w-4" /> Partager l'invitation
                         </Button>

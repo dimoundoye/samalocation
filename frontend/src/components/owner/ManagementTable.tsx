@@ -43,7 +43,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Tenant, Receipt, Property, PropertyUnit } from "@/types";
 import { syncPropertyGroups } from "@/lib/api";
-import { logFrontendActivity } from "@/api/owner";
+import { authorizeGeranceExport, logFrontendActivity } from "@/api/owner";
 
 interface ManagementTableProps {
     tenants: Tenant[];
@@ -542,7 +542,19 @@ export const ManagementTable = ({
         });
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
+        // Le serveur vérifie le plan et le rôle au moment de l'export (et le journalise)
+        try {
+            await authorizeGeranceExport(selectedYear);
+        } catch (error: any) {
+            toast({
+                title: "Export impossible",
+                description: error?.message || "L'export Excel n'est pas disponible avec votre abonnement actuel.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         const monthNames = [
             "JANVIER", "FÉVRIER", "MARS", "AVRIL", "MAI", "JUIN",
             "JUILLET", "AOÛT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DÉCEMBRE"
@@ -766,14 +778,6 @@ export const ManagementTable = ({
 
         // Write native .xlsx file with styles
         XLSX.writeFile(wb, `Gerance_Samalocation_${selectedYear}_${new Date().toISOString().split('T')[0]}.xlsx`);
-
-        // Activity Log
-        logFrontendActivity({
-            action: "EXPORT",
-            entityType: "gerance",
-            entityLabel: `Export Excel Gérance ${selectedYear} téléchargé avec styles`,
-            metadata: { year: selectedYear, annualTotal: grandAnnualTotal }
-        });
     };
 
 

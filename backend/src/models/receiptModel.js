@@ -51,6 +51,15 @@ const Receipt = {
                 receipt_template = propRows[0].receipt_template || 'classic';
                 owner_logo = propRows[0].receipt_logo_url;
                 currency = propRows[0].currency || 'XOF';
+
+                // Plan expiré ou gratuit : pas de signature électronique ni de personnalisation premium
+                const Subscription = require('./subscriptionModel');
+                const plan = await Subscription.getActivePlan(propRows[0].owner_id);
+                if (!plan.limits.electronic_signature) owner_signature = null;
+                if (!plan.limits.custom_branding) {
+                    owner_logo = null;
+                    if (receipt_template === 'corporate') receipt_template = 'classic';
+                }
             }
 
             // Get tenant info

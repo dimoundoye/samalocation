@@ -16,10 +16,12 @@ export function LanguageToggle() {
     return (
     <Button 
         variant="ghost" 
-        onClick={toggleLanguage} 
-        className="h-9 px-3 rounded-full text-sm font-medium flex items-center gap-1.5"
+        onClick={toggleLanguage}
+        title={current === "fr" ? "Switch to English" : "Passer en français"}
+        aria-label={current === "fr" ? "Switch to English" : "Passer en français"} 
+        className="h-8 px-2 sm:h-9 sm:px-3 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1.5 shrink-0"
     >
-    <Globe className="h-4 w-4" />
+    <Globe className="hidden sm:block h-4 w-4" />
     <span className="uppercase">{current}</span>
     </Button>
     );

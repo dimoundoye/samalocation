@@ -122,7 +122,7 @@ const dossierController = {
             const { dossierId } = req.params;
 
             // Vérifier l'abonnement pour la consultation de dossier
-            const canConsult = await Subscription.hasAccessToFeature(req.user.id, 'dossier_consultation');
+            const canConsult = await Subscription.hasAccessToFeature(req.ownerId || req.user.id, 'dossier_consultation');
             if (!canConsult) {
                 return response.error(res, 'Votre abonnement actuel ne permet pas de consulter les dossiers digitaux. Veuillez passer à un plan Premium.', 403);
             }
@@ -159,7 +159,7 @@ const dossierController = {
             const { status } = req.body;
 
             // Vérifier l'abonnement pour la consultation/gestion de dossier
-            const canConsult = await Subscription.hasAccessToFeature(req.user.id, 'dossier_consultation');
+            const canConsult = await Subscription.hasAccessToFeature(req.ownerId || req.user.id, 'dossier_consultation');
             if (!canConsult) {
                 return response.error(res, 'Votre abonnement actuel ne permet pas de gérer les dossiers digitaux. Veuillez passer à un plan Premium.', 403);
             }

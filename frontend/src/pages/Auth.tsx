@@ -221,7 +221,7 @@ const Auth = () => {
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button className="w-full gradient-primary text-white" onClick={() => setShowVerificationSent(false)}>
+            <Button className="w-full bg-primary hover:bg-primary/90 text-white" onClick={() => setShowVerificationSent(false)}>
               {t('auth.verify.back_login')}
             </Button>
             <p className="text-xs text-muted-foreground">
@@ -299,7 +299,7 @@ const Auth = () => {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full gradient-primary text-white" disabled={loading}>
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white" disabled={loading}>
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -495,7 +495,7 @@ const Auth = () => {
                     </Label>
                   </div>
 
-                  <Button type="submit" className={`w-full text-white ${formData.userType === 'owner' ? 'gradient-primary' : 'gradient-accent'}`} disabled={loading}>
+                  <Button type="submit" className={`w-full text-white ${formData.userType === 'owner' ? 'bg-primary hover:bg-primary/90' : 'bg-accent hover:bg-accent/90'}`} disabled={loading}>
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -537,7 +537,7 @@ const Auth = () => {
               <Button type="button" variant="outline" onClick={() => setShowForgotPassword(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" className="gradient-primary text-white" disabled={resetLoading}>
+              <Button type="submit" className="bg-primary hover:bg-primary/90 text-white" disabled={resetLoading}>
                 {resetLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

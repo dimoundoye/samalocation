@@ -3,6 +3,14 @@ const { generateContractPDF, generateCustomContractPDFWithBrowser } = require('.
 const path = require('path');
 const logActivity = require('../utils/logActivity');
 const { emitToWorkspace } = require('../utils/socket');
+const Subscription = require('../models/subscriptionModel');
+const response = require('../utils/response');
+
+// Types de contrat réservés à un plan payant
+const CONTRACT_TYPE_FEATURES = {
+    premium: 'inventory_contract',
+    custom: 'custom_contract'
+};
 
 /**
  * Rôle de l'utilisateur connecté vis-à-vis d'un contrat : 'owner', 'tenant', 'admin' ou null
@@ -30,6 +38,10 @@ const contractController = {
     async createContract(req, res, next) {
         try {
             const owner_id = req.ownerId;
+            const requiredFeature = CONTRACT_TYPE_FEATURES[req.body.contract_type];
+            if (requiredFeature && !(await Subscription.hasAccessToFeature(owner_id, requiredFeature))) {
+                return response.error(res, "Ce type de contrat n'est pas disponible avec votre abonnement actuel.", 403);
+            }
             const contractData = {
                 ...req.body,
                 owner_id,

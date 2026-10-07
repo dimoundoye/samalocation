@@ -22,7 +22,8 @@ const subscriptionController = {
                 FROM tenants t
                 JOIN property_units pu ON t.unit_id = pu.id
                 JOIN properties p ON pu.property_id = p.id
-                WHERE p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1)
+                WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
+                  AND t.status IN ('active', 'pending')
             `, [userId]);
             const unitsCount = parseInt(countRows[0].active_assignments);
 
@@ -41,20 +42,9 @@ const subscriptionController = {
             const referralCount = userRows[0]?.referral_count || 0;
             const referredBy = userRows[0]?.referred_by || null;
 
-            // Get plan limits
-            const PLANS = require('../config/plans');
-            // Si on a un abonnement actif, on l'utilise. Sinon, si on a un en attente, on donne un accès provisoire.
-            let planKey = 'FREE';
-            if (activeSub) {
-                planKey = activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE';
-            } else if (latestSub && latestSub.status === 'pending') {
-                planKey = latestSub.plan_name ? latestSub.plan_name.toUpperCase() : 'FREE';
-            }
-            
-            // Normalisation pour Professionnel -> PROFESSIONAL
-            if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
-            
-            const planConfig = PLANS[planKey] || PLANS.FREE;
+            // Limites du plan réellement en vigueur (celles que le serveur applique) :
+            // une demande en attente de validation reste au plan Gratuit jusqu'à son activation.
+            const planConfig = await Subscription.getActivePlan(userId);
 
             const sanitize = (val) => val === Infinity ? -1 : val;
 

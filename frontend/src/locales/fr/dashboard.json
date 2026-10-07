@@ -98,7 +98,8 @@
       "active_tenants": "Locataires actifs",
       "total_revenue": "Revenu total",
       "revenue_growth": "Croissance des revenus",
-      "payment_received": "Paiement reçu"
+      "payment_received": "Paiement reçu",
+      "payment_cancelled": "Annulé"
     }
   },
   "settings": {

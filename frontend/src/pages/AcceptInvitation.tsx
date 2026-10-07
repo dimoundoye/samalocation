@@ -161,7 +161,7 @@ const AcceptInvitation = () => {
                     <div className="pt-2 space-y-4">
                         {user ? (
                             <Button 
-                                className="w-full gradient-primary text-white h-14 text-lg font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                className="w-full bg-primary hover:bg-primary/90 text-white h-14 text-lg font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
                                 onClick={handleAccept}
                                 disabled={isAccepting}
                             >
@@ -174,7 +174,7 @@ const AcceptInvitation = () => {
                                     Vous n'êtes pas encore connecté.
                                 </p>
                                 <Button 
-                                    className="w-full gradient-primary text-white h-14 text-lg font-bold shadow-lg"
+                                    className="w-full bg-primary hover:bg-primary/90 text-white h-14 text-lg font-bold shadow-lg"
                                     onClick={handleSignupRedirect}
                                 >
                                     S'inscrire et rejoindre l'équipe

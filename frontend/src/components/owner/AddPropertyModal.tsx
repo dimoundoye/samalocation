@@ -27,7 +27,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { createProperty, createPropertyUnits, uploadPhotos, generateAIDescription, getMySubscription, getOwnerProperties } from "@/lib/api";
+import { createProperty, uploadPhotos, generateAIDescription, getMySubscription, getOwnerProperties } from "@/lib/api";
 import { getPropertyGroups, syncPropertyGroups } from "@/api/propertyGroups";
 import { useAuth } from "@/contexts/AuthContext";
 import { compressImage } from "@/lib/imageCompression";

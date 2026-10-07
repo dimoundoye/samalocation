@@ -68,7 +68,7 @@ const ResetPassword = () => {
                     <CardFooter className="flex justify-center">
                         <Button
                             onClick={() => navigate("/auth?mode=login")}
-                            className="gradient-primary text-white"
+                            className="bg-primary hover:bg-primary/90 text-white"
                         >
                             Se connecter maintenant
                         </Button>
@@ -115,7 +115,7 @@ const ResetPassword = () => {
                                 required
                             />
                         </div>
-                        <Button type="submit" className="w-full gradient-primary text-white" disabled={loading}>
+                        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white" disabled={loading}>
                             {loading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

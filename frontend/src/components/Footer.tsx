@@ -13,7 +13,7 @@ const Footer = () => {
                     <div className="col-span-2 sm:col-span-3 lg:col-span-1 space-y-6">
                         <div className="flex items-center gap-2">
                             <img src="/logo-sl.png" alt="Samalocation" className="h-12 w-auto object-contain" />
-                            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap">
+                            <span className="text-xl font-bold text-brand whitespace-nowrap">
                                 Samalocation
                             </span>
                         </div>

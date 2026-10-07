@@ -83,6 +83,7 @@ import { fr, enUS } from "date-fns/locale";
 import { transformProperty } from "@/lib/property";
 import { Property, PropertyUnit, Tenant, Message, Receipt } from "@/types";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useSocket } from "@/contexts/SocketContext";
 import { useTranslation } from "react-i18next";
 import { OnboardingChecklist } from "@/components/owner/OnboardingChecklist";
@@ -462,6 +463,7 @@ const DashboardProprietaire = () => {
     const getReceiptForNode = (nodeId: string, tenant: any, monthId: number) => {
       if (!receipts) return null;
       return receipts.find(r => {
+        if (r.status === 'cancelled') return false;
         const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
         const rMonth = typeof r.month === 'string' ? parseInt(r.month) : r.month;
         if (rYear !== year || rMonth !== monthId) return false;
@@ -935,7 +937,7 @@ const DashboardProprietaire = () => {
               className={`${isSidebarCollapsed ? 'h-8 w-8 object-contain' : 'h-10 w-auto object-contain'}`}
             />
             {showLabels && (
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate hidden lg:block">
+              <span className="text-base font-bold tracking-tight text-brand truncate hidden lg:block">
                 Samalocation
               </span>
             )}
@@ -1177,6 +1179,7 @@ const DashboardProprietaire = () => {
               >
                 <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
+              <LanguageToggle />
               <ThemeToggle />
               <NotificationBell />
               <UserProfile onSettingsClick={() => setActiveTab("settings")} />
@@ -1377,7 +1380,7 @@ const DashboardProprietaire = () => {
                     </Select>
                     <Button
                       size="sm"
-                      className="gradient-accent text-white h-10 sm:h-11 px-5 rounded-xl shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all font-bold"
+                      className="bg-accent hover:bg-accent/90 text-white h-10 sm:h-11 px-5 rounded-xl shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all font-bold"
                       onClick={() => setAddPropertyOpen(true)}
                     >
                       <Plus className="mr-2 h-4 w-4" />
@@ -1621,23 +1624,32 @@ const DashboardProprietaire = () => {
                             {t('dashboard.common.no_activity')}
                           </div>
                         ) : (
-                          receipts.slice(0, 5).map((activity: any) => (
-                            <div key={activity.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg gap-3">
+                          receipts.slice(0, 5).map((activity: any) => {
+                            // Reçu annulé : ligne barrée et grisée, montant exclu des revenus
+                            const isCancelled = activity.status === 'cancelled';
+                            return (
+                            <div key={activity.id} className={`flex items-center justify-between p-3 bg-secondary/30 rounded-lg gap-3 ${isCancelled ? 'opacity-60' : ''}`}>
                               <div className="flex items-center gap-3 min-w-0">
-                                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10 shrink-0">
-                                  <FileText className="h-5 w-5 text-primary" />
+                                <div className={`h-10 w-10 flex items-center justify-center rounded-full shrink-0 ${isCancelled ? 'bg-destructive/10' : 'bg-primary/10'}`}>
+                                  <FileText className={`h-5 w-5 ${isCancelled ? 'text-destructive' : 'text-primary'}`} />
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-medium text-sm sm:text-base truncate">{t('owner.stats.payment_received')}</p>
-                                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{activity.tenant_name} - {activity.property_name}</p>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <p className={`font-medium text-sm sm:text-base truncate ${isCancelled ? 'line-through' : ''}`}>{t('owner.stats.payment_received')}</p>
+                                    {isCancelled && (
+                                      <Badge variant="destructive" className="h-5 px-1.5 text-[10px] shrink-0">{t('owner.stats.payment_cancelled')}</Badge>
+                                    )}
+                                  </div>
+                                  <p className={`text-xs sm:text-sm text-muted-foreground truncate ${isCancelled ? 'line-through' : ''}`}>{activity.tenant_name} - {activity.property_name}</p>
                                 </div>
                               </div>
                               <div className="text-right shrink-0">
-                                <p className="font-bold text-primary text-sm sm:text-base whitespace-nowrap">{formatCurrency(activity.amount, ownerProfile?.currency || 'XOF')}</p>
+                                <p className={`font-bold text-sm sm:text-base whitespace-nowrap ${isCancelled ? 'line-through text-muted-foreground' : 'text-primary'}`}>{formatCurrency(activity.amount, ownerProfile?.currency || 'XOF')}</p>
                                 <p className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">{format(new Date(activity.payment_date), 'dd MMM yyyy', { locale: dateLocale })}</p>
                               </div>
                             </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </CardContent>
@@ -1709,7 +1721,7 @@ const DashboardProprietaire = () => {
                       </p>
                       <Button
                         onClick={() => setAddPropertyOpen(true)}
-                        className="gradient-accent text-white"
+                        className="bg-accent hover:bg-accent/90 text-white"
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         {t('owner.add_first_property')}

@@ -1,3 +1,4 @@
+const Subscription = require('./subscriptionModel');
 const db = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
 const Notification = require('./notificationModel');
@@ -44,7 +45,8 @@ const Contract = {
         let owner_signature = null;
         try {
             const { rows: ownerRows } = await db.query('SELECT signature_url FROM owner_profiles WHERE user_profile_id = $1', [owner_id]);
-            if (ownerRows[0]) {
+            // Signature électronique réservée aux plans qui l'incluent (plan terminé : pas de signature apposée)
+            if (ownerRows[0] && await Subscription.hasAccessToFeature(owner_id, 'electronic_signature')) {
                 owner_signature = ownerRows[0].signature_url;
             }
         } catch (error) {
@@ -244,7 +246,8 @@ const Contract = {
         let owner_signature = null;
         try {
             const { rows: ownerRows } = await db.query('SELECT signature_url FROM owner_profiles WHERE user_profile_id = $1', [contract.owner_id]);
-            if (ownerRows[0]) {
+            // Signature électronique réservée aux plans qui l'incluent (plan terminé : pas de signature apposée)
+            if (ownerRows[0] && await Subscription.hasAccessToFeature(contract.owner_id, 'electronic_signature')) {
                 owner_signature = ownerRows[0].signature_url;
             }
         } catch (error) {

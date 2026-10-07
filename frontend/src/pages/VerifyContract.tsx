@@ -64,7 +64,7 @@ const VerifyContract = () => {
         <div className="min-h-screen bg-slate-50 py-12 px-4">
             <div className="max-w-2xl mx-auto space-y-8">
                 <div className="flex justify-center mb-8">
-                    <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    <Link to="/" className="text-2xl font-bold text-brand">
                         Samalocation
                     </Link>
                 </div>

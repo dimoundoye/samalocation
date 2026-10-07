@@ -117,6 +117,17 @@ export const getActivityLog = async (params?: {
     }
 };
 
+/**
+ * Demande au serveur l'autorisation d'exporter la gérance en Excel (plan + titulaire du compte).
+ * Lève une erreur si l'export est refusé ; le serveur journalise l'export.
+ */
+export const authorizeGeranceExport = async (year: string) => {
+    return await baseClient("/owner/exports/gerance", {
+        method: "POST",
+        body: JSON.stringify({ year }),
+    });
+};
+
 export const logFrontendActivity = async (data: {
     action: string;
     entityType: string;

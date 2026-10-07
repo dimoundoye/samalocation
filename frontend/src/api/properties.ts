@@ -62,18 +62,6 @@ export const createProperty = async (data: any) => {
     }
 };
 
-export const createPropertyUnits = async (propertyId: string, units: any[]) => {
-    try {
-        return await baseClient("/properties/units", {
-            method: "POST",
-            body: JSON.stringify({ property_id: propertyId, units }),
-        });
-    } catch (error) {
-        console.error("CreatePropertyUnits error:", error);
-        return null;
-    }
-};
-
 export const togglePropertyPublication = async (id: string) => {
     try {
         return await baseClient(`/properties/${id}/publish`, {

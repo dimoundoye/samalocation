@@ -71,7 +71,7 @@ export const UpgradeModal = ({ open, onOpenChange, title, description, feature }
                             onOpenChange(false);
                             navigate("/pricing");
                         }}
-                        className="gradient-primary text-white shadow-medium group"
+                        className="bg-primary hover:bg-primary/90 text-white shadow-medium group"
                     >
                         Voir les offres
                         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />

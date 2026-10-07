@@ -179,7 +179,7 @@ const Index = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 w-full max-w-md">
               <Button
                 onClick={() => navigate("/search")}
-                className="h-12 px-7 rounded-xl gradient-primary hover:opacity-95 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 w-full sm:w-auto"
+                className="h-12 px-7 rounded-xl bg-primary hover:bg-primary/90 hover:opacity-95 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 w-full sm:w-auto"
               >
                 <span>{t('hero.explore')}</span>
                 <ArrowRight className="h-4 w-4" />

@@ -123,7 +123,7 @@ export const OwnerPublicProfileEditor = ({ onSuccess }: { onSuccess?: () => void
           <h2 className="text-2xl font-bold tracking-tight">Configuration du Profil Public</h2>
           <p className="text-muted-foreground">Gérez la vitrine de votre agence et vos informations de contact pour les locataires.</p>
         </div>
-        <Button onClick={handleUpdateProfile} disabled={loading} className="gradient-primary text-white shadow-lg">
+        <Button onClick={handleUpdateProfile} disabled={loading} className="bg-primary hover:bg-primary/90 text-white shadow-lg">
           {loading ? "Enregistrement..." : "Enregistrer les modifications"}
         </Button>
       </div>
@@ -272,7 +272,7 @@ export const OwnerPublicProfileEditor = ({ onSuccess }: { onSuccess?: () => void
                         <p className="text-base font-bold mb-1">Image de couverture</p>
                         <p className="text-sm text-muted-foreground mb-6 max-w-[280px]">Ajoutez une bannière pour personnaliser la vitrine de votre agence (1200x400).</p>
                         <label className="cursor-pointer">
-                          <Button className="gradient-primary text-white" asChild>
+                          <Button className="bg-primary hover:bg-primary/90 text-white" asChild>
                             <span>Choisir une image</span>
                           </Button>
                           <Input 

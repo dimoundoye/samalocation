@@ -41,6 +41,29 @@ const activityLogController = {
      * Enregistrer une action frontend (export Excel, création de groupe, etc.)
      * Utilisé pour les actions qui n'ont pas de requête API dédiée
      */
+    /**
+     * Autorise l'export Excel de la gérance : plan avec rapports Excel (vérifié par la route)
+     * et patron de l'organisation uniquement. L'export est journalisé ici.
+     */
+    async authorizeGeranceExport(req, res, next) {
+        try {
+            if (req.org?.role !== 'owner') {
+                return response.error(res, "L'export Excel est réservé au titulaire du compte.", 403);
+            }
+
+            const year = req.body?.year;
+            await logActivity(req, {
+                action: 'EXPORT',
+                entityType: 'gerance',
+                entityLabel: `Export Excel Gérance ${year || ''}`.trim(),
+                metadata: { year }
+            });
+            return response.success(res, null, 'Export autorisé');
+        } catch (error) {
+            next(error);
+        }
+    },
+
     async createActivityLog(req, res, next) {
         try {
             const { action, entityType, entityId, entityLabel, metadata } = req.body;

@@ -285,7 +285,7 @@ export const ManualPaymentModal = ({ open, onOpenChange, plan, onSuccess }: Manu
                         <Button
                             onClick={handleSubmit}
                             disabled={loading}
-                            className="flex-1 gradient-primary text-white rounded-2xl h-14 font-black shadow-strong uppercase tracking-widest text-sm"
+                            className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-2xl h-14 font-black shadow-strong uppercase tracking-widest text-sm"
                         >
                             {loading ? "Vérification..." : "Confirmer le paiement"}
                         </Button>

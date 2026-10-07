@@ -93,7 +93,7 @@ export const CurrencyOnboardingModal = ({ open, onClose, onSaved, currentCurrenc
                     <Button
                         onClick={handleSave}
                         disabled={loading}
-                        className="w-full h-12 rounded-xl text-base font-bold gradient-primary shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all gap-2"
+                        className="w-full h-12 rounded-xl text-base font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all gap-2"
                     >
                         {loading ? "Configuration..." : "Commencer la gérance"}
                         {!loading && <ArrowRight className="h-5 w-5" />}

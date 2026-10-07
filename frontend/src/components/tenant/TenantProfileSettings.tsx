@@ -148,7 +148,7 @@ export const TenantProfileSettings = () => {
           <Button
             onClick={handleUpdateProfile}
             disabled={loading}
-            className="w-full sm:w-auto gradient-primary shadow-soft h-11 px-8 rounded-xl font-bold gap-2"
+            className="w-full sm:w-auto bg-primary hover:bg-primary/90 shadow-soft h-11 px-8 rounded-xl font-bold gap-2"
           >
             {loading ? (
               <>

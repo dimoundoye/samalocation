@@ -108,7 +108,7 @@ const TenantLeasesTab = ({ currency = 'XOF' }: { currency?: string }) => {
                             key={f}
                             variant={filter === f ? "default" : "outline"}
                             size="sm"
-                            className={`gap-2 h-9 rounded-full ${filter === f ? "gradient-primary text-white shadow-soft" : ""}`}
+                            className={`gap-2 h-9 rounded-full ${filter === f ? "bg-primary hover:bg-primary/90 text-white shadow-soft" : ""}`}
                             onClick={() => setFilter(f)}
                         >
                             {labels[f]}

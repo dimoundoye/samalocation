@@ -125,7 +125,7 @@ const OwnerSharedDossiersTab = () => {
                         </p>
                         <Button 
                             size="sm" 
-                            className="gradient-accent text-white font-bold shrink-0 shadow-soft hover:shadow-medium transition-all"
+                            className="bg-accent hover:bg-accent/90 text-white font-bold shrink-0 shadow-soft hover:shadow-medium transition-all"
                             onClick={() => navigate("/owner-dashboard/subscription")}
                         >
                             Passer Premium

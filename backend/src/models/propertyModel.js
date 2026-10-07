@@ -184,20 +184,6 @@ const Property = {
         return { is_published: nextPublished };
     },
 
-    async addUnits(propertyId, ownerId, units) {
-        const { rows: properties } = await db.query('SELECT id FROM properties WHERE id = $1 AND owner_id = $2', [propertyId, ownerId]);
-        if (properties.length === 0) return false;
-
-        for (const unit of units) {
-            const unitId = uuidv4();
-            await db.query(
-                'INSERT INTO property_units (id, property_id, unit_type, unit_number, monthly_rent, area_sqm, bedrooms, bathrooms, rooms_count, description, is_available, rent_period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
-                [unitId, propertyId, unit.unit_type, unit.unit_number, unit.monthly_rent, unit.area_sqm, unit.bedrooms, unit.bathrooms, unit.rooms_count, unit.description, true, unit.rent_period || 'mois']
-            );
-        }
-
-        return true;
-    },
 
     async findByUnitId(unitId) {
         const { rows } = await db.query(`

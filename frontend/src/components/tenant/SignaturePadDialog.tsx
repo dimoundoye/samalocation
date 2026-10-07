@@ -319,7 +319,7 @@ export const SignaturePadDialog = ({
                         </Button>
                         <Button
                             type="button"
-                            className="gap-2 gradient-primary text-white"
+                            className="gap-2 bg-primary hover:bg-primary/90 text-white"
                             onClick={() => preview && onConfirm(preview)}
                             disabled={!accepted || submitting}
                         >

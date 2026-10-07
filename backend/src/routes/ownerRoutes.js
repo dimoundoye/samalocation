@@ -27,7 +27,9 @@ router.post('/invitations/:token/accept', authMiddleware, ownerController.accept
 
 // Journal d'activité (réservé au patron - plan Professionnel)
 router.get('/activity-log', authMiddleware, can('activity.read'), checkFeatureAccess('multi_user'), activityLogController.getActivityLog);
-// Route pour logger des actions frontend (export Excel, groupe)
+// Export Excel de la gérance : plan Professionnel et titulaire du compte uniquement
+router.post('/exports/gerance', authMiddleware, checkFeatureAccess('excel_reports'), activityLogController.authorizeGeranceExport);
+// Route pour logger des actions frontend (groupes)
 router.post('/activity-log', authMiddleware, activityLogController.createActivityLog);
 
 module.exports = router;

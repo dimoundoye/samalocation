@@ -36,7 +36,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
             </p>
           </div>
           <div className="flex flex-col gap-3 pt-2">
-            <Button onClick={retryAuth} className="w-full h-11 gradient-primary text-white font-bold shadow-soft hover:shadow-medium transition-all">
+            <Button onClick={retryAuth} className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-bold shadow-soft hover:shadow-medium transition-all">
               <RefreshCw className="mr-2 h-4 w-4" /> {t('common.retry')}
             </Button>
             <Button variant="ghost" onClick={signOut} className="w-full h-11 text-muted-foreground hover:text-foreground">

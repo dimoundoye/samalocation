@@ -31,6 +31,7 @@ All colors MUST be HSL.
 
     --accent: 4 90% 58%;
     --accent-foreground: 0 0% 100%;
+    --brand: 358 79% 49%; /* rouge du logo (#E11A21) */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -85,6 +86,7 @@ All colors MUST be HSL.
 
     --accent: 4 90% 58%;
     --accent-foreground: 0 0% 100%;
+    --brand: 358 79% 49%; /* rouge du logo (#E11A21) */
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;

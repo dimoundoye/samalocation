@@ -100,7 +100,8 @@ export const previewReceipt = async (id: string): Promise<string> => {
     });
 
     if (!response.ok) {
-        throw new Error("Erreur lors de la récupération du reçu");
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || "Erreur lors de la récupération du reçu");
     }
 
     const blob = await response.blob();

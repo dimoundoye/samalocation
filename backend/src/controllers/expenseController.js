@@ -184,6 +184,7 @@ const expenseController = {
                 FROM receipts r
                 LEFT JOIN properties p ON r.property_id = p.id
                 WHERE (p.owner_id = ANY($1) OR r.tenant_id = ANY($1))
+                  AND COALESCE(r.status, 'valid') <> 'cancelled'
                   AND COALESCE(NULLIF(r.year::text, ''), EXTRACT(YEAR FROM r.payment_date)::text, EXTRACT(YEAR FROM r.created_at)::text)::integer = $2
             `;
             const receiptsValues = [ownerIdsList, year];

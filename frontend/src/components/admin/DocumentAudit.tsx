@@ -195,7 +195,7 @@ export const DocumentAudit = () => {
               <p className="text-sm text-muted-foreground mb-4 max-w-xs mx-auto">
                 Supporte uniquement les formats PDF de reçus ou de contrats générés par Sama Location.
               </p>
-              <Button size="sm" className="gradient-primary text-white pointer-events-none">
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white pointer-events-none">
                 Parcourir les fichiers
               </Button>
             </div>

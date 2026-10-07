@@ -658,7 +658,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                       <Button 
                         variant="default" 
                         size="sm" 
-                        className="gradient-primary text-white"
+                        className="bg-primary hover:bg-primary/90 text-white"
                         onClick={() => window.location.href = '/pricing'}
                       >
                         Passer au plan Professionnel
@@ -794,7 +794,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                       <Button
                         onClick={handleUpdateProfile}
                         disabled={loading}
-                        className="gap-2 gradient-primary text-white font-bold shadow-soft hover:shadow-medium transition-all px-6"
+                        className="gap-2 bg-primary hover:bg-primary/90 text-white font-bold shadow-soft hover:shadow-medium transition-all px-6"
                       >
                         {loading ? (
                           <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement...</>

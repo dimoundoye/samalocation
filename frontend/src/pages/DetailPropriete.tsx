@@ -684,7 +684,7 @@ const DetailPropriete = () => {
                           </p>
                           <Button
                             onClick={handleApply}
-                            className={`w-full ${hasApplied ? "bg-muted text-muted-foreground cursor-not-allowed" : "gradient-accent text-white"}`}
+                            className={`w-full ${hasApplied ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-accent hover:bg-accent/90 text-white"}`}
                             size="lg"
                             disabled={hasApplied}
                           >
@@ -927,7 +927,7 @@ const DetailPropriete = () => {
             </Button>
             <Button
               onClick={() => navigate("/auth?mode=signup")}
-              className="gradient-accent text-white"
+              className="bg-accent hover:bg-accent/90 text-white"
             >
               {t('detail.create_account')}
             </Button>
@@ -960,7 +960,7 @@ const DetailPropriete = () => {
             </Button>
             <Button
               onClick={sendApplication}
-              className="gradient-accent text-white"
+              className="bg-accent hover:bg-accent/90 text-white"
             >
               {property.listing_type === 'vente' ? t('detail.send_request') : t('detail.send_application')}
             </Button>

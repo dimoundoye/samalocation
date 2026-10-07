@@ -78,7 +78,7 @@ const SetupProfile = () => {
                 <div className="text-center space-y-2">
                     <div className="flex items-center justify-center gap-2 mb-6">
                         <img src="/logo-sl.png" alt="Samalocation" className="h-12 w-auto object-contain" />
-                        <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic hidden md:inline">
+                        <span className="text-2xl font-bold text-brand italic hidden md:inline">
                             Samalocation
                         </span>
                     </div>
@@ -218,7 +218,7 @@ const SetupProfile = () => {
                             </div>
 
                             <div className="pt-2">
-                                <Button type="submit" className="w-full gradient-primary text-white h-11" disabled={loading}>
+                                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white h-11" disabled={loading}>
                                     {loading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

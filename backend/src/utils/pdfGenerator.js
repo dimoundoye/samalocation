@@ -2,30 +2,76 @@ const PDFDocument = require('pdfkit');
 const { format } = require('date-fns');
 const { fr } = require('date-fns/locale');
 const path = require('path');
+const fs = require('fs');
 const fetch = require('node-fetch');
 const { formatAmountInWords } = require('./numberToWords');
 
+// Images distantes (logo, signature) gardées en mémoire : chaque aperçu régénère le PDF,
+// sans cache on retéléchargeait les mêmes images depuis Cloudinary à chaque clic sur « Voir ».
+const IMAGE_CACHE_MAX_ENTRIES = 100;
+const IMAGE_CACHE_TTL_MS = 60 * 60 * 1000;
+const IMAGE_FETCH_TIMEOUT_MS = 8000;
+const IMAGE_FETCH_ATTEMPTS = 2;
+const imageCache = new Map(); // url -> { buffer, expiresAt }
+
+/**
+ * Télécharge une image Cloudinary (avec cache, délai maximal et une nouvelle tentative).
+ * Retourne null si l'image n'existe pas (404, pas une image) ; lève une erreur si Cloudinary
+ * reste injoignable (délai dépassé, erreur réseau ou 5xx).
+ */
+async function fetchRemoteImage(imageUrl) {
+    const cached = imageCache.get(imageUrl);
+    if (cached && cached.expiresAt > Date.now()) return cached.buffer;
+
+    let lastError = null;
+    for (let attempt = 1; attempt <= IMAGE_FETCH_ATTEMPTS; attempt++) {
+        try {
+            const response = await fetch(imageUrl, { redirect: 'error', timeout: IMAGE_FETCH_TIMEOUT_MS });
+            if (response.ok && (response.headers.get('content-type') || '').startsWith('image/')) {
+                const buffer = await response.buffer();
+                if (imageCache.size >= IMAGE_CACHE_MAX_ENTRIES) {
+                    imageCache.delete(imageCache.keys().next().value);
+                }
+                imageCache.set(imageUrl, { buffer, expiresAt: Date.now() + IMAGE_CACHE_TTL_MS });
+                return buffer;
+            }
+            if (response.status < 500) return null; // image absente : inutile de réessayer
+            lastError = new Error(`HTTP ${response.status}`);
+        } catch (e) {
+            lastError = e;
+        }
+    }
+    throw lastError;
+}
+
 /**
  * Helper pour récupérer une source d'image (locale ou distance)
+ * @param {string} imageUrl
+ * @param {{ required?: boolean }} options - required : si l'image existe mais n'a pas pu être chargée,
+ *   lever une erreur plutôt que de produire un document incomplet (cas de la signature)
  */
-async function fetchImageSource(imageUrl) {
+async function fetchImageSource(imageUrl, { required = false } = {}) {
     if (!imageUrl) return null;
-    try {
-        if (imageUrl.includes('/uploads/')) {
-            const parts = imageUrl.split('/uploads/');
-            const uploadsDir = path.resolve(__dirname, '../../uploads');
-            const fullPath = parts[1] ? path.resolve(uploadsDir, parts[1]) : null;
-            // Anti path-traversal : le fichier doit rester dans le dossier uploads
-            if (fullPath && fullPath.startsWith(uploadsDir + path.sep)) return fullPath;
-        } else if (imageUrl.startsWith('https://res.cloudinary.com/')) {
-            // Anti-SSRF : seules les images Cloudinary sont téléchargées côté serveur
-            const response = await fetch(imageUrl, { redirect: 'error' });
-            if (response.ok && (response.headers.get('content-type') || '').startsWith('image/')) {
-                return await response.buffer();
+    if (imageUrl.includes('/uploads/')) {
+        const parts = imageUrl.split('/uploads/');
+        const uploadsDir = path.resolve(__dirname, '../../uploads');
+        const fullPath = parts[1] ? path.resolve(uploadsDir, parts[1]) : null;
+        // Anti path-traversal : le fichier doit rester dans le dossier uploads
+        if (fullPath && fullPath.startsWith(uploadsDir + path.sep) && fs.existsSync(fullPath)) return fullPath;
+        return null;
+    }
+    if (imageUrl.startsWith('https://res.cloudinary.com/')) {
+        // Anti-SSRF : seules les images Cloudinary sont téléchargées côté serveur
+        try {
+            return await fetchRemoteImage(imageUrl);
+        } catch (e) {
+            console.error(`Error fetching image source (${imageUrl}):`, e.message);
+            if (required) {
+                const error = new Error("La signature du propriétaire n'a pas pu être chargée. Veuillez réessayer dans un instant.");
+                error.statusCode = 503;
+                throw error;
             }
         }
-    } catch (e) {
-        console.error("Error fetching image source:", e);
     }
     return null;
 }
@@ -97,6 +143,12 @@ async function generateReceiptPDF(receiptData) {
             printing: 'highResolution'
         }
     });
+
+    // Logo et signature téléchargés en parallèle (les templates les relisent ensuite depuis le cache)
+    await Promise.all([
+        fetchImageSource(receiptData.logo_url),
+        fetchImageSource(receiptData.signature_url, { required: true })
+    ]);
 
     if (template === 'modern') {
         await drawModernTemplate(doc, receiptData);
@@ -359,7 +411,7 @@ async function drawMinimalTemplate(doc, receiptData) {
 
 async function embedSignature(doc, receiptData) {
     if (receiptData.signature_url) {
-        const imageSource = await fetchImageSource(receiptData.signature_url);
+        const imageSource = await fetchImageSource(receiptData.signature_url, { required: true });
         if (imageSource) {
             doc.moveDown(2);
             const currentY = doc.y;

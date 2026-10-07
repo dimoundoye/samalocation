@@ -36,6 +36,7 @@ import { fr, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, openReceiptInNewTab, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead } from "@/lib/api";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useSocket } from "@/contexts/SocketContext";
 import { useTranslation } from "react-i18next";
 import { getMyDossier, shareDossier } from "@/api/dossier";
@@ -470,7 +471,7 @@ const DashboardLocataire = () => {
         >
           <img src="/logo-sl.png" alt="Logo" className="h-10 w-auto object-contain shrink-0" />
           {!collapsed && (
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
+            <span className="text-xl font-bold text-brand truncate">
               Samalocation
             </span>
           )}
@@ -600,6 +601,7 @@ const DashboardLocataire = () => {
               >
                 <HelpCircle className="h-5 w-5" />
               </Button>
+              <LanguageToggle />
               <ThemeToggle />
               <NotificationBell />
               <UserProfile />

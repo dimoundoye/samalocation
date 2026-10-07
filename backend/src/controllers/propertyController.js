@@ -162,26 +162,6 @@ const propertyController = {
     },
 
     /**
-     * Add units
-     */
-    async addUnits(req, res, next) {
-        try {
-            const ownerId = req.ownerId;
-            const { property_id, units } = req.body;
-
-            const success = await Property.addUnits(property_id, ownerId, units);
-            if (!success) {
-                return response.error(res, 'Forbidden or property not found', 403);
-            }
-
-            clearPropertyCache();
-            emitToWorkspace(ownerId, 'workspace_updated', { entity: 'properties', action: 'update', id: property_id });
-            return response.success(res, null, 'Units added successfully', 201);
-        } catch (error) {
-            next(error);
-        }
-    },
-    /**
      * Delete property
      */
     async deleteProperty(req, res, next) {

@@ -82,7 +82,7 @@ const VerifyEmail = () => {
 
                 <CardFooter className="flex flex-col space-y-4">
                     {status === "success" ? (
-                        <Button className="w-full gradient-primary text-white" onClick={() => navigate("/auth?mode=login")}>
+                        <Button className="w-full bg-primary hover:bg-primary/90 text-white" onClick={() => navigate("/auth?mode=login")}>
                             Se connecter
                         </Button>
                     ) : status === "error" ? (

@@ -1,5 +1,4 @@
 const Subscription = require('../models/subscriptionModel');
-const PLANS = require('../config/plans');
 const response = require('../utils/response');
 
 /**
@@ -29,15 +28,7 @@ const checkFeatureAccess = (featureName) => {
 const checkPropertyLimit = async (req, res, next) => {
     try {
         const ownerId = req.ownerId;
-        const activeSub = await Subscription.findActiveByUserId(ownerId);
-
-        // Obtenir le plan configuré (ou FREE par défaut)
-        let planKey = activeSub ? activeSub.plan_name.toUpperCase() : 'FREE';
-        
-        // Normalisation pour Professionnel -> PROFESSIONAL
-        if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
-        
-        const planConfig = PLANS[planKey];
+        const planConfig = await Subscription.getActivePlan(ownerId);
 
         const db = require('../config/db');
         const { rows } = await db.query('SELECT COUNT(*) FROM properties WHERE owner_id = $1', [ownerId]);
@@ -59,31 +50,34 @@ const checkPropertyLimit = async (req, res, next) => {
 const checkTenantLimit = async (req, res, next) => {
     try {
         const ownerId = req.ownerId;
-        const activeSub = await Subscription.findActiveByUserId(ownerId);
-        let planKey = activeSub ? activeSub.plan_name.toUpperCase() : 'FREE';
+        const planConfig = await Subscription.getActivePlan(ownerId);
 
-        // Normalisation pour Professionnel -> PROFESSIONAL
-        if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
-
-        const planConfig = PLANS[planKey];
-
-        // Pour l'instant, la limite de locataires n'est pas explicitement dans plans.js
-        // mais on peut la déduire ou l'ajouter. 
-        // Si max_properties est limité, on limite souvent aussi les locataires.
-        // On va utiliser max_properties comme proxy ou autoriser selon le plan.
+        const maxTenants = planConfig.limits.max_tenants;
+        if (maxTenants === Infinity) return next();
 
         const db = require('../config/db');
+
+        // Remplacer le locataire d'un logement déjà occupé ne consomme pas de place supplémentaire
+        const unitId = req.body?.unit_id;
+        if (unitId) {
+            const { rows: occupied } = await db.query(
+                "SELECT 1 FROM tenants WHERE unit_id = $1 AND status IN ('active', 'pending') LIMIT 1",
+                [unitId]
+            );
+            if (occupied.length > 0) return next();
+        }
+
+        // Seuls les locataires en place comptent (les anciens, passés inactifs, restent dans l'historique)
         const { rows } = await db.query(`
             SELECT COUNT(*) FROM tenants t
             JOIN property_units pu ON t.unit_id = pu.id
             JOIN properties p ON pu.property_id = p.id
             WHERE p.owner_id = $1
+              AND t.status IN ('active', 'pending')
         `, [ownerId]);
         const currentCount = parseInt(rows[0].count);
 
-        const maxTenants = planConfig.limits.max_tenants;
-
-        if (currentCount >= maxTenants && maxTenants !== Infinity) {
+        if (currentCount >= maxTenants) {
             return response.error(res, `Vous avez atteint la limite de ${maxTenants} locataires pour votre plan ${planConfig.name}. Passez au plan supérieur pour en ajouter plus.`, 403);
         }
 
@@ -99,13 +93,7 @@ const checkTenantLimit = async (req, res, next) => {
 const checkReceiptLimit = async (req, res, next) => {
     try {
         const ownerId = req.ownerId;
-        const activeSub = await Subscription.findActiveByUserId(ownerId);
-        let planKey = activeSub ? activeSub.plan_name.toUpperCase() : 'FREE';
-
-        // Normalisation pour Professionnel -> PROFESSIONAL
-        if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
-
-        const planConfig = PLANS[planKey];
+        const planConfig = await Subscription.getActivePlan(ownerId);
 
         if (planConfig.limits.max_receipts_per_month === Infinity) {
             return next();

@@ -324,18 +324,7 @@ const Subscription = {
      * en fonction de son abonnement actuel.
      */
     async hasAccessToFeature(userId, featureName) {
-        const PLANS = require('../config/plans');
-        const activeSub = await this.findActiveByUserId(userId);
-
-        // Obtenir la config du plan actuel (ou FREE)
-        let planKey = activeSub ? activeSub.plan_name.toUpperCase() : 'FREE';
-        
-        // Normalisation pour Professionnel -> PROFESSIONAL
-        if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
-        
-        const planConfig = PLANS[planKey];
-
-        if (!planConfig) return false;
+        const planConfig = await this.getActivePlan(userId);
 
         // Vérification par fonctionnalité
         switch (featureName) {
@@ -369,9 +358,23 @@ const Subscription = {
                 return planConfig.limits.electronic_signature;
             case 'dossier_consultation':
                 return planConfig.limits.dossier_consultation;
+            case 'custom_contract':
+                return planConfig.limits.custom_contract;
             default:
                 return true;
         }
+    },
+
+    /**
+     * Config du plan en vigueur : abonnement actif (délai de grâce inclus), sinon plan Gratuit.
+     * Un nom de plan inconnu retombe aussi sur Gratuit.
+     */
+    async getActivePlan(userId) {
+        const PLANS = require('../config/plans');
+        const activeSub = await this.findActiveByUserId(userId);
+        let planKey = activeSub?.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE';
+        if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
+        return PLANS[planKey] || PLANS.FREE;
     },
 
     async migrate() {

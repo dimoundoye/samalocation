@@ -956,7 +956,7 @@ const AdminDashboard = () => {
                               {t.status === 'pending' && (
                                 <Button
                                   size="sm"
-                                  className="w-full h-8 text-[11px] font-bold gradient-primary text-white"
+                                  className="w-full h-8 text-[11px] font-bold bg-primary hover:bg-primary/90 text-white"
                                   onClick={() => handleApprovePayment(t)}
                                 >
                                   Approuver le paiement
@@ -1034,7 +1034,7 @@ const AdminDashboard = () => {
                                     {t.status === 'pending' && (
                                       <Button
                                         size="sm"
-                                        className="h-8 text-xs font-bold gradient-primary text-white"
+                                        className="h-8 text-xs font-bold bg-primary hover:bg-primary/90 text-white"
                                         onClick={() => handleApprovePayment(t)}
                                       >
                                         Approuver

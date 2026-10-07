@@ -54,7 +54,7 @@ export const ReceiptPreviewModal = ({
                 toast({
                     variant: "destructive",
                     title: "Erreur d'aperçu",
-                    description: "Impossible d'afficher le reçu. Veuillez réessayer.",
+                    description: err.message || "Impossible d'afficher le reçu. Veuillez réessayer.",
                 });
             } finally {
                 setLoading(false);

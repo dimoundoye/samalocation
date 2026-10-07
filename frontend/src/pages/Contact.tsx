@@ -195,7 +195,7 @@ const Contact = () => {
                                                 <Button
                                                     type="submit"
                                                     disabled={loading}
-                                                    className="w-full gradient-primary text-white shadow-medium hover:shadow-strong transition-all py-6 text-lg group"
+                                                    className="w-full bg-primary hover:bg-primary/90 text-white shadow-medium hover:shadow-strong transition-all py-6 text-lg group"
                                                 >
                                                     {loading ? (
                                                         <div className="flex items-center gap-2">

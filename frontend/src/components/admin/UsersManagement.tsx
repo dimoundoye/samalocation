@@ -678,7 +678,7 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
               Annuler
             </Button>
             <Button
-              className="gradient-primary text-white rounded-xl"
+              className="bg-primary hover:bg-primary/90 text-white rounded-xl"
               onClick={handleUpdateSubscription}
               disabled={updatingSub}
             >

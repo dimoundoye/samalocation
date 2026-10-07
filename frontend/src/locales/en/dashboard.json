@@ -98,7 +98,8 @@
       "active_tenants": "Active Tenants",
       "total_revenue": "Total Revenue",
       "revenue_growth": "Revenue growth",
-      "payment_received": "Payment Received"
+      "payment_received": "Payment Received",
+      "payment_cancelled": "Cancelled"
     }
   },
   "settings": {

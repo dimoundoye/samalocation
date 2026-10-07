@@ -27,7 +27,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-2 group shrink-0">
             <img src="/logo-sl.png" alt="Logo" className="h-9 sm:h-10 w-auto transition-transform group-hover:scale-105" />
-            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden sm:block tracking-tight">
+            <span className="text-lg sm:text-xl font-bold text-brand hidden sm:block tracking-tight">
               Samalocation
             </span>
           </Link>
@@ -78,7 +78,7 @@ const Navbar = () => {
                   {/* Mobile Login Button */}
                   <Button
                     onClick={() => navigate("/auth?mode=login")}
-                    className="flex sm:hidden gradient-accent text-white shadow-soft hover:shadow-medium transition-all h-9 w-9 p-0 items-center justify-center shrink-0"
+                    className="flex sm:hidden bg-accent hover:bg-accent/90 text-white shadow-soft hover:shadow-medium transition-all h-9 w-9 p-0 items-center justify-center shrink-0"
                   >
                     <LogIn className="h-4 w-4" />
                   </Button>
@@ -86,7 +86,7 @@ const Navbar = () => {
                   {/* Desktop/Tablet Signup Button */}
                   <Button
                     onClick={() => navigate("/auth?mode=signup")}
-                    className="hidden sm:flex gradient-accent text-white shadow-soft hover:shadow-medium transition-all h-9 sm:h-10 px-3 sm:px-4 items-center gap-2 shrink-0 text-xs sm:text-sm font-semibold"
+                    className="hidden sm:flex bg-accent hover:bg-accent/90 text-white shadow-soft hover:shadow-medium transition-all h-9 sm:h-10 px-3 sm:px-4 items-center gap-2 shrink-0 text-xs sm:text-sm font-semibold"
                   >
                     <UserPlus className="h-4 w-4" />
                     <span>{t('nav.signup')}</span>
@@ -149,7 +149,7 @@ const Navbar = () => {
                             {t('nav.login')}
                           </Button>
                           <Button
-                            className="h-12 text-base gradient-accent"
+                            className="h-12 text-base bg-accent hover:bg-accent/90"
                             onClick={() => { navigate("/auth?mode=signup"); setOpen(false); }}
                           >
                             <UserPlus className="mr-2 h-4 w-4" />

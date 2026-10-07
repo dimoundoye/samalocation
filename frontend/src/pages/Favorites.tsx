@@ -75,7 +75,7 @@ const Favorites = () => {
                         <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                             {t('favorites_page.empty_desc')}
                         </p>
-                        <Button onClick={() => navigate("/search")} className="gradient-accent text-white">
+                        <Button onClick={() => navigate("/search")} className="bg-accent hover:bg-accent/90 text-white">
                             {t('favorites_page.explore')}
                         </Button>
                     </div>
