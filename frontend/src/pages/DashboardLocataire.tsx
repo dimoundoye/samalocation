@@ -460,7 +460,8 @@ const DashboardLocataire = () => {
     }
   };
 
-  const sidebarContent = (
+  // Le menu mobile (Sheet) affiche toujours les libellés, même si la barre latérale est repliée
+  const renderSidebarContent = (collapsed: boolean) => (
     <>
       <div className="flex items-center gap-2 mb-8">
         <button
@@ -468,7 +469,7 @@ const DashboardLocataire = () => {
           className="flex items-center gap-2 hover:opacity-80 transition-opacity overflow-hidden"
         >
           <img src="/logo-sl.png" alt="Logo" className="h-10 w-auto object-contain shrink-0" />
-          {!isSidebarCollapsed && (
+          {!collapsed && (
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
               Samalocation
             </span>
@@ -517,7 +518,7 @@ const DashboardLocataire = () => {
             >
               <div className="flex items-center gap-3">
                 <item.icon className="h-5 w-5 shrink-0" />
-                {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                {!collapsed && <span className="truncate">{item.label}</span>}
               </div>
               {unreadCount > 0 && (
                 <Badge
@@ -535,10 +536,10 @@ const DashboardLocataire = () => {
       <Button
         variant="ghost"
         onClick={signOut}
-        className={`w-full mt-8 justify-start text-muted-foreground ${isSidebarCollapsed ? "px-2" : ""}`}
+        className={`w-full mt-8 justify-start text-muted-foreground ${collapsed ? "px-2" : ""}`}
       >
-        <LogOut className={`${isSidebarCollapsed ? "" : "mr-3"} h-5 w-5 shrink-0`} />
-        {!isSidebarCollapsed && <span>{t('dashboard.sidebar.logout')}</span>}
+        <LogOut className={`${collapsed ? "" : "mr-3"} h-5 w-5 shrink-0`} />
+        {!collapsed && <span>{t('dashboard.sidebar.logout')}</span>}
       </Button>
     </>
   );
@@ -558,7 +559,7 @@ const DashboardLocataire = () => {
       >
         <div className={`p-4 h-full flex flex-col ${isSidebarCollapsed ? "items-center" : ""}`}>
           <div className="flex-1 overflow-y-auto scrollbar-none w-full">
-            {sidebarContent}
+            {renderSidebarContent(isSidebarCollapsed)}
           </div>
         </div>
 
@@ -585,7 +586,7 @@ const DashboardLocataire = () => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-64 p-6">
-                {sidebarContent}
+                {renderSidebarContent(false)}
               </SheetContent>
             </Sheet>
 
