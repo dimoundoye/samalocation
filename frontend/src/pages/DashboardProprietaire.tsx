@@ -285,6 +285,7 @@ const DashboardProprietaire = () => {
     const year = parseInt(selectedYear);
     return receipts
       .filter(r => {
+        if (r.status === 'cancelled') return false;
         const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
         return rYear === year;
       })
