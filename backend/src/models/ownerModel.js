@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const Organization = require('./organizationModel');
 
 const Owner = {
     async findProfileById(id) {
@@ -69,6 +70,7 @@ const Owner = {
                     online_payment_enabled
                 ]
             );
+            await Organization.ensurePersonalOrg(id, { name: company_name || full_name, currency: currency || 'XOF' });
         } else {
             await db.query(
                 'UPDATE owner_profiles SET company_name = $1, phone = $2, address = $3, bio = $4, signature_url = $5, id_card_url = $6, ownership_proof_url = $7, liveness_selfie_url = $8, verification_status = $9, receipt_template = $10, logo_url = $11, receipt_logo_url = $12, prestations = $13, horaires = $14, social_links = $15, banner_url = $16, external_email = $17, website = $18, currency = $19, online_payment_enabled = $20, updated_at = NOW() WHERE id = $21',

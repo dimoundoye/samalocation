@@ -322,6 +322,9 @@ export const OwnerWalletTab = () => {
                             <p className="text-xs text-muted-foreground leading-relaxed">
                                 Permet à vos locataires de payer directement en ligne sur la plateforme SamaLocation par Mobile Money (Wave, OM) ou Visa.
                             </p>
+                            <p className="text-[12px] text-red-600 font-semibold mt-1">
+                                NB: cette option est reservée aux propriétaires du Sénégal. 
+                            </p>
                             <p className="text-[10px] text-primary font-semibold mt-1">
                                 ℹ️ Les retraits de fonds de votre portefeuille vers votre numéro Mobile Money sont soumis à des frais de service de 2,5%.
                             </p>

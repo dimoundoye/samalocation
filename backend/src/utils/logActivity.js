@@ -14,13 +14,11 @@ const ActivityLog = require('../models/activityLogModel');
  */
 const logActivity = async (req, { action, entityType, entityId, entityLabel, metadata = {} }) => {
     try {
-        // ID de l'agence (résolu par authMiddleware, ou repli sur le parent_id si c'est un agent)
-        const agencyId = req.ownerId !== req.user?.id 
-            ? req.ownerId 
-            : (req.user?.parent_id || req.ownerId);
+        // Organisation active résolue par authMiddleware
+        const agencyId = req.org?.id || req.ownerId;
         const actorId = req.user?.id;        // Qui a réellement fait l'action
         const actorName = req.user?.full_name || req.user?.email || 'Inconnu';
-        const actorRole = req.user?.parent_id ? 'agent' : 'owner';
+        const actorRole = req.org?.role || 'owner';
 
         if (!agencyId || !actorId) return;
 

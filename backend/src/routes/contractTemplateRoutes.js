@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
+const { can } = require('../middleware/permissionMiddleware');
 const { checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 const controller = require('../controllers/contractTemplateController');
 
 // All routes require authentication + professional plan (custom_contract feature)
 router.use(authMiddleware);
+router.use(can('contract.write'));
 router.use(checkFeatureAccess('custom_contract'));
 
 // GET  /api/contract-templates — Liste des modèles

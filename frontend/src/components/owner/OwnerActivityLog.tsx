@@ -15,6 +15,15 @@ import {
 } from "lucide-react";
 import { getActivityLog, getCollaborators } from "@/api/owner";
 
+// ─── Libellés des rôles d'organisation ──────────────────────────────────────
+const ACTOR_ROLE_LABELS: Record<string, string> = {
+    owner: "Patron",
+    manager: "Gestionnaire",
+    agent: "Agent",
+    accountant: "Comptable",
+    viewer: "Lecture seule",
+};
+
 // ─── Config des types d'entités ─────────────────────────────────────────────
 const ENTITY_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
     tenant:      { label: "Locataire",         icon: Users,        color: "text-violet-600",  bg: "bg-violet-100 dark:bg-violet-900/30" },
@@ -97,8 +106,8 @@ const LogItem = ({ log, index }: { log: any; index: number }) => {
                         {/* Nom de l'acteur */}
                         <span className="text-sm font-semibold text-foreground">{log.actor_name}</span>
                         {/* Badge rôle */}
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${log.actor_role === 'agent' ? 'border-indigo-300 text-indigo-600' : 'border-slate-300 text-slate-600'}`}>
-                            {log.actor_role === 'agent' ? 'Agent' : 'Patron'}
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${log.actor_role !== 'owner' ? 'border-indigo-300 text-indigo-600' : 'border-slate-300 text-slate-600'}`}>
+                            {ACTOR_ROLE_LABELS[log.actor_role] || 'Agent'}
                         </Badge>
                     </div>
                     {/* Date */}

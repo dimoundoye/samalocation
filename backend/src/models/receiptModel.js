@@ -152,7 +152,6 @@ const Receipt = {
                 COALESCE(r.owner_email, owner.email) as owner_email,
                 COALESCE(r.owner_phone, owner.phone) as owner_phone,
                 COALESCE(r.currency, owner_prof.currency, 'XOF') as currency,
-                owner_prof.signature_url as current_owner_signature,
                 owner_prof.receipt_template as current_receipt_template,
                 owner_prof.logo_url as current_owner_agency_logo,
                 owner_prof.receipt_logo_url as current_owner_receipt_logo,
@@ -177,10 +176,9 @@ const Receipt = {
         );
 
         if (receipts[0]) {
-            // Priority:
-            // 1. Value stored in receipt table (Immutability)
-            // 2. Value in live owner profile (only for legacy receipts created without snapshot)
-            receipts[0].signature_url = receipts[0].owner_signature || receipts[0].current_owner_signature;
+            // Signature figée à la création du reçu : jamais remplacée par la signature actuelle du propriétaire
+            // (les anciens reçus sans copie ont été figés par migrations/freeze_owner_signatures.sql)
+            receipts[0].signature_url = receipts[0].owner_signature || null;
             receipts[0].receipt_template = receipts[0].receipt_template || receipts[0].current_receipt_template || 'classic';
             // Priority for branding: snapshot logo, then professional receipt logo, then nothing for receipts if plan doesn't allow (handled in controller)
             receipts[0].logo_url = receipts[0].owner_logo || receipts[0].current_owner_receipt_logo;

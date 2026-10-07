@@ -1,62 +1,67 @@
 const User = require('../models/userModel');
+const Organization = require('../models/organizationModel');
 const response = require('../utils/response');
-const { generateToken, verifyToken, generateVerificationToken } = require('../utils/auth');
+const { generateToken, verifyToken, generateVerificationToken, hashToken, isSessionRevoked } = require('../utils/auth');
 const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const db = require('../config/db');
-const { SIGNUP_ROLES } = require('../config/roles');
+const { SIGNUP_ROLES, ACCOUNT_TYPES } = require('../config/roles');
+const { CUSTOM_ID_LETTERS, CUSTOM_ID_LETTER_COUNT, CUSTOM_ID_MIN_DIGITS, CUSTOM_ID_MAX_DIGITS } = require('../config/customId');
+
+// Au-delà de 72 octets, bcrypt ignore la fin du mot de passe
+const MAX_PASSWORD_LENGTH = 72;
+
+// Comparaison factice quand l'identifiant n'existe pas : le temps de réponse
+// ne révèle plus si un compte existe.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString('hex'), 10);
 
 /**
- * Generate a custom ID: 2 uppercase letters + 5 digits
+ * Identifiant Samalocation : 2 lettres + 7 chiffres au départ (ex. DV6544361, ~5,8 milliards de combinaisons).
+ * Il sert à retrouver un locataire lors de l'affectation : il doit être imprévisible (tirage cryptographique)
+ * et facile à dicter (pas de I ni de O, confondus avec 1 et 0). Voir config/customId.js.
+ * Si la base se remplit, la génération passe d'elle-même à 8, 9… chiffres, dans la limite de la colonne.
+ * Les identifiants déjà attribués ne changent pas (anciens formats à 5 ou 6 chiffres conservés).
  */
-const generateCustomId = async () => {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const numbers = '0123456789';
+const ATTEMPTS_PER_LENGTH = 10;
 
-    let isUnique = false;
-    let customId = '';
-    let digitCount = 5; // On commence à 5 chiffres
-    let attemptsForCurrentCount = 0;
-    const MAX_LENGTH = 10; // Limite de la colonne VARCHAR(10)
+const randomCustomId = (digitCount) => {
+    let id = '';
+    for (let i = 0; i < CUSTOM_ID_LETTER_COUNT; i++) id += CUSTOM_ID_LETTERS[crypto.randomInt(CUSTOM_ID_LETTERS.length)];
+    for (let i = 0; i < digitCount; i++) id += crypto.randomInt(10);
+    return id;
+};
 
-    while (!isUnique) {
-        attemptsForCurrentCount++;
-
-        // Si on échoue trop souvent avec le nombre actuel de chiffres, on passe au cran au-dessus
-        // On augmente le nombre de chiffres tous les 10 échecs
-        if (attemptsForCurrentCount > 10) {
-            digitCount++;
-            attemptsForCurrentCount = 0; // On reset les tentatives pour le nouveau palier
-
-            // Sécurité pour ne pas dépasser la taille de la colonne en base (2 lettres + 8 chiffres = 10)
-            if (digitCount > 8) {
-                console.error('[ID-GEN] Alerte ! Le nombre de chiffres dépasse les capacités de la base.');
-                // En dernier recours, on utilise un timestamp pour forcer l'unicité
-                customId = 'XX' + Date.now().toString().slice(-8);
-                isUnique = true;
-                break;
-            }
-        }
-
-        let l1 = letters.charAt(Math.floor(Math.random() * letters.length));
-        let l2 = letters.charAt(Math.floor(Math.random() * letters.length));
-        let n = '';
-        for (let i = 0; i < digitCount; i++) {
-            n += numbers.charAt(Math.floor(Math.random() * numbers.length));
-        }
-
-        customId = l1 + l2 + n;
-
-        // Vérification de l'unicité en base
-        const { rows } = await db.query('SELECT id FROM users WHERE custom_id = $1', [customId]);
-        if (rows.length === 0) {
-            isUnique = true;
-        }
+// Nombre maximal de chiffres permis par la colonne réellement en base (protège si la migration n'a pas encore tourné)
+let maxDigitsCache = null;
+const getMaxDigits = async () => {
+    if (maxDigitsCache !== null) return maxDigitsCache;
+    try {
+        const { rows } = await db.query(
+            `SELECT MIN(character_maximum_length) AS len FROM information_schema.columns
+             WHERE table_schema = 'public' AND column_name = 'custom_id' AND table_name IN ('users', 'user_profiles')`
+        );
+        const len = Number(rows[0]?.len) || 10;
+        maxDigitsCache = Math.min(CUSTOM_ID_MAX_DIGITS, len - CUSTOM_ID_LETTER_COUNT);
+    } catch {
+        return 10 - CUSTOM_ID_LETTER_COUNT; // ancienne taille de colonne, sans mise en cache
     }
+    return maxDigitsCache;
+};
 
-    return customId;
+const generateCustomId = async () => {
+    const maxDigits = await getMaxDigits();
+    // 10 essais par longueur : 7 chiffres, puis 8, 9… si les identifiants tirés sont déjà pris
+    for (let digits = CUSTOM_ID_MIN_DIGITS; digits <= maxDigits; digits++) {
+        for (let attempt = 0; attempt < ATTEMPTS_PER_LENGTH; attempt++) {
+            const customId = randomCustomId(digits);
+            const { rows } = await db.query('SELECT 1 FROM users WHERE custom_id = $1', [customId]);
+            if (rows.length === 0) return customId;
+        }
+        console.warn(`[ID-GEN] ${ATTEMPTS_PER_LENGTH} identifiants à ${digits} chiffres déjà pris : passage à ${digits + 1} chiffres.`);
+    }
+    throw new Error("Impossible de générer un identifiant unique");
 };
 
 const authController = {
@@ -65,7 +70,7 @@ const authController = {
      */
     async signup(req, res, next) {
         try {
-            let { email, password, name, phone, role, companyName, referralCode } = req.body;
+            let { email, password, name, phone, role, accountType, companyName, referralCode } = req.body;
             email = email?.toLowerCase();
 
             // Seuls les rôles publics sont autorisés à l'inscription (jamais 'admin')
@@ -73,13 +78,19 @@ const authController = {
                 return response.error(res, 'Rôle invalide.', 400);
             }
 
+            // Type de compte : les anciens clients n'envoient que le rôle
+            const account = ACCOUNT_TYPES[accountType || role];
+            if (!account || account.role !== role) {
+                return response.error(res, 'Type de compte invalide.', 400);
+            }
+
             const existingUser = await User.findByEmail(email);
             if (existingUser) {
                 return response.error(res, 'Cet e-mail est déjà utilisé.', 400);
             }
 
-            if (password.length < 8) {
-                return response.error(res, 'Le mot de passe doit contenir au moins 8 caractères.', 400);
+            if (password.length < 8 || Buffer.byteLength(password) > MAX_PASSWORD_LENGTH) {
+                return response.error(res, `Le mot de passe doit contenir entre 8 et ${MAX_PASSWORD_LENGTH} caractères.`, 400);
             }
 
             const id = uuidv4();
@@ -112,9 +123,10 @@ const authController = {
                 name,
                 phone,
                 role,
-                companyName,
+                companyName: companyName?.trim() || null,
+                orgType: account.orgType || undefined,
                 emailVerified: false,
-                verificationToken,
+                verificationToken: hashToken(verificationToken), // seul le lien e-mail contient le jeton en clair
                 verificationTokenExpires,
                 referredBy
             });
@@ -194,24 +206,22 @@ const authController = {
             email = email?.toLowerCase();
 
             const user = await User.findByEmailOrId(email);
-            if (!user) {
+
+            // Mot de passe vérifié en premier, avec une comparaison factice si le compte n'existe pas :
+            // ni le message ni le temps de réponse ne révèlent l'existence ou l'état d'un compte.
+            const isMatch = await bcrypt.compare(String(password || ''), user?.password_hash || DUMMY_PASSWORD_HASH);
+            if (!user || !isMatch) {
                 return response.error(res, 'Identifiants invalides', 401);
             }
 
-            // Vérifier si l'e-mail est vérifié
+            // Ces informations ne sont données qu'au titulaire du bon mot de passe
             if (!user.email_verified) {
                 return response.error(res, 'Veuillez confirmer votre adresse e-mail avant de vous connecter. Un e-mail de confirmation vous a été envoyé lors de votre inscription.', 403);
             }
 
-            // Vérifier si l'utilisateur est bloqué
             const isBlocked = await User.isBlocked(user.id);
             if (isBlocked) {
                 return response.error(res, 'Votre compte a été bloqué. Veuillez contacter l\'administrateur.', 403);
-            }
-
-            const isMatch = await bcrypt.compare(password, user.password_hash);
-            if (!isMatch) {
-                return response.error(res, 'Identifiants invalides', 401);
             }
 
             const profile = await User.findProfileById(user.id);
@@ -220,6 +230,7 @@ const authController = {
             }
 
             const token = generateToken({ id: user.id, email: user.email, role: profile.role, parentId: user.parent_id });
+            const organizations = await Organization.findForUser(user.id);
             return response.success(res, {
                 token,
                 user: {
@@ -233,7 +244,8 @@ const authController = {
                     permissions: profile.permissions,
                     currency: profile.currency,
                     referral_count: user.referral_count,
-                    referred_by: user.referred_by
+                    referred_by: user.referred_by,
+                    organizations
                 }
             });
         } catch (error) {
@@ -261,6 +273,14 @@ const authController = {
             if (!profile) {
                 return response.error(res, 'Utilisateur non trouvé', 404);
             }
+            if (isSessionRevoked(decoded, profile)) {
+                return response.error(res, 'Session expirée suite à un changement de mot de passe. Veuillez vous reconnecter.', 401);
+            }
+            if (profile.is_blocked) {
+                return response.error(res, 'Votre compte a été bloqué. Veuillez contacter l\'administrateur.', 403);
+            }
+
+            const organizations = await Organization.findForUser(profile.id);
 
             return response.success(res, {
                 user: {
@@ -276,7 +296,8 @@ const authController = {
                     permissions: profile.permissions,
                     currency: profile.currency,
                     referral_count: profile.referral_count,
-                    referred_by: profile.referred_by
+                    referred_by: profile.referred_by,
+                    organizations
                 }
             });
         } catch (error) {
@@ -285,17 +306,24 @@ const authController = {
     },
 
     /**
-     * Search users
+     * Recherche d'un locataire ayant déjà un compte, pour l'affecter (route réservée à tenant.write,
+     * limitée à 20 recherches par minute et par compte).
+     * Uniquement par identifiant Samalocation exact, que le locataire communique lui-même : impossible de
+     * lister les comptes. Seuls le nom et l'identifiant sont renvoyés ; l'email et le téléphone sont repris
+     * côté serveur lors de l'affectation (tenantController.assignTenant).
      */
     async searchUsers(req, res, next) {
         try {
-            const { q, role } = req.query;
-            if (!q || q.trim().length < 2) {
+            // Tolère majuscules/minuscules et espaces saisis par erreur (« dv 654 4361 » → « DV6544361 »)
+            const customId = String(req.query.q || '').replace(/\s+/g, '').toUpperCase();
+            if (!/^[A-Z0-9]{4,20}$/.test(customId)) {
                 return response.success(res, []);
             }
 
-            const results = await User.search(q, role);
-            return response.success(res, results);
+            const tenant = await User.findTenantByCustomId(customId);
+            return response.success(res, tenant
+                ? [{ id: tenant.id, custom_id: tenant.custom_id, full_name: tenant.full_name }]
+                : []);
         } catch (error) {
             next(error);
         }
@@ -313,8 +341,8 @@ const authController = {
                 return response.error(res, 'L\'ancien et le nouveau mot de passe sont requis', 400);
             }
 
-            if (newPassword.length < 8) {
-                return response.error(res, 'Le nouveau mot de passe doit contenir au moins 8 caractères', 400);
+            if (newPassword.length < 8 || Buffer.byteLength(newPassword) > MAX_PASSWORD_LENGTH) {
+                return response.error(res, `Le nouveau mot de passe doit contenir entre 8 et ${MAX_PASSWORD_LENGTH} caractères`, 400);
             }
 
             const db = require('../config/db');
@@ -333,9 +361,12 @@ const authController = {
 
             const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-            await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, userId]);
+            // Horloge du serveur Node (comme le iat des JWT), pas celle de la base
+            await db.query('UPDATE users SET password_hash = $1, password_changed_at = $3 WHERE id = $2', [hashedPassword, userId, new Date()]);
 
-            return response.success(res, null, 'Mot de passe modifié avec succès');
+            // Les autres sessions sont révoquées ; cet appareil reçoit une nouvelle session
+            const token = generateToken({ id: userId, email: user.email, role: req.user.role, parentId: user.parent_id });
+            return response.success(res, { token }, 'Mot de passe modifié avec succès');
         } catch (error) {
             next(error);
         }
@@ -370,11 +401,28 @@ const authController = {
      */
     async createTenantAccount(req, res, next) {
         try {
-            const { name, email, phone } = req.body;
+            const { name, phone } = req.body;
+            const email = req.body.email?.trim().toLowerCase() || null;
             const finalName = name || 'Nouveau Locataire';
 
-            // Generate temporary password
-            const tempPassword = Math.random().toString(36).slice(-8).toUpperCase();
+            // La personne a déjà un compte (locataire ailleurs, propriétaire...) : on le relie au bail
+            // au lieu de créer un doublon. Elle garde ses identifiants, rien à lui transmettre.
+            if (email) {
+                const existing = await User.findByEmail(email);
+                if (existing) {
+                    const profile = await User.findProfileById(existing.id);
+                    return response.success(res, {
+                        id: existing.id,
+                        customId: existing.custom_id,
+                        name: profile?.full_name || finalName,
+                        linkedExisting: true
+                    }, 'Un compte existe déjà avec cet e-mail : il sera relié au bail.');
+                }
+            }
+
+            // Mot de passe temporaire lisible (sans 0/O/1/I), généré de façon cryptographique
+            const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            const tempPassword = Array.from({ length: 10 }, () => alphabet[crypto.randomInt(alphabet.length)]).join('');
             const passwordHash = await bcrypt.hash(tempPassword, 10);
 
             const id = uuidv4();
@@ -420,8 +468,8 @@ const authController = {
                 return response.error(res, 'Toutes les informations sont requises', 400);
             }
 
-            if (newPassword.length < 8) {
-                return response.error(res, 'Le mot de passe doit contenir au moins 8 caractères', 400);
+            if (newPassword.length < 8 || Buffer.byteLength(newPassword) > MAX_PASSWORD_LENGTH) {
+                return response.error(res, `Le mot de passe doit contenir entre 8 et ${MAX_PASSWORD_LENGTH} caractères`, 400);
             }
 
             const cleanEmail = email.trim().toLowerCase();
@@ -448,17 +496,20 @@ const authController = {
             const verificationTokenExpires = new Date();
             verificationTokenExpires.setHours(verificationTokenExpires.getHours() + 24);
 
-            // Update password + mark setup complete + reset email_verified to false
+            // Update password + mark setup complete + reset email_verified to false.
+            // password_changed_at révoque les sessions ouvertes avec le mot de passe temporaire
+            // (que le propriétaire connaît).
             const hashedPassword = await bcrypt.hash(newPassword, 10);
             await db.query(
-                `UPDATE users 
-                 SET password_hash = $1, 
-                     is_setup_complete = TRUE, 
+                `UPDATE users
+                 SET password_hash = $1,
+                     is_setup_complete = TRUE,
                      email_verified = FALSE,
-                     verification_token = $2, 
-                     verification_token_expires = $3
+                     verification_token = $2,
+                     verification_token_expires = $3,
+                     password_changed_at = $5
                  WHERE id = $4`,
-                [hashedPassword, verificationToken, verificationTokenExpires, userId]
+                [hashedPassword, hashToken(verificationToken), verificationTokenExpires, userId, new Date()]
             );
 
             // Synchronize name and email in tenants table
@@ -503,7 +554,7 @@ const authController = {
             const expires = new Date();
             expires.setHours(expires.getHours() + 1); // Expire dans 1 heure
 
-            await User.saveResetToken(user.id, resetToken, expires);
+            await User.saveResetToken(user.id, hashToken(resetToken), expires);
 
             // On envoie l'e-mail en arrière-plan pour ne pas bloquer l'utilisateur
             sendResetPasswordEmail(user.email, resetToken).catch(err => {
@@ -527,11 +578,11 @@ const authController = {
                 return response.error(res, 'Token et mot de passe sont requis', 400);
             }
 
-            if (password.length < 8) {
-                return response.error(res, 'Le mot de passe doit contenir au moins 8 caractères', 400);
+            if (password.length < 8 || Buffer.byteLength(password) > MAX_PASSWORD_LENGTH) {
+                return response.error(res, `Le mot de passe doit contenir entre 8 et ${MAX_PASSWORD_LENGTH} caractères`, 400);
             }
 
-            const user = await User.findByResetToken(token);
+            const user = await User.findByResetToken(hashToken(token));
             if (!user) {
                 return response.error(res, 'Token invalide ou expiré', 400);
             }
@@ -555,7 +606,7 @@ const authController = {
                 return response.error(res, 'Le token de vérification est requis.', 400);
             }
 
-            const user = await User.findByVerificationToken(token);
+            const user = await User.findByVerificationToken(hashToken(token));
             if (!user) {
                 return response.error(res, 'Le lien est invalide ou a expiré.', 400);
             }
@@ -578,14 +629,11 @@ const authController = {
                 return response.error(res, 'Email est requis', 400);
             }
 
+            // Même réponse dans tous les cas : on ne révèle ni l'existence ni l'état d'un compte
+            const genericMessage = 'Si votre adresse est dans notre système et n\'est pas encore confirmée, un nouvel e-mail de confirmation vous a été envoyé.';
             const user = await User.findByEmail(email);
-            if (!user) {
-                // Pour des raisons de sécurité, on renvoie un succès même si l'utilisateur n'existe pas
-                return response.success(res, null, 'Si votre adresse est dans notre système, un nouvel e-mail de confirmation vous a été envoyé.');
-            }
-
-            if (user.email_verified) {
-                return response.error(res, 'Cet e-mail est déjà vérifié.', 400);
+            if (!user || user.email_verified) {
+                return response.success(res, null, genericMessage);
             }
 
             // Génération d'un nouveau token
@@ -596,7 +644,7 @@ const authController = {
             const db = require('../config/db');
             await db.query(
                 'UPDATE public.users SET verification_token = $1, verification_token_expires = $2 WHERE id = $3',
-                [verificationToken, verificationTokenExpires, user.id]
+                [hashToken(verificationToken), verificationTokenExpires, user.id]
             );
 
             // Envoi de l'e-mail en arrière-plan
@@ -604,7 +652,7 @@ const authController = {
                 console.error('❌ Erreur d\'envoi de l\'e-mail de vérification (renvoi) :', err);
             });
 
-            return response.success(res, null, 'Un nouvel e-mail de confirmation vous a été envoyé.');
+            return response.success(res, null, genericMessage);
         } catch (error) {
             next(error);
         }

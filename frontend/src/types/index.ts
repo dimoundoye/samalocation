@@ -141,6 +141,11 @@ export interface Report {
     reported_email?: string;
     reported_is_blocked: boolean;
     reason: string;
+    /** Signalement d'une annonce : bien concerné et catégorie du motif */
+    property_id?: string | null;
+    property_name?: string | null;
+    property_is_published?: boolean | null;
+    category?: string | null;
     description?: string;
     status: 'pending' | 'reviewed' | 'resolved';
     admin_notes?: string;

@@ -33,6 +33,7 @@ const propertyGroupRoutes = require('./routes/propertyGroupRoutes');
 const contractTemplateRoutes = require('./routes/contractTemplateRoutes');
 const withdrawalRoutes = require('./routes/withdrawalRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
+const pushRoutes = require('./routes/pushRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const securityMiddleware = require('./middleware/security');
 const { trackVisit } = require('./middleware/analyticsMiddleware');
@@ -51,7 +52,10 @@ const ActivityLog = require('./models/activityLogModel');
 const Favorite = require('./models/favoriteModel');
 const TeamInvitation = require('./models/teamInvitationModel');
 const AIUsage = require('./models/aiUsageModel');
+const PushSubscription = require('./models/pushSubscriptionModel');
+const Report = require('./models/reportModel');
 const migrateEmailLogs = require('./migrations/migrate_email_logs');
+const { runMigrations } = require('./utils/migrator');
 
 const app = express();
 const server = require('http').createServer(app);
@@ -136,18 +140,35 @@ const limiter = rateLimit({
     }
 });
 
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100, // Sécurité contre le brute-force mais confortable
+// Limites d'authentification. Au Sénégal, beaucoup d'abonnés mobiles partagent la même IP publique
+// (NAT opérateur) : les limites par IP restent larges et ne comptent que les échecs, et des limites
+// strictes par compte / adresse e-mail bloquent les attaques ciblées.
+const authRateLimit = ({ windowMinutes, max, message, byBodyField, onlyFailures = false }) => rateLimit({
+    windowMs: windowMinutes * 60 * 1000,
+    max,
     validate: false,
-    handler: (req, res) => {
-        return response.error(res, "Trop de tentatives. Veuillez réessayer dans 15 minutes.", 429);
-    }
+    skipSuccessfulRequests: onlyFailures,
+    keyGenerator: byBodyField
+        ? (req) => `${byBodyField}:${String(req.body?.[byBodyField] || '').trim().toLowerCase() || rateLimit.ipKeyGenerator(req.ip)}`
+        : (req) => rateLimit.ipKeyGenerator(req.ip), // IPv6 regroupées par bloc
+    handler: (req, res) => response.error(res, message, 429)
 });
 
+const tooManyLogins = "Trop de tentatives de connexion. Veuillez réessayer dans 15 minutes.";
+const loginIpLimiter = authRateLimit({ windowMinutes: 15, max: 30, message: tooManyLogins, onlyFailures: true });
+const loginAccountLimiter = authRateLimit({ windowMinutes: 15, max: 10, message: tooManyLogins, byBodyField: 'email', onlyFailures: true });
+const signupLimiter = authRateLimit({ windowMinutes: 60, max: 20, message: "Trop d'inscriptions depuis cette connexion. Veuillez réessayer dans une heure." });
+// E-mails envoyés à une adresse : empêche d'inonder une boîte mail ou d'abuser de l'envoi
+const emailSendIpLimiter = authRateLimit({ windowMinutes: 60, max: 20, message: "Trop de demandes. Veuillez réessayer dans une heure." });
+const emailSendTargetLimiter = authRateLimit({ windowMinutes: 60, max: 3, message: "Trop de demandes pour cette adresse. Veuillez réessayer dans une heure.", byBodyField: 'email' });
+// Liens reçus par e-mail (jetons) : empêche de les deviner par essais successifs
+const tokenLimiter = authRateLimit({ windowMinutes: 15, max: 20, message: "Trop de tentatives. Veuillez réessayer dans 15 minutes.", onlyFailures: true });
+
 app.use('/api/', limiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/signup', authLimiter);
+app.use('/api/auth/login', loginIpLimiter, loginAccountLimiter);
+app.use('/api/auth/signup', signupLimiter);
+app.use(['/api/auth/forgot-password', '/api/auth/resend-verification'], emailSendIpLimiter, emailSendTargetLimiter);
+app.use(['/api/auth/reset-password', '/api/auth/verify-email'], tokenLimiter);
 
 
 // Health check & Keep-alive endpoint
@@ -184,6 +205,7 @@ app.use('/api/property-groups', propertyGroupRoutes);
 app.use('/api/contract-templates', contractTemplateRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/push', pushRoutes);
 
 // ─── Keep-alive Cron Job (Every 14 minutes to prevent Supabase pausing) ───────
 cron.schedule('*/14 * * * *', async () => {
@@ -213,24 +235,25 @@ cron.schedule('0 3 * * *', async () => {
 // Error handler MUST be last
 app.use(errorHandler);
 
-server.listen(PORT, async () => {
-    const env = process.env.NODE_ENV || 'development';
-    const dbType = process.env.DB_HOST && process.env.DB_HOST.includes('supabase') ? 'Supabase (PostgreSQL)' : 'Docker Local (PostgreSQL)';
-    console.log('\n╔═════════════════════════════════════════════╗');
-    console.log(`║       🚀 SamaLocation Backend — DÉMARRÉ     ║`);
-    console.log('╠═════════════════════════════════════════════╣');
-    console.log(`║  Port        : ${String(PORT).padEnd(29)}║`);
-    console.log(`║  Environnement : ${env.padEnd(27)}║`);
-    console.log(`║  Base de données : ${dbType.padEnd(25)}║`);
-    console.log(`║  Heure       : ${new Date().toLocaleString('fr-FR').padEnd(29)}║`);
-    console.log('╚═════════════════════════════════════════════╝\n');
-
-    // Test initial DB connection
+/**
+ * Démarrage : la base est migrée AVANT que le serveur accepte des requêtes.
+ * 1. Migrations SQL versionnées (utils/migrator.js) : bloquantes, le serveur ne démarre pas si l'une échoue
+ *    (rien n'est modifié en base ; Docker relance le conteneur, l'erreur est dans les journaux).
+ * 2. Migrations des modèles (ajouts de colonnes idempotents) : non bloquantes, comme auparavant.
+ */
+async function prepareDatabase() {
     try {
         await db.query('SELECT 1');
         console.log('  [DB] ✅ Connexion à la base de données établie.\n');
+    } catch (err) {
+        console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
+        throw err;
+    }
 
-        // Run migrations
+    console.log('  [DB] 🔄 Migrations versionnées...');
+    await runMigrations();
+
+    try {
         console.log('  [DB] 🔄 Exécution des migrations...');
         await Property.migrate();
         await Contract.migrate();
@@ -244,9 +267,32 @@ server.listen(PORT, async () => {
         await Favorite.migrate();
         await TeamInvitation.migrate();
         await AIUsage.migrate();
+        await PushSubscription.migrate();
+        await Report.migrate();
         await migrateEmailLogs();
         console.log('  [DB] ✅ Migrations terminées.\n');
     } catch (err) {
-        console.error('  [DB] ❌ Impossible de se connecter à la base de données:', err.message, '\n');
+        console.error('  [DB] ❌ Erreur pendant les migrations des modèles:', err.message, '\n');
     }
-});
+}
+
+prepareDatabase()
+    .then(() => {
+        server.listen(PORT, () => {
+            const env = process.env.NODE_ENV || 'development';
+            const dbType = process.env.DB_HOST && process.env.DB_HOST.includes('supabase') ? 'Supabase (PostgreSQL)' : 'Docker Local (PostgreSQL)';
+            console.log('\n╔═════════════════════════════════════════════╗');
+            console.log(`║       🚀 SamaLocation Backend — DÉMARRÉ     ║`);
+            console.log('╠═════════════════════════════════════════════╣');
+            console.log(`║  Port        : ${String(PORT).padEnd(29)}║`);
+            console.log(`║  Environnement : ${env.padEnd(27)}║`);
+            console.log(`║  Base de données : ${dbType.padEnd(25)}║`);
+            console.log(`║  Heure       : ${new Date().toLocaleString('fr-FR').padEnd(29)}║`);
+            console.log('╚═════════════════════════════════════════════╝\n');
+        });
+    })
+    .catch((err) => {
+        console.error('\n  [DÉMARRAGE] ❌ Serveur non démarré :', err.message);
+        console.error('  [DÉMARRAGE] La base n\'a pas été modifiée par la migration en échec. Corrigez puis redémarrez.\n');
+        process.exit(1);
+    });

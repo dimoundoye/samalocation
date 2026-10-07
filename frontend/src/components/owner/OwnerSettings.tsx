@@ -10,8 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { getOwnerProfile, updateOwnerProfile } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountSettings } from "@/components/shared/AccountSettings";
-import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown, Facebook, Instagram, Linkedin, Save, Loader2, User } from "lucide-react";
+import { X, FileText, Scan, Shield, CheckCircle2, Clock, Crown, Facebook, Instagram, Linkedin, Save, Loader2, User, PenLine } from "lucide-react";
 import { SignatureScanner } from "./SignatureScanner";
+import { SignaturePadDialog } from "@/components/tenant/SignaturePadDialog";
 import { uploadPhotos, getMySubscription } from "@/lib/api";
 import { logFrontendActivity } from "@/api/owner";
 import { useTranslation } from "react-i18next";
@@ -51,6 +52,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
   });
 
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [signaturePadOpen, setSignaturePadOpen] = useState(false);
   const { hasFeature } = useSubscription();
   const [upgradeModal, setUpgradeModal] = useState({
     open: false,
@@ -536,6 +538,60 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                           });
                           return;
                         }
+                        setSignaturePadOpen(true);
+                      }}
+                      className="h-auto py-2.5 px-4 gap-2 flex flex-wrap sm:flex-nowrap items-center justify-center text-center sm:text-left w-full sm:w-auto"
+                    >
+                      <span className="flex items-center gap-2 shrink-0">
+                        <PenLine className="h-4 w-4 shrink-0" />
+                        <span className="text-sm font-medium">{t('settings.draw_signature')}</span>
+                      </span>
+                      {!hasFeature('signature') && (
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] h-5 px-1.5 gap-1 shrink-0">
+                          <Crown className="h-3 w-3" /> Premium
+                        </Badge>
+                      )}
+                    </Button>
+
+                    <SignaturePadDialog
+                      variant="profile"
+                      open={signaturePadOpen}
+                      onOpenChange={setSignaturePadOpen}
+                      submitting={loading}
+                      onConfirm={async (dataUrl) => {
+                        try {
+                          setLoading(true);
+                          const blob = await (await fetch(dataUrl)).blob();
+                          const file = new File([blob], "signature.png", { type: "image/png" });
+                          const urls = await uploadPhotos([file]);
+                          if (urls && urls.length > 0) {
+                            setProfile({ ...profile, signatureUrl: urls[0] });
+                            setSignaturePadOpen(false);
+                            toast({ title: t('settings.signature_ready'), description: t('settings.signature_save_reminder') });
+                          }
+                        } catch (error) {
+                          toast({
+                            title: t('common.error'),
+                            description: t('common.upload_error'),
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    />
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (!hasFeature('signature')) {
+                          setUpgradeModal({
+                            open: true,
+                            title: t('settings.signature_premium_title', "Signature électronique Premium"),
+                            description: t('settings.signature_premium_desc', "La signature et le cachet numériques sont des fonctionnalités exclusives des plans Premium. Passez au niveau supérieur pour valider vos documents en un clic.")
+                          });
+                          return;
+                        }
                         setScannerOpen(true);
                       }}
                       className="h-auto py-2.5 px-4 gap-2 flex flex-wrap sm:flex-nowrap items-center justify-center text-center sm:text-left w-full sm:w-auto"
@@ -561,6 +617,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                           const urls = await uploadPhotos([file]);
                           if (urls && urls.length > 0) {
                             setProfile({ ...profile, signatureUrl: urls[0] });
+                            toast({ title: t('settings.signature_ready'), description: t('settings.signature_save_reminder') });
                           }
                         } catch (error) {
                           toast({
@@ -574,6 +631,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                       }}
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground">{t('settings.signature_tip')}</p>
                 </div>
               </div>
 

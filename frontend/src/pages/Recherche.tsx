@@ -139,8 +139,8 @@ const Recherche = () => {
     } catch (error: any) {
       console.error("Error loading properties:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les biens disponibles pour le moment.",
+        title: t('common.error'),
+        description: t('search.load_error'),
         variant: "destructive",
       });
     } finally {
@@ -173,8 +173,8 @@ const Recherche = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <SEO 
-        title="Recherche de biens immobiliers | Samalocation"
-        description="Parcourez nos annonces immobilières : appartements, maisons, villas, studios et terrains."
+        title={t('seo.search.title')}
+        description={t('seo.search.description')}
       />
       <Navbar />
       <div className={cn("pt-32 px-4 transition-all duration-300", isSearchActive && "pt-20 sm:pt-32")}>
@@ -224,12 +224,12 @@ const Recherche = () => {
                 <div className="lg:col-span-1 hidden lg:block">
                   <Select value={listingType} onValueChange={setListingType}>
                     <SelectTrigger className="h-12 bg-background border border-primary/20 rounded-xl focus:border-primary/50 transition-all shadow-sm">
-                      <SelectValue placeholder="Transaction" />
+                      <SelectValue placeholder={t('search.f.transaction')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toutes</SelectItem>
-                      <SelectItem value="location">Location</SelectItem>
-                      <SelectItem value="vente">Vente</SelectItem>
+                      <SelectItem value="all">{t('search.f.all_transactions')}</SelectItem>
+                      <SelectItem value="location">{t('search.f.rent')}</SelectItem>
+                      <SelectItem value="vente">{t('search.f.sale')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -259,37 +259,37 @@ const Recherche = () => {
                     <SheetTrigger asChild>
                       <Button variant="outline" className="flex-1 h-12 border-primary/20 rounded-xl flex items-center gap-2">
                         <SlidersHorizontal className="h-4 w-4" />
-                        Filtres {listingType !== 'all' || propertyType !== 'all' ? '(Actifs)' : ''}
+                        {t('search.filters')} {listingType !== 'all' || propertyType !== 'all' ? t('search.f.active') : ''}
                       </Button>
                     </SheetTrigger>
                     <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl p-6">
                       <SheetHeader className="mb-6">
                         <SheetTitle className="text-2xl font-bold flex items-center gap-2">
                           <SlidersHorizontal className="h-6 w-6 text-primary" />
-                          Affiner votre recherche
+                          {t('search.f.refine')}
                         </SheetTitle>
                       </SheetHeader>
                       
                       <div className="space-y-6 pb-20 overflow-y-auto max-h-[calc(85vh-150px)] px-1">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Transaction</Label>
+                            <Label className="text-sm font-semibold">{t('search.f.transaction')}</Label>
                             <Select value={listingType} onValueChange={setListingType}>
                               <SelectTrigger className="h-11 rounded-xl">
-                                <SelectValue placeholder="Transaction" />
+                                <SelectValue placeholder={t('search.f.transaction')} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="all">Toutes</SelectItem>
-                                <SelectItem value="location">Location</SelectItem>
-                                <SelectItem value="vente">Vente</SelectItem>
+                                <SelectItem value="all">{t('search.f.all_transactions')}</SelectItem>
+                                <SelectItem value="location">{t('search.f.rent')}</SelectItem>
+                                <SelectItem value="vente">{t('search.f.sale')}</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Type de bien</Label>
+                            <Label className="text-sm font-semibold">{t('search.f.property_type')}</Label>
                             <Select value={propertyType} onValueChange={setPropertyType}>
                               <SelectTrigger className="h-11 rounded-xl">
-                                <SelectValue placeholder="Type" />
+                                <SelectValue placeholder={t('search.f.type')} />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="all">{t('search.types.all')}</SelectItem>
@@ -308,20 +308,20 @@ const Recherche = () => {
 
                         <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">{listingType === 'vente' ? 'Prix Min' : 'Loyer Min'}</Label>
+                            <Label className="text-sm font-semibold">{listingType === 'vente' ? t('search.f.price_min') : t('search.f.rent_min')}</Label>
                             <Input
                               type="number"
-                              placeholder="Min"
+                              placeholder={t('search.f.min')}
                               value={minPrice}
                               onChange={(e) => setMinPrice(e.target.value)}
                               className="h-11 rounded-xl"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">{listingType === 'vente' ? 'Prix Max' : 'Loyer Max'}</Label>
+                            <Label className="text-sm font-semibold">{listingType === 'vente' ? t('search.f.price_max') : t('search.f.rent_max')}</Label>
                             <Input
                               type="number"
-                              placeholder="Max"
+                              placeholder={t('search.f.max')}
                               value={maxPrice}
                               onChange={(e) => setMaxPrice(e.target.value)}
                               className="h-11 rounded-xl"
@@ -331,20 +331,20 @@ const Recherche = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Surface Min (m²)</Label>
+                            <Label className="text-sm font-semibold">{t('search.f.area_min_m2')}</Label>
                             <Input
                               type="number"
-                              placeholder="Min"
+                              placeholder={t('search.f.min')}
                               value={minArea}
                               onChange={(e) => setMinArea(e.target.value)}
                               className="h-11 rounded-xl"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Surface Max (m²)</Label>
+                            <Label className="text-sm font-semibold">{t('search.f.area_max_m2')}</Label>
                             <Input
                               type="number"
-                              placeholder="Max"
+                              placeholder={t('search.f.max')}
                               value={maxArea}
                               onChange={(e) => setMaxArea(e.target.value)}
                               className="h-11 rounded-xl"
@@ -354,20 +354,20 @@ const Recherche = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Chambres Min</Label>
+                            <Label className="text-sm font-semibold">{t('search.f.bedrooms_min')}</Label>
                             <Input
                               type="number"
-                              placeholder="Min"
+                              placeholder={t('search.f.min')}
                               value={minBedrooms}
                               onChange={(e) => setMinBedrooms(e.target.value)}
                               className="h-11 rounded-xl"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Chambres Max</Label>
+                            <Label className="text-sm font-semibold">{t('search.f.bedrooms_max')}</Label>
                             <Input
                               type="number"
-                              placeholder="Max"
+                              placeholder={t('search.f.max')}
                               value={maxBedrooms}
                               onChange={(e) => setMaxBedrooms(e.target.value)}
                               className="h-11 rounded-xl"
@@ -377,20 +377,20 @@ const Recherche = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Pièces Min</Label>
+                            <Label className="text-sm font-semibold">{t('search.f.rooms_min')}</Label>
                             <Input
                               type="number"
-                              placeholder="Min"
+                              placeholder={t('search.f.min')}
                               value={minRooms}
                               onChange={(e) => setMinRooms(e.target.value)}
                               className="h-11 rounded-xl"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Pièces Max</Label>
+                            <Label className="text-sm font-semibold">{t('search.f.rooms_max')}</Label>
                             <Input
                               type="number"
-                              placeholder="Max"
+                              placeholder={t('search.f.max')}
                               value={maxRooms}
                               onChange={(e) => setMaxRooms(e.target.value)}
                               className="h-11 rounded-xl"
@@ -402,7 +402,7 @@ const Recherche = () => {
                           <Button 
                             className="w-full h-12 rounded-xl text-lg font-bold"
                           >
-                            Appliquer les filtres
+                            {t('search.f.apply')}
                           </Button>
                         </SheetClose>
                         
@@ -415,7 +415,7 @@ const Recherche = () => {
                             setPropertyType("all"); setListingType("all");
                           }}
                         >
-                          Réinitialiser tout
+                          {t('search.f.reset_all')}
                         </Button>
                       </div>
                     </SheetContent>
@@ -430,11 +430,11 @@ const Recherche = () => {
               )}>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">
-                    {listingType === 'vente' ? 'Prix Min' : 'Loyer Min'}
+                    {listingType === 'vente' ? t('search.f.price_min') : t('search.f.rent_min')}
                   </Label>
                   <Input
                     type="number"
-                    placeholder="Min"
+                    placeholder={t('search.f.min')}
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                     className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
@@ -442,71 +442,71 @@ const Recherche = () => {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">
-                    {listingType === 'vente' ? 'Prix Max' : 'Loyer Max'}
+                    {listingType === 'vente' ? t('search.f.price_max') : t('search.f.rent_max')}
                   </Label>
                   <Input
                     type="number"
-                    placeholder="Max"
+                    placeholder={t('search.f.max')}
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Surface Min</Label>
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">{t('search.f.area_min')}</Label>
                   <Input
                     type="number"
-                    placeholder="Min"
+                    placeholder={t('search.f.min')}
                     value={minArea}
                     onChange={(e) => setMinArea(e.target.value)}
                     className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Surface Max</Label>
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">{t('search.f.area_max')}</Label>
                   <Input
                     type="number"
-                    placeholder="Max"
+                    placeholder={t('search.f.max')}
                     value={maxArea}
                     onChange={(e) => setMaxArea(e.target.value)}
                     className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Chambres Min</Label>
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">{t('search.f.bedrooms_min')}</Label>
                   <Input
                     type="number"
-                    placeholder="Min"
+                    placeholder={t('search.f.min')}
                     value={minBedrooms}
                     onChange={(e) => setMinBedrooms(e.target.value)}
                     className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Chambres Max</Label>
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">{t('search.f.bedrooms_max')}</Label>
                   <Input
                     type="number"
-                    placeholder="Max"
+                    placeholder={t('search.f.max')}
                     value={maxBedrooms}
                     onChange={(e) => setMaxBedrooms(e.target.value)}
                     className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Pièces Min</Label>
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">{t('search.f.rooms_min')}</Label>
                   <Input
                     type="number"
-                    placeholder="Min"
+                    placeholder={t('search.f.min')}
                     value={minRooms}
                     onChange={(e) => setMinRooms(e.target.value)}
                     className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">Pièces Max</Label>
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-1">{t('search.f.rooms_max')}</Label>
                   <Input
                     type="number"
-                    placeholder="Max"
+                    placeholder={t('search.f.max')}
                     value={maxRooms}
                     onChange={(e) => setMaxRooms(e.target.value)}
                     className="h-10 bg-background border border-border/60 focus:border-primary/50 rounded-lg transition-all shadow-sm"
@@ -517,7 +517,7 @@ const Recherche = () => {
               {!isSearchActive && (
                 <div className="flex justify-between items-center bg-accent/5 p-3 rounded-xl border border-accent/10">
                   <p className="text-xs text-muted-foreground italic">
-                    Les filtres sont appliqués instantanément.
+                    {t('search.f.instant')}
                   </p>
                   <Button
                     variant="ghost"
@@ -529,7 +529,7 @@ const Recherche = () => {
                       setPropertyType("all"); setSearchTerm(""); setListingType("all");
                     }}
                   >
-                    Réinitialiser
+                    {t('search.f.reset')}
                   </Button>
                 </div>
               )}
@@ -552,7 +552,7 @@ const Recherche = () => {
                       <h3 className="text-xl font-bold mb-2">{t('search.no_results')}</h3>
                       <p className="text-muted-foreground mb-6">{t('search.no_results_desc')}</p>
                       <Button variant="outline" className="rounded-xl px-8" onClick={() => navigate(0)}>
-                        Actualiser la page
+                        {t('search.refresh')}
                       </Button>
                     </div>
                   ) : (
@@ -657,7 +657,7 @@ const Recherche = () => {
                     <MapComponent properties={filteredProperties} />
                   </div>
                   <p className="text-center text-xs text-muted-foreground mt-4">
-                    Utilisez les filtres pour affiner les biens affichés sur la carte.
+                    {t('search.map_hint')}
                   </p>
                 </div>
               )}
@@ -676,12 +676,12 @@ const Recherche = () => {
             {viewMode === 'list' ? (
               <>
                 <MapIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-bold tracking-tight">VOIR SUR LA CARTE</span>
+                <span className="text-sm font-bold tracking-tight">{t('search.view_on_map')}</span>
               </>
             ) : (
               <>
                 <SlidersHorizontal className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-bold tracking-tight">VOIR LA LISTE</span>
+                <span className="text-sm font-bold tracking-tight">{t('search.view_as_list')}</span>
               </>
             )}
           </Button>

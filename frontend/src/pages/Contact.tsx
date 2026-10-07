@@ -57,8 +57,8 @@ const Contact = () => {
     return (
         <div className="min-h-screen bg-background">
             <SEO
-                title="Contactez-nous | Samalocation"
-                description="Une question ou un besoin d'assistance ? Contactez l'équipe Samalocation. Nous sommes à votre écoute pour vous accompagner dans votre gestion immobilière."
+                title={t('seo.contact.title')}
+                description={t('seo.contact.description')}
             />
             <Navbar />
 

@@ -1,15 +1,28 @@
 const db = require('../config/db');
 
 const Report = {
+    /**
+     * property_id / category : signalement d'une annonce (reported_id = son propriétaire).
+     * Sans property_id : signalement d'un propriétaire par un locataire.
+     */
     async create(reportData) {
-        const { id, reporter_id, reported_id, reason } = reportData;
+        const { id, reporter_id, reported_id, reason, property_id = null, category = null } = reportData;
 
         await db.query(
-            'INSERT INTO reports (id, reporter_id, reported_id, reason, status, created_at) VALUES ($1, $2, $3, $4, $5, NOW())',
-            [id, reporter_id, reported_id, reason, 'pending']
+            'INSERT INTO reports (id, reporter_id, reported_id, reason, status, property_id, category, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
+            [id, reporter_id, reported_id, reason, 'pending', property_id, category]
         );
 
-        return { id, reporter_id, reported_id, reason, status: 'pending' };
+        return { id, reporter_id, reported_id, reason, property_id, category, status: 'pending' };
+    },
+
+    /** Signalement encore en attente du même utilisateur sur la même annonce (évite les doublons) */
+    async findPendingForProperty(reporter_id, property_id) {
+        const { rows } = await db.query(
+            "SELECT id FROM reports WHERE reporter_id = $1 AND property_id = $2 AND status = 'pending' LIMIT 1",
+            [reporter_id, property_id]
+        );
+        return rows[0] || null;
     },
 
     async findAll(filters = {}) {
@@ -21,11 +34,14 @@ const Report = {
                 reporter.email as reporter_email,
                 reported.full_name as reported_name,
                 reported.email as reported_email,
-                reported_user.is_blocked as reported_is_blocked
+                reported_user.is_blocked as reported_is_blocked,
+                p.name as property_name,
+                p.is_published as property_is_published
             FROM reports r
             LEFT JOIN user_profiles reporter ON r.reporter_id = reporter.id
             LEFT JOIN user_profiles reported ON r.reported_id = reported.id
             LEFT JOIN users reported_user ON r.reported_id = reported_user.id
+            LEFT JOIN properties p ON p.id::text = r.property_id
         `;
 
         const params = [];
@@ -105,6 +121,15 @@ const Report = {
             topReported,
             statusDistribution
         };
+    },
+
+    // Signalement d'annonces : bien concerné et catégorie du motif (exécuté au démarrage)
+    async migrate() {
+        await db.query(`
+            ALTER TABLE reports ADD COLUMN IF NOT EXISTS property_id VARCHAR(36);
+            ALTER TABLE reports ADD COLUMN IF NOT EXISTS category VARCHAR(50);
+            CREATE INDEX IF NOT EXISTS idx_reports_property ON reports(property_id);
+        `);
     }
 };
 

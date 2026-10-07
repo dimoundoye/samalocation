@@ -122,8 +122,8 @@ const VerifyContract = () => {
                                         <ShieldCheck className="h-5 w-5 text-slate-400 mt-0.5" />
                                         <div>
                                             <p className="text-slate-500 font-medium mb-1 uppercase tracking-tight text-[10px]">Type de Contrat</p>
-                                            <Badge variant="outline" className={contract?.contract_type === 'premium' ? 'border-primary text-primary bg-primary/5' : 'border-slate-300 text-slate-600'}>
-                                                {contract?.contract_type === 'premium' ? 'Premium 💎' : 'Standard'}
+                                            <Badge variant="outline" className={contract?.is_custom || contract?.contract_type === 'premium' ? 'border-primary text-primary bg-primary/5' : 'border-slate-300 text-slate-600'}>
+                                                {contract?.is_custom ? 'Personnalisé' : contract?.contract_type === 'premium' ? 'Premium 💎' : 'Standard'}
                                             </Badge>
                                         </div>
                                     </div>
@@ -160,7 +160,8 @@ const VerifyContract = () => {
                                 </div>
                             </div>
 
-                            {/* Clauses Summary */}
+                            {/* Clauses Summary : clauses des modèles Samalocation, sans garantie pour un contrat personnalisé */}
+                            {!contract?.is_custom && (
                             <div className="bg-emerald-50/50 rounded-xl p-6 border border-emerald-100 space-y-4">
                                 <h4 className="flex items-center gap-2 font-bold text-emerald-900 text-sm">
                                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -187,6 +188,7 @@ const VerifyContract = () => {
                                     )}
                                 </div>
                             </div>
+                            )}
 
                             {/* Digital Proof Section */}
                             <div className="bg-slate-50 rounded-xl p-6 border border-slate-100 space-y-4">
@@ -196,12 +198,12 @@ const VerifyContract = () => {
                                 </h4>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className={`p-4 rounded-lg flex flex-col gap-1 ${contract?.owner_signed ? 'bg-white shadow-sm border-l-4 border-l-emerald-500' : 'bg-slate-100 opacity-50'}`}>
+                                    <div className={`p-4 rounded-lg flex flex-col gap-1 ${contract?.owner_signed ? 'bg-white shadow-sm' : 'bg-slate-100 opacity-50'}`}>
                                         <p className="text-[10px] text-slate-500 font-bold uppercase">Signature Bailleur</p>
                                         <p className="text-xs text-slate-700">{contract?.owner_signed ? `Confirmée le ${format(new Date(contract.owner_signed_at), 'dd/MM/yyyy HH:mm')}` : 'En attente'}</p>
                                     </div>
 
-                                    <div className={`p-4 rounded-lg flex flex-col gap-1 ${contract?.tenant_signed ? 'bg-white shadow-sm border-l-4 border-l-emerald-500' : 'bg-slate-100 opacity-50'}`}>
+                                    <div className={`p-4 rounded-lg flex flex-col gap-1 ${contract?.tenant_signed ? 'bg-white shadow-sm' : 'bg-slate-100 opacity-50'}`}>
                                         <p className="text-[10px] text-slate-500 font-bold uppercase">Signature Locataire</p>
                                         <p className="text-xs text-slate-700">{contract?.tenant_signed ? `Confirmée le ${format(new Date(contract.tenant_signed_at), 'dd/MM/yyyy HH:mm')}` : 'En attente'}</p>
                                     </div>

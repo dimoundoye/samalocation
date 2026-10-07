@@ -62,7 +62,7 @@ const Navbar = () => {
                     className="flex items-center gap-2 h-9 sm:h-10 px-2.5 sm:px-4 shrink-0 text-xs sm:text-sm font-semibold"
                   >
                     <LayoutDashboard className="h-4 w-4" />
-                    <span className="hidden sm:inline">Mon espace</span>
+                    <span className="hidden sm:inline">{t('nav.my_space')}</span>
                   </Button>
                 </div>
               ) : (
@@ -123,7 +123,7 @@ const Navbar = () => {
 
                     <div className="border-t pt-6 mt-4 space-y-4">
                       <div className="flex items-center justify-between px-4 pb-2">
-                        <span className="text-sm font-medium text-muted-foreground">Préférences</span>
+                        <span className="text-sm font-medium text-muted-foreground">{t('nav.preferences')}</span>
                         <div className="flex items-center gap-2">
                           <LanguageToggle />
                           <ThemeToggle />
@@ -136,7 +136,7 @@ const Navbar = () => {
                           onClick={() => { navigate(getDashboardPath()); setOpen(false); }}
                         >
                           <LayoutDashboard className="mr-3 h-5 w-5" />
-                          Mon Tableau de bord
+                          {t('nav.my_dashboard')}
                         </Button>
                       ) : (
                         <div className="grid grid-cols-2 gap-3 p-1">

@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
 const Notification = require('./notificationModel');
+const crypto = require('crypto');
 
 const Contract = {
     async create(data) {
@@ -35,6 +36,20 @@ const Contract = {
             custom_content,
             custom_template_id
         } = data;
+
+        // Helper to handle empty strings as null for date/number fields
+        const nullIfEmpty = (val) => (val === "" || val === undefined) ? null : val;
+
+        // Fetch owner's current signature
+        let owner_signature = null;
+        try {
+            const { rows: ownerRows } = await db.query('SELECT signature_url FROM owner_profiles WHERE user_profile_id = $1', [owner_id]);
+            if (ownerRows[0]) {
+                owner_signature = ownerRows[0].signature_url;
+            }
+        } catch (error) {
+            console.error("Error fetching signature for create:", error);
+        }
 
         let contract = null;
         let retries = 3;
@@ -162,9 +177,8 @@ const Contract = {
                    COALESCE(NULLIF(c.owner_phone, ''), up_owner.phone) as owner_phone,
                    COALESCE(NULLIF(c.owner_email, ''), up_owner.email) as owner_email,
                    op.company_name as owner_company, op.address as owner_address, 
-                   c.owner_signature as archived_owner_signature,
-                   op.signature_url as live_owner_signature,
-                   COALESCE(NULLIF(c.owner_signature, ''), op.signature_url) as owner_signature,
+                   -- Signature figée au moment où le bailleur a signé : jamais remplacée par sa signature actuelle
+                   NULLIF(c.owner_signature, '') as owner_signature,
                    COALESCE(c.tenant_signature, null) as tenant_signature,
                    p.name as property_name, p.address as property_address, p.property_type,
                    pu.unit_number,
@@ -244,15 +258,40 @@ const Contract = {
         return rows[0];
     },
 
-    async signByTenant(id) {
-        // When tenant signs, if owner also signed, set status to active
+    /**
+     * Empreinte SHA-256 du contenu engageant du contrat (parties, bien, conditions, clauses).
+     * Calculée au moment de la signature : si une clause change ensuite, l'empreinte ne correspond plus.
+     */
+    computeContentHash(contract) {
+        const fields = [
+            'contract_number', 'contract_type', 'owner_name', 'owner_id_type', 'owner_id_number',
+            'tenant_name', 'tenant_id_type', 'tenant_id_number', 'property_id', 'unit_id', 'detailed_address',
+            'start_date', 'duration_months', 'rent_amount', 'deposit_amount', 'payment_day', 'payment_method',
+            'charges_info', 'occupancy_limit', 'inventory', 'notes', 'custom_content'
+        ];
+        const normalize = v => (v instanceof Date ? v.toISOString().slice(0, 10) : v ?? null);
+        const canonical = JSON.stringify(fields.map(f => [f, normalize(contract[f])]));
+        return crypto.createHash('sha256').update(canonical).digest('hex');
+    },
+
+    /**
+     * Signature du locataire : image manuscrite + preuve (identifiant, date, IP, appareil, empreinte du contrat).
+     */
+    async signByTenant(id, { signature, proof }) {
         const contract = await this.findById(id);
         const newStatus = 'active';
+        const documentHash = this.computeContentHash(contract);
+        const fullProof = { ...proof, document_hash: documentHash };
 
         const { rows } = await db.query(
-            "UPDATE rental_contracts SET tenant_signed = TRUE, tenant_signed_at = CURRENT_TIMESTAMP, status = $2 WHERE id = $1 RETURNING *",
-            [id, newStatus]
+            `UPDATE rental_contracts
+             SET tenant_signed = TRUE, tenant_signed_at = CURRENT_TIMESTAMP, status = $2,
+                 tenant_signature = $3, tenant_signature_proof = $4, document_hash = $5
+             WHERE id = $1 AND tenant_signed IS NOT TRUE
+             RETURNING *`,
+            [id, newStatus, signature, JSON.stringify(fullProof), documentHash]
         );
+        if (!rows[0]) return null; // déjà signé entre-temps
 
         // Notify owner
         try {

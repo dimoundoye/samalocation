@@ -341,40 +341,44 @@ export const OwnerTeamTab = () => {
             )}
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Mise en page selon la place réelle (barre latérale ouverte ou non) : 1 carte par ligne, puis 3 avec l'icône
+                au-dessus du texte, puis 3 avec l'icône à côté. Requêtes de conteneur via le wrapper ci-dessous. */}
+            <div className="[container-type:inline-size]">
+            <div className="grid grid-cols-1 gap-3 lg:gap-4 [@container(min-width:38rem)]:grid-cols-3">
                 <Card className="border-none shadow-soft bg-primary/5">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <CardContent className="p-4 flex items-center gap-3 min-w-0 [@container(min-width:38rem)]:flex-col [@container(min-width:38rem)]:items-start [@container(min-width:56rem)]:flex-row [@container(min-width:56rem)]:items-center [@container(min-width:56rem)]:p-6 [@container(min-width:56rem)]:gap-4">
+                        <div className="h-10 w-10 [@container(min-width:56rem)]:h-12 [@container(min-width:56rem)]:w-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center">
                             <Users2 className="h-6 w-6 text-primary" />
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Total Membres</p>
-                            <p className="text-2xl font-bold">{collaborators.length}</p>
+                            <p className="text-xl [@container(min-width:56rem)]:text-2xl font-bold">{collaborators.length}</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-soft bg-green-500/5">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-green-500/10 flex items-center justify-center">
+                    <CardContent className="p-4 flex items-center gap-3 min-w-0 [@container(min-width:38rem)]:flex-col [@container(min-width:38rem)]:items-start [@container(min-width:56rem)]:flex-row [@container(min-width:56rem)]:items-center [@container(min-width:56rem)]:p-6 [@container(min-width:56rem)]:gap-4">
+                        <div className="h-10 w-10 [@container(min-width:56rem)]:h-12 [@container(min-width:56rem)]:w-12 shrink-0 rounded-2xl bg-green-500/10 flex items-center justify-center">
                             <ShieldCheck className="h-6 w-6 text-green-500" />
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Statut Équipier</p>
-                            <p className="text-2xl font-bold">Actif</p>
+                            <p className="text-xl [@container(min-width:56rem)]:text-2xl font-bold">Actif</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-soft bg-yellow-500/5">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-yellow-500/10 flex items-center justify-center">
+                    <CardContent className="p-4 flex items-center gap-3 min-w-0 [@container(min-width:38rem)]:flex-col [@container(min-width:38rem)]:items-start [@container(min-width:56rem)]:flex-row [@container(min-width:56rem)]:items-center [@container(min-width:56rem)]:p-6 [@container(min-width:56rem)]:gap-4">
+                        <div className="h-10 w-10 [@container(min-width:56rem)]:h-12 [@container(min-width:56rem)]:w-12 shrink-0 rounded-2xl bg-yellow-500/10 flex items-center justify-center">
                             <Crown className="h-6 w-6 text-yellow-500" />
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Abonnement</p>
-                            <p className="text-2xl font-bold">Professionnel</p>
+                            <p className="text-xl [@container(min-width:56rem)]:text-2xl font-bold">Professionnel</p>
                         </div>
                     </CardContent>
                 </Card>
+            </div>
             </div>
 
             {/* Filter & Search */}

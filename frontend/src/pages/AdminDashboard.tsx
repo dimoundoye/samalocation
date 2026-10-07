@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2, Receipt, ShieldAlert, Mail } from "lucide-react";
+import { Shield, Users, Settings, LogOut, TrendingUp, Menu, Building2, AlertTriangle, MessageSquare, CreditCard, Bell, PieChart, DollarSign, Bot, Zap, Clock, Eye, Activity, MousePointer2, Receipt, ShieldAlert, Mail, ChevronLeft, ChevronRight } from "lucide-react";
+import { COMPACT_LAYOUT_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { UserGrowthChart } from "@/components/admin/UserGrowthChart";
 import { PropertyStatsChart } from "@/components/admin/PropertyStatsChart";
@@ -43,6 +44,21 @@ const AdminDashboard = () => {
   const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState(urlTab || "overview");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Barre latérale rétractable ; tablette (< 1024 px) : repliée par défaut et superposée au contenu quand on l'ouvre
+  const isCompactLayout = useMediaQuery(COMPACT_LAYOUT_QUERY);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (window.matchMedia(COMPACT_LAYOUT_QUERY).matches) return true;
+    try { return localStorage.getItem("adminSidebarCollapsed") === "true"; } catch { return false; }
+  });
+  const sidebarOverlay = isCompactLayout && !isSidebarCollapsed;
+  useEffect(() => {
+    if (isCompactLayout) setIsSidebarCollapsed(true);
+  }, [isCompactLayout]);
+  useEffect(() => {
+    // Choix mémorisé uniquement sur grand écran
+    if (isCompactLayout) return;
+    try { localStorage.setItem("adminSidebarCollapsed", String(isSidebarCollapsed)); } catch { /* stockage indisponible */ }
+  }, [isSidebarCollapsed, isCompactLayout]);
   const [statistics, setStatistics] = useState<AdminStatistics>({
     totalUsers: 0,
     owners: 0,
@@ -334,16 +350,19 @@ const AdminDashboard = () => {
   };
 
 
-  const sidebarContent = (
+  // collapsed : barre réduite aux icônes (ordinateur / tablette) ; le menu mobile est toujours déplié
+  const renderSidebarContent = (collapsed: boolean) => (
     <>
       <button
         onClick={() => navigate("/")}
-        className="flex items-center gap-2 mb-6 hover:opacity-80 transition-opacity overflow-hidden"
+        className={`flex items-center gap-2 mb-6 hover:opacity-80 transition-opacity overflow-hidden ${collapsed ? "justify-center w-full" : ""}`}
       >
-        <img src="/logo-sl.png" alt="Logo" className="h-10 w-auto object-contain shrink-0" />
-        <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate hidden lg:block">
-          Admin
-        </span>
+        <img src="/logo-sl.png" alt="Logo" className={`${collapsed ? "h-8" : "h-10"} w-auto object-contain shrink-0`} />
+        {!collapsed && (
+          <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
+            Admin
+          </span>
+        )}
       </button>
 
       <nav className="space-y-1">
@@ -382,6 +401,7 @@ const AdminDashboard = () => {
               onClick={() => {
                 navigate(`/admin-dashboard/${item.id}`);
                 setMobileMenuOpen(false);
+                if (isCompactLayout) setIsSidebarCollapsed(true);
 
                 // Réinitialiser le badge lors de la consultation
                 if (item.id === "users" || item.id === "overview") {
@@ -398,19 +418,23 @@ const AdminDashboard = () => {
                   fetchAdminData();
                 }
               }}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition-colors ${activeTab === item.id
+              title={collapsed ? item.label : undefined}
+              aria-label={collapsed ? item.label : undefined}
+              className={`relative w-full flex items-center gap-2 py-2 rounded-lg transition-colors ${collapsed ? "justify-center px-2" : "justify-between px-3"} ${activeTab === item.id
                 ? "bg-primary text-white"
                 : "hover:bg-secondary text-muted-foreground"
                 }`}
             >
-              <div className="flex items-center gap-2">
-                <item.icon className="h-4 w-4" />
-                <span>{item.label}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <item.icon className="h-4 w-4 shrink-0" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
               </div>
               {badgeCount > 0 && (
                 <Badge
                   variant="destructive"
-                  className="h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs font-bold"
+                  className={collapsed
+                    ? "absolute -top-1 -right-1 h-4 min-w-[16px] flex items-center justify-center px-1 text-[10px] font-bold"
+                    : "h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs font-bold"}
                 >
                   {badgeCount > 99 ? "99+" : badgeCount}
                 </Badge>
@@ -423,10 +447,12 @@ const AdminDashboard = () => {
       <Button
         variant="ghost"
         onClick={signOut}
-        className="w-full mt-4 justify-start text-muted-foreground"
+        title={collapsed ? "Déconnexion" : undefined}
+        aria-label={collapsed ? "Déconnexion" : undefined}
+        className={`w-full mt-4 text-muted-foreground ${collapsed ? "justify-center px-2" : "justify-start"}`}
       >
-        <LogOut className="mr-3 h-4 w-4" />
-        Déconnexion
+        <LogOut className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
+        {!collapsed && "Déconnexion"}
       </Button>
     </>
   );
@@ -434,10 +460,31 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside className="w-56 bg-card border-r shadow-soft hidden md:flex flex-col">
-        <div className="p-4 flex-1 overflow-y-auto">
-          {sidebarContent}
+      {/* Tablette : la barre ouverte passe par-dessus le contenu ; cet espace garde la place de la barre repliée */}
+      {sidebarOverlay && (
+        <>
+          <div className="hidden md:block w-16 shrink-0" aria-hidden />
+          <div className="hidden md:block fixed inset-0 z-30 bg-black/30" onClick={() => setIsSidebarCollapsed(true)} aria-hidden />
+        </>
+      )}
+      <aside
+        className={`${isSidebarCollapsed ? "w-16" : "w-56"} bg-card border-r shadow-soft hidden md:flex flex-col h-screen transition-all duration-300 ${sidebarOverlay ? "fixed left-0 top-0 z-40 shadow-2xl" : "sticky top-0 z-20"}`}
+      >
+        <div className={`${isSidebarCollapsed ? "p-2" : "p-4"} flex-1 overflow-y-auto overflow-x-hidden scrollbar-none`}>
+          {renderSidebarContent(isSidebarCollapsed)}
         </div>
+
+        {/* Bouton pour replier / déplier la barre */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute -right-4 top-8 h-8 w-8 rounded-full border shadow-md bg-background hover:bg-secondary z-50 flex"
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          title={isSidebarCollapsed ? "Afficher le menu" : "Réduire le menu"}
+          aria-label={isSidebarCollapsed ? "Afficher le menu" : "Réduire le menu"}
+        >
+          {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </Button>
       </aside>
 
       {/* Main Content */}
@@ -452,7 +499,7 @@ const AdminDashboard = () => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-4">
-              {sidebarContent}
+              {renderSidebarContent(false)}
             </SheetContent>
           </Sheet>
 

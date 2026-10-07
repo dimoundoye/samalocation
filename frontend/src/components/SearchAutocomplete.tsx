@@ -164,7 +164,7 @@ export const SearchAutocomplete = ({ placeholder, className, initialValue = "", 
               {/* History */}
               {value.length === 0 && history.length > 0 && (
                 <div className="px-2 pb-2">
-                  <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Recherches récentes</p>
+                  <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t('search.autocomplete.recent')}</p>
                   {history.map((item, i) => (
                     <button
                       key={item}
@@ -185,7 +185,7 @@ export const SearchAutocomplete = ({ placeholder, className, initialValue = "", 
               {/* Locations */}
               {(value.length > 0 || (value.length === 0 && history.length === 0)) && filteredLocations.length > 0 && (
                 <div className="px-2 pb-2">
-                  <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Localités</p>
+                  <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t('search.autocomplete.locations')}</p>
                   {filteredLocations.map((loc, i) => {
                     const idx = value.length === 0 ? i + (history.length) : i;
                     return (
@@ -209,7 +209,7 @@ export const SearchAutocomplete = ({ placeholder, className, initialValue = "", 
               {/* Properties */}
               {suggestions.length > 0 && (
                 <div className="px-2 pb-2">
-                  <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Propriétés</p>
+                  <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t('search.autocomplete.properties')}</p>
                   {suggestions.map((prop, i) => {
                     const idx = i + filteredLocations.length + (value.length === 0 ? history.length : 0);
                     return (
@@ -245,14 +245,14 @@ export const SearchAutocomplete = ({ placeholder, className, initialValue = "", 
                     onMouseEnter={() => setActiveIndex(allSuggestions.length)}
                   >
                     <Search className="h-4 w-4" />
-                    <span className="text-sm">Rechercher "{value}"</span>
+                    <span className="text-sm">{t('search.autocomplete.search_for', { query: value })}</span>
                   </button>
                 </div>
               )}
 
               {value.length > 0 && allSuggestions.length === 0 && (
                 <div className="px-4 py-8 text-center">
-                  <p className="text-muted-foreground text-sm italic">Appuyez sur Entrée pour rechercher "{value}"</p>
+                  <p className="text-muted-foreground text-sm italic">{t('search.autocomplete.press_enter', { query: value })}</p>
                 </div>
               )}
             </div>

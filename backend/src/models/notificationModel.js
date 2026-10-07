@@ -15,6 +15,8 @@ const Notification = {
             'INSERT INTO notifications (id, user_id, type, title, message, link) VALUES ($1, $2, $3, $4, $5, $6)',
             [id, user_id, type, title, message, link]
         );
+        // Push sur les appareils abonnés, sans attendre (ne bloque ni ne fait échouer l'action)
+        require('../utils/pushService').sendToUser(user_id, { title, body: message, link, tag: id });
         return { id, user_id, type, title, message, link };
     },
 

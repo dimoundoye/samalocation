@@ -1197,9 +1197,12 @@ export const ManagementTable = ({
                                                                             <Badge variant="destructive" className="ml-2 text-[8px] h-3.5 px-1.5 uppercase font-black">Vente</Badge>
                                                                         )}
                                                                     </div>
-                                                                    <div className="text-[10px] font-bold text-muted-foreground">
-                                                                        {canSeeRevenue ? formatCurrency(stats.total, currency) : "🔒"}
-                                                                    </div>
+                                                                    {/* Bien déplié : le total est déjà affiché sur chaque unité */}
+                                                                    {!isExpanded && (
+                                                                        <div className="text-[10px] font-bold text-muted-foreground">
+                                                                            {canSeeRevenue ? formatCurrency(stats.total, currency) : "🔒"}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </TableCell>
                                                         </TableRow>

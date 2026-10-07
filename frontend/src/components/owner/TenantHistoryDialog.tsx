@@ -160,12 +160,12 @@ export const TenantHistoryDialog = ({
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl">
                     {/* Header */}
-                    <DialogHeader className="px-4 sm:px-6 pt-5 pb-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
-                        <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <DialogHeader className="px-4 sm:px-6 pr-12 sm:pr-12 pt-5 pb-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
+                        <DialogTitle className="flex items-center gap-2 text-base sm:text-lg leading-snug">
                             <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
                                 <FileText className="h-4 w-4 text-primary" />
                             </div>
-                            <span className="truncate">Historique — {tenant.full_name}</span>
+                            <span className="min-w-0 break-words">Historique — {tenant.full_name}</span>
                         </DialogTitle>
                         <DialogDescription className="text-xs sm:text-sm mt-1">
                             Consultez, téléchargez ou annulez les reçus délivrés pour ce locataire.

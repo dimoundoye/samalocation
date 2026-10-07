@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
+const { can } = require('../middleware/permissionMiddleware');
 const propertyController = require('../controllers/propertyController');
 
 // Get all published properties (public)
 router.get('/', propertyController.getAllPublished);
 
 // Get owner properties (protected)
-router.get('/owner', authMiddleware, propertyController.getOwnerProperties);
+router.get('/owner', authMiddleware, can('property.read'), propertyController.getOwnerProperties);
 
 // Get single property details (public)
 router.get('/:id', propertyController.getPropertyById);
@@ -17,18 +18,18 @@ router.get('/:id/similar', propertyController.getSimilarProperties);
 
 // Create property (protected)
 const { checkPropertyLimit, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
-router.post('/', authMiddleware, checkPropertyLimit, propertyController.createProperty);
+router.post('/', authMiddleware, can('property.write'), checkPropertyLimit, propertyController.createProperty);
 
 // Toggle publication status (protected)
-router.patch('/:id/publish', authMiddleware, propertyController.togglePublication);
+router.patch('/:id/publish', authMiddleware, can('property.publish'), propertyController.togglePublication);
 
 // Add units to property (protected)
-router.post('/units', authMiddleware, checkFeatureAccess('unlimited_receipts'), propertyController.addUnits);
+router.post('/units', authMiddleware, can('property.write'), checkFeatureAccess('unlimited_receipts'), propertyController.addUnits);
 
 // Update property (protected)
-router.put('/:id', authMiddleware, propertyController.updateProperty);
+router.put('/:id', authMiddleware, can('property.write'), propertyController.updateProperty);
 
 // Delete property (protected)
-router.delete('/:id', authMiddleware, propertyController.deleteProperty);
+router.delete('/:id', authMiddleware, can('property.write'), propertyController.deleteProperty);
 
 module.exports = router;

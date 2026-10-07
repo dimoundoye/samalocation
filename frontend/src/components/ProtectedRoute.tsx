@@ -2,6 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, WifiOff, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const { user, userRole, loading, connectionError, retryAuth, signOut } = useAuth();
   const location = useLocation();
+  const { t } = useTranslation();
 
   if (loading) {
     return (
@@ -28,17 +30,17 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
             <WifiOff className="h-8 w-8" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">Problème de connexion</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">{t('connection.problem_title')}</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Impossible de se connecter au serveur. Le serveur est peut-être en train de redémarrer ou votre connexion internet est instable.
+              {t('connection.problem_desc')}
             </p>
           </div>
           <div className="flex flex-col gap-3 pt-2">
             <Button onClick={retryAuth} className="w-full h-11 gradient-primary text-white font-bold shadow-soft hover:shadow-medium transition-all">
-              <RefreshCw className="mr-2 h-4 w-4" /> Réessayer
+              <RefreshCw className="mr-2 h-4 w-4" /> {t('common.retry')}
             </Button>
             <Button variant="ghost" onClick={signOut} className="w-full h-11 text-muted-foreground hover:text-foreground">
-              Retour à l'accueil / Déconnexion
+              {t('connection.home_or_logout')}
             </Button>
           </div>
         </div>

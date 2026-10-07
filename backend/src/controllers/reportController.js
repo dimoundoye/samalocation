@@ -1,5 +1,17 @@
 const { v4: uuidv4 } = require('uuid');
 const Report = require('../models/reportModel');
+const db = require('../config/db');
+
+// Motifs de signalement d'une annonce (clé envoyée par le navigateur → libellé enregistré)
+const PROPERTY_REPORT_CATEGORIES = {
+    scam: 'Arnaque ou annonce frauduleuse',
+    unavailable: 'Bien déjà loué, vendu ou indisponible',
+    misleading: 'Informations ou photos trompeuses',
+    price: 'Prix incorrect ou abusif',
+    broker: 'Intermédiaire / courtier se faisant passer pour le propriétaire',
+    inappropriate: 'Contenu inapproprié ou offensant',
+    other: 'Autre',
+};
 
 const reportController = {
     /**
@@ -7,6 +19,10 @@ const reportController = {
      */
     async createReport(req, res, next) {
         try {
+            if (req.body.property_id) {
+                return reportController.createPropertyReport(req, res, next);
+            }
+
             const { reported_id, reason } = req.body;
             const reporter_id = req.user.id;
 
@@ -39,6 +55,65 @@ const reportController = {
                 status: 'success',
                 message: 'Signalement créé avec succès',
                 data: report
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Signaler une annonce publiée (tout utilisateur connecté).
+     * Le signalement vise le propriétaire de l'annonce (reported_id) et garde le bien concerné.
+     */
+    async createPropertyReport(req, res, next) {
+        try {
+            const { property_id, category } = req.body;
+            const details = String(req.body.reason || '').trim();
+            const reporter_id = req.user.id;
+
+            if (!PROPERTY_REPORT_CATEGORIES[category]) {
+                return res.status(400).json({ status: 'error', message: 'Motif de signalement invalide' });
+            }
+            // Détails obligatoires pour « Autre », facultatifs sinon
+            if (category === 'other' && details.length < 10) {
+                return res.status(400).json({ status: 'error', message: 'Décrivez le problème en au moins 10 caractères' });
+            }
+            if (details.length > 1000) {
+                return res.status(400).json({ status: 'error', message: 'Description trop longue (1000 caractères maximum)' });
+            }
+
+            const { rows } = await db.query(
+                'SELECT id, owner_id, is_published FROM properties WHERE id::text = $1',
+                [String(property_id)]
+            );
+            const property = rows[0];
+            if (!property || !property.is_published) {
+                return res.status(404).json({ status: 'error', message: 'Annonce introuvable' });
+            }
+            if (String(property.owner_id) === String(reporter_id) || (req.ownerId && String(property.owner_id) === String(req.ownerId))) {
+                return res.status(400).json({ status: 'error', message: 'Vous ne pouvez pas signaler votre propre annonce' });
+            }
+            if (await Report.findPendingForProperty(reporter_id, String(property.id))) {
+                return res.status(409).json({ status: 'error', message: 'Vous avez déjà signalé cette annonce. Notre équipe l\'examine.' });
+            }
+
+            const reason = details
+                ? `${PROPERTY_REPORT_CATEGORIES[category]} — ${details}`
+                : PROPERTY_REPORT_CATEGORIES[category];
+
+            const report = await Report.create({
+                id: uuidv4(),
+                reporter_id,
+                reported_id: String(property.owner_id),
+                reason,
+                property_id: String(property.id),
+                category,
+            });
+
+            res.status(201).json({
+                status: 'success',
+                message: 'Signalement envoyé. Merci, notre équipe va examiner cette annonce.',
+                data: { id: report.id }
             });
         } catch (error) {
             next(error);

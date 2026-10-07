@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X, Building2, Layers, Share2, Facebook, Link as LinkIcon, Send, Loader2, ZoomIn, ZoomOut, RotateCcw, Eye } from "lucide-react";
+import { ArrowLeft, MapPin, BedDouble, Home, Bath, Square, Calendar, Shield, AlertCircle, Phone, Mail, CheckCircle, ChevronLeft, ChevronRight, X, Building2, Layers, Share2, Facebook, Link as LinkIcon, Send, Loader2, ZoomIn, ZoomOut, RotateCcw, Eye, Flag } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -26,6 +26,7 @@ import PropertyDetailSkeleton from "@/components/PropertyDetailSkeleton";
 import { getMyDossier, shareDossier } from "@/api/dossier";
 import { formatCurrency } from "@/lib/utils";
 import Footer from "@/components/Footer";
+import { ReportPropertyDialog } from "@/components/ReportPropertyDialog";
 
 const renderDescription = (text: string) => {
   if (!text) return null;
@@ -68,6 +69,7 @@ const DetailPropriete = () => {
   const { user } = useAuth();
   const [property, setProperty] = useState<any>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hasApplied, setHasApplied] = useState(false);
@@ -119,9 +121,8 @@ const DetailPropriete = () => {
     } catch (error) {
       console.error("Error loading property:", error);
       toast({
-        title: "Erreur lors du chargement",
-        description:
-          "Impossible de charger les détails du bien. Vérifiez votre connexion et réessayez.",
+        title: t('detail.load_error_title'),
+        description: t('detail.load_error_desc'),
         variant: "destructive",
       });
     } finally {
@@ -141,13 +142,17 @@ const DetailPropriete = () => {
     }
   };
 
+  // Message envoyé au propriétaire (et affiché dans la confirmation), selon location ou vente
+  const buildApplicationMessage = (p: { name: string; address: string; listing_type?: string }) =>
+    t(p.listing_type === 'vente' ? 'detail.message_sale' : 'detail.message_rent', { name: p.name, address: p.address });
+
   const sendApplication = async () => {
     try {
       if (!user || !property) {
         console.error("Missing user or property data:", { user, property });
         toast({
-          title: "Erreur",
-          description: "Impossible d'envoyer la candidature. Données manquantes.",
+          title: t('common.error'),
+          description: t('detail.missing_data'),
           variant: "destructive",
         });
         return;
@@ -156,8 +161,8 @@ const DetailPropriete = () => {
       if (!property.owner_id) {
         console.error("Property has no owner_id:", property);
         toast({
-          title: "Erreur",
-          description: "Ce bien n'a pas de propriétaire associé.",
+          title: t('common.error'),
+          description: t('detail.no_owner'),
           variant: "destructive",
         });
         return;
@@ -169,7 +174,8 @@ const DetailPropriete = () => {
         property_id: property.id,
       });
 
-      const messageText = `Bonjour,\n\nJe suis candidat(e) pour le bien "${property.name}" situé à ${property.address}.\n\nMerci de me répondre.\n\nCordialement.`;
+      // Même texte que celui affiché dans la confirmation, selon location ou vente
+      const messageText = buildApplicationMessage(property);
 
       await sendMessage({
         receiver_id: property.owner_id,
@@ -180,16 +186,16 @@ const DetailPropriete = () => {
       setHasApplied(true);
 
       toast({
-        title: "Candidature envoyée",
-        description: "Votre candidature a été envoyée au propriétaire. Vous recevrez une réponse par message.",
+        title: t('detail.sent_title'),
+        description: t('detail.sent_desc'),
       });
 
       setShowConfirmDialog(false);
     } catch (error: any) {
       console.error("Application error:", error);
       toast({
-        title: "Erreur lors de la candidature",
-        description: error.message || "Une erreur est survenue lors de l'envoi de votre candidature.",
+        title: t('detail.send_error_title'),
+        description: error.message || t('detail.send_error_desc'),
         variant: "destructive",
       });
     }
@@ -314,9 +320,9 @@ const DetailPropriete = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="pt-24 pb-16 px-4 text-center">
-          <h1 className="text-2xl font-bold mb-4">Bien introuvable</h1>
+          <h1 className="text-2xl font-bold mb-4">{t('detail.not_found')}</h1>
           <Button onClick={() => navigate("/search")}>
-            Retour à la recherche
+            {t('detail.back_to_search')}
           </Button>
         </div>
       </div>
@@ -406,8 +412,8 @@ const DetailPropriete = () => {
       default:
         navigator.clipboard.writeText(shareUrl);
         toast({
-          title: "Lien copié",
-          description: "Le lien a été copié dans votre presse-papier.",
+          title: t('detail.link_copied_title'),
+          description: t('detail.link_copied_desc'),
         });
         break;
     }
@@ -428,23 +434,29 @@ const DetailPropriete = () => {
       : property.owner_profiles
     : null;
 
-  const ownerCompanyName = ownerProfile?.company_name || "Non renseigné";
+  const ownerCompanyName = ownerProfile?.company_name || t('detail.not_provided');
   const ownerContactPhone = ownerProfile?.contact_phone || ownerProfile?.phone || null;
   const ownerContactEmail = ownerProfile?.external_email || ownerProfile?.email || null;
   const isBotOwner = ownerProfile?.registration_email === 'import@samalocation.com' || ownerProfile?.email === 'import@samalocation.com';
   const rentPeriodLabels: Record<string, string> = {
-    jour: "jour",
-    semaine: "semaine",
-    mois: "mois",
+    jour: t('period.jour'),
+    semaine: t('period.semaine'),
+    mois: t('period.mois'),
   };
   const propertyRentPeriod =
-    rentPeriodLabels[(property as any).primary_rent_period ?? "mois"] ?? "mois";
+    rentPeriodLabels[(property as any).primary_rent_period ?? "mois"] ?? t('period.mois');
 
   return (
     <div className="min-h-screen bg-background">
       <SEO 
-        title={`${property.name} à ${property.address}`}
-        description={`${property.property_type} ${property.listing_type === 'vente' ? 'à vendre' : 'à louer'} à ${property.address}. ${property.aggregated_area || property.property_units?.[0]?.area_sqm || ""} m², ${property.aggregated_bedrooms || property.property_units?.[0]?.bedrooms || ""} chambres. ${property.description?.substring(0, 100)}...`}
+        title={t('detail.seo_title', { name: property.name, address: property.address })}
+        description={t(property.listing_type === 'vente' ? 'detail.seo_desc_sale' : 'detail.seo_desc_rent', {
+          type: property.property_type,
+          address: property.address,
+          area: property.aggregated_area || property.property_units?.[0]?.area_sqm || "",
+          bedrooms: property.aggregated_bedrooms || property.property_units?.[0]?.bedrooms || "",
+          excerpt: property.description?.substring(0, 100) || "",
+        })}
         image={property.cover_photo || property.photo_url}
         type="article"
       />
@@ -459,7 +471,7 @@ const DetailPropriete = () => {
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Retour à la recherche
+              {t('detail.back_to_search')}
             </Button>
           </div>
 
@@ -473,7 +485,7 @@ const DetailPropriete = () => {
                         <CarouselItem key={index} className="relative aspect-[4/3] sm:aspect-[16/10] md:aspect-[16/10] overflow-hidden cursor-pointer" onClick={() => openGallery(index)}>
                           <img
                             src={photo}
-                            alt={`${property.name} - Photo ${index + 1}`}
+                            alt={t('detail.photo_alt', { name: property.name, index: index + 1 })}
                             className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                           />
                         </CarouselItem>
@@ -498,10 +510,10 @@ const DetailPropriete = () => {
                         openGallery(0);
                       }}
                       className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-black/60 hover:bg-black/85 text-white backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow-md hover:scale-105 z-10 border border-white/20"
-                      title="Agrandir et voir en plein écran"
+                      title={t('detail.enlarge_title')}
                     >
                       <Eye className="h-3.5 w-3.5" />
-                      <span>{allPhotos.length > 1 ? `Voir les ${allPhotos.length} photos` : "Agrandir"}</span>
+                      <span>{allPhotos.length > 1 ? t('detail.see_all_photos', { count: allPhotos.length }) : t('detail.enlarge')}</span>
                     </button>
                   </Carousel>
                 </div>
@@ -516,7 +528,7 @@ const DetailPropriete = () => {
                       >
                         <img
                           src={photo}
-                          alt={`Thumbnail ${index + 1}`}
+                          alt={t('detail.thumbnail_alt', { index: index + 1 })}
                           className="w-full h-full object-cover"
                         />
                       </button>
@@ -534,16 +546,16 @@ const DetailPropriete = () => {
                         <div className="flex items-center gap-2">
                           {property.listing_type === 'vente' ? (
                             <Badge className="bg-primary text-white border-none text-[10px] sm:text-xs px-2.5 py-0.5 shadow-sm font-black uppercase tracking-wider">
-                              À Vendre
+                              {t('property.for_sale')}
                             </Badge>
                           ) : (
                             <Badge className="bg-emerald-600 text-white border-none text-[10px] sm:text-xs px-2.5 py-0.5 shadow-sm font-black uppercase tracking-wider">
-                              À Louer
+                              {t('property.for_rent')}
                             </Badge>
                           )}
                           {isRecent(property.published_at) && (
                             <Badge className="bg-orange-500 text-white border-none text-[10px] sm:text-xs px-2.5 py-0.5 shadow-sm animate-pulse uppercase font-black tracking-wider">
-                              Nouveau
+                              {t('property.new')}
                             </Badge>
                           )}
                         </div>
@@ -596,7 +608,7 @@ const DetailPropriete = () => {
                     <div className="flex items-center gap-2">
                       <Bath className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">{t('property.bathrooms_short').toUpperCase()}</p>
+                        <p className="text-sm text-muted-foreground">{t('common.bathrooms')}</p>
                         <p className="font-semibold">
                           {property.aggregated_bathrooms || property.property_units?.[0]?.bathrooms || "—"}
                         </p>
@@ -625,7 +637,7 @@ const DetailPropriete = () => {
 
                   {property.description && (
                     <div>
-                      <h3 className="text-lg md:text-xl font-semibold mb-3">Description</h3>
+                      <h3 className="text-lg md:text-xl font-semibold mb-3">{t('detail.description')}</h3>
                       <div className="text-muted-foreground whitespace-pre-line leading-relaxed">
                         {renderDescription(property.description)}
                       </div>
@@ -634,7 +646,7 @@ const DetailPropriete = () => {
 
 
                   <div>
-                    <h3 className="text-lg md:text-xl font-semibold mb-3">Équipements</h3>
+                    <h3 className="text-lg md:text-xl font-semibold mb-3">{t('detail.equipments')}</h3>
                     {equipmentList.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {equipmentList.map((equipment) => (
@@ -645,7 +657,7 @@ const DetailPropriete = () => {
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Le propriétaire n'a pas encore renseigné les équipements pour ce bien.
+                        {t('detail.no_equipments')}
                       </p>
                     )}
                   </div>
@@ -657,7 +669,7 @@ const DetailPropriete = () => {
               <Card className="shadow-soft sticky top-24">
                 {!isBotOwner && (
                   <CardHeader>
-                    <CardTitle>Intéressé par ce bien ?</CardTitle>
+                    <CardTitle>{t('detail.interested')}</CardTitle>
                   </CardHeader>
                 )}
                 <CardContent className="space-y-4 pt-6">
@@ -667,8 +679,8 @@ const DetailPropriete = () => {
                         <>
                           <p className="text-sm text-muted-foreground">
                             {property.listing_type === 'vente'
-                              ? "Vous êtes intéressé par l'achat de ce bien ? Envoyez une demande d'information au propriétaire pour discuter des modalités de vente."
-                              : "Envoyez votre candidature au propriétaire. Il vous répondra par message. Après avoir postulé, consultez régulièrement votre messagerie dans votre tableau de bord."}
+                              ? t('detail.sale_intro')
+                              : t('detail.rent_intro')}
                           </p>
                           <Button
                             onClick={handleApply}
@@ -677,13 +689,13 @@ const DetailPropriete = () => {
                             disabled={hasApplied}
                           >
                             {hasApplied 
-                              ? (property.listing_type === 'vente' ? "Demande envoyée" : "Candidature envoyée") 
-                              : (property.listing_type === 'vente' ? "Contacter le vendeur" : "Demander à louer")}
+                              ? (property.listing_type === 'vente' ? t('detail.request_sent') : t('detail.application_sent')) 
+                              : (property.listing_type === 'vente' ? t('detail.contact_seller') : t('detail.request_rent'))}
                           </Button>
                           {hasApplied && (
                             <div className="flex items-center gap-2 text-sm text-green-600">
                               <CheckCircle className="h-4 w-4" />
-                              <span>Vous avez déjà envoyé une demande pour ce bien.</span>
+                              <span>{t('detail.already_sent')}</span>
                             </div>
                           )}
                         </>
@@ -691,9 +703,9 @@ const DetailPropriete = () => {
                         <div className="flex items-start gap-2 p-4 bg-muted rounded-lg">
                           <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
                           <div>
-                            <p className="font-semibold text-sm">Non disponible</p>
+                            <p className="font-semibold text-sm">{t('detail.unavailable')}</p>
                             <p className="text-sm text-muted-foreground">
-                              Ce bien n'est actuellement plus disponible sur la plateforme.
+                              {t('detail.unavailable_desc')}
                             </p>
                           </div>
                         </div>
@@ -703,12 +715,12 @@ const DetailPropriete = () => {
 
                   {isBotOwner && (
                     <div className="text-sm text-muted-foreground bg-primary/5 p-4 rounded-xl border border-primary/10">
-                      Pour toute information ou pour programmer une visite, veuillez contacter le vendeur de l'annonce dans la section ci-dessous.
+                      {t('detail.imported_contact')}
                     </div>
                   )}
 
                   <div className={!isBotOwner ? "pt-4 border-t" : ""}>
-                    <h4 className="font-semibold mb-3">Propriétaire</h4>
+                    <h4 className="font-semibold mb-3">{t('detail.owner')}</h4>
                     <div className="space-y-4 text-sm">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
@@ -733,7 +745,7 @@ const DetailPropriete = () => {
                           {(ownerProfile?.is_verified || ownerProfile?.verification_status === 'verified') && (
                             <div className="flex items-center gap-1 text-green-600 text-[10px] font-bold uppercase">
                               <Shield className="h-3 w-3" />
-                              Agence Vérifiée
+                              {t('detail.verified_agency')}
                             </div>
                           )}
                         </div>
@@ -766,7 +778,7 @@ const DetailPropriete = () => {
                   <div className="pt-6 border-t mt-6">
                     <h4 className="font-semibold mb-4 flex items-center gap-2">
                       <Share2 className="h-4 w-4 text-primary" />
-                      Partager ce bien
+                      {t('detail.share_title')}
                     </h4>
                     <div className="grid grid-cols-3 gap-2">
                       <Button
@@ -776,7 +788,7 @@ const DetailPropriete = () => {
                         onClick={() => handleShare('whatsapp')}
                       >
                         <Share2 className="h-4 w-4" />
-                        <span className="text-[10px]">Partager</span>
+                        <span className="text-[10px]">{t('common.share')}</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -794,10 +806,25 @@ const DetailPropriete = () => {
                         onClick={() => handleShare('copy')}
                       >
                         <LinkIcon className="h-4 w-4" />
-                        <span className="text-[10px]">Lien</span>
+                        <span className="text-[10px]">{t('detail.link')}</span>
                       </Button>
                     </div>
                   </div>
+
+                  {/* Signaler l'annonce (sauf pour son propriétaire) */}
+                  {(!user || String(user.id) !== String(property.owner_id)) && (
+                    <div className="pt-4 mt-4 border-t flex justify-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+                        onClick={() => setReportOpen(true)}
+                      >
+                        <Flag className="h-4 w-4" />
+                        {t('report_property.button')}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -805,9 +832,9 @@ const DetailPropriete = () => {
 
           <section className="mt-16">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl md:text-2xl font-bold">Biens similaires</h2>
+              <h2 className="text-xl md:text-2xl font-bold">{t('detail.similar')}</h2>
               <Button variant="ghost" onClick={() => navigate("/search")} className="text-primary hover:text-primary">
-                Voir tous les biens
+                {t('detail.see_all')}
               </Button>
             </div>
 
@@ -819,7 +846,7 @@ const DetailPropriete = () => {
               </div>
             ) : suggestedProperties.length === 0 ? (
               <p className="text-muted-foreground">
-                Aucun autre bien similaire n'est disponible pour le moment.
+                {t('detail.no_similar')}
               </p>
             ) : (
               <Carousel
@@ -873,15 +900,22 @@ const DetailPropriete = () => {
       </div>
       <Footer />
 
+      <ReportPropertyDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        propertyId={String(property.id)}
+        propertyName={property.name}
+      />
+
       {/* Auth Required Dialog */}
       <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Connexion requise</DialogTitle>
+            <DialogTitle>{t('detail.login_required')}</DialogTitle>
             <DialogDescription>
               {property.listing_type === 'vente' 
-                ? "Vous devez être connecté pour contacter le vendeur." 
-                : "Vous devez être connecté pour pouvoir candidater à ce bien."}
+                ? t('detail.login_required_sale')
+                : t('detail.login_required_rent')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -889,13 +923,13 @@ const DetailPropriete = () => {
               variant="outline"
               onClick={() => setShowAuthDialog(false)}
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={() => navigate("/auth?mode=signup")}
               className="gradient-accent text-white"
             >
-              Créer un compte
+              {t('detail.create_account')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -906,21 +940,15 @@ const DetailPropriete = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {property.listing_type === 'vente' ? "Confirmer votre demande" : "Confirmer votre candidature"}
+              {property.listing_type === 'vente' ? t('detail.confirm_request') : t('detail.confirm_application')}
             </DialogTitle>
             <DialogDescription>
-              Le message suivant sera envoyé au {property.listing_type === 'vente' ? "vendeur" : "propriétaire"} :
+              {property.listing_type === 'vente' ? t('detail.message_to_seller') : t('detail.message_to_owner')}
             </DialogDescription>
           </DialogHeader>
           <div className="p-4 bg-muted rounded-lg">
             <p className="text-sm whitespace-pre-line">
-              Bonjour,{"\n\n"}
-              {property.listing_type === 'vente' 
-                ? `Je suis vivement intéressé(e) par l'achat du bien "${property.name}" situé à ${property.address}.`
-                : `Je suis candidat(e) pour le bien "${property.name}" situé à ${property.address}.`
-              }{"\n\n"}
-              Merci de me recontacter pour plus de détails.{"\n\n"}
-              Cordialement.
+              {buildApplicationMessage(property)}
             </p>
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -928,13 +956,13 @@ const DetailPropriete = () => {
               variant="outline"
               onClick={() => setShowConfirmDialog(false)}
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={sendApplication}
               className="gradient-accent text-white"
             >
-              {property.listing_type === 'vente' ? "Envoyer ma demande" : "Envoyer ma candidature"}
+              {property.listing_type === 'vente' ? t('detail.send_request') : t('detail.send_application')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -955,7 +983,7 @@ const DetailPropriete = () => {
                     {property.name}
                   </h3>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white/90 shrink-0">
-                    {allPhotos.length > 1 ? `${selectedImageIndex + 1} / ${allPhotos.length}` : "1 photo disponible"}
+                    {allPhotos.length > 1 ? `${selectedImageIndex + 1} / ${allPhotos.length}` : t('detail.one_photo')}
                   </span>
                 </div>
 
@@ -968,7 +996,7 @@ const DetailPropriete = () => {
                     disabled={zoomLevel <= 0.75}
                     onClick={zoomOut}
                     className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10 rounded-full disabled:opacity-30"
-                    title="Dézoomer (-)"
+                    title={t('detail.zoom_out')}
                   >
                     <ZoomOut className="h-4 w-4" />
                   </Button>
@@ -978,7 +1006,7 @@ const DetailPropriete = () => {
                     type="button"
                     onClick={resetZoom}
                     className="px-2 py-1 text-xs font-mono rounded bg-white/10 hover:bg-white/20 text-white/90 transition-colors"
-                    title="Réinitialiser le zoom (0)"
+                    title={t('detail.zoom_reset')}
                   >
                     {Math.round(zoomLevel * 100)}%
                   </button>
@@ -991,7 +1019,7 @@ const DetailPropriete = () => {
                     disabled={zoomLevel >= 3}
                     onClick={zoomIn}
                     className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10 rounded-full disabled:opacity-30"
-                    title="Zoomer (+)"
+                    title={t('detail.zoom_in')}
                   >
                     <ZoomIn className="h-4 w-4" />
                   </Button>
@@ -1005,7 +1033,7 @@ const DetailPropriete = () => {
                     size="icon"
                     onClick={() => setGalleryOpen(false)}
                     className="h-9 w-9 text-white/90 hover:text-white hover:bg-white/20 rounded-full"
-                    title="Fermer (Échap)"
+                    title={t('detail.close_esc')}
                   >
                     <X className="h-5 w-5" />
                   </Button>
@@ -1027,8 +1055,8 @@ const DetailPropriete = () => {
                       previousImage();
                     }}
                     className="absolute left-3 sm:left-6 z-30 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-black/70 hover:bg-black/95 text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-                    aria-label="Photo précédente"
-                    title="Photo précédente (←)"
+                    aria-label={t('detail.previous_photo')}
+                    title={t('detail.previous_photo_key')}
                   >
                     <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7" />
                   </button>
@@ -1038,7 +1066,7 @@ const DetailPropriete = () => {
                 <div className="w-full h-full flex items-center justify-center overflow-auto min-h-0 min-w-0 p-2">
                   <img
                     src={allPhotos[selectedImageIndex]}
-                    alt={`${property.name} - Photo ${selectedImageIndex + 1}`}
+                    alt={t('detail.photo_alt', { name: property.name, index: selectedImageIndex + 1 })}
                     style={{
                       transform: `scale(${zoomLevel})`,
                       transformOrigin: "center center",
@@ -1047,7 +1075,7 @@ const DetailPropriete = () => {
                       zoomLevel > 1 ? "cursor-zoom-out" : "cursor-zoom-in"
                     }`}
                     onClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 1.75))}
-                    title={zoomLevel > 1 ? "Cliquer pour dézoomer" : "Cliquer pour zoomer"}
+                    title={zoomLevel > 1 ? t('detail.click_zoom_out') : t('detail.click_zoom_in')}
                   />
                 </div>
 
@@ -1060,8 +1088,8 @@ const DetailPropriete = () => {
                       nextImage();
                     }}
                     className="absolute right-3 sm:right-6 z-30 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-black/70 hover:bg-black/95 text-white flex items-center justify-center transition-all hover:scale-110 shadow-2xl border border-white/20 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-                    aria-label="Photo suivante"
-                    title="Photo suivante (→)"
+                    aria-label={t('detail.next_photo')}
+                    title={t('detail.next_photo_key')}
                   >
                     <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7" />
                   </button>
@@ -1085,11 +1113,11 @@ const DetailPropriete = () => {
                             ? "border-primary ring-2 ring-primary scale-105 opacity-100"
                             : "border-white/20 opacity-60 hover:opacity-100 hover:border-white/50"
                         }`}
-                        aria-label={`Aller à la photo ${index + 1}`}
+                        aria-label={t('detail.go_to_photo', { index: index + 1 })}
                       >
                         <img
                           src={photo}
-                          alt={`Miniature ${index + 1}`}
+                          alt={t('detail.thumbnail_alt', { index: index + 1 })}
                           className="w-full h-full object-cover"
                         />
                       </button>

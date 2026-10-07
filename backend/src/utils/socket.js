@@ -16,16 +16,19 @@ module.exports = {
         // Authentification obligatoire : le JWT est transmis dans socket.handshake.auth.token
         io.use(async (socket, next) => {
             try {
-                const { verifyToken } = require('./auth');
+                const { verifyToken, isSessionRevoked } = require('./auth');
                 const User = require('../models/userModel');
                 const decoded = verifyToken(socket.handshake.auth?.token);
                 if (!decoded) return next(new Error('Not authenticated'));
 
                 const profile = await User.findProfileById(decoded.id);
-                if (!profile || profile.is_blocked) return next(new Error('Not authorized'));
+                if (!profile || profile.is_blocked || isSessionRevoked(decoded, profile)) return next(new Error('Not authorized'));
+
+                const Organization = require('../models/organizationModel');
+                const organizations = await Organization.findForUser(profile.id);
 
                 socket.data.userId = String(profile.id);
-                socket.data.parentId = profile.parent_id ? String(profile.parent_id) : null;
+                socket.data.orgIds = new Set(organizations.map(o => String(o.id)));
                 next();
             } catch (err) {
                 next(new Error('Authentication error'));
@@ -36,10 +39,10 @@ module.exports = {
             // Rejoint automatiquement sa propre room
             socket.join(socket.data.userId);
 
-            // Seules sa propre room et celle de son agence (s'il est collaborateur) sont autorisées
+            // Seules sa propre room et celles des organisations dont il est membre actif sont autorisées
             socket.on('join', (roomId) => {
                 const room = roomId ? String(roomId) : null;
-                if (room && (room === socket.data.userId || room === socket.data.parentId)) {
+                if (room && (room === socket.data.userId || socket.data.orgIds.has(room))) {
                     socket.join(room);
                 }
             });

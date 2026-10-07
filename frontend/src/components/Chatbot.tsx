@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { MessageCircle, X, Send, Sparkles, Loader2, Minus } from "lucide-react";
 import { getAIChatResponse } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 interface Message {
     role: "user" | "model";
@@ -13,6 +14,7 @@ interface Message {
 }
 
 const Chatbot = () => {
+    const { t } = useTranslation();
     const { user } = useAuth();
     const location = useLocation();
     const isMessagingTab = location.pathname.includes('/messages') || location.hash.includes('/messages');
@@ -20,7 +22,7 @@ const Chatbot = () => {
     const [isMinimized, setIsMinimized] = useState(false);
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<Message[]>([
-        { role: "model", text: "Bonjour ! 👋 \n\nJe suis l'assistant Samalocation. Comment puis-je vous aider aujourd'hui ? \n\nQue vous cherchiez un logement ou que vous souhaitiez gérer vos biens, je suis là pour vous accompagner !" }
+        { role: "model", text: t('chatbot.welcome') }
     ]);
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,7 +55,7 @@ const Chatbot = () => {
             const aiResponse = await getAIChatResponse(userMessage, history);
             setMessages((prev) => [...prev, { role: "model", text: aiResponse }]);
         } catch (error: any) {
-            setMessages((prev) => [...prev, { role: "model", text: "Désolé, je rencontre une petite erreur technique. Veuillez réessayer dans quelques instants ! 🛠️" }]);
+            setMessages((prev) => [...prev, { role: "model", text: t('chatbot.error') }]);
         } finally {
             setLoading(false);
         }
@@ -77,7 +79,7 @@ const Chatbot = () => {
                 onClick={() => setIsMinimized(false)}
             >
                 <Sparkles className="h-4 w-4" />
-                <span className="text-sm font-medium">Assistant IA actif</span>
+                <span className="text-sm font-medium">{t('chatbot.active')}</span>
                 <X className="h-4 w-4 ml-2 hover:bg-white/20 rounded" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} />
             </div>
         );
@@ -92,7 +94,7 @@ const Chatbot = () => {
                     </div>
                     <div>
                         <CardTitle className="text-sm font-bold">Samalocation AI</CardTitle>
-                        <p className="text-[10px] opacity-80">En ligne • Support 24/7</p>
+                        <p className="text-[10px] opacity-80">{t('chatbot.status')}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -143,7 +145,7 @@ const Chatbot = () => {
                     }}
                 >
                     <Input
-                        placeholder="Écrivez votre message..."
+                        placeholder={t('chatbot.placeholder')}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         disabled={loading}

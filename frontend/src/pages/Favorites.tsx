@@ -63,7 +63,7 @@ const Favorites = () => {
                             {t('nav.favorites') || "Mes Favoris"}
                         </h1>
                         <p className="text-muted-foreground">
-                            {favorites.length} {favorites.length > 1 ? "biens enregistrés" : "bien enregistré"}
+                            {t('favorites_page.count', { count: favorites.length })}
                         </p>
                     </div>
                 </div>
@@ -71,12 +71,12 @@ const Favorites = () => {
                 {favorites.length === 0 ? (
                     <div className="text-center py-20 bg-secondary/20 rounded-3xl border-2 border-dashed border-secondary">
                         <Home className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-20" />
-                        <h2 className="text-2xl font-semibold mb-2">Aucun favori pour le moment</h2>
+                        <h2 className="text-2xl font-semibold mb-2">{t('favorites_page.empty_title')}</h2>
                         <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                            Explorez nos logements et cliquez sur le cœur pour les retrouver ici facilement.
+                            {t('favorites_page.empty_desc')}
                         </p>
                         <Button onClick={() => navigate("/search")} className="gradient-accent text-white">
-                            Explorer les logements
+                            {t('favorites_page.explore')}
                         </Button>
                     </div>
                 ) : (

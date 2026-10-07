@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Lock } from "lucide-react";
 import { baseClient } from "@/api/baseClient";
 import { useTranslation } from "react-i18next";
+import { PushNotificationSettings } from "./PushNotificationSettings";
 
 export const AccountSettings = () => {
   const { toast } = useToast();
@@ -37,7 +38,7 @@ export const AccountSettings = () => {
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
+    if (passwordData.newPassword.length < 8) {
       toast({
         title: t('common.error'),
         description: t('settings.password_length'),
@@ -48,13 +49,18 @@ export const AccountSettings = () => {
 
     setLoading(true);
     try {
-      await baseClient("/auth/change-password", {
+      const result = await baseClient("/auth/change-password", {
         method: "POST",
         body: JSON.stringify({
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword,
         }),
       });
+
+      // Le changement de mot de passe révoque les anciennes sessions : on garde la nouvelle
+      if (result?.token) {
+        localStorage.setItem("auth_token", result.token);
+      }
 
       toast({
         title: t('settings.password_changed'),
@@ -74,51 +80,55 @@ export const AccountSettings = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lock className="h-5 w-5" />
-          {t('settings.change_password')}
-        </CardTitle>
-        <CardDescription>
-          {t('settings.change_password_desc')}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="currentPassword">{t('settings.current_password')}</Label>
-          <Input
-            id="currentPassword"
-            type="password"
-            value={passwordData.currentPassword}
-            onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-            placeholder={t('settings.current_password')}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="newPassword">{t('settings.new_password')}</Label>
-          <Input
-            id="newPassword"
-            type="password"
-            value={passwordData.newPassword}
-            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-            placeholder={t('settings.password_placeholder')}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="confirmPassword">{t('settings.confirm_password')}</Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            value={passwordData.confirmPassword}
-            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-            placeholder={t('settings.confirm_placeholder')}
-          />
-        </div>
-        <Button onClick={handleChangePassword} disabled={loading}>
-          {loading ? t('common.loading') : t('settings.change_password')}
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            {t('settings.change_password')}
+          </CardTitle>
+          <CardDescription>
+            {t('settings.change_password_desc')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="currentPassword">{t('settings.current_password')}</Label>
+            <Input
+              id="currentPassword"
+              type="password"
+              value={passwordData.currentPassword}
+              onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+              placeholder={t('settings.current_password')}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="newPassword">{t('settings.new_password')}</Label>
+            <Input
+              id="newPassword"
+              type="password"
+              value={passwordData.newPassword}
+              onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+              placeholder={t('settings.password_placeholder')}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">{t('settings.confirm_password')}</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={passwordData.confirmPassword}
+              onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+              placeholder={t('settings.confirm_placeholder')}
+            />
+          </div>
+          <Button onClick={handleChangePassword} disabled={loading}>
+            {loading ? t('common.loading') : t('settings.change_password')}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <PushNotificationSettings />
+    </div>
   );
 };

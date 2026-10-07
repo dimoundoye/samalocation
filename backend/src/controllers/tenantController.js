@@ -105,12 +105,31 @@ const tenantController = {
                 await db.query('UPDATE property_units SET is_available = true WHERE id = $1', [unit_id]);
             }
 
+            // Locataire avec un compte : email et téléphone repris de son profil. La recherche d'utilisateurs
+            // ne renvoie ni le téléphone ni l'email complet (masqué), on ne se fie donc pas au formulaire.
+            let tenantEmail = email;
+            let tenantPhone = phone;
+            if (user_id) {
+                const { rows: profileRows } = await db.query(
+                    'SELECT email, phone, custom_id FROM user_profiles WHERE id = $1',
+                    [user_id]
+                );
+                const profile = profileRows[0];
+                if (!profile) {
+                    return response.error(res, 'Compte locataire introuvable', 404);
+                }
+                const isPlaceholderEmail = profile.email
+                    && profile.email.toLowerCase() === `${String(profile.custom_id || '').toLowerCase()}@samalocation.com`;
+                tenantEmail = (isPlaceholderEmail ? '' : profile.email) || '';
+                tenantPhone = profile.phone || tenantPhone || '';
+            }
+
             const tenantId = uuidv4();
             const newTenant = await Tenant.create({
                 id: tenantId,
                 full_name,
-                email,
-                phone,
+                email: tenantEmail,
+                phone: tenantPhone,
                 unit_id,
                 monthly_rent,
                 move_in_date,
@@ -131,7 +150,7 @@ const tenantController = {
                 entityType: 'tenant',
                 entityId: newTenant.id,
                 entityLabel: `Locataire ${full_name} ajouté — ${propNameRows[0]?.name || 'Bien inconnu'}`,
-                metadata: { email, phone, unit_id }
+                metadata: { email: tenantEmail, phone: tenantPhone, unit_id }
             });
 
             return response.success(res, newTenant, 'Tenant assigned', 201);

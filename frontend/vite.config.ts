@@ -30,6 +30,8 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
+        // Réception et clic des notifications push (public/push-sw.js)
+        importScripts: ['push-sw.js'],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,

@@ -103,8 +103,8 @@ const Index = () => {
   const fallbackProperties = [
     {
       image: property1,
-      title: "Appartement moderne",
-      location: "Centre Ville",
+      title: t('hero.samples.apartment_title'),
+      location: t('hero.samples.apartment_location'),
       price: 350000,
       type: "Appartement",
       status: "available" as const,
@@ -115,8 +115,8 @@ const Index = () => {
     },
     {
       image: property2,
-      title: "Villa spacieuse",
-      location: "Quartier Résidentiel",
+      title: t('hero.samples.villa_title'),
+      location: t('hero.samples.villa_location'),
       price: 500000,
       type: "Maison",
       status: "available" as const,
@@ -127,8 +127,8 @@ const Index = () => {
     },
     {
       image: property1,
-      title: "Studio meublé",
-      location: "Quartier Calme",
+      title: t('hero.samples.studio_title'),
+      location: t('hero.samples.studio_location'),
       price: 150000,
       type: "Studio",
       status: "occupied" as const,
@@ -141,9 +141,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/10">
-      <SEO 
-        title="Samalocation - Simplifiez votre gestion locative en ligne"
-        description="Trouvez votre prochain logement ou gérez vos biens immobiliers en toute simplicité. Appartements, villas, studios et plus."
+      <SEO
+        title={t('seo.home.title')}
+        description={t('seo.home.description')}
       />
       <Navbar />
 
@@ -166,8 +166,8 @@ const Index = () => {
           <div className="flex flex-col items-center text-center space-y-6 md:space-y-7 animate-slide-up">
             {/* Headline matching exact Archiflow model size */}
             <h1 className="text-3xl xs:text-4xl md:text-5xl lg:text-6xl font-serif font-normal tracking-tight leading-[1.15] text-[#0B1B3D] dark:text-white max-w-3xl">
-              Gérez & Trouvez un logement <br className="hidden sm:inline" />
-              en toute confiance.
+              {t('hero.title_part1')} <br className="hidden sm:inline" />
+              {t('hero.title_part2')}
             </h1>
 
             {/* Subtitle */}
@@ -181,7 +181,7 @@ const Index = () => {
                 onClick={() => navigate("/search")}
                 className="h-12 px-7 rounded-xl gradient-primary hover:opacity-95 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 w-full sm:w-auto"
               >
-                <span>Explorer les biens</span>
+                <span>{t('hero.explore')}</span>
                 <ArrowRight className="h-4 w-4" />
               </Button>
               <Button
@@ -190,7 +190,7 @@ const Index = () => {
                 className="h-12 px-7 rounded-xl border-primary/30 hover:bg-primary/5 text-primary dark:text-white font-bold text-sm flex items-center justify-center gap-2 w-full sm:w-auto"
               >
                 <Home className="h-4 w-4 text-primary" />
-                <span>Mettre en location</span>
+                <span>{t('hero.list_property')}</span>
               </Button>
             </div>
 
@@ -226,7 +226,7 @@ const Index = () => {
                       <SelectValue placeholder={t('search.property_type') || "Type de bien"} />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-neutral-200 bg-white dark:bg-neutral-900">
-                      <SelectItem value="all" className="rounded-lg cursor-pointer">Tous les types</SelectItem>
+                      <SelectItem value="all" className="rounded-lg cursor-pointer">{t('search.types.all')}</SelectItem>
                       <SelectItem value="appartement" className="rounded-lg cursor-pointer">{t('search.types.apartment') || "Appartement"}</SelectItem>
                       <SelectItem value="maison" className="rounded-lg cursor-pointer">{t('search.types.house') || "Maison"}</SelectItem>
                       <SelectItem value="villa" className="rounded-lg cursor-pointer">{t('search.types.villa') || "Villa"}</SelectItem>
@@ -252,7 +252,7 @@ const Index = () => {
                   }}
                   className="h-10 w-full sm:w-10 rounded-xl gradient-primary hover:opacity-95 text-white font-bold transition-all shadow-medium flex items-center justify-center shrink-0"
                 >
-                  <span className="sm:hidden font-bold mr-2 text-sm">Rechercher</span>
+                  <span className="sm:hidden font-bold mr-2 text-sm">{t('hero.search_button')}</span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>

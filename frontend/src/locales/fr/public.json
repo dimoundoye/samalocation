@@ -1,0 +1,344 @@
+{
+  "hero": {
+    "badge": "La révolution locative en ligne",
+    "title_part1": "Gérez & Trouvez un logement",
+    "title_part2": "en toute confiance.",
+    "description": "Samalocation simplifie la vie des propriétaires et des locataires. Une plateforme transparente, sécurisée et 100% digitale.",
+    "list_property": "Mettre en location",
+    "search_property": "Chercher un logement",
+    "search_placeholder": "Quartier, ville...",
+    "search_button": "Rechercher",
+    "explore": "Explorer les biens",
+    "samples": {
+      "apartment_title": "Appartement moderne",
+      "apartment_location": "Centre Ville",
+      "villa_title": "Villa spacieuse",
+      "villa_location": "Quartier Résidentiel",
+      "studio_title": "Studio meublé",
+      "studio_location": "Quartier Calme"
+    }
+  },
+  "features": {
+    "title": "Pourquoi choisir Samalocation ?",
+    "subtitle": "Nous avons construit la solution idéale pour la gestion immobilière, en combinant technologie moderne et simplicité d'utilisation.",
+    "security": {
+      "title": "Sécurité",
+      "desc": "Vérification des profils et protection de vos documents et transactions."
+    },
+    "time": {
+      "title": "Gain de Temps",
+      "desc": "Digitalisez vos visites et la gestion de vos logements en quelques clics."
+    },
+    "transparency": {
+      "title": "Transparence Totale",
+      "desc": "Des échanges clairs, sans frais cachés, pour une confiance mutuelle."
+    }
+  },
+  "roles": {
+    "owners": {
+      "title": "Pour les Propriétaires",
+      "desc": "Gérez votre patrimoine avec sérénité. Trouvez des locataires vérifiés et suivez vos paiements sans stress.",
+      "item1": "Publication de vos logements",
+      "item2": "Trouvez des locataires",
+      "item3": "Suivez vos paiements",
+      "item4": "Gestion des quittances",
+      "cta": "Publier mon annonce"
+    },
+    "tenants": {
+      "title": "Pour les Locataires",
+      "desc": "Le logement de vos rêves est à portée de clic. Visites facilitées et échange direct avec les propriétaires.",
+      "item1": "Annonces vérifiées",
+      "item2": "Filtrage intelligent",
+      "item3": "Candidature en un clic",
+      "item4": "Discuter avec le propriétaire",
+      "cta": "Trouver mon logement"
+    }
+  },
+  "featured": {
+    "title": "Logements à la une",
+    "desc": "Découvrez les meilleures opportunités du moment.",
+    "view_all": "Voir tout l'immobilier"
+  },
+  "process": {
+    "title": "Comment ça marche ?",
+    "step1": {
+      "title": "Cherchez",
+      "desc": "Explorez nos annonces vérifiées partout."
+    },
+    "step2": {
+      "title": "Candidature",
+      "desc": "Discutez avec le propriétaire en toute sérénité."
+    },
+    "step3": {
+      "title": "Installez-vous",
+      "desc": "Emménagez en toute sérénité."
+    }
+  },
+  "cta": {
+    "title": "Prêt à simplifier votre expérience locative ?",
+    "desc": "Rejoignez des centaines d'utilisateurs qui ont déjà choisi Samalocation pour une gestion transparente.",
+    "signup": "S'inscrire",
+    "contact": "Nous contacter"
+  },
+  "footer": {
+    "desc": "La plateforme de référence pour la location immobilière. Sécurité, simplicité, transparence.",
+    "nav": {
+      "title": "Navigation",
+      "home": "Accueil",
+      "search": "Rechercher",
+      "login": "Se connecter",
+      "about": "À Propos"
+    },
+    "legal": {
+      "title": "Légal",
+      "terms": "Conditions Générales",
+      "privacy": "Confidentialité"
+    },
+    "support": {
+      "title": "Support",
+      "contact": "Contactez-nous"
+    },
+    "copyright": "© 2026 Samalocation. Tous droits réservés."
+  },
+  "contact": {
+    "title": "Contactez-nous",
+    "subtitle": "Vous avez une question, une suggestion ou besoin d'assistance ? Notre équipe est là pour vous aider.",
+    "info": {
+      "address_title": "Notre Adresse",
+      "address_text": "Siège Social, Samalocation",
+      "phone_title": "Téléphone",
+      "phone_sub": "Lun-Ven, 9h-18h",
+      "email_title": "Email",
+      "email_sub": "Réponse sous 24h",
+      "hours_title": "Horaires",
+      "hours_sub1": "Lundi - Vendredi : 9h00 - 18h00",
+      "hours_sub2": "Samedi : 9h00 - 13h00"
+    },
+    "form": {
+      "title": "Envoyez-nous un message",
+      "name": "Nom complet",
+      "name_placeholder": "Votre nom",
+      "email": "Email valide",
+      "email_placeholder": "votre@email.com",
+      "subject": "Objet",
+      "subject_placeholder": "Sujet de votre message",
+      "message": "Message",
+      "message_placeholder": "Comment pouvons-nous vous aider ?",
+      "submit": "Envoyer le message",
+      "sending": "Envoi en cours...",
+      "success_title": "Message envoyé !",
+      "success_desc": "Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.",
+      "robot_error": "Veuillez confirmer que vous n'êtes pas un robot."
+    }
+  },
+  "search": {
+    "title": "Trouvez votre logement idéal",
+    "placeholder": "Rechercher par ville, quartier...",
+    "results_count_one": "{{count}} logement disponible",
+    "results_count_other": "{{count}} logements disponibles",
+    "filters": "Filtres",
+    "more_filters": "Plus de filtres",
+    "price_range": "Gamme de prix",
+    "property_type": "Type de logement",
+    "types": {
+      "all": "Tous les types",
+      "house": "Maison",
+      "villa": "Villa",
+      "apartment": "Appartement",
+      "studio": "Studio",
+      "room": "Chambre",
+      "garage": "Garage",
+      "office": "Locale",
+      "land": "Terrain"
+    },
+    "prices": {
+      "all": "Tous les prix",
+      "under_100k": "0 - 100 000 F",
+      "100k_200k": "100 000 - 200 000 F",
+      "200k_400k": "200 000 - 400 000 F",
+      "over_440k": "400 000 F+"
+    },
+    "no_results": "Aucun logement disponible pour le moment.",
+    "no_results_desc": "Revenez plus tard pour voir les nouvelles offres.",
+    "loading": "Chargement des logements...",
+    "pagination": {
+      "prev": "Précédent",
+      "next": "Suivant",
+      "page": "Page {{current}} sur {{total}}"
+    },
+    "view_map": "Voir la carte",
+    "view_list": "Voir la liste",
+    "map_title": "Localisation",
+    "map_desc": "Seuls les logements avec des coordonnées renseignées apparaissent sur la carte.",
+    "autocomplete": {
+      "recent": "Recherches récentes",
+      "locations": "Localités",
+      "properties": "Propriétés",
+      "search_for": "Rechercher « {{query}} »",
+      "press_enter": "Appuyez sur Entrée pour rechercher « {{query}} »"
+    },
+    "load_error": "Impossible de charger les biens disponibles pour le moment.",
+    "refresh": "Actualiser la page",
+    "map_hint": "Utilisez les filtres pour affiner les biens affichés sur la carte.",
+    "view_on_map": "VOIR SUR LA CARTE",
+    "view_as_list": "VOIR LA LISTE",
+    "f": {
+      "transaction": "Transaction",
+      "all_transactions": "Toutes",
+      "rent": "Location",
+      "sale": "Vente",
+      "active": "(Actifs)",
+      "refine": "Affiner votre recherche",
+      "property_type": "Type de bien",
+      "type": "Type",
+      "price_min": "Prix Min",
+      "price_max": "Prix Max",
+      "rent_min": "Loyer Min",
+      "rent_max": "Loyer Max",
+      "area_min_m2": "Surface Min (m²)",
+      "area_max_m2": "Surface Max (m²)",
+      "area_min": "Surface Min",
+      "area_max": "Surface Max",
+      "bedrooms_min": "Chambres Min",
+      "bedrooms_max": "Chambres Max",
+      "rooms_min": "Pièces Min",
+      "rooms_max": "Pièces Max",
+      "min": "Min",
+      "max": "Max",
+      "apply": "Appliquer les filtres",
+      "reset_all": "Réinitialiser tout",
+      "reset": "Réinitialiser",
+      "instant": "Les filtres sont appliqués instantanément."
+    }
+  },
+  "seo": {
+    "home": {
+      "title": "Samalocation - Simplifiez votre gestion locative en ligne",
+      "description": "Trouvez votre prochain logement ou gérez vos biens immobiliers en toute simplicité. Appartements, villas, studios et plus."
+    },
+    "contact": {
+      "title": "Contactez-nous | Samalocation",
+      "description": "Une question ou un besoin d'assistance ? Contactez l'équipe Samalocation. Nous sommes à votre écoute pour vous accompagner dans votre gestion immobilière."
+    },
+    "search": {
+      "title": "Recherche de biens immobiliers | Samalocation",
+      "description": "Parcourez nos annonces immobilières : appartements, maisons, villas, studios et terrains."
+    },
+    "default": {
+      "title": "Samalocation - Simplifiez votre gestion locative et vente en ligne",
+      "description": "Plateforme intelligente de gestion locative et de vente en ligne. Gérez vos biens et trouvez un logement facilement."
+    }
+  },
+  "favorites_page": {
+    "count_one": "{{count}} bien enregistré",
+    "count_other": "{{count}} biens enregistrés",
+    "empty_title": "Aucun favori pour le moment",
+    "empty_desc": "Explorez nos logements et cliquez sur le cœur pour les retrouver ici facilement.",
+    "explore": "Explorer les logements"
+  },
+  "not_found": {
+    "image_alt": "404 Page introuvable",
+    "find_home": "Chercher un logement"
+  },
+  "chatbot": {
+    "welcome": "Bonjour ! 👋 \n\nJe suis l'assistant Samalocation. Comment puis-je vous aider aujourd'hui ? \n\nQue vous cherchiez un logement ou que vous souhaitiez gérer vos biens, je suis là pour vous accompagner !",
+    "error": "Désolé, je rencontre une petite erreur technique. Veuillez réessayer dans quelques instants ! 🛠️",
+    "active": "Assistant IA actif",
+    "status": "En ligne • Support 24/7",
+    "placeholder": "Écrivez votre message..."
+  },
+  "detail": {
+    "load_error_title": "Erreur lors du chargement",
+    "load_error_desc": "Impossible de charger les détails du bien. Vérifiez votre connexion et réessayez.",
+    "missing_data": "Impossible d'envoyer la candidature. Données manquantes.",
+    "no_owner": "Ce bien n'a pas de propriétaire associé.",
+    "sent_title": "Candidature envoyée",
+    "sent_desc": "Votre candidature a été envoyée au propriétaire. Vous recevrez une réponse par message.",
+    "send_error_title": "Erreur lors de la candidature",
+    "send_error_desc": "Une erreur est survenue lors de l'envoi de votre candidature.",
+    "not_found": "Bien introuvable",
+    "back_to_search": "Retour à la recherche",
+    "link_copied_title": "Lien copié",
+    "link_copied_desc": "Le lien a été copié dans votre presse-papier.",
+    "not_provided": "Non renseigné",
+    "seo_title": "{{name}} à {{address}}",
+    "seo_desc_rent": "{{type}} à louer à {{address}}. {{area}} m², {{bedrooms}} chambres. {{excerpt}}...",
+    "seo_desc_sale": "{{type}} à vendre à {{address}}. {{area}} m², {{bedrooms}} chambres. {{excerpt}}...",
+    "photo_alt": "{{name}} - Photo {{index}}",
+    "thumbnail_alt": "Miniature {{index}}",
+    "enlarge_title": "Agrandir et voir en plein écran",
+    "see_all_photos": "Voir les {{count}} photos",
+    "enlarge": "Agrandir",
+    "description": "Description",
+    "equipments": "Équipements",
+    "no_equipments": "Le propriétaire n'a pas encore renseigné les équipements pour ce bien.",
+    "interested": "Intéressé par ce bien ?",
+    "sale_intro": "Vous êtes intéressé par l'achat de ce bien ? Envoyez une demande d'information au propriétaire pour discuter des modalités de vente.",
+    "rent_intro": "Envoyez votre candidature au propriétaire. Il vous répondra par message. Après avoir postulé, consultez régulièrement votre messagerie dans votre tableau de bord.",
+    "request_sent": "Demande envoyée",
+    "application_sent": "Candidature envoyée",
+    "contact_seller": "Contacter le vendeur",
+    "request_rent": "Demander à louer",
+    "already_sent": "Vous avez déjà envoyé une demande pour ce bien.",
+    "unavailable": "Non disponible",
+    "unavailable_desc": "Ce bien n'est actuellement plus disponible sur la plateforme.",
+    "imported_contact": "Pour toute information ou pour programmer une visite, veuillez contacter le vendeur de l'annonce dans la section ci-dessous.",
+    "owner": "Propriétaire",
+    "verified_agency": "Agence Vérifiée",
+    "share_title": "Partager ce bien",
+    "link": "Lien",
+    "similar": "Biens similaires",
+    "see_all": "Voir tous les biens",
+    "no_similar": "Aucun autre bien similaire n'est disponible pour le moment.",
+    "login_required": "Connexion requise",
+    "login_required_sale": "Vous devez être connecté pour contacter le vendeur.",
+    "login_required_rent": "Vous devez être connecté pour pouvoir candidater à ce bien.",
+    "create_account": "Créer un compte",
+    "confirm_request": "Confirmer votre demande",
+    "confirm_application": "Confirmer votre candidature",
+    "message_to_seller": "Le message suivant sera envoyé au vendeur :",
+    "message_to_owner": "Le message suivant sera envoyé au propriétaire :",
+    "message_sale": "Bonjour,\n\nJe suis vivement intéressé(e) par l'achat du bien \"{{name}}\" situé à {{address}}.\n\nMerci de me recontacter pour plus de détails.\n\nCordialement.",
+    "message_rent": "Bonjour,\n\nJe suis candidat(e) pour le bien \"{{name}}\" situé à {{address}}.\n\nMerci de me recontacter pour plus de détails.\n\nCordialement.",
+    "send_request": "Envoyer ma demande",
+    "send_application": "Envoyer ma candidature",
+    "one_photo": "1 photo disponible",
+    "zoom_out": "Dézoomer (-)",
+    "zoom_reset": "Réinitialiser le zoom (0)",
+    "zoom_in": "Zoomer (+)",
+    "close_esc": "Fermer (Échap)",
+    "previous_photo": "Photo précédente",
+    "previous_photo_key": "Photo précédente (←)",
+    "next_photo": "Photo suivante",
+    "next_photo_key": "Photo suivante (→)",
+    "click_zoom_out": "Cliquer pour dézoomer",
+    "click_zoom_in": "Cliquer pour zoomer",
+    "go_to_photo": "Aller à la photo {{index}}"
+  },
+  "report_property": {
+    "button": "Signaler cette annonce",
+    "title": "Signaler cette annonce",
+    "desc": "Pourquoi signalez-vous cette annonce ?",
+    "desc_named": "Pourquoi signalez-vous « {{name}} » ?",
+    "categories": {
+      "scam": "Arnaque ou annonce frauduleuse",
+      "unavailable": "Bien déjà loué, vendu ou indisponible",
+      "misleading": "Informations ou photos trompeuses",
+      "price": "Prix incorrect ou abusif",
+      "broker": "Intermédiaire / courtier se faisant passer pour le propriétaire",
+      "inappropriate": "Contenu inapproprié ou offensant",
+      "other": "Autre"
+    },
+    "details_optional": "Précisions (facultatif)",
+    "details_required": "Décrivez le problème",
+    "details_placeholder": "Ajoutez des détails utiles à notre équipe…",
+    "details_min": "10 caractères minimum.",
+    "confidential": "Votre signalement est confidentiel : le propriétaire ne saura pas qui l'a envoyé. Notre équipe l'examinera rapidement.",
+    "submit": "Envoyer le signalement",
+    "sent_title": "Signalement envoyé",
+    "sent_desc": "Merci, notre équipe va examiner cette annonce.",
+    "error": "Impossible d'envoyer le signalement. Réessayez plus tard.",
+    "login_required": "Connectez-vous pour signaler une annonce. Cela nous permet d'éviter les signalements abusifs.",
+    "login": "Se connecter"
+  }
+}

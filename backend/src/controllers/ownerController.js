@@ -36,9 +36,8 @@ const ownerController = {
                 if (req.body.logo_url && existingProfile.logo_url && req.body.logo_url !== existingProfile.logo_url) {
                     oldFiles.push(existingProfile.logo_url);
                 }
-                if (req.body.signature_url && existingProfile.signature_url && req.body.signature_url !== existingProfile.signature_url) {
-                    oldFiles.push(existingProfile.signature_url);
-                }
+                // L'ancienne signature n'est JAMAIS supprimée : les contrats et reçus déjà émis gardent un lien
+                // vers l'image signée à l'époque (valeur juridique, document figé).
                 if (oldFiles.length > 0) {
                     deleteMultipleFromCloudinary(oldFiles);
                 }
@@ -197,12 +196,10 @@ const ownerController = {
                 return response.error(res, "Invitation invalide ou expirée.", 404);
             }
 
-            // Vérifier si l'utilisateur est connecté et si son email correspond
-            // (Note: on peut aussi permettre à un nouvel utilisateur de s'inscrire via ce token)
-            const user = await User.findByEmail(invitation.invitee_email);
-            
-            if (!user) {
-                return response.error(res, "Vous devez d'abord créer un compte avec l'adresse e-mail invitée.", 403);
+            // Seul le compte connecté avec l'adresse invitée peut accepter : le lien seul ne suffit pas
+            const user = req.user;
+            if (user.email?.toLowerCase() !== invitation.invitee_email?.toLowerCase()) {
+                return response.error(res, "Cette invitation a été envoyée à une autre adresse e-mail. Connectez-vous avec le compte invité.", 403);
             }
 
             // Mettre à jour l'utilisateur

@@ -8,7 +8,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "i18n:check": "node scripts/check-i18n.mjs",
+    "i18n:scan": "node scripts/scan-i18n.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -15,10 +15,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
+import { PhoneInput, DEFAULT_PHONE_COUNTRY, getPhoneCountry, getCountryName, isValidNationalNumber, formatInternationalPhone } from "@/components/PhoneInput";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = searchParams.get("mode") || "login";
@@ -38,7 +39,8 @@ const Auth = () => {
     email: searchParams.get("email") || "", // Pre-fill from URL
     password: "",
     name: searchParams.get("name") || "", // Pre-fill from URL
-    phone: "",
+    phone: "", // chiffres du numéro national, sans l'indicatif
+    phoneCountry: DEFAULT_PHONE_COUNTRY as string,
     companyName: "",
     userType: searchParams.get("type") || userType, // Pre-fill from URL
     referralCode: searchParams.get("referralCode") || "",
@@ -61,7 +63,7 @@ const Auth = () => {
         setUser(data.user);
         setUserRole(data.user.role || null);
 
-        toast.success("Connexion réussie!");
+        toast.success(t('auth.msg.login_success'));
 
         const redirect = localStorage.getItem("redirectAfterLogin");
         if (redirect) {
@@ -81,7 +83,7 @@ const Auth = () => {
         }
       }
     } catch (error: any) {
-      toast.error(error.message || "L'authentification a échoué. Vérifiez vos identifiants.");
+      toast.error(error.message || t('auth.msg.login_failed'));
     } finally {
       setLoading(false);
     }
@@ -90,7 +92,7 @@ const Auth = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!acceptedTerms) {
-      toast.error("Veuillez accepter les conditions d'utilisation et la politique de confidentialité.");
+      toast.error(t('auth.msg.accept_terms'));
       setLoading(false);
       return;
     }
@@ -99,7 +101,15 @@ const Auth = () => {
 
     try {
       if (formData.password.length < 8) {
-        toast.error("Le mot de passe doit contenir au moins 8 caractères");
+        toast.error(t('auth.msg.password_min'));
+        setLoading(false);
+        return;
+      }
+
+      if (!isValidNationalNumber(formData.phoneCountry, formData.phone)) {
+        const country = getPhoneCountry(formData.phoneCountry);
+        const digits = country.min === country.max ? `${country.min}` : t('auth.msg.digits_range', { min: country.min, max: country.max });
+        toast.error(t('auth.msg.phone_invalid', { country: getCountryName(country.iso, i18n.resolvedLanguage), dial: country.dial, digits }));
         setLoading(false);
         return;
       }
@@ -108,8 +118,9 @@ const Auth = () => {
         email: formData.email,
         password: formData.password,
         name: formData.name,
-        phone: formData.phone,
+        phone: formatInternationalPhone(formData.phoneCountry, formData.phone),
         role: formData.userType,
+        accountType: formData.userType,
         companyName: formData.userType === "owner" ? formData.companyName : null,
         referralCode: formData.referralCode || null,
       });
@@ -119,7 +130,7 @@ const Auth = () => {
         setUser(data.user);
         setUserRole(data.user.role || null);
 
-        toast.success(`Compte créé avec succès ! Votre ID de connexion est : ${data.user.customId}`, {
+        toast.success(t('auth.msg.signup_success_id', { id: data.user.customId }), {
           duration: 10000,
         });
 
@@ -139,10 +150,10 @@ const Auth = () => {
         // Mode vérification d'e-mail activé
         setRegisteredEmail(formData.email);
         setShowVerificationSent(true);
-        toast.success("Compte créé ! Veuillez vérifier votre e-mail.");
+        toast.success(t('auth.msg.signup_check_email'));
       }
     } catch (error: any) {
-      toast.error(error.message || "La création du compte a échoué. Veuillez réessayer.");
+      toast.error(error.message || t('auth.msg.signup_failed'));
     } finally {
       setLoading(false);
     }
@@ -154,11 +165,11 @@ const Auth = () => {
     try {
       setResetLoading(true);
       await forgotPassword(resetEmail);
-      toast.success("E-mail envoyé. Si cet e-mail existe, vous recevrez un lien de réinitialisation.");
+      toast.success(t('auth.msg.reset_sent'));
       setShowForgotPassword(false);
       setResetEmail("");
     } catch (error: any) {
-      toast.error(error.message || "Une erreur est survenue.");
+      toast.error(error.message || t('common.error_generic'));
     } finally {
       setResetLoading(false);
     }
@@ -171,9 +182,9 @@ const Auth = () => {
     try {
       setResendLoading(true);
       await resendVerificationEmail(emailToResend);
-      toast.success("Un nouvel e-mail de confirmation a été envoyé !");
+      toast.success(t('auth.msg.resend_sent'));
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de l'envoi de l'e-mail.");
+      toast.error(error.message || t('auth.msg.resend_failed'));
     } finally {
       setResendLoading(false);
     }
@@ -199,22 +210,22 @@ const Auth = () => {
                </div>
                <img src="/logo-sl.png" alt="Samalocation" className="h-12 w-auto mx-auto object-contain opacity-50" />
             </div>
-            <CardTitle className="text-2xl">Vérifiez votre e-mail</CardTitle>
+            <CardTitle className="text-2xl">{t('auth.verify.title')}</CardTitle>
             <CardDescription className="text-base pt-2">
-              Nous avons envoyé un lien de confirmation à <span className="font-bold text-foreground">{registeredEmail}</span>.
+              {t('auth.verify.sent_to')} <span className="font-bold text-foreground">{registeredEmail}</span>.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">
-              Veuillez cliquer sur le lien dans l'e-mail pour activer votre compte. Si vous ne le voyez pas, vérifiez votre dossier de courriers indésirables (spams).
+              {t('auth.verify.instructions')}
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button className="w-full gradient-primary text-white" onClick={() => setShowVerificationSent(false)}>
-              Retour à la connexion
+              {t('auth.verify.back_login')}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Vous n'avez rien reçu ? <button type="button" className="text-primary hover:underline font-medium disabled:opacity-50" onClick={handleResendEmail} disabled={resendLoading}>{resendLoading ? "Envoi..." : "Renvoyer l'e-mail"}</button>
+              {t('auth.verify.not_received')} <button type="button" className="text-primary hover:underline font-medium disabled:opacity-50" onClick={handleResendEmail} disabled={resendLoading}>{resendLoading ? t('auth.verify.sending') : t('auth.verify.resend')}</button>
             </p>
           </CardFooter>
         </Card>
@@ -407,12 +418,12 @@ const Auth = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">{t('auth.signup.phone')}</Label>
-                    <Input
+                    <PhoneInput
                       id="phone"
-                      type="tel"
-                      placeholder="+000 00 000 00 00"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      country={formData.phoneCountry}
+                      number={formData.phone}
+                      onCountryChange={(iso) => setFormData({ ...formData, phoneCountry: iso, phone: formData.phone.slice(0, getPhoneCountry(iso).max) })}
+                      onNumberChange={(digits) => setFormData({ ...formData, phone: digits })}
                       required
                     />
                   </div>
@@ -444,19 +455,19 @@ const Auth = () => {
                   {formData.userType === "owner" && (
                     <div className="space-y-2">
                       <Label htmlFor="referralCode" className="flex items-center gap-2 cursor-pointer">
-                        <span>Code de parrainage</span>
-                        <Badge variant="outline" className="text-[9px] h-4 border-accent text-accent uppercase font-bold">Cadeau</Badge>
+                        <span>{t('auth.referral.label')}</span>
+                        <Badge variant="outline" className="text-[9px] h-4 border-accent text-accent uppercase font-bold">{t('auth.referral.gift')}</Badge>
                       </Label>
                       <Input
                         id="referralCode"
                         type="text"
-                        placeholder="Ex: SL-XXXX"
+                        placeholder={t('auth.referral.placeholder')}
                         value={formData.referralCode}
                         onChange={(e) => setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })}
                         className="border-dashed border-accent/40 focus-visible:border-accent"
                       />
                       <p className="text-[10px] text-muted-foreground italic">
-                        Optionnel: Recevez 1 mois Premium offert avec un code valide.
+                        {t('auth.referral.hint')}
                       </p>
                     </div>
                   )}
@@ -476,7 +487,7 @@ const Auth = () => {
                       <Link to="/terms" className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
                         {t('auth.signup.terms_link')}
                       </Link>{" "}
-                      et la{" "}
+                      {t('auth.signup.terms_and')}{" "}
                       <Link to="/privacy" className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
                         {t('auth.signup.privacy_link')}
                       </Link>
@@ -505,18 +516,18 @@ const Auth = () => {
       <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Mot de passe oublié</DialogTitle>
+            <DialogTitle>{t('auth.forgot.title')}</DialogTitle>
             <DialogDescription>
-              Entrez votre adresse e-mail pour recevoir un lien de réinitialisation.
+              {t('auth.forgot.desc')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleForgotPassword} className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="reset-email">E-mail</Label>
+              <Label htmlFor="reset-email">{t('auth.forgot.email_label')}</Label>
               <Input
                 id="reset-email"
                 type="email"
-                placeholder="votre@email.com"
+                placeholder={t('auth.forgot.email_placeholder')}
                 value={resetEmail}
                 onChange={(e) => setResetEmail(e.target.value)}
                 required
@@ -524,16 +535,16 @@ const Auth = () => {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowForgotPassword(false)}>
-                Annuler
+                {t('common.cancel')}
               </Button>
               <Button type="submit" className="gradient-primary text-white" disabled={resetLoading}>
                 {resetLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Envoi...
+                    {t('auth.verify.sending')}
                   </>
                 ) : (
-                  "Envoyer le lien"
+                  t('auth.forgot.send_link')
                 )}
               </Button>
             </DialogFooter>

@@ -2,26 +2,19 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, ExternalLink, CheckCircle, Clock, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
+import { FileText, Download, ExternalLink, CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { getTenantContracts, signContract, downloadContract, openContractInNewTab } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { SignaturePadDialog } from "./SignaturePadDialog";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RentalContract } from "@/types";
 
 export const TenantContractsTab = ({ currency = 'XOF' }: { currency?: string }) => {
     const { toast } = useToast();
+    const { user } = useAuth();
     const [contracts, setContracts] = useState<RentalContract[]>([]);
     const [loading, setLoading] = useState(true);
     const [signingId, setSigningId] = useState<string | null>(null);
@@ -54,24 +47,24 @@ export const TenantContractsTab = ({ currency = 'XOF' }: { currency?: string }) 
         setConfirmOpen(true);
     };
 
-    const confirmSign = async () => {
+    const confirmSign = async (signature: string) => {
         if (!pendingSignId) return;
         const contractId = pendingSignId;
-        setConfirmOpen(false);
 
         try {
             setSigningId(contractId);
-            await signContract(contractId);
+            await signContract(contractId, signature);
+            setConfirmOpen(false);
             toast({
                 title: "Succès",
                 description: "Contrat signé avec succès",
             });
             loadContracts();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error signing contract:", error);
             toast({
                 title: "Erreur",
-                description: "La signature du contrat a échoué",
+                description: error?.message || "La signature du contrat a échoué",
                 variant: "destructive"
             });
         } finally {
@@ -100,7 +93,13 @@ export const TenantContractsTab = ({ currency = 'XOF' }: { currency?: string }) 
 
     return (
         <div className="space-y-6">
-            {/* Redundant title removed */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3 text-sm text-amber-800">
+                <AlertCircle className="h-5 w-5 shrink-0" />
+                <p>
+                    <strong>Note juridique :</strong> La signature électronique effectuée sur cette plateforme a valeur d'acceptation
+                    numérique des conditions du bail. Elle vous engage au même titre qu'une signature manuscrite.
+                </p>
+            </div>
 
             <div className="grid gap-6">
                 {contracts.map((contract) => (
@@ -196,47 +195,15 @@ export const TenantContractsTab = ({ currency = 'XOF' }: { currency?: string }) 
                 ))}
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3 text-sm text-amber-800">
-                <AlertCircle className="h-5 w-5 shrink-0" />
-                <p>
-                    <strong>Note juridique :</strong> La signature électronique effectuée sur cette plateforme a valeur d'acceptation
-                    numérique des conditions du bail. Elle vous engage au même titre qu'une signature manuscrite.
-                </p>
-            </div>
-
-            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <AlertDialogContent className="rounded-3xl border border-primary/10 shadow-strong max-w-md animate-in fade-in zoom-in-95 duration-300 p-8">
-                    <AlertDialogHeader className="space-y-4">
-                        <div className="mx-auto bg-primary/5 p-5 rounded-3xl w-fit mb-2 border border-primary/10">
-                            <ShieldCheck className="h-12 w-12 text-primary" />
-                        </div>
-                        <AlertDialogTitle className="text-center text-2xl font-black text-primary tracking-tight">
-                            Signature Numérique
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-center text-base leading-relaxed text-balance">
-                            En signant ce contrat numériquement, vous certifiez avoir pris connaissance des clauses du bail et acceptez sans réserve les termes et conditions définis.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-
-                    <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-4 my-2">
-                        <p className="text-xs text-amber-800 text-center font-medium italic">
-                            "Cette action est juridiquement contraignante et équivaut à une signature manuscrite sur papier."
-                        </p>
-                    </div>
-
-                    <AlertDialogFooter className="sm:justify-center gap-3 mt-6">
-                        <AlertDialogCancel className="rounded-xl border-2 border-slate-200 px-8 h-12 font-bold hover:bg-slate-50 transition-colors">
-                            Annuler
-                        </AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={confirmSign}
-                            className="rounded-xl bg-primary hover:bg-primary/90 px-8 h-12 font-bold shadow-strong gradient-primary text-white border-none transition-all hover:scale-105 active:scale-95"
-                        >
-                            Signer l'accord
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <SignaturePadDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                signerName={user?.name}
+                signerCustomId={user?.customId}
+                submitting={!!signingId}
+                onOpenContract={pendingSignId ? () => openContractInNewTab(pendingSignId) : undefined}
+                onConfirm={confirmSign}
+            />
         </div>
     );
 };

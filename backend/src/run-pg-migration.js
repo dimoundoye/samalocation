@@ -15,6 +15,8 @@ async function runMigration() {
     console.log(`🚀 Exécution de la migration : ${path.basename(migrationPath)}`);
     console.log(`Connexion à ${process.env.DB_HOST}...`);
 
+    // Code de sortie 1 en cas d'échec : un déploiement scripté doit s'arrêter si une migration échoue
+    let exitCode = 0;
     try {
         const sql = fs.readFileSync(migrationPath, 'utf8');
         await db.query(sql);
@@ -24,9 +26,10 @@ async function runMigration() {
             console.log('ℹ️ Colonnes déjà présentes, skipping.');
         } else {
             console.error('❌ Erreur lors de la migration:', error);
+            exitCode = 1;
         }
     } finally {
-        process.exit(0);
+        process.exit(exitCode);
     }
 }
 

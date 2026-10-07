@@ -7,15 +7,17 @@ const Footer = () => {
     return (
         <footer className="py-16 bg-secondary/30 dark:bg-background border-t border-border/50">
             <div className="container mx-auto px-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-                    <div className="col-span-1 md:col-span-1 space-y-6">
+                {/* Téléphone : présentation puis 2 colonnes ; tablette : présentation puis 3 colonnes ;
+                    ordinateur : 4 colonnes, la présentation plus large pour le logo et le nom */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr] gap-x-8 gap-y-10 lg:gap-12 mb-16">
+                    <div className="col-span-2 sm:col-span-3 lg:col-span-1 space-y-6">
                         <div className="flex items-center gap-2">
                             <img src="/logo-sl.png" alt="Samalocation" className="h-12 w-auto object-contain" />
-                            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden md:inline">
+                            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap">
                                 Samalocation
                             </span>
                         </div>
-                        <p className="text-muted-foreground leading-relaxed">
+                        <p className="text-muted-foreground leading-relaxed max-w-md">
                             {t('footer.desc')}
                         </p>
                     </div>
@@ -36,11 +38,11 @@ const Footer = () => {
                             <li><Link to="/privacy" className="hover:text-accent transition-colors">{t('footer.legal.privacy')}</Link></li>
                         </ul>
                     </div>
-                    <div>
+                    <div className="col-span-2 sm:col-span-1">
                         <h4 className="font-bold mb-6 text-primary">{t('footer.support.title')}</h4>
                         <ul className="space-y-4 text-muted-foreground">
                             <li><Link to="/contact" className="hover:text-accent transition-colors">{t('footer.support.contact')}</Link></li>
-                            <li><a href="mailto:contact@samalocation.com" className="hover:text-accent transition-colors">contact@samalocation.com</a></li>
+                            <li><a href="mailto:contact@samalocation.com" className="hover:text-accent transition-colors break-all">contact@samalocation.com</a></li>
                         </ul>
                     </div>
                 </div>

@@ -9,6 +9,35 @@ const path = require('path');
 const { formatAmountInWords } = require('./numberToWords');
 
 /**
+ * Signature manuscrite du locataire : uniquement un PNG en data URL (validé à l'enregistrement)
+ */
+function tenantSignaturePng(value) {
+    return typeof value === 'string' && /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(value) ? value : null;
+}
+
+/**
+ * Masque partiellement une IP pour l'affichage dans le document (la preuve complète reste en base)
+ */
+function maskIp(ip) {
+    if (!ip) return 'Non disponible';
+    const v4 = String(ip).replace(/^::ffff:/, '');
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(v4)) return v4.split('.').slice(0, 2).join('.') + '.x.x';
+    return String(ip).split(':').slice(0, 2).join(':') + ':…';
+}
+
+/**
+ * Lignes d'identification sous la signature du locataire
+ */
+function tenantProofLines(contractData) {
+    const proof = contractData.tenant_signature_proof || {};
+    const signedAt = contractData.tenant_signed_at ? new Date(contractData.tenant_signed_at) : new Date();
+    const lines = [`Signe le ${format(signedAt, 'dd/MM/yyyy HH:mm', { locale: fr })}`];
+    if (proof.custom_id) lines.push(`ID Samalocation : ${proof.custom_id}`);
+    lines.push(`IP : ${maskIp(proof.ip)}`);
+    return lines;
+}
+
+/**
  * Lit une image de signature depuis le disque ou le réseau et la convertit en Data URI Base64
  */
 async function resolveSignatureDataUri(imageUrl) {
@@ -248,7 +277,18 @@ async function generateContractPDF(contractData) {
     }
 
     // Tenant Signature
-    if (contractData.tenant_signed) {
+    const tenantSigPng = contractData.tenant_signed ? tenantSignaturePng(contractData.tenant_signature) : null;
+    if (tenantSigPng) {
+        // Signature manuscrite + éléments d'identification
+        try {
+            doc.image(Buffer.from(tenantSigPng.split(',')[1], 'base64'), 302, signatureY + 8, { fit: [140, 50] });
+        } catch (e) {
+            console.error('Tenant signature render error:', e);
+        }
+        doc.fillColor(textColor).font('Helvetica').fontSize(7);
+        tenantProofLines(contractData).forEach((line, i) => doc.text(line, 302, signatureY + 62 + i * 9, { width: 225 }));
+    } else if (contractData.tenant_signed) {
+        // Contrats signés avant la signature manuscrite
         doc.fontSize(8).fillColor('#059669').font('Helvetica-Bold').text('SIGNE ELECTRONIQUEMENT', 302, signatureY + 20);
         const signedAt = contractData.tenant_signed_at ? new Date(contractData.tenant_signed_at) : new Date();
         const safeId = (contractData.id || contractData.contract_number || 'CONTRAT').toString();
@@ -267,10 +307,11 @@ async function generateContractPDF(contractData) {
     // -- QR CODE & HASH --
     doc.moveDown(8);
 
-    // Document Hash
+    // Document Hash : empreinte du contenu figée à la signature du locataire, sinon identifiant du document
+    const signedHash = tenantSigPng ? contractData.document_hash : null;
     const rawData = `${contractData.contract_number || ''}${contractData.contract_id || contractData.id || ''}`;
-    const docHash = crypto.createHash('sha256').update(rawData).digest('hex');
-    doc.fontSize(7).fillColor(secondaryColor).text(`Hash de securite : ${docHash}`, 50, doc.y, { align: 'center', width: 495 });
+    const docHash = signedHash || crypto.createHash('sha256').update(rawData).digest('hex');
+    doc.fontSize(7).fillColor(secondaryColor).text(`${signedHash ? 'Empreinte du contrat signe (SHA-256)' : 'Hash de securite'} : ${docHash}`, 50, doc.y, { align: 'center', width: 495 });
 
     // QR Code
     try {
@@ -793,9 +834,12 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
         console.error('QR generation error:', err);
     }
 
-    // ── Document hash ──
+    // ── Document hash : empreinte figée à la signature du locataire, sinon identifiant du document ──
+    const tenantSigPng = meta.tenant_signed ? tenantSignaturePng(meta.tenant_signature) : null;
+    const signedHash = tenantSigPng ? meta.document_hash : null;
     const rawData = `${meta.contract_number || ''}${meta.contract_id || meta.id || ''}`;
-    const docHash = crypto.createHash('sha256').update(rawData).digest('hex');
+    const docHash = signedHash || crypto.createHash('sha256').update(rawData).digest('hex');
+    const hashLabel = signedHash ? 'Empreinte du contrat signe (SHA-256)' : 'Hash de securite';
 
     // ── Owner signature block ──
     let ownerSignatureHtml = '';
@@ -818,7 +862,13 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
 
     // ── Tenant signature block ──
     let tenantSignatureHtml = '<p style="color: #999; font-style: italic; margin: 0;">(En attente de signature du locataire)</p>';
-    if (meta.tenant_signed) {
+    if (tenantSigPng) {
+        // Signature manuscrite + éléments d'identification (data URL PNG validée : pas d'injection possible)
+        tenantSignatureHtml = `
+            <img src="${tenantSigPng}" alt="Signature Locataire" style="max-height: 75px; max-width: 220px; display: block; margin: 0 auto;" />
+            ${tenantProofLines(meta).map(l => `<p style="font-size: 8pt; margin: 2px 0; color: #333;">${escapeHtml(l)}</p>`).join('')}
+        `.trim();
+    } else if (meta.tenant_signed) {
         const signedAt = meta.tenant_signed_at ? new Date(meta.tenant_signed_at) : new Date();
         const day = String(signedAt.getDate()).padStart(2, '0');
         const month = String(signedAt.getMonth() + 1).padStart(2, '0');
@@ -883,7 +933,7 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
   </div>
 
   <div style="margin-top: 32px; text-align: center; font-size: 9pt; color: #666; word-break: break-all;">
-    <strong>Hash de securite :</strong> ${docHash}
+    <strong>${hashLabel} :</strong> ${docHash}
   </div>
 
   ${qrDataUri ? `

@@ -10,7 +10,9 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SocketProvider } from "@/contexts/SocketContext";
 import { HelmetProvider } from "react-helmet-async";
 import { OfflineStatus } from "./components/OfflineStatus";
+import { PushInvitePrompt } from "@/components/shared/PushInvitePrompt";
 import ScrollToTop from "./components/ScrollToTop";
+import SEO from "./components/SEO";
 // import Chatbot from "./components/Chatbot";
 
 // Lazy loading components for performance
@@ -63,6 +65,8 @@ const App = () => (
           <Toaster />
           <Sonner position="bottom-right" closeButton richColors expand={true} />
           <BrowserRouter>
+            {/* Titre et description par défaut, dans la langue active (les pages peuvent les remplacer) */}
+            <SEO />
             <ScrollToTop />
             <AuthProvider>
               <SocketProvider>
@@ -185,6 +189,7 @@ const App = () => (
                 </Suspense>
                 {/* <Chatbot /> */}
                 <OfflineStatus />
+                <PushInvitePrompt />
               </SocketProvider>
             </AuthProvider>
           </BrowserRouter>

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const tenantController = require('../controllers/tenantController');
 const authMiddleware = require('../middleware/authMiddleware');
+const { can } = require('../middleware/permissionMiddleware');
 
 // Get current tenant lease info
 router.get('/me', authMiddleware, tenantController.getMyLease);
@@ -13,16 +14,16 @@ router.get('/me/all', authMiddleware, tenantController.getMyAllLeases);
 router.patch('/me/profile', authMiddleware, tenantController.updateMyProfile);
 
 // Get owner's tenants
-router.get('/owner', authMiddleware, tenantController.getOwnerTenants);
+router.get('/owner', authMiddleware, can('tenant.read'), tenantController.getOwnerTenants);
 
 // Assign tenant to unit
 const { checkTenantLimit } = require('../middleware/subscriptionMiddleware');
-router.post('/', authMiddleware, checkTenantLimit, tenantController.assignTenant);
+router.post('/', authMiddleware, can('tenant.write'), checkTenantLimit, tenantController.assignTenant);
 
 // Update tenant
-router.put('/:id', authMiddleware, tenantController.updateTenant);
+router.put('/:id', authMiddleware, can('tenant.write'), tenantController.updateTenant);
 
 // Delete tenant
-router.delete('/:id', authMiddleware, tenantController.deleteTenant);
+router.delete('/:id', authMiddleware, can('tenant.write'), tenantController.deleteTenant);
 
 module.exports = router;

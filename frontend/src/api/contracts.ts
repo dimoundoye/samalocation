@@ -21,9 +21,11 @@ export const getContractDetails = async (id: string): Promise<RentalContract> =>
     return await baseClient(`/contracts/${id}`);
 };
 
-export const signContract = async (id: string): Promise<RentalContract> => {
+// signature : image PNG (data URL) de la signature manuscrite, obligatoire côté locataire
+export const signContract = async (id: string, signature?: string): Promise<RentalContract> => {
     return await baseClient(`/contracts/${id}/sign`, {
-        method: 'POST'
+        method: 'POST',
+        body: JSON.stringify(signature ? { signature } : {})
     });
 };
 

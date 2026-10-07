@@ -3,6 +3,7 @@ const router = express.Router();
 const ownerController = require('../controllers/ownerController');
 const activityLogController = require('../controllers/activityLogController');
 const authMiddleware = require('../middleware/authMiddleware');
+const { can } = require('../middleware/permissionMiddleware');
 const { checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 
 // Get public owner profile (public)
@@ -15,17 +16,17 @@ router.get('/profile', authMiddleware, ownerController.getProfile);
 router.patch('/profile', authMiddleware, ownerController.updateProfile);
 
 // Gestion des collaborateurs (Multi-utilisateurs - Plan Professionnel)
-router.get('/collaborators', authMiddleware, ownerController.getCollaborators);
-router.post('/collaborators', authMiddleware, checkFeatureAccess('multi_user'), ownerController.addCollaborator);
-router.patch('/collaborators/:id/permissions', authMiddleware, checkFeatureAccess('multi_user'), ownerController.updateCollaboratorPermissions);
-router.delete('/collaborators/:id', authMiddleware, ownerController.removeCollaborator);
+router.get('/collaborators', authMiddleware, can('team.manage'), ownerController.getCollaborators);
+router.post('/collaborators', authMiddleware, can('team.manage'), checkFeatureAccess('multi_user'), ownerController.addCollaborator);
+router.patch('/collaborators/:id/permissions', authMiddleware, can('team.manage'), checkFeatureAccess('multi_user'), ownerController.updateCollaboratorPermissions);
+router.delete('/collaborators/:id', authMiddleware, can('team.manage'), ownerController.removeCollaborator);
 
 // Invitations d'équipe
 router.get('/invitations/:token', ownerController.getInvitationDetails);
 router.post('/invitations/:token/accept', authMiddleware, ownerController.acceptInvitation);
 
 // Journal d'activité (réservé au patron - plan Professionnel)
-router.get('/activity-log', authMiddleware, checkFeatureAccess('multi_user'), activityLogController.getActivityLog);
+router.get('/activity-log', authMiddleware, can('activity.read'), checkFeatureAccess('multi_user'), activityLogController.getActivityLog);
 // Route pour logger des actions frontend (export Excel, groupe)
 router.post('/activity-log', authMiddleware, activityLogController.createActivityLog);
 

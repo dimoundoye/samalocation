@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { Fragment, useState, useEffect, useRef, useMemo } from "react";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -77,6 +77,8 @@ import { FullActivityLogView } from "@/components/owner/OwnerActivityLog";
 import { CreateContractDialog } from "@/components/owner/CreateContractDialog";
 import { FinancialDashboardTab } from "@/components/owner/FinancialDashboardTab";
 import { format } from "date-fns";
+import { formatConversationTime, formatMessageDay, startsNewDay } from "@/lib/messageDates";
+import { COMPACT_LAYOUT_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { fr, enUS } from "date-fns/locale";
 import { transformProperty } from "@/lib/property";
 import { Property, PropertyUnit, Tenant, Message, Receipt } from "@/types";
@@ -189,9 +191,15 @@ const DashboardProprietaire = () => {
     });
   };
   const [selectedTenantForHistory, setSelectedTenantForHistory] = useState<Tenant | null>(null);
+  // Tablette (< 1024 px) : barre latérale repliée par défaut, et superposée au contenu quand on l'ouvre
+  const isCompactLayout = useMediaQuery(COMPACT_LAYOUT_QUERY);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    return localStorage.getItem("sidebarCollapsed") === "true";
+    return window.matchMedia(COMPACT_LAYOUT_QUERY).matches || localStorage.getItem("sidebarCollapsed") === "true";
   });
+  const sidebarOverlay = isCompactLayout && !isSidebarCollapsed;
+  useEffect(() => {
+    if (isCompactLayout) setIsSidebarCollapsed(true);
+  }, [isCompactLayout]);
   const [tenantSearch, setTenantSearch] = useState("");
   const [propertySearch, setPropertySearch] = useState("");
   const [propertyGroupFilter, setPropertyGroupFilter] = useState<string>("all");
@@ -496,8 +504,9 @@ const DashboardProprietaire = () => {
   }, [receipts, selectedYear, navigationPath, groupedData]);
 
   useEffect(() => {
-    localStorage.setItem("sidebarCollapsed", String(isSidebarCollapsed));
-  }, [isSidebarCollapsed]);
+    // Le choix n'est mémorisé que sur grand écran (sur tablette la barre redémarre toujours repliée)
+    if (!isCompactLayout) localStorage.setItem("sidebarCollapsed", String(isSidebarCollapsed));
+  }, [isSidebarCollapsed, isCompactLayout]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1013,6 +1022,7 @@ const DashboardProprietaire = () => {
                     navigate(`/owner-dashboard/${item.id}`);
                   }
                   if (isMobile) setMobileMenuOpen(false);
+                  else if (isCompactLayout) setIsSidebarCollapsed(true);
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 relative group/nav ${(activeTab === item.id || (activeTab === "team-history" && item.id === "team"))
                   ? "bg-primary text-white"
@@ -1068,9 +1078,16 @@ const DashboardProprietaire = () => {
   return (
     <div className="h-screen bg-background flex overflow-hidden">
       {/* Desktop Sidebar */}
+      {/* Tablette : la barre ouverte passe par-dessus le contenu ; cet espace garde la place de la barre repliée */}
+      {sidebarOverlay && (
+        <>
+          <div className="hidden md:block w-16 shrink-0" aria-hidden />
+          <div className="hidden md:block fixed inset-0 z-30 bg-black/30" onClick={() => setIsSidebarCollapsed(true)} aria-hidden />
+        </>
+      )}
       <aside
         className={`${isSidebarCollapsed ? "w-16" : "w-64"
-          } bg-card border-r shadow-soft hidden md:block transition-all duration-300 relative h-screen sticky top-0 overflow-y-auto overflow-x-hidden scrollbar-none`}
+          } bg-card border-r shadow-soft hidden md:block transition-all duration-300 h-screen overflow-y-auto overflow-x-hidden scrollbar-none ${sidebarOverlay ? "fixed left-0 top-0 z-40 shadow-2xl" : "relative sticky top-0"}`}
       >
         <div
           className={`transition-all duration-300 ${isSidebarCollapsed ? "p-3" : "p-6"
@@ -1632,16 +1649,16 @@ const DashboardProprietaire = () => {
             {/* Properties Tab */}
             {activeTab === "properties" && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-bold">{t('dashboard.sidebar.properties')}</h2>
                     <p className="text-sm text-muted-foreground mt-1">
                       {properties.length} {properties.length > 1 ? t('owner.properties_registered') : t('owner.property_registered')}
                     </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                     {/* Filtre par Dossier / Arborescence interactive */}
-                    <div className="w-full sm:w-60">
+                    <div className="w-full sm:flex-1 sm:min-w-0 lg:flex-none lg:w-60">
                       <HierarchicalGroupSelector
                         groups={customGroups}
                         value={propertyGroupFilter}
@@ -1652,7 +1669,7 @@ const DashboardProprietaire = () => {
                     </div>
 
                     {/* Recherche textuelle */}
-                    <div className="relative w-full sm:w-64">
+                    <div className="relative w-full sm:flex-1 sm:min-w-0 lg:flex-none lg:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder={t('owner.search_property') || "Rechercher un bien..."}
@@ -1672,7 +1689,7 @@ const DashboardProprietaire = () => {
 
                     <Button
                       onClick={() => setAddPropertyOpen(true)}
-                      className="w-full sm:w-auto"
+                      className="w-full sm:w-auto sm:shrink-0"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       {t('owner.add_property')}
@@ -1950,16 +1967,16 @@ const DashboardProprietaire = () => {
             {/* Tenants Tab */}
             {activeTab === "tenants" && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-bold">{t('dashboard.sidebar.tenants')}</h2>
                     <p className="text-sm text-muted-foreground">
                       {tenants.length} {tenants.length > 1 ? t('owner.tenants_registered') : t('owner.tenant_registered')}
                     </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                     {/* Filtre par Dossier / Arborescence interactive */}
-                    <div className="w-full sm:w-60">
+                    <div className="w-full sm:flex-1 sm:min-w-0 lg:flex-none lg:w-60">
                       <HierarchicalGroupSelector
                         groups={customGroups}
                         value={tenantGroupFilter}
@@ -1969,7 +1986,7 @@ const DashboardProprietaire = () => {
                       />
                     </div>
 
-                    <div className="relative w-full sm:w-64">
+                    <div className="relative w-full sm:flex-1 sm:min-w-0 lg:flex-none lg:w-64">
                       <Input
                         placeholder={t('owner.search_tenant')}
                         value={tenantSearch}
@@ -1986,7 +2003,7 @@ const DashboardProprietaire = () => {
                       )}
                     </div>
                     <Button
-                      className="w-full sm:w-auto"
+                      className="w-full sm:w-auto sm:shrink-0"
                       onClick={() => setAssignTenantOpen(true)}
                       disabled={properties.length === 0}
                     >
@@ -2107,7 +2124,7 @@ const DashboardProprietaire = () => {
                       return (
                         <>
                           {/* Mobile Card View */}
-                          <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {filteredTenants.map((tenant) => (
                               <Card
                                 key={`mobile-tenant-${tenant.id}`}
@@ -2146,7 +2163,8 @@ const DashboardProprietaire = () => {
                                     <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block mb-0.5">
                                       {t('common.contact')}
                                     </span>
-                                    <span className="truncate block text-xs font-medium">
+                                    {/* Mobile : le téléphone en priorité, sinon l'email en entier (passage à la ligne) */}
+                                    <span className={`block text-xs font-medium ${tenant.phone ? "truncate" : "break-all"}`}>
                                       {tenant.phone || tenant.email}
                                     </span>
                                   </div>
@@ -2234,7 +2252,7 @@ const DashboardProprietaire = () => {
                           </div>
 
                           {/* Desktop Table View */}
-                          <div className="hidden md:block overflow-x-auto">
+                          <div className="hidden lg:block overflow-x-auto">
                             <Table>
                               <TableHeader>
                                 <TableRow>
@@ -2501,18 +2519,25 @@ const DashboardProprietaire = () => {
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
                                       <p className="font-medium truncate">{contact.full_name}</p>
+                                      {contact.lastTime > 0 && (
+                                        <span className={`text-xs shrink-0 ${contact.unreadCount > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+                                          {formatConversationTime(new Date(contact.lastTime), dateLocale, t)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="text-sm text-muted-foreground truncate">
+                                        {contact.subtitle}
+                                      </p>
                                       {contact.unreadCount > 0 && (
                                         <Badge
                                           variant="destructive"
-                                          className="h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs"
+                                          className="h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs shrink-0"
                                         >
                                           {contact.unreadCount}
                                         </Badge>
                                       )}
                                     </div>
-                                    <p className="text-sm text-muted-foreground truncate">
-                                      {contact.subtitle}
-                                    </p>
                                   </div>
                                 </div>
                               </div>
@@ -2568,12 +2593,20 @@ const DashboardProprietaire = () => {
                                 );
                               }
 
-                              return filteredMessages.map((message) => {
+                              return filteredMessages.map((message, index) => {
                                 const isFromOther = message.sender_id === selectedChat.user_id;
+                                const showDay = startsNewDay(message.created_at, filteredMessages[index - 1]?.created_at);
 
                                 return (
+                                  <Fragment key={message.id}>
+                                  {showDay && (
+                                    <div className="flex justify-center my-3">
+                                      <span className="text-xs font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                                        {formatMessageDay(new Date(message.created_at), dateLocale, t)}
+                                      </span>
+                                    </div>
+                                  )}
                                   <div
-                                    key={message.id}
                                     className={`mb-4 flex group ${isFromOther ? "justify-start" : "justify-end"
                                       }`}
                                   >
@@ -2601,6 +2634,7 @@ const DashboardProprietaire = () => {
                                       )}
                                     </div>
                                   </div>
+                                  </Fragment>
                                 );
                               });
                             })()}

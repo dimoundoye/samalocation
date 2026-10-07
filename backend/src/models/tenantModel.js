@@ -67,13 +67,25 @@ const Tenant = {
     },
 
     async findByOwnerId(ownerId) {
+        // Coordonnées actuelles du compte du locataire (modifiables dans son profil), sinon celles saisies
+        // à l'affectation. L'email provisoire d'un compte créé par le propriétaire (<identifiant>@samalocation.com)
+        // n'est jamais affiché. Ces colonnes viennent après t.* : node-pg garde la dernière colonne d'un même nom.
         const { rows: tenants } = await db.query(`
-            SELECT t.*, 
+            SELECT t.*,
+                   COALESCE(NULLIF(up.phone, ''), t.phone) AS phone,
+                   COALESCE(
+                       CASE WHEN up.email IS NULL OR up.email = ''
+                                 OR LOWER(up.email) = LOWER(up.custom_id) || '@samalocation.com'
+                            THEN NULL ELSE up.email END,
+                       CASE WHEN LOWER(t.email) = LOWER(up.custom_id) || '@samalocation.com'
+                            THEN NULL ELSE NULLIF(t.email, '') END
+                   ) AS email,
                    pu.unit_number, pu.monthly_rent as unit_rent, pu.rent_period,
                    p.name as property_name, p.property_type, p.id as property_id
             FROM tenants t
             JOIN property_units pu ON t.unit_id = pu.id
             JOIN properties p ON pu.property_id = p.id
+            LEFT JOIN user_profiles up ON up.id::text = t.user_id::text
             WHERE p.owner_id = $1
             ORDER BY t.created_at DESC
         `, [ownerId]);

@@ -55,7 +55,7 @@ export const OwnerDocumentationTab = () => {
         },
         {
           title: "Avec compte SamaLocation",
-          content: "Recherchez le locataire par son ID (ex: SL12345) ou son email. Cela lui permet de recevoir ses quittances directement dans son espace et de communiquer avec vous via la messagerie intégrée."
+          content: "Recherchez le locataire par son ID (ex: SL12345). Cela lui permet de recevoir ses quittances directement dans son espace et de communiquer avec vous via la messagerie intégrée."
         },
         {
           title: "Sans compte (Gestion manuelle)",

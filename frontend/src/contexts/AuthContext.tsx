@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMe } from "@/lib/api";
+import { disablePush, restorePushForUser } from "@/lib/push";
 
 interface User {
   currency: string;
@@ -147,7 +148,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initAuth();
   }, []);
 
+  // Réabonne cet appareil aux notifications push si ce compte les avait activées ici
+  useEffect(() => {
+    if (user?.id) restorePushForUser(user.id);
+  }, [user?.id]);
+
   const signOut = async () => {
+    // Plus de notifications de ce compte sur cet appareil (appareil partagé) ; le choix est mémorisé pour sa reconnexion
+    // (3 s maximum pour ne pas bloquer la déconnexion hors ligne)
+    await Promise.race([
+      disablePush({ forget: false }).catch((error) => console.error("Push unsubscribe error:", error)),
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ]);
     try {
       localStorage.removeItem("auth_token");
       setUser(null);

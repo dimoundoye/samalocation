@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
 
 interface SEOProps {
   title?: string;
@@ -12,8 +13,8 @@ interface SEOProps {
 }
 
 const SEO = ({
-  title = "Samalocation - Simplifiez votre gestion locative et vente en ligne",
-  description = "Plateforme intelligente de gestion locative et de vente en ligne. Gérez vos biens et trouvez un logement facilement.",
+  title: titleProp,
+  description: descriptionProp,
   keywords = "Samalocation, gestion locative, location, vente, immobilier, appartement, maison, studio",
   image = "https://samalocation.com/logo-sl.png",
   url = "https://samalocation.com/",
@@ -21,6 +22,9 @@ const SEO = ({
   author = "Samalocation",
   canonical,
 }: SEOProps) => {
+  const { t, i18n } = useTranslation();
+  const title = titleProp || t('seo.default.title');
+  const description = descriptionProp || t('seo.default.description');
   const siteTitle = title.includes("Samalocation") ? title : `${title} | Samalocation`;
   const siteUrl = canonical || url;
 
@@ -35,6 +39,7 @@ const SEO = ({
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
+      <meta property="og:locale" content={i18n.resolvedLanguage === "en" ? "en_US" : "fr_FR"} />
       <meta property="og:url" content={siteUrl} />
       <meta property="og:title" content={siteTitle} />
       <meta property="og:description" content={description} />

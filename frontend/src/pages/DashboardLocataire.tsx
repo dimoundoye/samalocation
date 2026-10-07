@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { Fragment, useState, useEffect, useRef, useMemo } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, Eye, ExternalLink, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2, Info, Calendar } from "lucide-react";
+import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, Eye, ExternalLink, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2, Info, Calendar, Copy } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -30,6 +30,8 @@ import TenantLeasesTab from "@/components/tenant/TenantLeasesTab";
 import { LeaseDetailModal } from "@/components/tenant/LeaseDetailModal";
 import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
 import { format } from "date-fns";
+import { formatConversationTime, formatMessageDay, startsNewDay } from "@/lib/messageDates";
+import { COMPACT_LAYOUT_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { fr, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, openReceiptInNewTab, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead } from "@/lib/api";
@@ -66,7 +68,13 @@ const DashboardLocataire = () => {
       setSearchParams({}, { replace: true });
     }
   }, [paymentStatus, setSearchParams, toast]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Tablette (< 1024 px) : barre latérale repliée par défaut, et superposée au contenu quand on l'ouvre
+  const isCompactLayout = useMediaQuery(COMPACT_LAYOUT_QUERY);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.matchMedia(COMPACT_LAYOUT_QUERY).matches);
+  const sidebarOverlay = isCompactLayout && !isSidebarCollapsed;
+  useEffect(() => {
+    if (isCompactLayout) setIsSidebarCollapsed(true);
+  }, [isCompactLayout]);
   const [selectedLease, setSelectedLease] = useState<any>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({
@@ -500,6 +508,7 @@ const DashboardLocataire = () => {
                   navigate(`/tenant-dashboard/${item.id}`);
                   setMobileMenuOpen(false);
                 }
+                if (isCompactLayout) setIsSidebarCollapsed(true);
               }}
               className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === item.id
                 ? "bg-primary text-white"
@@ -537,8 +546,15 @@ const DashboardLocataire = () => {
   return (
     <div className="h-screen bg-background flex overflow-hidden">
       {/* Desktop Sidebar */}
+      {/* Tablette : la barre ouverte passe par-dessus le contenu ; cet espace garde la place de la barre repliée */}
+      {sidebarOverlay && (
+        <>
+          <div className="hidden md:block w-20 shrink-0" aria-hidden />
+          <div className="hidden md:block fixed inset-0 z-30 bg-black/30" onClick={() => setIsSidebarCollapsed(true)} aria-hidden />
+        </>
+      )}
       <aside
-        className={`${isSidebarCollapsed ? "w-20" : "w-64"} bg-card border-r shadow-soft hidden md:block h-screen sticky top-0 transition-all duration-300 ease-in-out z-20`}
+        className={`${isSidebarCollapsed ? "w-20" : "w-64"} bg-card border-r shadow-soft hidden md:block h-screen transition-all duration-300 ease-in-out ${sidebarOverlay ? "fixed left-0 top-0 z-40 shadow-2xl" : "sticky top-0 z-20"}`}
       >
         <div className={`p-4 h-full flex flex-col ${isSidebarCollapsed ? "items-center" : ""}`}>
           <div className="flex-1 overflow-y-auto scrollbar-none w-full">
@@ -603,9 +619,24 @@ const DashboardLocataire = () => {
                         {t('dashboard.common.welcome')}, <span className="font-semibold text-foreground">{tenantProfile?.full_name || tenantProfile?.email || "Locataire"}</span>
                       </p>
                       {user?.customId && (
-                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-mono text-[11px] px-2 py-0">
+                        // Identifiant à communiquer au propriétaire pour qu'il retrouve le compte lors de l'affectation
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(user.customId!);
+                              toast({ title: t('tenant.id_copied'), description: t('tenant.id_copied_desc') });
+                            } catch {
+                              toast({ title: t('common.error'), description: t('tenant.id_copy_error'), variant: "destructive" });
+                            }
+                          }}
+                          title={t('tenant.copy_id')}
+                          aria-label={t('tenant.copy_id')}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 font-mono text-[11px] text-primary hover:bg-primary/10 transition-colors"
+                        >
                           {t('common.id')} : {user.customId}
-                        </Badge>
+                          <Copy className="h-3 w-3" aria-hidden />
+                        </button>
                       )}
                     </div>
                   </div>
@@ -828,6 +859,7 @@ const DashboardLocataire = () => {
                           // Ajouter le nombre de messages non lus à chaque contact
                           contacts.forEach((contact, userId) => {
                             contact.unreadCount = unreadCount.get(userId) || 0;
+                            contact.lastTime = lastMessageTime.get(userId) || 0;
                           });
 
                           // Trier les contacts par date du dernier message (plus récent en premier)
@@ -876,18 +908,25 @@ const DashboardLocataire = () => {
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
                                       <p className="font-medium truncate">{contact.full_name}</p>
+                                      {contact.lastTime > 0 && (
+                                        <span className={`text-xs shrink-0 ${contact.unreadCount > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+                                          {formatConversationTime(new Date(contact.lastTime), dateLocale, t)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="text-sm text-muted-foreground truncate">
+                                        {contact.subtitle}
+                                      </p>
                                       {contact.unreadCount > 0 && (
                                         <Badge
                                           variant="destructive"
-                                          className="h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs"
+                                          className="h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs shrink-0"
                                         >
                                           {contact.unreadCount}
                                         </Badge>
                                       )}
                                     </div>
-                                    <p className="text-sm text-muted-foreground truncate">
-                                      {contact.subtitle}
-                                    </p>
                                   </div>
                                 </div>
                               </div>
@@ -958,13 +997,21 @@ const DashboardLocataire = () => {
                                   </p>
                                 );
                               }
-                              return filteredMessages.map((message) => {
+                              return filteredMessages.map((message, index) => {
                                 // Le message vient du propriétaire si sender_id correspond à user_id du contact
                                 const isFromOwner = message.sender_id === selectedChat.user_id;
+                                const showDay = startsNewDay(message.created_at, filteredMessages[index - 1]?.created_at);
 
                                 return (
+                                  <Fragment key={message.id}>
+                                  {showDay && (
+                                    <div className="flex justify-center my-3">
+                                      <span className="text-xs font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                                        {formatMessageDay(new Date(message.created_at), dateLocale, t)}
+                                      </span>
+                                    </div>
+                                  )}
                                   <div
-                                    key={message.id}
                                     className={`mb-4 flex group ${isFromOwner ? "justify-start" : "justify-end"
                                       }`}
                                     onMouseEnter={async () => {
@@ -987,8 +1034,8 @@ const DashboardLocataire = () => {
                                           }`}
                                       >
                                         <p className="text-sm">{message.message}</p>
-                                        <p className="text-xs opacity-70 mt-1">
-                                          {new Date(message.created_at).toLocaleString(i18n.language === 'en' ? 'en-US' : 'fr-FR')}
+                                        <p className="text-[10px] opacity-70 mt-1">
+                                          {format(new Date(message.created_at), 'p', { locale: dateLocale })}
                                         </p>
                                       </div>
                                       <Button
@@ -1001,6 +1048,7 @@ const DashboardLocataire = () => {
                                       </Button>
                                     </div>
                                   </div>
+                                  </Fragment>
                                 );
                               });
                             })()}

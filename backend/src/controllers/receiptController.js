@@ -3,6 +3,8 @@ const { generateReceiptPDF } = require('../utils/pdfGenerator');
 const response = require('../utils/response');
 const logActivity = require('../utils/logActivity');
 const { emitToWorkspace } = require('../utils/socket');
+const Notification = require('../models/notificationModel');
+const { v4: uuidv4 } = require('uuid');
 
 const receiptController = {
     /**
@@ -118,16 +120,14 @@ const receiptController = {
 
             // Créer une notification pour le locataire
             try {
-                await db.query(
-                    `INSERT INTO notifications (id, user_id, type, title, message, created_at)
-                    VALUES (uuid_generate_v4(), $1, $2, $3, $4, NOW())`,
-                    [
-                        tenant_id,
-                        'receipt',
-                        'Nouveau reçu de loyer',
-                        `Votre reçu de paiement N° ${receipt.receipt_number} pour ${month}/${year} est maintenant disponible.`
-                    ]
-                );
+                await Notification.create({
+                    id: uuidv4(),
+                    user_id: tenant_id,
+                    type: 'receipt',
+                    title: 'Nouveau reçu de loyer',
+                    message: `Votre reçu de paiement N° ${receipt.receipt_number} pour ${month}/${year} est maintenant disponible.`,
+                    link: '/tenant-dashboard/contracts'
+                });
                 console.log('✅ Notification created for tenant');
             } catch (notifError) {
                 console.error('⚠️ Failed to create notification for tenant:', notifError);
@@ -327,16 +327,14 @@ const receiptController = {
             // Envoyer une notification d'annulation au locataire
             try {
                 if (receipt.tenant_id) {
-                    await db.query(
-                        `INSERT INTO notifications (id, user_id, type, title, message, created_at)
-                        VALUES (uuid_generate_v4(), $1, $2, $3, $4, NOW())`,
-                        [
-                            receipt.tenant_id,
-                            'receipt',
-                            'Quittance de loyer annulée',
-                            `La quittance N° ${receipt.receipt_number} (${receipt.month}/${receipt.year}) a été annulée par le propriétaire. Motif : ${cancellation_reason.trim()}`
-                        ]
-                    );
+                    await Notification.create({
+                        id: uuidv4(),
+                        user_id: receipt.tenant_id,
+                        type: 'receipt',
+                        title: 'Quittance de loyer annulée',
+                        message: `La quittance N° ${receipt.receipt_number} (${receipt.month}/${receipt.year}) a été annulée par le propriétaire. Motif : ${cancellation_reason.trim()}`,
+                        link: '/tenant-dashboard/contracts'
+                    });
                 }
             } catch (notifErr) { console.error('Failed to notify tenant:', notifErr); }
 

@@ -7,6 +7,18 @@ const { emitToWorkspace } = require('../utils/socket');
 /**
  * Rôle de l'utilisateur connecté vis-à-vis d'un contrat : 'owner', 'tenant', 'admin' ou null
  */
+// Image de signature manuscrite : PNG en data URL, taille bornée, contenu réellement PNG
+const MAX_SIGNATURE_CHARS = 90000;
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const parseSignatureImage = (value) => {
+    if (typeof value !== 'string' || value.length > MAX_SIGNATURE_CHARS) return null;
+    const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+    if (!match) return null;
+    const bytes = Buffer.from(match[1], 'base64');
+    if (bytes.length < 100 || !bytes.subarray(0, 8).equals(PNG_MAGIC)) return null;
+    return value;
+};
+
 const getContractAccess = (req, contract) => {
     if (req.ownerId === contract.owner_id || req.user.id === contract.owner_id) return 'owner';
     if (contract.tenant_user_id && req.user.id === contract.tenant_user_id) return 'tenant';
@@ -92,10 +104,36 @@ const contractController = {
             let result;
             const access = getContractAccess(req, contract);
             if (access === 'owner' && req.user.role === 'owner') {
+                // Une signature apposée est figée : on ne re-signe pas (sinon la signature actuelle la remplacerait)
+                if (contract.owner_signed) {
+                    return res.status(400).json({ message: 'Ce contrat est déjà signé par le bailleur.' });
+                }
                 result = await Contract.signByOwner(id);
             } else if (access === 'tenant') {
                 // Seul le locataire rattaché à ce contrat peut le signer
-                result = await Contract.signByTenant(id);
+                if (contract.tenant_signed) {
+                    return res.status(400).json({ message: 'Ce contrat est déjà signé.' });
+                }
+                const signature = parseSignatureImage(req.body?.signature);
+                if (!signature) {
+                    return res.status(400).json({ message: 'Signature manuscrite manquante ou invalide. Veuillez signer dans le cadre prévu.' });
+                }
+
+                // Preuve établie côté serveur (jamais à partir de données envoyées par le navigateur)
+                result = await Contract.signByTenant(id, {
+                    signature,
+                    proof: {
+                        user_id: req.user.id,
+                        custom_id: req.user.custom_id || null,
+                        name: req.user.full_name || contract.tenant_name || null,
+                        signed_at: new Date().toISOString(),
+                        ip: req.ip || null,
+                        user_agent: (req.headers['user-agent'] || '').slice(0, 300)
+                    }
+                });
+                if (!result) {
+                    return res.status(400).json({ message: 'Ce contrat est déjà signé.' });
+                }
             } else {
                 return res.status(403).json({ message: 'Non autorisé' });
             }
@@ -175,6 +213,8 @@ const contractController = {
                 id: contract.id,
                 contract_number: contract.contract_number,
                 contract_type: contract.contract_type,
+                // Contrat rédigé à partir d'un modèle personnalisé du bailleur (le contenu n'est pas exposé)
+                is_custom: Boolean(contract.custom_template_id || contract.custom_content),
                 property_name: contract.property_name,
                 property_address: contract.property_address,
                 tenant_name: contract.tenant_name.split(' ').map((n, i) => i === 0 ? n : n[0] + '***').join(' '), // Obfuscate last name

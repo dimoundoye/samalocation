@@ -262,12 +262,32 @@ export const ReportsManagement = ({ onStatsUpdate }: ReportsManagementProps = {}
                     <div className="space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold">Propriétaire signalé: {report.reported_name}</h3>
+                            {report.property_id && (
+                              <Badge variant="outline" className="border-orange-300 text-orange-700">Annonce</Badge>
+                            )}
                             {report.reported_is_blocked && (
                               <Badge variant="destructive">Compte bloqué</Badge>
                             )}
                           </div>
+                          {/* Signalement d'une annonce : lien vers le bien concerné */}
+                          {report.property_id && (
+                            <p className="text-sm">
+                              Annonce :{" "}
+                              <a
+                                href={`/property/${report.property_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-primary underline underline-offset-2"
+                              >
+                                {report.property_name || "Bien supprimé"}
+                              </a>
+                              {report.property_name && report.property_is_published === false && (
+                                <span className="text-muted-foreground"> (dépubliée)</span>
+                              )}
+                            </p>
+                          )}
                           <p className="text-sm text-muted-foreground">
                             Signalé par: {report.reporter_name} ({report.reporter_email})
                           </p>

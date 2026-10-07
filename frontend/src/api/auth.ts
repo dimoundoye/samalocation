@@ -30,15 +30,10 @@ export const getMe = async () => {
     return await baseClient("/auth/me");
 };
 
-export const searchUsers = async (query: string, role?: string) => {
-    try {
-        const params = new URLSearchParams({ q: query });
-        if (role) params.append('role', role);
-        return await baseClient(`/auth/users/search?${params.toString()}`);
-    } catch (error) {
-        console.error("SearchUsers error:", error);
-        return [];
-    }
+/** Compte locataire par identifiant Samalocation exact (au plus un résultat). Les erreurs (ex. trop de recherches) remontent. */
+export const searchUsers = async (customId: string) => {
+    const params = new URLSearchParams({ q: customId });
+    return await baseClient(`/auth/users/search?${params.toString()}`);
 };
 
 export const createTenantAccount = async (userData: any) => {

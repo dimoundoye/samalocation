@@ -2,10 +2,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Home, Search, ArrowLeft, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 const NotFound = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
@@ -18,7 +20,7 @@ const NotFound = () => {
       <div className="absolute inset-0 z-0 flex items-center justify-center p-2 sm:p-6 md:p-10 pointer-events-none">
         <img
           src="/hero-404-full.jpg"
-          alt="404 Page Introuvable"
+          alt={t('not_found.image_alt')}
           className="w-full h-auto max-h-[85dvh] sm:max-h-[90dvh] object-contain object-center max-w-7xl mx-auto opacity-95 dark:opacity-90 animate-fade-in"
         />
         {/* Soft bottom gradient overlay for smooth button readability */}
@@ -40,7 +42,7 @@ const NotFound = () => {
               onClick={() => navigate("/")}
             >
               <Home className="mr-2.5 h-4 w-4 sm:h-5 sm:w-5" />
-              Retour à l'accueil
+              {t('common.back_home')}
             </Button>
 
             <Button
@@ -50,7 +52,7 @@ const NotFound = () => {
               onClick={() => navigate("/search")}
             >
               <Search className="mr-2.5 h-4 w-4 sm:h-5 sm:w-5" />
-              Chercher un logement
+              {t('not_found.find_home')}
             </Button>
           </div>
 
@@ -61,7 +63,7 @@ const NotFound = () => {
               className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-primary dark:text-slate-400 transition-colors group"
             >
               <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />
-              Revenir à la page précédente
+              {t('common.go_back')}
             </button>
           </div>
 
@@ -71,7 +73,7 @@ const NotFound = () => {
 
       {/* Footer */}
       <footer className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 md:px-8 pb-4 text-center text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-        © {new Date().getFullYear()} Samalocation — La gestion immobilière simplifiée
+        © {new Date().getFullYear()} Samalocation — {t('common.tagline')}
       </footer>
 
     </div>

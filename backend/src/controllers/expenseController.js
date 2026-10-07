@@ -115,17 +115,6 @@ const expenseController = {
             const propertyId = req.query.property_id || null;
             const groupId = req.query.group_id || null;
 
-            // Security check: if collaborator in agency context, verify revenue viewing permission
-            if (req.user?.parent_id && req.ownerId === req.user.parent_id) {
-                const canSeeRevenue = req.user.permissions?.can_view_revenue;
-                if (!canSeeRevenue) {
-                    return res.status(403).json({
-                        status: 'error',
-                        message: 'Accès non autorisé : Vous n\'avez pas la permission de consulter la trésorerie de l\'agence.'
-                    });
-                }
-            }
-
             // Fetch owner-related IDs strictly for target ownerId
             const { rows: ownerRows } = await db.query(
                 `SELECT id, user_profile_id FROM owner_profiles WHERE id = $1 OR user_profile_id = $1`,
@@ -295,7 +284,8 @@ const expenseController = {
                         COUNT(DISTINCT p.id) as total_props,
                         COUNT(DISTINCT CASE WHEN t.id IS NOT NULL THEN p.id END) as occupied_props
                     FROM properties p
-                    LEFT JOIN tenants t ON (t.property_id = p.id OR t.unit_id IN (SELECT id FROM property_units WHERE property_id = p.id)) AND (t.status = 'active' OR t.status IS NULL)
+                    -- tenants n'a pas de property_id : le locataire est rattaché au bien via son unité
+                    LEFT JOIN tenants t ON t.unit_id IN (SELECT id FROM property_units WHERE property_id = p.id) AND (t.status = 'active' OR t.status IS NULL)
                     WHERE p.owner_id = ANY($1)
                 `, [ownerIdsList]);
                 totalUnits = parseInt(fallbackRows[0]?.total_props || 0);

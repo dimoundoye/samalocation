@@ -42,3 +42,13 @@ export const unblockUser = async (id: string) => {
         method: 'PATCH'
     });
 };
+
+export type PropertyReportCategory = 'scam' | 'unavailable' | 'misleading' | 'price' | 'broker' | 'inappropriate' | 'other';
+
+/** Signaler une annonce publiée (utilisateur connecté) */
+export const reportProperty = async (property_id: string, category: PropertyReportCategory, reason: string) => {
+    return baseClient('/reports', {
+        method: 'POST',
+        body: JSON.stringify({ property_id, category, reason })
+    });
+};

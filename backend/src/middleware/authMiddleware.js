@@ -1,5 +1,7 @@
-const { verifyToken } = require('../utils/auth');
+const { verifyToken, isSessionRevoked } = require('../utils/auth');
 const User = require('../models/userModel');
+const Organization = require('../models/organizationModel');
+const Subscription = require('../models/subscriptionModel');
 
 const authMiddleware = async (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -19,6 +21,10 @@ const authMiddleware = async (req, res, next) => {
         return res.status(401).json({ status: 'error', message: 'User not found' });
     }
 
+    if (isSessionRevoked(decoded, userProfile)) {
+        return res.status(401).json({ status: 'error', message: 'Session expirée suite à un changement de mot de passe. Veuillez vous reconnecter.' });
+    }
+
     if (userProfile.is_blocked) {
         return res.status(403).json({
             status: 'error',
@@ -35,23 +41,27 @@ const authMiddleware = async (req, res, next) => {
         parent_id: effectiveParentId
     };
 
-    // Resolve effective owner ID for data access
-    req.ownerId = decoded.id; // Par défaut, l'utilisateur voit son propre espace
-    
-    const activeContext = req.headers['x-active-context'];
-    if (activeContext) {
-        // If user is a collaborator, they can switch to their parent's context
-        if (effectiveParentId === activeContext) {
-            // CRITICAL: Check if the owner still has a subscription allowing multi-user
-            const Subscription = require('../models/subscriptionModel');
-            const hasMultiUserAccess = await Subscription.hasAccessToFeature(activeContext, 'multi_user');
-            
-            if (hasMultiUserAccess) {
-                req.ownerId = activeContext;
-            }
+    // Organisation active : celle demandée via x-active-context si l'utilisateur en est membre,
+    // sinon son espace perso (org dont l'id = son id utilisateur), sinon aucune (ex. locataire).
+    // req.ownerId = id de l'org active : même valeur que l'ancien "owner id", les contrôleurs n'ont pas à changer.
+    const organizations = await Organization.findForUser(userProfile.id);
+    const personalOrg = organizations.find(o => o.id === userProfile.id) || null;
+    const requestedId = req.headers['x-active-context'];
+
+    let activeOrg = personalOrg;
+    if (requestedId && requestedId !== userProfile.id) {
+        const requested = organizations.find(o => o.id === requestedId);
+        // Travailler dans l'org de quelqu'un d'autre nécessite que cette org ait toujours l'option multi-utilisateur
+        if (requested && (requested.role === 'owner' || await Subscription.hasAccessToFeature(requested.id, 'multi_user'))) {
+            activeOrg = requested;
         }
     }
-    
+
+    req.organizations = organizations;
+    req.org = activeOrg;
+    req.permissions = new Set(activeOrg ? activeOrg.permissions : []);
+    req.ownerId = activeOrg ? activeOrg.id : decoded.id;
+
     next();
 };
 

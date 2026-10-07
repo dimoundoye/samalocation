@@ -1,7 +1,10 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const response = require('../utils/response');
 const authMiddleware = require('../middleware/authMiddleware');
+const { can } = require('../middleware/permissionMiddleware');
 const {
     signupValidation,
     loginValidation,
@@ -28,7 +31,16 @@ router.post('/login', loginValidation, authController.login);
 router.get('/me', authController.getMe);
 
 // Search users by name or email
-router.get('/users/search', authMiddleware, authController.searchUsers);
+// Recherche d'un locataire par identifiant exact, réservée aux comptes qui peuvent affecter un locataire.
+// 20 recherches par minute et par compte : empêche d'essayer des identifiants au hasard.
+const tenantSearchLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    validate: false,
+    keyGenerator: (req) => `tenant-search:${req.user?.id || rateLimit.ipKeyGenerator(req.ip)}`,
+    handler: (req, res) => response.error(res, 'Trop de recherches. Patientez une minute avant de réessayer.', 429),
+});
+router.get('/users/search', authMiddleware, can('tenant.write'), tenantSearchLimiter, authController.searchUsers);
 
 // Change password
 router.post('/change-password', authMiddleware, authController.changePassword);
@@ -37,7 +49,7 @@ router.post('/change-password', authMiddleware, authController.changePassword);
 router.patch('/update-profile', authMiddleware, authController.updateMyProfile);
 
 // Create tenant account (for owners)
-router.post('/create-tenant-account', authMiddleware, authController.createTenantAccount);
+router.post('/create-tenant-account', authMiddleware, can('tenant.write'), authController.createTenantAccount);
 
 // Complete setup (for newly created tenants)
 router.post('/complete-setup', authMiddleware, authController.completeSetup);

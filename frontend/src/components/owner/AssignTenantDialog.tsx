@@ -167,29 +167,34 @@ export const AssignTenantDialog = ({
   }, [availableUnits, selectedPropertyId, selectedUnitId]);
 
   const searchUsersLocal = async () => {
-    if (!searchQuery.trim()) {
+    // Identifiant Samalocation : majuscules/minuscules et espaces tolérés (« dv 654 4361 » → « DV6544361 »)
+    const customId = searchQuery.replace(/\s+/g, "").toUpperCase();
+    if (!customId) {
       setSearchResults([]);
+      return;
+    }
+    if (!/^[A-Z0-9]{4,20}$/.test(customId)) {
+      toast({
+        title: "Identifiant invalide",
+        description: "Saisissez l'identifiant Samalocation du locataire (lettres et chiffres, ex. DV6544361).",
+      });
       return;
     }
 
     setSearching(true);
     try {
-      // Search all users (we'll filter out owners/admins)
-      const profiles = await searchUsers(searchQuery);
-      console.log('Search results:', profiles);
+      // Recherche exacte : le serveur renvoie au plus un compte (nom et identifiant uniquement)
+      const profiles = await searchUsers(customId);
+      const found = Array.isArray(profiles) ? profiles : [];
 
-      // Filter out owners and admins on frontend
-      const filteredProfiles = profiles?.filter((user: any) =>
-        user.role !== 'owner' && user.role !== 'admin'
-      ) || [];
-
-      setSearchResults(filteredProfiles);
-
-
-      if (filteredProfiles.length === 0) {
+      if (found.length === 1) {
+        handleSelectUser(found[0]);
+        setSearchResults([]);
+      } else {
+        setSearchResults([]);
         toast({
-          title: "Aucun utilisateur trouvé",
-          description: "Aucun utilisateur correspondant à votre recherche.",
+          title: "Aucun locataire trouvé",
+          description: "Aucun compte locataire ne correspond à cet identifiant. Vérifiez-le auprès du locataire.",
         });
       }
     } catch (error: any) {
@@ -207,9 +212,10 @@ export const AssignTenantDialog = ({
   const handleSelectUser = (user: any) => {
     setSelectedUser(user);
     setFullName(user.full_name);
-    setEmail(user.email);
-    setPhone(user.phone || ""); // Auto-fill phone if available
-    setSearchQuery(user.full_name);
+    // Email et téléphone ne sont pas transmis par la recherche : le serveur les reprend du compte à l'affectation
+    setEmail("");
+    setPhone("");
+    setSearchQuery(user.custom_id || "");
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -328,8 +334,10 @@ export const AssignTenantDialog = ({
         throw new Error("Erreur lors de l'affectation du locataire");
       }
 
-      // Si on a créé des identifiants, les afficher MAINTENANT
-      if (accountResult) {
+      // Nouveaux identifiants créés : les afficher MAINTENANT.
+      // Si un compte existait déjà avec cet e-mail, il a simplement été relié : rien à transmettre.
+      const newCredentials = accountResult && !accountResult.linkedExisting;
+      if (newCredentials) {
         setTempCredentials({
           customId: accountResult.customId,
           tempPassword: accountResult.tempPassword
@@ -339,11 +347,13 @@ export const AssignTenantDialog = ({
 
       toast({
         title: "Locataire ajouté",
-        description: `${insertedTenant.full_name ?? "Le locataire"} a été associé au bien sélectionné.`,
+        description: accountResult?.linkedExisting
+          ? `${insertedTenant.full_name ?? "Le locataire"} avait déjà un compte Samalocation : il a été relié au bail et retrouvera ce logement avec ses identifiants habituels.`
+          : `${insertedTenant.full_name ?? "Le locataire"} a été associé au bien sélectionné.`,
       });
 
       onSuccess();
-      if (!accountResult) {
+      if (!newCredentials) {
         handleClose(false);
       }
 
@@ -535,15 +545,20 @@ export const AssignTenantDialog = ({
               </div>
 
               <ScrollArea className="flex-1 max-h-[calc(95vh-150px)]">
+
                 <div className="p-6 space-y-6">
                   <div className="space-y-4">
                     {searchMode === "existing" ? (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label>Rechercher par nom ou email</Label>
+                          <Label htmlFor="tenant-custom-id">Identifiant Samalocation du locataire</Label>
                           <div className="flex gap-2">
                             <Input
-                              placeholder="Ex: Moussa Diop..."
+                              id="tenant-custom-id"
+                              placeholder="Ex : DV6544361"
+                              autoComplete="off"
+                              autoCapitalize="characters"
+                              spellCheck={false}
                               value={searchQuery}
                               onChange={(e) => {
                                 setSearchQuery(e.target.value);
@@ -566,43 +581,24 @@ export const AssignTenantDialog = ({
                               <Search className="h-5 w-5" />
                             </Button>
                           </div>
+                          <p className="text-xs text-muted-foreground">
+                            Demandez-lui son identifiant : il est affiché sur son tableau de bord, avec un bouton pour le copier.
+                          </p>
                         </div>
 
                         {selectedUser && (
                           <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            <div className="h-12 w-12 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
                               {selectedUser.full_name?.charAt(0)}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-bold truncate">{selectedUser.full_name}</p>
-                              <p className="text-sm text-muted-foreground truncate">{selectedUser.email}</p>
+                              <p className="font-bold break-words">{selectedUser.full_name}</p>
+                              <p className="text-sm text-muted-foreground font-mono">ID : {selectedUser.custom_id}</p>
                             </div>
                             <CheckCircle className="h-5 w-5 text-primary shrink-0" />
                           </div>
                         )}
 
-                        {searchResults.length > 0 && !selectedUser && (
-                          <div className="h-60 border rounded-2xl p-2 bg-muted/5 overflow-y-auto">
-                            <div className="space-y-1">
-                              {searchResults.map((user) => (
-                                <button
-                                  key={user.id}
-                                  type="button"
-                                  onClick={() => handleSelectUser(user)}
-                                  className="w-full text-left p-3 hover:bg-secondary rounded-xl transition-colors flex items-center gap-3"
-                                >
-                                  <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
-                                    {user.full_name?.charAt(0)}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="font-medium truncate text-sm">{user.full_name}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     ) : (
                       <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl space-y-3">
@@ -716,7 +712,7 @@ export const AssignTenantDialog = ({
                               type="email"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
-                              placeholder="locataire@exemple.com"
+                              placeholder={selectedUser ? "Repris du compte du locataire" : "locataire@exemple.com"}
                               className="rounded-xl"
                               disabled={!!selectedUser}
                             />
@@ -726,7 +722,7 @@ export const AssignTenantDialog = ({
                             <Input
                               value={phone}
                               onChange={(e) => setPhone(e.target.value)}
-                              placeholder="77..."
+                              placeholder={selectedUser ? "Repris du compte du locataire" : "77..."}
                               className="rounded-xl"
                               disabled={!!selectedUser}
                             />

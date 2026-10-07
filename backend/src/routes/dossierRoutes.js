@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const dossierController = require('../controllers/dossierController');
 const authenticateToken = require('../middleware/authMiddleware');
+const { can } = require('../middleware/permissionMiddleware');
 
 // Toutes les routes nécessitent une authentification
 router.use(authenticateToken);
@@ -14,8 +15,8 @@ router.get('/shares', dossierController.getMyDossierShares);
 router.delete('/shares/:ownerId', dossierController.revokeDossierShare);
 
 // Routes Propriétaire
-router.get('/shared', dossierController.getSharedDossiers);
-router.get('/shared/:dossierId', dossierController.getSharedDossierDetails);
-router.patch('/shared/:dossierId/status', dossierController.updateSharedDossierStatus);
+router.get('/shared', can('tenant.read'), dossierController.getSharedDossiers);
+router.get('/shared/:dossierId', can('tenant.read'), dossierController.getSharedDossierDetails);
+router.patch('/shared/:dossierId/status', can('tenant.write'), dossierController.updateSharedDossierStatus);
 
 module.exports = router;

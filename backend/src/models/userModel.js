@@ -1,4 +1,6 @@
 const db = require('../config/db');
+const Organization = require('./organizationModel');
+const { CUSTOM_ID_MAX_LENGTH } = require('../config/customId');
 
 const User = {
     async findByEmailOrId(identifier) {
@@ -24,7 +26,7 @@ const User = {
     async create(userData) {
         const { 
             id, customId, email, passwordHash, name, phone, role, 
-            companyName, isSetupComplete = true, parentId = null, 
+            companyName, orgType = 'individual', isSetupComplete = true, parentId = null,
             permissions = { can_view_revenue: false },
             emailVerified = false,
             verificationToken = null,
@@ -47,6 +49,11 @@ const User = {
                 'INSERT INTO owner_profiles (id, user_profile_id, company_name, phone) VALUES ($1, $2, $3, $4)',
                 [id, id, companyName || name, phone]
             );
+            await Organization.ensurePersonalOrg(id, { name: companyName || name, type: orgType });
+        }
+
+        if (parentId) {
+            await Organization.upsertMembership(id, parentId, Organization.roleFromLegacyPermissions(permissions), { invitedBy: parentId });
         }
 
         return { id, customId, email, name, role };
@@ -54,7 +61,7 @@ const User = {
 
     async findProfileById(id) {
         const { rows } = await db.query(`
-            SELECT up.*, u.is_setup_complete, u.parent_id, u.permissions, u.referred_by, u.referral_count, op.currency
+            SELECT up.*, u.is_setup_complete, u.is_blocked, u.parent_id, u.permissions, u.referred_by, u.referral_count, u.password_changed_at, op.currency
             FROM user_profiles up
             JOIN users u ON up.id = u.id
             LEFT JOIN owner_profiles op ON up.id = op.id
@@ -63,24 +70,21 @@ const User = {
         return rows[0] || null;
     },
 
-    async search(query, role = null) {
-        let sql = `
-            SELECT id, custom_id, full_name, email, role 
-            FROM user_profiles 
-            WHERE full_name ILIKE $1 OR email ILIKE $2 OR custom_id ILIKE $3
-        `;
-
-        const params = [`%${query}%`, `%${query}%`, `%${query}%`];
-
-        if (role) {
-            sql += ' AND role = $4';
-            params.push(role);
-        }
-
-        sql += ' LIMIT 10';
-
-        const { rows } = await db.query(sql, params);
-        return rows;
+    /**
+     * Compte locataire à affecter, retrouvé uniquement par son identifiant Samalocation exact
+     * (majuscules/minuscules indifférentes). Propriétaires et admins exclus.
+     * Pas de recherche partielle : impossible de lister les locataires inscrits.
+     */
+    async findTenantByCustomId(customId) {
+        const { rows } = await db.query(
+            `SELECT id, custom_id, full_name
+             FROM user_profiles
+             WHERE UPPER(custom_id) = UPPER($1)
+               AND COALESCE(role, '') NOT IN ('owner', 'admin')
+             LIMIT 1`,
+            [customId]
+        );
+        return rows[0] || null;
     },
 
     async blockUser(userId, adminId, reason) {
@@ -179,8 +183,9 @@ const User = {
 
     async updatePassword(userId, passwordHash) {
         await db.query(
-            'UPDATE public.users SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2',
-            [passwordHash, userId]
+            // password_changed_at à l'heure du serveur Node (comme le iat des JWT)
+            'UPDATE public.users SET password_hash = $1, password_changed_at = $3, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2',
+            [passwordHash, userId, new Date()]
         );
     },
 
@@ -195,28 +200,44 @@ const User = {
     },
 
     async updateParentId(userId, parentId) {
+        const { rows: [before] } = await db.query('SELECT parent_id, permissions FROM users WHERE id = $1', [userId]);
+
         await db.query(`
-            UPDATE users 
-            SET parent_id = $1 
+            UPDATE users
+            SET parent_id = $1
             WHERE id = $2
         `, [parentId, userId]);
+
+        // Synchronisation memberships : parent_id ne permet qu'une équipe, on reproduit ce comportement
+        if (before?.parent_id && before.parent_id !== parentId) {
+            await Organization.revokeMembership(userId, before.parent_id);
+        }
+        if (parentId) {
+            await Organization.upsertMembership(userId, parentId, Organization.roleFromLegacyPermissions(before?.permissions), { invitedBy: parentId });
+        }
     },
 
     async updatePermissions(userId, permissions) {
-        await db.query(`
-            UPDATE users 
-            SET permissions = $1 
+        const { rows: [user] } = await db.query(`
+            UPDATE users
+            SET permissions = $1
             WHERE id = $2
+            RETURNING parent_id
         `, [permissions, userId]);
+
+        if (user?.parent_id) {
+            await Organization.updateMembershipRole(userId, user.parent_id, Organization.roleFromLegacyPermissions(permissions));
+        }
     },
 
     async removeCollaborator(userId, parentId) {
         // We don't delete the user, just detach them from the team
         await db.query(`
-            UPDATE users 
-            SET parent_id = NULL 
+            UPDATE users
+            SET parent_id = NULL
             WHERE id = $1 AND parent_id = $2
         `, [userId, parentId]);
+        await Organization.revokeMembership(userId, parentId);
     },
 
     async delete(userId) {
@@ -268,7 +289,21 @@ const User = {
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL",
             "CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by)",
-            "CREATE INDEX IF NOT EXISTS idx_users_parent_id ON users(parent_id)"
+            "CREATE INDEX IF NOT EXISTS idx_users_parent_id ON users(parent_id)",
+            // Identifiant Samalocation : colonne élargie à 16 caractères pour que la génération puisse
+            // passer à plus de chiffres si la base se remplit (voir authController.generateCustomId).
+            // Élargir un VARCHAR est instantané (aucune réécriture) ; exécuté seulement si nécessaire.
+            `DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+                           AND table_name = 'users' AND column_name = 'custom_id' AND character_maximum_length < ${CUSTOM_ID_MAX_LENGTH}) THEN
+                    ALTER TABLE users ALTER COLUMN custom_id TYPE VARCHAR(${CUSTOM_ID_MAX_LENGTH});
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+                           AND table_name = 'user_profiles' AND column_name = 'custom_id' AND character_maximum_length < ${CUSTOM_ID_MAX_LENGTH}) THEN
+                    ALTER TABLE user_profiles ALTER COLUMN custom_id TYPE VARCHAR(${CUSTOM_ID_MAX_LENGTH});
+                END IF;
+            END $$`
         ];
 
         for (const sql of queries) {

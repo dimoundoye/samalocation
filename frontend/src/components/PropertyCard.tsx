@@ -108,8 +108,8 @@ const PropertyCard = ({
       }
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Une erreur est survenue.",
+        title: t('common.error'),
+        description: t('common.error_generic'),
         variant: "destructive",
       });
     } finally {
@@ -195,11 +195,11 @@ const PropertyCard = ({
         )}
         {listingType === 'vente' ? (
           <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 bg-primary text-white border-none text-[10px] sm:text-xs px-2 py-0.5 shadow-md font-black uppercase">
-            À Vendre
+            {t('property.for_sale')}
           </Badge>
         ) : (
           <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 bg-emerald-600 text-white border-none text-[10px] sm:text-xs px-2 py-0.5 shadow-md font-black uppercase">
-            À Louer
+            {t('property.for_rent')}
           </Badge>
         )}
         {isNew && (
@@ -224,7 +224,7 @@ const PropertyCard = ({
           <div className="absolute bottom-2 left-2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/90 backdrop-blur-sm p-1 shadow-sm border border-white/20 overflow-hidden hidden sm:flex items-center justify-center">
             <img 
               src={formatImageUrl(ownerLogo) || ""} 
-              alt="Owner logo" 
+              alt={t('property.owner_logo_alt')}
               className="max-w-full max-h-full object-contain"
             />
           </div>

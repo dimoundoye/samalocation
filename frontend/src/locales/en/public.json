@@ -1,0 +1,344 @@
+{
+  "hero": {
+    "badge": "The online rental revolution",
+    "title_part1": "Manage & Find a property",
+    "title_part2": "with confidence.",
+    "description": "Samalocation simplifies life for owners and tenants. A transparent, secure and 100% digital platform.",
+    "list_property": "List property",
+    "search_property": "Search property",
+    "search_placeholder": "Neighborhood, city...",
+    "search_button": "Search",
+    "explore": "Browse properties",
+    "samples": {
+      "apartment_title": "Modern apartment",
+      "apartment_location": "City center",
+      "villa_title": "Spacious villa",
+      "villa_location": "Residential area",
+      "studio_title": "Furnished studio",
+      "studio_location": "Quiet neighborhood"
+    }
+  },
+  "features": {
+    "title": "Why choose Samalocation?",
+    "subtitle": "We built the ideal solution for real estate management, combining modern technology and ease of use.",
+    "security": {
+      "title": "Security",
+      "desc": "Profile verification and protection of your documents and transactions."
+    },
+    "time": {
+      "title": "Save Time",
+      "desc": "Digitize your visits and property management in a few clicks."
+    },
+    "transparency": {
+      "title": "Total Transparency",
+      "desc": "Clear exchanges, no hidden fees, for mutual trust."
+    }
+  },
+  "roles": {
+    "owners": {
+      "title": "For Owners",
+      "desc": "Manage your assets with peace of mind. Find verified tenants and track your payments stress-free.",
+      "item1": "Post your property",
+      "item2": "Find tenants",
+      "item3": "Track payments",
+      "item4": "Receipt management",
+      "cta": "Post my ad"
+    },
+    "tenants": {
+      "title": "For Tenants",
+      "desc": "The home of your dreams is just a click away. Easy visits and direct exchange with owners.",
+      "item1": "Verified listings",
+      "item2": "Smart filtering",
+      "item3": "One-click application",
+      "item4": "Chat with the owner",
+      "cta": "Find my home"
+    }
+  },
+  "featured": {
+    "title": "Featured Properties",
+    "desc": "Discover the best opportunities of the moment.",
+    "view_all": "View all real estate"
+  },
+  "process": {
+    "title": "How it works?",
+    "step1": {
+      "title": "Search",
+      "desc": "Explore our verified listings everywhere."
+    },
+    "step2": {
+      "title": "Application",
+      "desc": "Chat with the owner with peace of mind."
+    },
+    "step3": {
+      "title": "Move in",
+      "desc": "Move in with peace of mind."
+    }
+  },
+  "cta": {
+    "title": "Ready to simplify your rental experience?",
+    "desc": "Join hundreds of users who have already chosen Samalocation for transparent management.",
+    "signup": "Sign Up",
+    "contact": "Contact Us"
+  },
+  "footer": {
+    "desc": "The leading platform for real estate rentals. Security, simplicity, transparency.",
+    "nav": {
+      "title": "Navigation",
+      "home": "Home",
+      "search": "Search",
+      "login": "Login",
+      "about": "About Us"
+    },
+    "legal": {
+      "title": "Legal",
+      "terms": "Terms & Conditions",
+      "privacy": "Privacy Policy"
+    },
+    "support": {
+      "title": "Support",
+      "contact": "Contact Us"
+    },
+    "copyright": "© 2026 Samalocation. All rights reserved."
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "Do you have a question, a suggestion or need assistance? Our team is here to help.",
+    "info": {
+      "address_title": "Our Address",
+      "address_text": "Headquarters, Samalocation",
+      "phone_title": "Phone",
+      "phone_sub": "Mon-Fri, 9am-6pm",
+      "email_title": "Email",
+      "email_sub": "Response within 24h",
+      "hours_title": "Opening Hours",
+      "hours_sub1": "Monday - Friday: 9:00am - 6:00pm",
+      "hours_sub2": "Saturday: 9:00am - 1:00pm"
+    },
+    "form": {
+      "title": "Send us a message",
+      "name": "Full name",
+      "name_placeholder": "Your name",
+      "email": "Valid email",
+      "email_placeholder": "your@email.com",
+      "subject": "Subject",
+      "subject_placeholder": "Subject of your message",
+      "message": "Message",
+      "message_placeholder": "How can we help you?",
+      "submit": "Send message",
+      "sending": "Sending...",
+      "success_title": "Message sent!",
+      "success_desc": "We have received your message and will respond as soon as possible.",
+      "robot_error": "Please confirm that you are not a robot."
+    }
+  },
+  "search": {
+    "title": "Find your ideal home",
+    "placeholder": "Search by city, neighborhood...",
+    "results_count_one": "{{count}} property available",
+    "results_count_other": "{{count}} properties available",
+    "filters": "Filters",
+    "more_filters": "More filters",
+    "price_range": "Price range",
+    "property_type": "Property type",
+    "types": {
+      "all": "All types",
+      "house": "House",
+      "villa": "Villa",
+      "apartment": "Apartment",
+      "studio": "Studio",
+      "room": "Room",
+      "garage": "Garage",
+      "office": "Office",
+      "land": "Land"
+    },
+    "prices": {
+      "all": "All prices",
+      "under_100k": "0 - 100,000 F",
+      "100k_200k": "100,000 - 200,000 F",
+      "200k_400k": "200,000 - 400,000 F",
+      "over_440k": "400,000 F+"
+    },
+    "no_results": "No properties available at the moment.",
+    "no_results_desc": "Check back later to see new offers.",
+    "loading": "Loading properties...",
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {{current}} of {{total}}"
+    },
+    "view_map": "View map",
+    "view_list": "View list",
+    "map_title": "Location",
+    "map_desc": "Only properties with coordinates provided appear on the map.",
+    "autocomplete": {
+      "recent": "Recent searches",
+      "locations": "Locations",
+      "properties": "Properties",
+      "search_for": "Search for \"{{query}}\"",
+      "press_enter": "Press Enter to search for \"{{query}}\""
+    },
+    "load_error": "Unable to load available properties right now.",
+    "refresh": "Refresh the page",
+    "map_hint": "Use the filters to narrow down the properties shown on the map.",
+    "view_on_map": "VIEW ON MAP",
+    "view_as_list": "VIEW AS LIST",
+    "f": {
+      "transaction": "Transaction",
+      "all_transactions": "All",
+      "rent": "Rent",
+      "sale": "Sale",
+      "active": "(Active)",
+      "refine": "Refine your search",
+      "property_type": "Property type",
+      "type": "Type",
+      "price_min": "Min price",
+      "price_max": "Max price",
+      "rent_min": "Min rent",
+      "rent_max": "Max rent",
+      "area_min_m2": "Min area (m²)",
+      "area_max_m2": "Max area (m²)",
+      "area_min": "Min area",
+      "area_max": "Max area",
+      "bedrooms_min": "Min bedrooms",
+      "bedrooms_max": "Max bedrooms",
+      "rooms_min": "Min rooms",
+      "rooms_max": "Max rooms",
+      "min": "Min",
+      "max": "Max",
+      "apply": "Apply filters",
+      "reset_all": "Reset all",
+      "reset": "Reset",
+      "instant": "Filters are applied instantly."
+    }
+  },
+  "seo": {
+    "home": {
+      "title": "Samalocation - Simplify your rental management online",
+      "description": "Find your next home or manage your properties with ease. Apartments, villas, studios and more."
+    },
+    "contact": {
+      "title": "Contact us | Samalocation",
+      "description": "A question or need assistance? Contact the Samalocation team. We are here to help you with your property management."
+    },
+    "search": {
+      "title": "Property search | Samalocation",
+      "description": "Browse our property listings: apartments, houses, villas, studios and land."
+    },
+    "default": {
+      "title": "Samalocation - Simplify your rental management and sales online",
+      "description": "Smart online platform for rental management and property sales. Manage your properties and find a home easily."
+    }
+  },
+  "favorites_page": {
+    "count_one": "{{count}} saved property",
+    "count_other": "{{count}} saved properties",
+    "empty_title": "No favorites yet",
+    "empty_desc": "Browse our listings and tap the heart to find them here easily.",
+    "explore": "Browse listings"
+  },
+  "not_found": {
+    "image_alt": "404 Page not found",
+    "find_home": "Find a home"
+  },
+  "chatbot": {
+    "welcome": "Hello! 👋 \n\nI'm the Samalocation assistant. How can I help you today? \n\nWhether you're looking for a home or want to manage your properties, I'm here to help!",
+    "error": "Sorry, I ran into a small technical issue. Please try again in a moment! 🛠️",
+    "active": "AI assistant active",
+    "status": "Online • 24/7 support",
+    "placeholder": "Type your message..."
+  },
+  "detail": {
+    "load_error_title": "Loading error",
+    "load_error_desc": "Unable to load the property details. Check your connection and try again.",
+    "missing_data": "Unable to send the application. Missing data.",
+    "no_owner": "This property has no associated owner.",
+    "sent_title": "Application sent",
+    "sent_desc": "Your application has been sent to the owner. You will receive a reply by message.",
+    "send_error_title": "Application error",
+    "send_error_desc": "An error occurred while sending your application.",
+    "not_found": "Property not found",
+    "back_to_search": "Back to search",
+    "link_copied_title": "Link copied",
+    "link_copied_desc": "The link has been copied to your clipboard.",
+    "not_provided": "Not provided",
+    "seo_title": "{{name}} in {{address}}",
+    "seo_desc_rent": "{{type}} for rent in {{address}}. {{area}} m², {{bedrooms}} bedrooms. {{excerpt}}...",
+    "seo_desc_sale": "{{type}} for sale in {{address}}. {{area}} m², {{bedrooms}} bedrooms. {{excerpt}}...",
+    "photo_alt": "{{name}} - Photo {{index}}",
+    "thumbnail_alt": "Thumbnail {{index}}",
+    "enlarge_title": "Enlarge and view full screen",
+    "see_all_photos": "See all {{count}} photos",
+    "enlarge": "Enlarge",
+    "description": "Description",
+    "equipments": "Amenities",
+    "no_equipments": "The owner has not listed the amenities for this property yet.",
+    "interested": "Interested in this property?",
+    "sale_intro": "Interested in buying this property? Send an information request to the owner to discuss the terms of sale.",
+    "rent_intro": "Send your application to the owner. They will reply by message. After applying, check your messages regularly in your dashboard.",
+    "request_sent": "Request sent",
+    "application_sent": "Application sent",
+    "contact_seller": "Contact the seller",
+    "request_rent": "Request to rent",
+    "already_sent": "You have already sent a request for this property.",
+    "unavailable": "Unavailable",
+    "unavailable_desc": "This property is no longer available on the platform.",
+    "imported_contact": "For any information or to schedule a visit, please contact the seller of the listing in the section below.",
+    "owner": "Owner",
+    "verified_agency": "Verified Agency",
+    "share_title": "Share this property",
+    "link": "Link",
+    "similar": "Similar properties",
+    "see_all": "See all properties",
+    "no_similar": "No other similar property is available right now.",
+    "login_required": "Login required",
+    "login_required_sale": "You must be logged in to contact the seller.",
+    "login_required_rent": "You must be logged in to apply for this property.",
+    "create_account": "Create an account",
+    "confirm_request": "Confirm your request",
+    "confirm_application": "Confirm your application",
+    "message_to_seller": "The following message will be sent to the seller:",
+    "message_to_owner": "The following message will be sent to the owner:",
+    "message_sale": "Hello,\n\nI am very interested in buying the property \"{{name}}\" located in {{address}}.\n\nPlease contact me for more details.\n\nBest regards.",
+    "message_rent": "Hello,\n\nI would like to apply for the property \"{{name}}\" located in {{address}}.\n\nPlease contact me for more details.\n\nBest regards.",
+    "send_request": "Send my request",
+    "send_application": "Send my application",
+    "one_photo": "1 photo available",
+    "zoom_out": "Zoom out (-)",
+    "zoom_reset": "Reset zoom (0)",
+    "zoom_in": "Zoom in (+)",
+    "close_esc": "Close (Esc)",
+    "previous_photo": "Previous photo",
+    "previous_photo_key": "Previous photo (←)",
+    "next_photo": "Next photo",
+    "next_photo_key": "Next photo (→)",
+    "click_zoom_out": "Click to zoom out",
+    "click_zoom_in": "Click to zoom in",
+    "go_to_photo": "Go to photo {{index}}"
+  },
+  "report_property": {
+    "button": "Report this listing",
+    "title": "Report this listing",
+    "desc": "Why are you reporting this listing?",
+    "desc_named": "Why are you reporting “{{name}}”?",
+    "categories": {
+      "scam": "Scam or fraudulent listing",
+      "unavailable": "Already rented, sold or unavailable",
+      "misleading": "Misleading information or photos",
+      "price": "Incorrect or abusive price",
+      "broker": "Broker posing as the owner",
+      "inappropriate": "Inappropriate or offensive content",
+      "other": "Other"
+    },
+    "details_optional": "Details (optional)",
+    "details_required": "Describe the problem",
+    "details_placeholder": "Add details that will help our team…",
+    "details_min": "At least 10 characters.",
+    "confidential": "Your report is confidential: the owner will not know who sent it. Our team will review it shortly.",
+    "submit": "Send report",
+    "sent_title": "Report sent",
+    "sent_desc": "Thank you, our team will review this listing.",
+    "error": "Unable to send the report. Please try again later.",
+    "login_required": "Sign in to report a listing. This helps us prevent abusive reports.",
+    "login": "Sign in"
+  }
+}

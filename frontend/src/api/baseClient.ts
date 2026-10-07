@@ -1,3 +1,5 @@
+import i18n from "@/lib/i18n";
+
 export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 
@@ -29,6 +31,8 @@ export const baseClient = async (endpoint: string, options: RequestOptions = {})
     if (activeContext) {
         headers.set("X-Active-Context", activeContext);
     }
+    // Langue choisie dans l'app, pour que le serveur réponde dans la même langue
+    headers.set("Accept-Language", i18n.resolvedLanguage || "fr");
     if (!(init.body instanceof FormData)) {
         headers.set("Content-Type", "application/json");
     }

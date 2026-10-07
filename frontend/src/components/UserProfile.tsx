@@ -11,6 +11,7 @@ import {
 import { User, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 interface UserProfileProps {
   onSettingsClick?: () => void;
@@ -18,13 +19,14 @@ interface UserProfileProps {
 
 export const UserProfile = ({ onSettingsClick }: UserProfileProps) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { signOut, userRole, user } = useAuth();
-  const [userName, setUserName] = useState("Utilisateur");
+  const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     if (user) {
-      setUserName(user.name || "Utilisateur");
+      setUserName(user.name || "");
       setUserEmail(user.email || "");
     }
   }, [user]);
@@ -39,8 +41,10 @@ export const UserProfile = ({ onSettingsClick }: UserProfileProps) => {
     return "/tenant-dashboard";
   };
 
+  const displayName = userName || t('common.user');
+
   const getInitials = () => {
-    return userName.substring(0, 2).toUpperCase();
+    return displayName.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -48,36 +52,36 @@ export const UserProfile = ({ onSettingsClick }: UserProfileProps) => {
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <Avatar className="h-8 w-8 sm:h-10 sm:w-10 cursor-pointer shrink-0">
-            <AvatarImage src="" alt={userName} />
+            <AvatarImage src="" alt={displayName} />
             <AvatarFallback className="bg-primary text-white">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
-          <span className="font-medium hidden sm:block">{userName}</span>
+          <span className="font-medium hidden sm:block">{displayName}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
           <div className="flex flex-col">
-            <span className="font-medium">{userName}</span>
+            <span className="font-medium">{displayName}</span>
             <span className="text-xs text-muted-foreground font-normal">{userEmail}</span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => navigate(getDashboardPath())}>
           <User className="mr-2 h-4 w-4" />
-          Mon profil
+          {t('nav.my_profile')}
         </DropdownMenuItem>
         {onSettingsClick && (
           <DropdownMenuItem onClick={onSettingsClick}>
             <Settings className="mr-2 h-4 w-4" />
-            Paramètres
+            {t('nav.settings')}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="text-red-600">
           <LogOut className="mr-2 h-4 w-4" />
-          Déconnexion
+          {t('nav.logout')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
