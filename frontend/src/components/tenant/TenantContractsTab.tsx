@@ -103,7 +103,7 @@ export const TenantContractsTab = ({ currency = 'XOF' }: { currency?: string }) 
 
             <div className="grid gap-6">
                 {contracts.map((contract) => (
-                    <Card key={contract.id} className="overflow-hidden border-l-4 border-l-primary">
+                    <Card key={contract.id} className="overflow-hidden">
                         <div className="md:flex">
                             <div className="flex-1 p-6">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">

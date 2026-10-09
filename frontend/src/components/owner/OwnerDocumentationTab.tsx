@@ -22,7 +22,8 @@ import {
   ArrowRight,
   Download,
   TrendingUp,
-  Ban
+  Ban,
+  Landmark
 } from "lucide-react";
 
 export const OwnerDocumentationTab = () => {
@@ -55,7 +56,7 @@ export const OwnerDocumentationTab = () => {
         },
         {
           title: "Avec compte SamaLocation",
-          content: "Recherchez le locataire par son ID (ex: SL12345). Cela lui permet de recevoir ses quittances directement dans son espace et de communiquer avec vous via la messagerie intégrée."
+          content: "Demandez au locataire son identifiant Samalocation : il l'a sur son tableau de bord, avec un bouton pour le copier ou vous l'envoyer. Saisissez-le dans 'Identifiant Samalocation du locataire' puis cliquez sur la loupe. Le locataire trouvé s'affiche avec son nom : cliquez sur sa carte pour le sélectionner. Elle passe alors en surbrillance avec une coche et la mention 'Locataire sélectionné' (un second clic le désélectionne). Choisissez ensuite le bien et l'unité, puis validez. Le locataire reçoit ses quittances dans son espace et peut communiquer avec vous via la messagerie intégrée."
         },
         {
           title: "Sans compte (Gestion manuelle)",
@@ -134,9 +135,9 @@ export const OwnerDocumentationTab = () => {
       icon: <Receipt className="h-5 w-5 text-green-500" />,
       purpose: "La quittance est la preuve légale du paiement. Sur SamaLocation, elle est générée en 2 secondes, éliminant les carnets de quittances papier.",
       steps: [
-        "Allez sur la fiche du locataire ou dans la grille de gestion mensuelle.",
-        "Cliquez sur 'Générer la quittance'.",
-        "Vérifiez le montant et la période.",
+        "Allez dans l'onglet 'Locataires' et cliquez sur le bouton 'Reçu' du locataire concerné.",
+        "Laissez le 'Type de reçu' sur 'Loyer' (le type 'Caution' sert au dépôt de garantie, voir la section dédiée).",
+        "Vérifiez la période (mensuelle, hebdomadaire ou journalière), le montant et le mode de paiement.",
         "Validez. Le locataire reçoit une notification et le PDF est archivé dans son espace."
       ]
     },
@@ -153,6 +154,36 @@ export const OwnerDocumentationTab = () => {
         "Cliquez à tout moment sur le bouton 'Motif' dans l'historique pour consulter l'explication complète dans une fenêtre dédiée."
       ],
       tip: "Le locataire est automatiquement notifié et peut également consulter le motif d'annulation dans son espace personnel."
+    },
+    {
+      id: "deposit",
+      title: "Encaisser et restituer une caution",
+      icon: <Landmark className="h-5 w-5 text-amber-500" />,
+      purpose: "La caution (dépôt de garantie) n'est pas un loyer : c'est une somme que vous conservez pendant le bail et que vous devez rendre à la fin, déduction faite des sommes dues par le locataire. SamaLocation la suit à part : elle n'apparaît pas dans vos revenus, ne marque aucun mois comme payé et ne compte pas dans votre quota de quittances.",
+      steps: [
+        "Allez dans l'onglet 'Locataires' et cliquez sur le bouton 'Reçu' du locataire.",
+        "Dans 'Type de reçu', choisissez 'Caution (dépôt de garantie)'. Le montant est pré-rempli avec la caution prévue au contrat s'il y en a un ; ajustez-le si besoin.",
+        "Validez : un 'REÇU DE CAUTION' est généré et le locataire est notifié. Il le retrouve dans son sous-onglet 'Caution'.",
+        "En fin de bail, ouvrez l'historique du locataire (bouton 'Historique') : le bloc 'Caution' affiche son statut ('Détenue').",
+        "Cliquez sur 'Restituer la caution' et choisissez l'issue : 'Restitution totale', 'Restitution partielle' (avec retenues) ou 'Retenue en totalité'.",
+        "Pour chaque retenue, indiquez un motif et un montant (ex : 'Peinture du salon', 'Loyer de septembre impayé'). Le montant rendu au locataire est calculé automatiquement.",
+        "Indiquez la date et le mode de remboursement, puis enregistrez. Un décompte de restitution (PDF) est généré et le locataire est notifié."
+      ],
+      subSections: [
+        {
+          title: "Partager le reçu ou le décompte",
+          content: "Dans l'historique du locataire, le bouton 'Partager' envoie un message prérempli adapté : pour le reçu de caution, il rappelle que la caution sera restituée en fin de bail ; pour le décompte, il indique le montant rendu et les retenues."
+        },
+        {
+          title: "Corriger une erreur",
+          content: "Une restitution erronée s'annule avec un motif (bouton 'Annuler' du bloc 'Caution') : la caution redevient 'Détenue' et vous pouvez enregistrer une nouvelle restitution. Le décompte annulé reste consultable. Un reçu de caution déjà restitué ne peut pas être annulé tant que sa restitution n'est pas annulée. Un locataire ne peut avoir qu'une seule caution détenue par logement : pour en changer le montant (ex. complément après une hausse de loyer), annulez la caution actuelle puis émettez-en une nouvelle du montant total."
+        },
+        {
+          title: "Suivi dans la Trésorerie",
+          content: "L'onglet 'Trésorerie' affiche un bloc 'Cautions' : le montant détenu actuellement (à rendre), ainsi que les cautions encaissées, restituées et retenues sur l'année. Ces sommes restent séparées de vos revenus et de votre Cash Flow."
+        }
+      ],
+      tip: "Chaque retenue doit correspondre à une somme réellement due (loyer impayé, dégâts constatés à l'état des lieux de sortie) : motivez-la précisément et gardez vos justificatifs. Un état des lieux d'entrée avec photos évite bien des litiges."
     },
     {
       id: "online-payment",
@@ -177,6 +208,7 @@ export const OwnerDocumentationTab = () => {
         "Allez dans l'onglet 'Trésorerie'.",
         "Utilisez les filtres par Année (déterminés dynamiquement), par Dossier ou par Bien.",
         "Consultez les cartes KPI : Cash Flow Net (Revenus - Dépenses), Loyers Encaissés, Dépenses Totales et Taux d'Occupation.",
+        "Le bloc 'Cautions' indique les cautions détenues (à rendre), encaissées, restituées et retenues : elles ne sont jamais comptées dans vos revenus.",
         "Visualisez l'histogramme des flux mensuels (Revenus vs Dépenses) et le diagramme circulaire de répartition des charges.",
         "Pour ajouter une charge (travaux, réparation, taxe, etc.), cliquez sur '+ Ajouter dépense'.",
         "Exportez vos données en CSV ou téléchargez un rapport PDF officiel complet avec diagrammes en 1 clic via le bouton 'Télécharger PDF'."

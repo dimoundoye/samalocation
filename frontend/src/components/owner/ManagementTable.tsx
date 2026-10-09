@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import XLSX from "xlsx-js-style";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn, formatCurrency } from "@/lib/utils";
+import { isPaidRentReceipt } from "@/lib/deposits";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
     Table,
@@ -499,7 +500,7 @@ export const ManagementTable = ({
         const year = parseInt(selectedYear);
         
         return receipts.filter(r => {
-            if (r.status === 'cancelled') return false;
+            if (!isPaidRentReceipt(r)) return false; // ni reçu annulé ni caution
             const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
             const rMonth = typeof r.month === 'string' ? parseInt(r.month) : r.month;
             

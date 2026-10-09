@@ -8,10 +8,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut } from "lucide-react";
+import { User, Settings, LogOut, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useCopyTenantId } from "@/hooks/use-copy-tenant-id";
 
 interface UserProfileProps {
   onSettingsClick?: () => void;
@@ -21,6 +22,7 @@ export const UserProfile = ({ onSettingsClick }: UserProfileProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { signOut, userRole, user } = useAuth();
+  const copyTenantId = useCopyTenantId();
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
@@ -67,6 +69,16 @@ export const UserProfile = ({ onSettingsClick }: UserProfileProps) => {
             <span className="text-xs text-muted-foreground font-normal">{userEmail}</span>
           </div>
         </DropdownMenuLabel>
+        {userRole === "tenant" && user?.customId && (
+          // Identifiant à transmettre au propriétaire : accessible depuis n'importe quel onglet
+          <DropdownMenuItem onClick={() => copyTenantId(user.customId!)} title={t('tenant.copy_id')}>
+            <Copy className="mr-2 h-4 w-4" />
+            <span className="flex flex-col">
+              <span className="text-xs text-muted-foreground">{t('tenant.id_label')}</span>
+              <span className="font-mono font-semibold text-primary">{user.customId}</span>
+            </span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => navigate(getDashboardPath())}>
           <User className="mr-2 h-4 w-4" />

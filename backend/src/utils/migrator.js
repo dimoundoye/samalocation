@@ -19,6 +19,7 @@ const MIGRATIONS = [
     'add_password_changed_at.sql',
     'add_tenant_signature_proof.sql',
     'freeze_owner_signatures.sql',
+    'add_deposit_receipts.sql',
 ];
 
 const MIGRATIONS_DIR = path.join(__dirname, '../migrations');

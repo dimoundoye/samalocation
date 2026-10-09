@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Ban, CheckCircle, Clock, Shield } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle, Clock, Shield, Image as ImageIcon } from "lucide-react";
 import { getAllReports, getReportStatistics, updateReport, blockUser, unblockUser } from "@/lib/api";
 import { sendAdminEmail } from "@/api/adminEmails";
 import { useToast } from "@/hooks/use-toast";
@@ -302,6 +302,29 @@ export const ReportsManagement = ({ onStatsUpdate }: ReportsManagementProps = {}
                         <p className="text-sm"><strong>Motif:</strong></p>
                         <p className="text-sm mt-1">{report.reason}</p>
                       </div>
+
+                      {Array.isArray(report.photos) && report.photos.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold flex items-center gap-1.5">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                            Photos jointes ({report.photos.length})
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {report.photos.map((url, index) => (
+                              <a
+                                key={url}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block h-20 w-20 sm:h-24 sm:w-24 rounded-lg overflow-hidden border bg-muted hover:ring-2 hover:ring-primary transition"
+                                title="Ouvrir la photo en grand"
+                              >
+                                <img src={url} alt={`Preuve ${index + 1}`} loading="lazy" className="h-full w-full object-cover" />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {report.admin_notes && (
                         <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 border border-blue-200">

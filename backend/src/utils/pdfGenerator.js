@@ -124,6 +124,24 @@ function formatPeriodLabel(receiptData) {
     }
 }
 
+const DEPOSIT_FOOTER = 'Somme versée à titre de dépôt de garantie (caution). Elle sera restituée au locataire en fin de bail, '
+    + 'déduction faite des sommes dont il resterait redevable (loyers ou charges impayés, réparations locatives), sur justificatifs.';
+
+/**
+ * Textes qui changent entre une quittance de loyer et un reçu de caution (dépôt de garantie)
+ */
+function getReceiptTexts(receiptData) {
+    const isDeposit = receiptData.receipt_type === 'deposit';
+    return {
+        isDeposit,
+        title: (rentTitle) => (isDeposit ? 'REÇU DE CAUTION' : rentTitle),
+        periodHeading: isDeposit ? 'Objet' : 'Période',
+        periodValue: isDeposit ? 'Dépôt de garantie (caution)' : formatPeriodLabel(receiptData),
+        amountLabel: (rentLabel) => (isDeposit ? 'MONTANT DE LA CAUTION' : rentLabel),
+        amountInWordsPrefix: isDeposit ? 'Arrêté le présent reçu à la somme de' : 'Arrêté la présente quittance à la somme de'
+    };
+}
+
 /**
  * Générer un PDF de reçu de paiement
  * @param {Object} receiptData - Données complètes du reçu
@@ -177,7 +195,8 @@ async function drawClassicTemplate(doc, receiptData) {
         doc.image(logoSource, 50, 25, { fit: [80, 80] });
     }
 
-    doc.fontSize(24).fillColor(primaryColor).text('REÇU DE PAIEMENT', { align: 'right' }).moveDown(0.5);
+    const texts = getReceiptTexts(receiptData);
+    doc.fontSize(24).fillColor(primaryColor).text(texts.title('REÇU DE PAIEMENT'), { align: 'right' }).moveDown(0.5);
     doc.fontSize(10).fillColor(grayColor)
         .text(`N° ${receiptData.receipt_number}`, { align: 'center' })
         .text(`Émis le ${format(new Date(receiptData.created_at), 'dd MMMM yyyy', { locale: fr })}`, { align: 'center' })
@@ -215,14 +234,13 @@ async function drawClassicTemplate(doc, receiptData) {
 
     // Détails paiement
     doc.fontSize(12).fillColor(primaryColor).text('DÉTAILS DU PAIEMENT', { underline: true }).moveDown(0.5);
-    const periodLabel = formatPeriodLabel(receiptData);
     doc.fontSize(10).fillColor(textColor)
-        .text(`Période: ${periodLabel}`)
+        .text(`${texts.periodHeading}: ${texts.periodValue}`)
         .text(`Date de paiement: ${format(new Date(receiptData.payment_date), 'dd MMMM yyyy', { locale: fr })}`)
         .text(`Mode de paiement: ${receiptData.payment_method || 'Virement'}`)
         .moveDown(1);
 
-    doc.fontSize(16).fillColor(primaryColor).text(`MONTANT PAYÉ: ${formatCurrency(receiptData.amount, receiptData.currency)}`, { align: 'center', bold: true });
+    doc.fontSize(16).fillColor(primaryColor).text(`${texts.amountLabel('MONTANT PAYÉ')}: ${formatCurrency(receiptData.amount, receiptData.currency)}`, { align: 'center', bold: true });
     doc.fontSize(10).fillColor(textColor).text(`Soit : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, { align: 'center', italic: true }).moveDown(2);
 
     if (receiptData.notes) {
@@ -244,13 +262,14 @@ async function drawModernTemplate(doc, receiptData) {
     doc.rect(0, 0, 612, 100).fill(accentColor);
 
     // Draw Owner Logo if available (smaller in modern)
+    const texts = getReceiptTexts(receiptData);
     const logoSource = await fetchImageSource(receiptData.logo_url);
     if (logoSource) {
         doc.image(logoSource, 50, 25, { fit: [50, 50] });
-        doc.fontSize(20).fillColor('#ffffff').text('QUITTANCE DE LOYER', 120, 35);
+        doc.fontSize(20).fillColor('#ffffff').text(texts.title('QUITTANCE DE LOYER'), 120, 35);
         doc.fontSize(10).fillColor('#cbd5e1').text(`N° ${receiptData.receipt_number}`, 120, 60);
     } else {
-        doc.fontSize(20).fillColor('#ffffff').text('QUITTANCE DE LOYER', 50, 40);
+        doc.fontSize(20).fillColor('#ffffff').text(texts.title('QUITTANCE DE LOYER'), 50, 40);
         doc.fontSize(10).fillColor('#cbd5e1').text(`N° ${receiptData.receipt_number}`, 50, 65);
     }
 
@@ -266,13 +285,12 @@ async function drawModernTemplate(doc, receiptData) {
     const detailsY = startY + 40;
 
     doc.fontSize(10).fillColor('#64748b');
-    doc.text('PÉRIODE', col1, detailsY);
+    doc.text(texts.periodHeading.toUpperCase(), col1, detailsY);
     doc.text('DATE', col1, detailsY + 30);
     doc.text('MODE', col1, detailsY + 60);
 
-    const periodLabel = formatPeriodLabel(receiptData);
     doc.fillColor(accentColor).fontSize(11);
-    doc.text(periodLabel.toUpperCase(), col1 + 80, detailsY);
+    doc.text(texts.periodValue.toUpperCase(), col1 + 80, detailsY);
     doc.text(format(new Date(receiptData.payment_date), 'dd/MM/yyyy'), col1 + 80, detailsY + 30);
     doc.text((receiptData.payment_method || 'Virement').toUpperCase(), col1 + 80, detailsY + 60);
 
@@ -315,10 +333,10 @@ async function drawModernTemplate(doc, receiptData) {
     doc.moveDown(3);
     const totalBoxY = doc.y;
     doc.rect(50, totalBoxY, 512, 50).fill('#f8fafc');
-    doc.fillColor('#64748b').fontSize(10).text('MONTANT TOTAL PAYÉ', 70, totalBoxY + 18);
+    doc.fillColor('#64748b').fontSize(10).text(texts.amountLabel('MONTANT TOTAL PAYÉ'), 70, totalBoxY + 18);
     doc.fillColor(accentColor).fontSize(18).text(formatCurrency(receiptData.amount, receiptData.currency), 300, totalBoxY + 15, { bold: true, align: 'right', width: 240 });
 
-    doc.fillColor(textColor).fontSize(9).text(`Arrêté la présente quittance à la somme de : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, totalBoxY + 55, { italic: true });
+    doc.fillColor(textColor).fontSize(9).text(`${texts.amountInWordsPrefix} : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, totalBoxY + 55, { italic: true });
     doc.y = totalBoxY + 75;
 
     if (receiptData.notes) {
@@ -337,7 +355,8 @@ async function drawModernTemplate(doc, receiptData) {
 async function drawMinimalTemplate(doc, receiptData) {
     const textColor = '#000000';
 
-    doc.fontSize(22).fillColor(textColor).text('QUITTANCE DE LOYER', { align: 'left', bold: true });
+    const texts = getReceiptTexts(receiptData);
+    doc.fontSize(22).fillColor(textColor).text(texts.title('QUITTANCE DE LOYER'), { align: 'left', bold: true });
     doc.fontSize(10).text(`Référence: ${receiptData.receipt_number}`, { align: 'left' });
     doc.text(`Date d'émission: ${format(new Date(receiptData.created_at), 'dd/MM/yyyy')}`, { align: 'left' });
 
@@ -384,17 +403,16 @@ async function drawMinimalTemplate(doc, receiptData) {
     doc.moveDown(1);
 
     // Détails du paiement
-    const periodLabel = formatPeriodLabel(receiptData);
     doc.fontSize(10).text('DÉTAILS DU PAIEMENT:', { bold: true });
     doc.fontSize(10)
-        .text(`Objet : Location - ${periodLabel}`)
+        .text(texts.isDeposit ? `Objet : ${texts.periodValue}` : `Objet : Location - ${texts.periodValue}`)
         .text(`Date de paiement : ${format(new Date(receiptData.payment_date), 'dd/MM/yyyy')}`)
         .text(`Mode de paiement : ${receiptData.payment_method || 'Virement'}`)
         .moveDown(1.5);
 
     // Montant
     doc.strokeColor(textColor).lineWidth(1).rect(50, doc.y, 512, 35).stroke();
-    doc.fillColor(textColor).fontSize(12).text(`MONTANT PAYÉ : ${formatCurrency(receiptData.amount, receiptData.currency)}`, 65, doc.y + 11, { bold: true });
+    doc.fillColor(textColor).fontSize(12).text(`${texts.amountLabel('MONTANT PAYÉ')} : ${formatCurrency(receiptData.amount, receiptData.currency)}`, 65, doc.y + 11, { bold: true });
     doc.y += 35;
     doc.moveDown(1);
     doc.fontSize(10).fillColor(textColor).text(`Soit : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, { italic: true }).moveDown(1.5);
@@ -438,7 +456,8 @@ async function drawCorporateTemplate(doc, receiptData) {
         doc.image(logoSource, 50, 40, { fit: [120, 80] });
     }
 
-    doc.fontSize(24).fillColor(primaryColor).text('QUITTANCE DE LOYER', 200, 45, { align: 'right', characterSpacing: 1 });
+    const texts = getReceiptTexts(receiptData);
+    doc.fontSize(24).fillColor(primaryColor).text(texts.title('QUITTANCE DE LOYER'), 200, 45, { align: 'right', characterSpacing: 1 });
     doc.fontSize(10).fillColor(secondaryColor).text(`RÉFÉRENCE : ${receiptData.receipt_number}`, 200, 75, { align: 'right' });
 
     doc.moveDown(4);
@@ -470,7 +489,7 @@ async function drawCorporateTemplate(doc, receiptData) {
         doc.fillColor(primaryColor).fontSize(10).text(value, 200, y, { bold: true });
     };
 
-    drawItem('Période de location', formatPeriodLabel(receiptData).toUpperCase(), itemsY + 10);
+    drawItem(texts.isDeposit ? 'Objet du versement' : 'Période de location', texts.periodValue.toUpperCase(), itemsY + 10);
     drawItem('Propriété louée', receiptData.property_name || 'N/A', itemsY + 30);
     drawItem('Adresse du bien', receiptData.property_address || 'N/A', itemsY + 50);
     drawItem('Date de règlement', format(new Date(receiptData.payment_date), 'dd/MM/yyyy'), itemsY + 70);
@@ -485,7 +504,7 @@ async function drawCorporateTemplate(doc, receiptData) {
     doc.fillColor(primaryColor).fontSize(14).text(`MONTANT NET PERÇU :`, 70, amountY + 15, { bold: true });
     doc.fontSize(16).text(formatCurrency(receiptData.amount, receiptData.currency), 300, amountY + 14, { bold: true, align: 'right', width: 240 });
 
-    doc.fillColor(textColor).fontSize(10).text(`Arrêté la présente quittance à la somme de : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, amountY + 52, { italic: true });
+    doc.fillColor(textColor).fontSize(10).text(`${texts.amountInWordsPrefix} : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, amountY + 52, { italic: true });
     doc.y = amountY + 75;
 
     if (receiptData.notes) {
@@ -498,7 +517,8 @@ async function drawCorporateTemplate(doc, receiptData) {
 }
 
 function drawFooter(doc, receiptData) {
-    const bottom = doc.page.height - 70;
+    // La mention de la caution tient sur deux lignes : on la remonte pour rester dans la page
+    const bottom = doc.page.height - (receiptData?.receipt_type === 'deposit' ? 80 : 70);
     if (receiptData) {
         const crypto = require('crypto');
         const rawData = `${receiptData.receipt_number || ''}${receiptData.id || ''}${receiptData.amount || ''}`;
@@ -511,9 +531,11 @@ function drawFooter(doc, receiptData) {
     }
     
     const isOnline = receiptData && receiptData.payment_method && receiptData.payment_method.startsWith('En ligne');
-    const footerText = isOnline 
-        ? 'Quittance émise par la plateforme Samalocation, gérée par YAKIRIX (RCCM : SN.DKR.2026.A.14009 — NINEA : 012978435) en qualité de mandataire de collecte pour le compte du bailleur.'
-        : 'Ce reçu atteste du paiement du loyer pour la période mentionnée ci-dessus.';
+    const footerText = receiptData?.receipt_type === 'deposit'
+        ? DEPOSIT_FOOTER
+        : isOnline
+            ? 'Quittance émise par la plateforme Samalocation, gérée par YAKIRIX (RCCM : SN.DKR.2026.A.14009 — NINEA : 012978435) en qualité de mandataire de collecte pour le compte du bailleur.'
+            : 'Ce reçu atteste du paiement du loyer pour la période mentionnée ci-dessus.';
 
     doc.fontSize(8).fillColor('#94a3b8').text(
         footerText,
@@ -521,4 +543,141 @@ function drawFooter(doc, receiptData) {
     );
 }
 
-module.exports = { generateReceiptPDF };
+/**
+ * Décompte de restitution d'une caution : caution versée, retenues motivées, montant rendu au locataire.
+ * @param {Object} data - Données du reçu de caution (Receipt.findById) + `settlement` (ligne deposit_settlements)
+ */
+async function generateDepositSettlementPDF(data) {
+    const settlement = data.settlement;
+    const ownerPassword = process.env.PDF_OWNER_PASSWORD || 'samalocation_default_secure_key_2026';
+    const doc = new PDFDocument({
+        margin: 50,
+        size: 'A4',
+        ownerPassword,
+        permissions: { modifying: false, copying: false, annotating: false, printing: 'highResolution' }
+    });
+
+    const primaryColor = '#1e293b';
+    const mutedColor = '#64748b';
+    const textColor = '#334155';
+    const currency = data.currency || 'XOF';
+    const depositAmount = Number(settlement.deposit_amount);
+    const refundedAmount = Number(settlement.refunded_amount);
+    const retainedAmount = Number(settlement.retained_amount);
+    const deductions = Array.isArray(settlement.deductions) ? settlement.deductions : [];
+
+    const [logoSource] = await Promise.all([
+        fetchImageSource(data.logo_url),
+        fetchImageSource(settlement.owner_signature, { required: true })
+    ]);
+
+    // En-tête
+    if (logoSource) {
+        doc.image(logoSource, 50, 40, { fit: [100, 70] });
+    }
+    doc.fontSize(18).fillColor(primaryColor).text('DÉCOMPTE DE RESTITUTION', 200, 45, { align: 'right', width: 362 });
+    doc.fontSize(18).text('DE CAUTION', 200, 67, { align: 'right', width: 362 });
+    doc.fontSize(10).fillColor(mutedColor)
+        .text(`N° ${settlement.settlement_number}`, 200, 95, { align: 'right', width: 362 })
+        .text(`Établi le ${format(new Date(settlement.settlement_date), 'dd MMMM yyyy', { locale: fr })}`, 200, 110, { align: 'right', width: 362 });
+
+    let y = 140;
+    if (settlement.status === 'cancelled') {
+        doc.rect(50, y, 512, 28).fill('#fee2e2');
+        doc.fillColor('#b91c1c').fontSize(10)
+            .text(`DOCUMENT ANNULÉ${settlement.cancellation_reason ? ` — Motif : ${settlement.cancellation_reason}` : ''}`, 60, y + 9, { width: 492 });
+        y += 40;
+    }
+
+    // Parties
+    doc.rect(50, y, 512, 80).fill('#f1f5f9');
+    doc.fillColor(primaryColor).fontSize(11).text('BAILLEUR', 70, y + 12);
+    doc.fillColor(textColor).fontSize(10)
+        .text(data.owner_name || 'N/A', 70, y + 30)
+        .text(data.owner_email || '')
+        .text(data.owner_phone || '');
+    doc.fillColor(primaryColor).fontSize(11).text('LOCATAIRE', 320, y + 12);
+    doc.fillColor(textColor).fontSize(10)
+        .text(data.tenant_name || 'N/A', 320, y + 30)
+        .text(data.tenant_email || '')
+        .text(data.tenant_phone || '');
+    y += 100;
+
+    // Bien et caution d'origine
+    const drawItem = (label, value) => {
+        doc.fillColor(mutedColor).fontSize(10).text(label, 60, y);
+        doc.fillColor(primaryColor).fontSize(10).text(value, 220, y, { width: 340 });
+        y += 18;
+    };
+    doc.fillColor(primaryColor).fontSize(12).text('BIEN ET CAUTION', 50, y, { underline: true });
+    y += 22;
+    drawItem('Propriété', data.property_name || 'N/A');
+    drawItem('Adresse', data.property_address || 'N/A');
+    if (data.unit_number) drawItem('Unité', String(data.unit_number));
+    drawItem('Reçu de caution', `N° ${data.receipt_number} du ${format(new Date(data.payment_date), 'dd/MM/yyyy')}`);
+    y += 12;
+
+    // Décompte
+    doc.fillColor(primaryColor).fontSize(12).text('DÉCOMPTE', 50, y, { underline: true });
+    y += 22;
+    const drawRow = (label, amount, { bold = false, color = textColor, sign = '' } = {}) => {
+        if (y > 690) {
+            doc.addPage();
+            y = 50;
+        }
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(color).fontSize(10)
+            .text(label, 60, y, { width: 330 })
+            .text(`${sign}${formatCurrency(amount, currency)}`, 390, y, { width: 162, align: 'right' });
+        y = Math.max(doc.y, y + 14) + 6;
+        doc.font('Helvetica');
+    };
+    drawRow('Caution versée', depositAmount, { bold: true, color: primaryColor });
+    deductions.forEach(d => drawRow(`Retenue : ${d.label}`, Number(d.amount), { color: '#b91c1c', sign: '- ' }));
+    doc.strokeColor('#cbd5e1').lineWidth(1).moveTo(60, y).lineTo(552, y).stroke();
+    y += 8;
+    drawRow('Total des retenues', retainedAmount, { color: '#b91c1c', sign: retainedAmount > 0 ? '- ' : '' });
+
+    // Montant restitué
+    y += 6;
+    doc.strokeColor(primaryColor).lineWidth(1.5).rect(50, y, 512, 40).stroke();
+    doc.font('Helvetica-Bold').fillColor(primaryColor).fontSize(12)
+        .text('MONTANT RESTITUÉ AU LOCATAIRE', 65, y + 14)
+        .text(formatCurrency(refundedAmount, currency), 330, y + 14, { width: 217, align: 'right' });
+    doc.font('Helvetica');
+    y += 50;
+
+    doc.fillColor(textColor).fontSize(10);
+    if (refundedAmount > 0) {
+        doc.text(`Soit : ${formatAmountInWords(refundedAmount, currency)}`, 50, y, { width: 512 });
+        y = doc.y + 4;
+        doc.text(`Restitué le ${format(new Date(settlement.settlement_date), 'dd/MM/yyyy')}${settlement.payment_method ? ` — Mode : ${settlement.payment_method}` : ''}`, 50, y, { width: 512 });
+    } else {
+        doc.text("Aucune somme n'est restituée : la caution est entièrement retenue.", 50, y, { width: 512 });
+    }
+    y = doc.y + 10;
+
+    if (settlement.notes) {
+        doc.fillColor(mutedColor).fontSize(9).font('Helvetica-Oblique').text(`Remarques : ${settlement.notes}`, 50, y, { width: 512 });
+        doc.font('Helvetica');
+        y = doc.y;
+    }
+    doc.y = y;
+
+    await embedSignature(doc, { signature_url: settlement.owner_signature });
+
+    // Pied de page : empreinte du document + mention
+    const bottom = doc.page.height - 80;
+    const crypto = require('crypto');
+    const docHash = crypto.createHash('sha256')
+        .update(`${settlement.settlement_number}${settlement.id}${depositAmount}${refundedAmount}${retainedAmount}`)
+        .digest('hex');
+    doc.fontSize(7).fillColor('#cbd5e1').text(`Hash de securite : ${docHash}`, 50, bottom - 15, { align: 'center', width: 512 });
+    doc.fontSize(8).fillColor('#94a3b8').text(
+        'Ce décompte solde le dépôt de garantie versé par le locataire. Les retenues correspondent aux sommes dont il restait redevable, sur justificatifs.',
+        50, bottom, { align: 'center', width: 512 }
+    );
+
+    return doc;
+}
+
+module.exports = { generateReceiptPDF, generateDepositSettlementPDF };

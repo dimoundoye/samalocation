@@ -27,7 +27,8 @@ import {
     Crown,
     Lock,
     Loader2,
-    Building2
+    Building2,
+    ShieldCheck
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -819,6 +820,40 @@ export const FinancialDashboardTab: React.FC<FinancialDashboardTabProps> = ({
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Cautions : suivies à part, jamais comptées dans les revenus ni dans le cash flow */}
+            {analytics?.deposits && (
+                <Card className="shadow-sm">
+                    <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+                        <CardTitle className="text-xs sm:text-sm font-semibold flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                            <span>Cautions (dépôts de garantie)</span>
+                        </CardTitle>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
+                            Sommes à rendre en fin de bail : elles ne sont pas comptées dans vos revenus.
+                        </p>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-1 sm:p-4 sm:pt-1 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        {[
+                            {
+                                label: "Détenues actuellement",
+                                value: analytics.deposits.heldAmount,
+                                hint: `${analytics.deposits.heldCount} caution(s) à restituer`,
+                                color: "text-amber-600",
+                            },
+                            { label: `Encaissées en ${selectedYear}`, value: analytics.deposits.collectedAmount, hint: "Cautions versées", color: "text-primary" },
+                            { label: `Restituées en ${selectedYear}`, value: analytics.deposits.refundedAmount, hint: "Rendues aux locataires", color: "text-emerald-600" },
+                            { label: `Retenues en ${selectedYear}`, value: analytics.deposits.retainedAmount, hint: "Déduites des cautions", color: "text-rose-600" },
+                        ].map(item => (
+                            <div key={item.label} className="rounded-lg bg-muted/40 p-2.5 sm:p-3 min-w-0">
+                                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{item.label}</p>
+                                <p className={`text-sm sm:text-lg font-bold truncate ${item.color}`}>{formatCurrency(item.value, currency)}</p>
+                                <p className="text-[9px] sm:text-[11px] text-muted-foreground truncate">{item.hint}</p>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Graphiques */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

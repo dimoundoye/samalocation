@@ -1,5 +1,6 @@
 import { Fragment, useState, useEffect, useRef, useMemo } from "react";
 import { formatCurrency } from "@/lib/utils";
+import { isDepositReceipt, isPaidRentReceipt } from "@/lib/deposits";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -285,7 +286,7 @@ const DashboardProprietaire = () => {
     const year = parseInt(selectedYear);
     return receipts
       .filter(r => {
-        if (r.status === 'cancelled') return false;
+        if (!isPaidRentReceipt(r)) return false; // ni reçu annulé ni caution
         const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
         return rYear === year;
       })
@@ -464,7 +465,7 @@ const DashboardProprietaire = () => {
     const getReceiptForNode = (nodeId: string, tenant: any, monthId: number) => {
       if (!receipts) return null;
       return receipts.find(r => {
-        if (r.status === 'cancelled') return false;
+        if (!isPaidRentReceipt(r)) return false; // ni reçu annulé ni caution
         const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
         const rMonth = typeof r.month === 'string' ? parseInt(r.month) : r.month;
         if (rYear !== year || rMonth !== monthId) return false;
@@ -1636,7 +1637,7 @@ const DashboardProprietaire = () => {
                                 </div>
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 min-w-0">
-                                    <p className={`font-medium text-sm sm:text-base truncate ${isCancelled ? 'line-through' : ''}`}>{t('owner.stats.payment_received')}</p>
+                                    <p className={`font-medium text-sm sm:text-base truncate ${isCancelled ? 'line-through' : ''}`}>{isDepositReceipt(activity) ? t('owner.stats.deposit_received') : t('owner.stats.payment_received')}</p>
                                     {isCancelled && (
                                       <Badge variant="destructive" className="h-5 px-1.5 text-[10px] shrink-0">{t('owner.stats.payment_cancelled')}</Badge>
                                     )}

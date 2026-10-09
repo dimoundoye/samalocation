@@ -20,6 +20,11 @@ router.get('/:id/download', authMiddleware, receiptController.downloadReceipt);
 // Annuler un reçu avec motif (propriétaire/agence)
 router.patch('/:id/cancel', authMiddleware, can('receipt.write'), receiptController.cancelReceipt);
 
+// Restitution d'une caution (propriétaire/agence) et son décompte PDF (propriétaire, locataire, admin)
+router.post('/:id/settlement', authMiddleware, can('receipt.write'), receiptController.settleDeposit);
+router.patch('/settlements/:settlementId/cancel', authMiddleware, can('receipt.write'), receiptController.cancelDepositSettlement);
+router.get('/settlements/:settlementId/download', authMiddleware, receiptController.downloadDepositSettlement);
+
 // Supprimer un reçu (propriétaire seulement)
 router.delete('/:id', authMiddleware, can('receipt.write'), receiptController.deleteReceipt);
 

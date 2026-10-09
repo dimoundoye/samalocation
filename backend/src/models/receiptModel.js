@@ -1,6 +1,17 @@
 const db = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
 
+// Restitution valide d'une caution, jointe aux listes de reçus (null pour les loyers et les cautions détenues)
+const SETTLEMENT_JOIN = `LEFT JOIN deposit_settlements ds ON ds.deposit_receipt_id = r.id::text AND ds.status = 'valid'`;
+const SETTLEMENT_COLUMNS = `
+                ds.id as settlement_id,
+                ds.settlement_number,
+                ds.refunded_amount as settlement_refunded_amount,
+                ds.retained_amount as settlement_retained_amount,
+                ds.deductions as settlement_deductions,
+                ds.settlement_date,
+                ds.payment_method as settlement_payment_method`;
+
 const Receipt = {
     async create(data) {
         const {
@@ -15,7 +26,8 @@ const Receipt = {
             notes = null,
             period_type = 'mois',
             start_date = null,
-            end_date = null
+            end_date = null,
+            receipt_type = 'rent'
         } = data;
 
         const id = uuidv4();
@@ -89,9 +101,9 @@ const Receipt = {
             try {
                 await db.query(
                     `INSERT INTO receipts 
-                    (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone) 
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
-                    [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone]
+                    (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone, receipt_type)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+                    [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone, receipt_type]
                 );
                 break;
             } catch (err) {
@@ -209,12 +221,13 @@ const Receipt = {
                 pu.rent_period,
                 pu.monthly_rent as unit_base_rent,
                 COALESCE(NULLIF(r.owner_name, ''), NULLIF(owner_prof.company_name, ''), owner.full_name) as owner_name,
-                owner_prof.currency
+                owner_prof.currency,${SETTLEMENT_COLUMNS}
             FROM receipts r
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN user_profiles owner ON p.owner_id = owner.id
             LEFT JOIN owner_profiles owner_prof ON p.owner_id = owner_prof.user_profile_id
             LEFT JOIN property_units pu ON r.unit_id = pu.id
+            ${SETTLEMENT_JOIN}
             WHERE r.tenant_id = $1 OR r.tenant_id = ANY($2)
             ORDER BY r.created_at DESC
             LIMIT $3 OFFSET $4`,
@@ -233,13 +246,14 @@ const Receipt = {
                 p.address as property_address,
                 pu.rent_period,
                 pu.monthly_rent as unit_base_rent,
-                owner_prof.currency
+                owner_prof.currency,${SETTLEMENT_COLUMNS}
             FROM receipts r
             LEFT JOIN user_profiles tenant ON r.tenant_id = tenant.id
             LEFT JOIN properties p ON r.property_id = p.id
             LEFT JOIN owner_profiles owner_prof ON p.owner_id = owner_prof.user_profile_id
                 OR p.owner_id = owner_prof.id
             LEFT JOIN property_units pu ON r.unit_id = pu.id
+            ${SETTLEMENT_JOIN}
             WHERE p.owner_id = $1 OR owner_prof.user_profile_id = $2
             ORDER BY r.created_at DESC
             LIMIT $3 OFFSET $4`,
@@ -249,7 +263,35 @@ const Receipt = {
         return receipts;
     },
 
+    /**
+     * Caution encore détenue (valide et non restituée) pour ce locataire sur ce logement.
+     * tenant_id peut être l'id du compte ou celui d'une fiche locataire : les deux sont rapprochés.
+     */
+    async findHeldDeposit({ tenant_id, property_id, unit_id = null }) {
+        const { rows } = await db.query(
+            `SELECT r.id, r.receipt_number, r.amount
+             FROM receipts r
+             LEFT JOIN deposit_settlements ds ON ds.deposit_receipt_id = r.id::text AND ds.status = 'valid'
+             WHERE r.receipt_type = 'deposit'
+               AND COALESCE(r.status, 'valid') <> 'cancelled'
+               AND ds.id IS NULL
+               AND r.property_id::text = $2
+               AND ($3::text IS NULL OR r.unit_id IS NULL OR r.unit_id::text = $3)
+               AND r.tenant_id::text IN (
+                   SELECT $1::text
+                   UNION SELECT user_id::text FROM tenants WHERE id::text = $1 AND user_id IS NOT NULL
+                   UNION SELECT id::text FROM tenants WHERE user_id::text = $1
+               )
+             ORDER BY r.created_at DESC
+             LIMIT 1`,
+            [String(tenant_id), String(property_id), unit_id ? String(unit_id) : null]
+        );
+        return rows[0] || null;
+    },
+
     async delete(id) {
+        // Pas de clé étrangère : les restitutions d'une caution supprimée sont retirées ici
+        await db.query('DELETE FROM deposit_settlements WHERE deposit_receipt_id = $1', [String(id)]);
         await db.query('DELETE FROM receipts WHERE id = $1', [id]);
         return true;
     },

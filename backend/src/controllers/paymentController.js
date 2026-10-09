@@ -151,7 +151,7 @@ const paymentController = {
 
             // 3. Vérifier si le loyer de ce mois est déjà payé (reçu existant)
             const { rows: existingReceipts } = await db.query(
-                "SELECT id FROM receipts WHERE tenant_id = $1 AND property_id = $2 AND month = $3 AND year = $4 AND COALESCE(status, 'valid') <> 'cancelled'",
+                "SELECT id FROM receipts WHERE tenant_id = $1 AND property_id = $2 AND month = $3 AND year = $4 AND COALESCE(status, 'valid') <> 'cancelled' AND receipt_type <> 'deposit'",
                 [tenantId, propertyId, month, year]
             );
 
@@ -382,7 +382,7 @@ const paymentController = {
                     
                     // 1. Idempotency Check: Verify if receipt already exists
                     const { rows: existing } = await db.query(
-                        "SELECT id FROM receipts WHERE tenant_id = $1 AND property_id = $2 AND month = $3 AND year = $4 AND COALESCE(status, 'valid') <> 'cancelled'",
+                        "SELECT id FROM receipts WHERE tenant_id = $1 AND property_id = $2 AND month = $3 AND year = $4 AND COALESCE(status, 'valid') <> 'cancelled' AND receipt_type <> 'deposit'",
                         [tenantId, propertyId, month, year]
                     );
 

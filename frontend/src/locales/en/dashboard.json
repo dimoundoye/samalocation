@@ -55,7 +55,13 @@
     "copy_id": "Copy my ID",
     "id_copied": "ID copied",
     "id_copied_desc": "Send it to your landlord so they can assign you to your home.",
-    "id_copy_error": "Unable to copy. Please copy the ID manually."
+    "id_copy_error": "Unable to copy. Please copy the ID manually.",
+    "id_card_title": "Your Samalocation ID",
+    "id_card_desc": "Share this ID with your landlord so they can link you to your home.",
+    "id_label": "My ID",
+    "copy": "Copy",
+    "share_id": "Share",
+    "id_share_text": "Here is my Samalocation ID: {{id}}. Use it to link me to my home on https://samalocation.com"
   },
   "owner": {
     "incomplete_config": "Incomplete configuration",
@@ -99,7 +105,8 @@
       "total_revenue": "Total Revenue",
       "revenue_growth": "Revenue growth",
       "payment_received": "Payment Received",
-      "payment_cancelled": "Cancelled"
+      "payment_cancelled": "Cancelled",
+      "deposit_received": "Deposit received"
     }
   },
   "settings": {

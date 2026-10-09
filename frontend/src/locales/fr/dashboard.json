@@ -55,7 +55,13 @@
     "copy_id": "Copier mon identifiant",
     "id_copied": "Identifiant copié",
     "id_copied_desc": "Envoyez-le à votre propriétaire pour qu'il vous affecte à votre logement.",
-    "id_copy_error": "Copie impossible. Recopiez l'identifiant à la main."
+    "id_copy_error": "Copie impossible. Recopiez l'identifiant à la main.",
+    "id_card_title": "Votre identifiant Samalocation",
+    "id_card_desc": "Communiquez cet identifiant à votre propriétaire pour qu'il vous rattache à votre logement.",
+    "id_label": "Mon identifiant",
+    "copy": "Copier",
+    "share_id": "Partager",
+    "id_share_text": "Voici mon identifiant Samalocation : {{id}}. Utilisez-le pour me rattacher à mon logement sur https://samalocation.com"
   },
   "owner": {
     "incomplete_config": "Configuration incomplète",
@@ -99,7 +105,8 @@
       "total_revenue": "Revenu total",
       "revenue_growth": "Croissance des revenus",
       "payment_received": "Paiement reçu",
-      "payment_cancelled": "Annulé"
+      "payment_cancelled": "Annulé",
+      "deposit_received": "Caution reçue"
     }
   },
   "settings": {

@@ -18,7 +18,9 @@ import {
   Info,
   CheckCircle2,
   Share2,
-  Shield
+  Shield,
+  ShieldCheck,
+  IdCard
 } from "lucide-react";
 
 export const TenantDocumentationTab = () => {
@@ -38,6 +40,19 @@ export const TenantDocumentationTab = () => {
         "Attendez la réponse du propriétaire via la messagerie ou par email."
       ],
       tip: "Complétez bien votre dossier! Un dossier complet a 5x plus de chances d'être accepté."
+    },
+    {
+      id: "tenant-id",
+      title: "Votre identifiant Samalocation",
+      icon: <IdCard className="h-5 w-5 text-primary" />,
+      purpose: "Votre identifiant unique permet à votre propriétaire de retrouver votre compte et de vous rattacher à votre logement. Sans lui, il ne peut pas vous affecter.",
+      steps: [
+        "Tant que vous n'êtes rattaché à aucun logement, une carte 'Votre identifiant Samalocation' s'affiche en haut de votre 'Tableau de bord'.",
+        "Cliquez sur 'Copier' puis collez l'identifiant dans un message à votre propriétaire, ou cliquez sur 'Partager' pour l'envoyer directement (WhatsApp, SMS...).",
+        "Votre propriétaire saisit cet identifiant pour vous affecter à votre logement : vous accédez alors à vos reçus, votre caution et vos contrats.",
+        "Vous retrouvez votre identifiant à tout moment : à côté de votre nom sur le 'Tableau de bord', dans le menu de votre profil (en haut à droite) ou dans 'Paramètres' > 'Informations Personnelles'. Un clic suffit pour le copier."
+      ],
+      tip: "Envoyez votre identifiant à votre propriétaire dès votre inscription : il pourra vous rattacher au logement sans attendre."
     },
     {
       id: "share-dossier",
@@ -74,11 +89,36 @@ export const TenantDocumentationTab = () => {
       icon: <CreditCard className="h-5 w-5 text-green-500" />,
       purpose: "Consultez l'historique de vos loyers payés et téléchargez vos quittances officielles à tout moment.",
       steps: [
-        "Allez dans votre 'Tableau de bord'.",
-        "Consultez la section 'Documents'.",
-        "Cliquez sur l'icône de téléchargement à côté d'un mois payé.",
-        "Votre quittance PDF est générée instantanément avec la signature du propriétaire (si disponible)."
-      ]
+        "Ouvrez l'onglet 'Documents', puis le sous-onglet 'Mes reçus'.",
+        "Filtrez si besoin par mois ou par année pour retrouver une quittance.",
+        "Cliquez sur 'Voir' pour l'afficher ou sur 'PDF' pour la télécharger. Elle porte la signature du propriétaire si son abonnement l'inclut.",
+        "Une quittance annulée par le propriétaire reste visible avec la mention 'ANNULÉ' : cliquez sur 'Motif' pour connaître la raison de l'annulation."
+      ],
+      tip: "'Mes reçus' ne contient que vos loyers. Le reçu de votre caution se trouve dans le sous-onglet 'Caution'."
+    },
+    {
+      id: "deposit",
+      title: "Votre caution (dépôt de garantie)",
+      icon: <ShieldCheck className="h-5 w-5 text-amber-500" />,
+      purpose: "La caution est une somme versée en début de bail pour garantir vos obligations. Ce n'est pas un loyer : votre propriétaire la conserve pendant le bail et vous la rend en fin de bail, déduction faite des sommes éventuellement dues.",
+      steps: [
+        "Ouvrez l'onglet 'Documents', puis le sous-onglet 'Caution'. Vous la retrouvez aussi dans le détail de votre bail ('Mes logements').",
+        "Quand vous versez votre caution, votre propriétaire vous délivre un 'Reçu de caution' : cliquez sur 'Voir' ou 'PDF' pour le consulter.",
+        "Pendant le bail, votre caution est indiquée comme 'Détenue'.",
+        "En fin de bail, votre propriétaire enregistre la restitution. Le statut devient 'Restituée', 'Restituée en partie' ou 'Retenue en totalité', et vous recevez une notification.",
+        "Le détail s'affiche directement : caution versée, chaque retenue avec son motif et son montant, puis le montant qui vous est rendu. Le décompte officiel est disponible en PDF."
+      ],
+      subSections: [
+        {
+          title: "Pourquoi une partie peut être retenue ?",
+          content: "Le propriétaire peut déduire les sommes que vous lui devez encore : loyers ou charges impayés, réparations de dégâts constatés à l'état des lieux de sortie. Chaque retenue doit être motivée et apparaît sur le décompte."
+        },
+        {
+          title: "Vous contestez une retenue ?",
+          content: "Discutez-en d'abord avec votre propriétaire via l'onglet 'Messages', en citant le numéro du décompte. Si le désaccord persiste ou si une retenue vous semble abusive, utilisez 'Signaler un propriétaire'."
+        }
+      ],
+      tip: "Faites un état des lieux d'entrée précis (avec photos) : c'est votre meilleure protection contre des retenues injustifiées en fin de bail."
     },
     {
       id: "maintenance",
@@ -107,15 +147,33 @@ export const TenantDocumentationTab = () => {
       id: "report",
       title: "Signaler un propriétaire",
       icon: <AlertTriangle className="h-5 w-5 text-red-500" />,
-      purpose: "Pour garantir la sécurité de tous, vous pouvez signaler un propriétaire en cas d'annonce frauduleuse, de comportement abusif ou de non-respect des engagements.",
+      purpose: "Pour garantir la sécurité de tous, vous pouvez alerter l'équipe Samalocation en cas de comportement abusif, de non-respect du bail ou d'annonce frauduleuse. Il existe deux façons de signaler selon votre situation.",
       steps: [
-        "Allez sur le profil de l'agence ou du propriétaire.",
-        "Cliquez sur le bouton 'Signaler' (si disponible) ou contactez directement le support.",
-        "Expliquez clairement le motif (Tentative d'arnaque, Logement non conforme, etc.).",
-        "Joignez des preuves (captures d'écran, photos) si nécessaire.",
-        "Notre équipe de modération traitera votre demande sous 24h."
+        "Votre propriétaire actuel : sur votre 'Tableau de bord', cliquez sur le bouton orange 'Signaler un propriétaire' en haut de la page (il faut avoir une location active).",
+        "Si vous louez auprès de plusieurs propriétaires, choisissez celui qui est concerné dans la liste.",
+        "Décrivez précisément la situation (10 caractères minimum) : les faits, les dates, les montants et, si possible, les numéros de reçus ou de contrats concernés.",
+        "Ajoutez jusqu'à 5 photos comme preuves (captures d'écran, photos du logement, documents) avec le bouton 'Ajouter'. Elles ne sont visibles que par l'équipe Samalocation.",
+        "Cliquez sur 'Envoyer le signalement' : il est transmis à l'administrateur de Samalocation, qui l'examine."
       ],
-      tip: "Ne versez JAMAIS d'argent avant d'avoir visité le bien. SamaLocation ne vous demandera jamais de payer pour une simple visite."
+      subSections: [
+        {
+          title: "Signaler une annonce suspecte",
+          content: "Avant toute location, si une annonce vous paraît frauduleuse, ouvrez-la et cliquez sur 'Signaler cette annonce' (connexion requise). Choisissez le motif : arnaque, bien déjà loué, photos ou informations trompeuses, prix abusif, intermédiaire se faisant passer pour le propriétaire, contenu inapproprié ou autre. Ajoutez des précisions si besoin."
+        },
+        {
+          title: "Quand faire un signalement ?",
+          content: "Signalez les situations graves : demande d'argent suspecte, menaces ou harcèlement, entrée dans le logement sans votre accord, refus répété de délivrer vos quittances, retenue de caution abusive, logement très différent de l'annonce. Pour une panne ou une réparation, utilisez plutôt l'onglet 'Maintenance' ; pour un simple désaccord, essayez d'abord d'en parler via 'Messages'."
+        },
+        {
+          title: "Rédiger un signalement utile",
+          content: "Restez factuel et précis : que s'est-il passé, quand, et pour quel montant. Joignez vos meilleures preuves en photo (captures de messages, état du logement, reçus) et gardez les originaux : l'équipe pourra vous demander des compléments. Vos échanges dans l'onglet 'Messages' restent une trace écrite précieuse."
+        },
+        {
+          title: "Signalements abusifs",
+          content: "Un signalement doit reposer sur des faits réels. Les signalements abusifs ou malveillants peuvent entraîner la suspension de votre accès à la plateforme."
+        }
+      ],
+      tip: "Ne versez JAMAIS d'argent avant d'avoir visité le bien et rencontré le propriétaire. Samalocation ne vous demandera jamais de payer pour une simple visite."
     },
     {
       id: "install",

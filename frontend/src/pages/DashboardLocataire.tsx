@@ -1,6 +1,10 @@
 import { Fragment, useState, useEffect, useRef, useMemo } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { formatCurrency } from "@/lib/utils";
+import { isDepositReceipt, isPaidRentReceipt } from "@/lib/deposits";
+import { TenantDepositsPanel } from "@/components/tenant/TenantDepositsPanel";
+import { TenantIdCard } from "@/components/tenant/TenantIdCard";
+import { useCopyTenantId } from "@/hooks/use-copy-tenant-id";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +38,7 @@ import { formatConversationTime, formatMessageDay, startsNewDay } from "@/lib/me
 import { COMPACT_LAYOUT_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { fr, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
-import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, openReceiptInNewTab, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead } from "@/lib/api";
+import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, openReceiptInNewTab, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead, getTenantMaintenanceRequests } from "@/lib/api";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useSocket } from "@/contexts/SocketContext";
@@ -94,17 +98,21 @@ const DashboardLocataire = () => {
   const [receiptYearFilter, setReceiptYearFilter] = useState<string>("all");
   const [tenantReasonModalOpen, setTenantReasonModalOpen] = useState(false);
 
+  // « Mes reçus » ne liste que les quittances de loyer ; les cautions ont leur propre sous-onglet
+  const rentReceipts = useMemo(() => receipts.filter((r: any) => !isDepositReceipt(r)), [receipts]);
+  const depositReceipts = useMemo(() => receipts.filter((r: any) => isDepositReceipt(r)), [receipts]);
+
   const availableYears = useMemo(() => {
     const yearsSet = new Set<number>();
-    receipts.forEach((r: any) => {
+    rentReceipts.forEach((r: any) => {
       if (r.year) yearsSet.add(r.year);
       else if (r.created_at) yearsSet.add(new Date(r.created_at).getFullYear());
     });
     return Array.from(yearsSet).sort((a, b) => b - a);
-  }, [receipts]);
+  }, [rentReceipts]);
 
   const filteredReceipts = useMemo(() => {
-    return receipts.filter((r: any) => {
+    return rentReceipts.filter((r: any) => {
       const rYear = r.year || (r.created_at ? new Date(r.created_at).getFullYear() : null);
       const rMonth = r.month || (r.created_at ? new Date(r.created_at).getMonth() + 1 : null);
 
@@ -113,7 +121,7 @@ const DashboardLocataire = () => {
 
       return true;
     });
-  }, [receipts, receiptYearFilter, receiptMonthFilter]);
+  }, [rentReceipts, receiptYearFilter, receiptMonthFilter]);
   const [selectedTenantReasonReceipt, setSelectedTenantReasonReceipt] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -124,6 +132,9 @@ const DashboardLocataire = () => {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [leases, setLeases] = useState<any[]>([]);
+  // Baux chargés avec succès : évite d'afficher la carte « identifiant » le temps du chargement
+  const [leasesLoaded, setLeasesLoaded] = useState(false);
+  const copyTenantId = useCopyTenantId();
   const [sharingDossier, setSharingDossier] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -137,6 +148,18 @@ const DashboardLocataire = () => {
     loadMessages(); // Charger les messages au montage pour le badge de la barre latérale
     loadNotifications(); // Charger les notifications au montage
   }, []); // Charge une seule fois au montage
+
+  // Demandes de maintenance non résolues (en attente ou en cours), rechargées à chaque retour sur l'accueil
+  const [openMaintenanceCount, setOpenMaintenanceCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (activeTab !== "dashboard") return;
+    getTenantMaintenanceRequests()
+      .then((data: any) => {
+        const requests = Array.isArray(data) ? data : [];
+        setOpenMaintenanceCount(requests.filter((r: any) => r.status === "pending" || r.status === "in_progress").length);
+      })
+      .catch((error: unknown) => console.error("Error loading maintenance requests:", error));
+  }, [activeTab]);
 
   const { socket, connected } = useSocket();
 
@@ -261,6 +284,7 @@ const DashboardLocataire = () => {
       setTenantProfile(data.profile);
       const activeLeases = data.leases || (data.tenant ? [data.tenant] : []);
       setLeases(activeLeases);
+      setLeasesLoaded(true);
       setTenantData(activeLeases.length > 0 ? activeLeases[0] : null);
       setOwnerProfile(data.owner);
       setOwnerUserProfile(data.ownerUserProfile);
@@ -625,20 +649,13 @@ const DashboardLocataire = () => {
                         // Identifiant à communiquer au propriétaire pour qu'il retrouve le compte lors de l'affectation
                         <button
                           type="button"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(user.customId!);
-                              toast({ title: t('tenant.id_copied'), description: t('tenant.id_copied_desc') });
-                            } catch {
-                              toast({ title: t('common.error'), description: t('tenant.id_copy_error'), variant: "destructive" });
-                            }
-                          }}
+                          onClick={() => copyTenantId(user.customId!)}
                           title={t('tenant.copy_id')}
                           aria-label={t('tenant.copy_id')}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 font-mono text-[11px] text-primary hover:bg-primary/10 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 font-mono text-sm sm:text-[15px] font-semibold text-primary hover:bg-primary/10 transition-colors"
                         >
                           {t('common.id')} : {user.customId}
-                          <Copy className="h-3 w-3" aria-hidden />
+                          <Copy className="h-4 w-4" aria-hidden />
                         </button>
                       )}
                     </div>
@@ -667,17 +684,40 @@ const DashboardLocataire = () => {
                   </Button>
                 </div>
 
+                {/* Locataire sans logement : son identifiant est ce qu'il doit transmettre au propriétaire */}
+                {user?.customId && leasesLoaded && leases.length === 0 && (
+                  <TenantIdCard customId={user.customId} />
+                )}
+
                 {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                  <Card className="shadow-soft hover:shadow-md transition-all">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-bold flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-primary" />
+                <div className="grid grid-cols-2 gap-3 sm:gap-6">
+                  <Card
+                    className="shadow-soft hover:shadow-md transition-all cursor-pointer flex flex-col"
+                    onClick={() => navigate("/tenant-dashboard/contracts")}
+                  >
+                    <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
+                      <CardTitle className="text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2">
+                        <FileText className="h-4 w-4 text-primary shrink-0" />
                         Mes reçus
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-3xl font-black text-foreground">{receipts.length}</p>
+                    <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0 mt-auto">
+                      {/* Même contenu que le sous-onglet « Mes reçus » : quittances de loyer valides (ni cautions ni reçus annulés) */}
+                      <p className="text-3xl font-black text-foreground">{receipts.filter(isPaidRentReceipt).length}</p>
+                    </CardContent>
+                  </Card>
+                  <Card
+                    className="shadow-soft hover:shadow-md transition-all cursor-pointer flex flex-col"
+                    onClick={() => navigate("/tenant-dashboard/maintenance")}
+                  >
+                    <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
+                      <CardTitle className="text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2">
+                        <Wrench className="h-4 w-4 text-orange-500 shrink-0" />
+                        Maintenance en cours
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0 mt-auto">
+                      <p className="text-3xl font-black text-foreground">{openMaintenanceCount ?? "–"}</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -755,7 +795,7 @@ const DashboardLocataire = () => {
                       ))}
                     </div>
                   ) : (
-                    <Card className="shadow-soft border-l-4 border-l-blue-500">
+                    <Card className="shadow-soft">
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
                           <Home className="h-12 w-12 text-blue-500 flex-shrink-0" />
@@ -1091,12 +1131,18 @@ const DashboardLocataire = () => {
                 <h2 className="text-2xl font-bold">{t('dashboard.sidebar.contracts')}</h2>
 
                 <Tabs defaultValue="receipts" className="w-full">
-                  <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[280px] shrink-0 mb-6 border border-border/40">
-                    <TabsTrigger 
+                  <TabsList className="flex bg-muted p-1 rounded-xl w-full max-w-[420px] shrink-0 mb-6 border border-border/40">
+                    <TabsTrigger
                       value="receipts"
                       className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
                     >
                       Mes reçus
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="deposit"
+                      className="flex-1 rounded-lg font-bold text-xs h-8 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
+                    >
+                      Caution
                     </TabsTrigger>
                     <TabsTrigger 
                       value="leases"
@@ -1107,9 +1153,23 @@ const DashboardLocataire = () => {
                   </TabsList>
 
                   <TabsContent value="leases" className="space-y-6">
-                    <TenantContractsTab 
+                    <TenantContractsTab
                       currency={ownerProfile?.currency || 'XOF'}
                     />
+                  </TabsContent>
+
+                  <TabsContent value="deposit" className="space-y-6">
+                    <Card className="shadow-soft">
+                      <CardHeader className="border-b border-border/40 pb-4">
+                        <CardTitle className="text-lg font-bold">Caution</CardTitle>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          Le reçu de votre caution (dépôt de garantie) et, en fin de bail, le décompte de sa restitution.
+                        </p>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        <TenantDepositsPanel deposits={depositReceipts} currency={ownerProfile?.currency || 'XOF'} />
+                      </CardContent>
+                    </Card>
                   </TabsContent>
 
                   <TabsContent value="receipts" className="space-y-6">
@@ -1168,7 +1228,7 @@ const DashboardLocataire = () => {
                       <CardContent className="pt-6">
                         {filteredReceipts.length === 0 ? (
                           <p className="text-center text-muted-foreground py-8">
-                            {receipts.length === 0 ? t('tenant.no_receipts') : "Aucun reçu ne correspond aux filtres de date sélectionnés."}
+                            {rentReceipts.length === 0 ? t('tenant.no_receipts') : "Aucun reçu ne correspond aux filtres de date sélectionnés."}
                           </p>
                         ) : (
                           <div className="space-y-3">

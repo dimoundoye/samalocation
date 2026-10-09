@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const Report = require('../models/reportModel');
 const db = require('../config/db');
+const cloudinary = require('cloudinary').v2;
 
 // Motifs de signalement d'une annonce (clé envoyée par le navigateur → libellé enregistré)
 const PROPERTY_REPORT_CATEGORIES = {
@@ -12,6 +13,25 @@ const PROPERTY_REPORT_CATEGORIES = {
     inappropriate: 'Contenu inapproprié ou offensant',
     other: 'Autre',
 };
+
+const MAX_REPORT_PHOTOS = 5;
+
+/**
+ * Photos jointes à un signalement : uniquement des images déjà envoyées sur notre compte Cloudinary
+ * (route /api/upload). L'admin les affiche telles quelles, donc aucune autre URL n'est acceptée.
+ * @returns {string[] | null} la liste validée, ou null si elle est invalide
+ */
+function parseReportPhotos(rawPhotos) {
+    if (rawPhotos === undefined || rawPhotos === null) return [];
+    if (!Array.isArray(rawPhotos) || rawPhotos.length > MAX_REPORT_PHOTOS) return null;
+
+    const cloudName = cloudinary.config().cloud_name;
+    const allowedPrefix = cloudName
+        ? `https://res.cloudinary.com/${cloudName}/image/upload/`
+        : 'https://res.cloudinary.com/';
+    const valid = rawPhotos.every(url => typeof url === 'string' && url.length <= 500 && url.startsWith(allowedPrefix));
+    return valid ? rawPhotos : null;
+}
 
 const reportController = {
     /**
@@ -25,6 +45,14 @@ const reportController = {
 
             const { reported_id, reason } = req.body;
             const reporter_id = req.user.id;
+
+            const photos = parseReportPhotos(req.body.photos);
+            if (photos === null) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `Photos invalides (${MAX_REPORT_PHOTOS} maximum, envoyées depuis le formulaire de signalement).`
+                });
+            }
 
             // Validation
             if (!reported_id || !reason) {
@@ -46,7 +74,8 @@ const reportController = {
                 id: uuidv4(),
                 reporter_id,
                 reported_id,
-                reason: reason.trim()
+                reason: reason.trim(),
+                photos
             };
 
             const report = await Report.create(reportData);

@@ -4,6 +4,10 @@ import "./index.css";
 import "./lib/i18n";
 import "./lib/installPrompt";
 import { registerSW } from 'virtual:pwa-register';
+import { clearPrivateCaches } from "./lib/privateCaches";
+
+// Supprime les réponses de l'API gardées sur l'appareil par les anciennes versions de l'application
+void clearPrivateCaches();
 
 // Register service worker for PWA
 //registerSW({ immediate: true });

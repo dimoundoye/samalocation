@@ -188,8 +188,9 @@ export const AssignTenantDialog = ({
       const found = Array.isArray(profiles) ? profiles : [];
 
       if (found.length === 1) {
-        handleSelectUser(found[0]);
-        setSearchResults([]);
+        // Le propriétaire confirme lui-même en cliquant sur le locataire trouvé
+        setSelectedUser(null);
+        setSearchResults(found);
       } else {
         setSearchResults([]);
         toast({
@@ -270,6 +271,14 @@ export const AssignTenantDialog = ({
     // On ne demande plus l'email et le téléphone obligatoirement si on crée un compte
     // car le locataire remplira ces infos lui-même lors de sa première connexion.
     if (!selectedUser && searchMode === "existing") {
+      if (searchResults.length > 0) {
+        toast({
+          title: "Locataire non sélectionné",
+          description: "Cliquez sur le locataire trouvé pour le sélectionner avant de valider.",
+          variant: "destructive",
+        });
+        return;
+      }
       if (!email.trim()) {
         toast({
           title: "Email requis",
@@ -481,16 +490,18 @@ export const AssignTenantDialog = ({
                     setSearchMode("existing");
                     setStep("form");
                   }}
-                  className="group flex items-center gap-4 p-6 rounded-3xl bg-secondary/30 border-2 border-transparent hover:border-primary/20 hover:bg-secondary/50 transition-all text-left"
+                  className="group flex items-center gap-4 p-4 sm:p-6 rounded-3xl bg-card border-2 border-border shadow-sm hover:border-primary hover:shadow-md hover:bg-primary/5 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all text-left cursor-pointer"
                 >
                   <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                     <Users className="h-7 w-7 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-lg">Locataire avec compte Samalocation</h3>
+                    <h3 className="font-bold text-base sm:text-lg">Locataire avec compte Samalocation</h3>
                     <p className="text-sm text-muted-foreground">Recherchez un utilisateur qui possède déjà un compte sur la plateforme.</p>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                  <span className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground group-hover:translate-x-1 transition-all" aria-hidden>
+                    <ChevronRight className="h-5 w-5" />
+                  </span>
                 </button>
 
                 <button
@@ -499,16 +510,18 @@ export const AssignTenantDialog = ({
                     setCreateAccount(true);
                     setStep("form");
                   }}
-                  className="group flex items-center gap-4 p-6 rounded-3xl bg-primary/5 border-2 border-transparent hover:border-primary/20 hover:bg-primary/10 transition-all text-left"
+                  className="group flex items-center gap-4 p-4 sm:p-6 rounded-3xl bg-card border-2 border-border shadow-sm hover:border-primary hover:shadow-md hover:bg-primary/5 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all text-left cursor-pointer"
                 >
                   <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">
                     <UserPlus className="h-7 w-7 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-lg">Créer un compte pour un locataire</h3>
+                    <h3 className="font-bold text-base sm:text-lg">Créer un compte pour un locataire</h3>
                     <p className="text-sm text-muted-foreground">Inscrivez un nouveau locataire et générez ses accès de connexion.</p>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                  <span className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground group-hover:translate-x-1 transition-all" aria-hidden>
+                    <ChevronRight className="h-5 w-5" />
+                  </span>
                 </button>
               </div>
 
@@ -563,6 +576,7 @@ export const AssignTenantDialog = ({
                               onChange={(e) => {
                                 setSearchQuery(e.target.value);
                                 setSelectedUser(null);
+                                setSearchResults([]);
                               }}
                               className="rounded-xl h-12"
                               onKeyPress={(e) => {
@@ -586,18 +600,50 @@ export const AssignTenantDialog = ({
                           </p>
                         </div>
 
-                        {selectedUser && (
-                          <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                            <div className="h-12 w-12 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
-                              {selectedUser.full_name?.charAt(0)}
+                        {(selectedUser || searchResults[0]) && (() => {
+                          const candidate = selectedUser || searchResults[0];
+                          const isSelected = !!selectedUser;
+                          return (
+                            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                              <p className={`text-xs font-semibold ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
+                                {isSelected ? "Locataire sélectionné" : "Locataire trouvé : cliquez dessus pour le sélectionner"}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setSelectedUser(null);
+                                    setFullName("");
+                                  } else {
+                                    handleSelectUser(candidate);
+                                  }
+                                }}
+                                aria-pressed={isSelected}
+                                title={isSelected ? "Cliquer pour désélectionner" : "Sélectionner ce locataire"}
+                                className={`w-full text-left p-4 rounded-2xl flex items-center gap-3 border-2 transition-all ${
+                                  isSelected
+                                    ? "bg-primary/10 border-primary shadow-sm"
+                                    : "bg-card border-dashed border-primary/30 hover:border-primary hover:bg-primary/5"
+                                }`}
+                              >
+                                <div className={`h-12 w-12 shrink-0 rounded-xl flex items-center justify-center font-bold ${
+                                  isSelected ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
+                                }`}>
+                                  {candidate.full_name?.charAt(0)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold break-words">{candidate.full_name}</p>
+                                  <p className="text-sm text-muted-foreground font-mono">ID : {candidate.custom_id}</p>
+                                </div>
+                                {isSelected ? (
+                                  <CheckCircle className="h-6 w-6 text-primary shrink-0" />
+                                ) : (
+                                  <span className="h-6 w-6 rounded-full border-2 border-primary/40 shrink-0" aria-hidden />
+                                )}
+                              </button>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold break-words">{selectedUser.full_name}</p>
-                              <p className="text-sm text-muted-foreground font-mono">ID : {selectedUser.custom_id}</p>
-                            </div>
-                            <CheckCircle className="h-5 w-5 text-primary shrink-0" />
-                          </div>
-                        )}
+                          );
+                        })()}
 
                       </div>
                     ) : (

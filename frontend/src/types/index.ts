@@ -102,6 +102,22 @@ export interface CreateReceiptData {
     period_type?: 'mois' | 'semaine' | 'jour';
     start_date?: string;
     end_date?: string;
+    receipt_type?: ReceiptType;
+}
+
+/** 'rent' : quittance de loyer ; 'deposit' : reçu de caution (dépôt de garantie), hors revenus */
+export type ReceiptType = 'rent' | 'deposit';
+
+export interface DepositDeduction {
+    label: string;
+    amount: number;
+}
+
+export interface SettleDepositData {
+    deductions: DepositDeduction[];
+    settlement_date: string;
+    payment_method?: string;
+    notes?: string;
 }
 
 export interface Receipt {
@@ -123,6 +139,15 @@ export interface Receipt {
     status?: 'valid' | 'cancelled' | string;
     cancellation_reason?: string;
     cancelled_at?: string;
+    receipt_type?: ReceiptType;
+    // Restitution valide de la caution (reçus de caution restitués uniquement)
+    settlement_id?: string | null;
+    settlement_number?: string | null;
+    settlement_refunded_amount?: number | string | null;
+    settlement_retained_amount?: number | string | null;
+    settlement_deductions?: DepositDeduction[] | null;
+    settlement_date?: string | null;
+    settlement_payment_method?: string | null;
     // Informations jointes
     tenant_name?: string;
     property_name?: string;
@@ -147,6 +172,8 @@ export interface Report {
     property_is_published?: boolean | null;
     category?: string | null;
     description?: string;
+    /** Photos jointes par le locataire (preuves) */
+    photos?: string[] | null;
     status: 'pending' | 'reviewed' | 'resolved';
     admin_notes?: string;
     created_at: string;

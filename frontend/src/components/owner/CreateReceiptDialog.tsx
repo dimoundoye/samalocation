@@ -6,11 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { createReceipt, getOwnerTenants, getMySubscription } from "@/lib/api";
+import { createReceipt, getOwnerTenants, getOwnerContracts } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, Send, X } from "lucide-react";
+import { AlertTriangle, Loader2, ShieldCheck } from "lucide-react";
 import { UpgradeModal } from "./UpgradeModal";
 import { useSubscription } from "@/hooks/useSubscription";
+import { isDepositReceipt, isPaidRentReceipt } from "@/lib/deposits";
+import { formatCurrency } from "@/lib/utils";
+import { ReceiptType } from "@/types";
 
 interface CreateReceiptDialogProps {
     open: boolean;
@@ -41,9 +44,25 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         notes: "",
         period_type: 'mois' as 'mois' | 'semaine' | 'jour',
         start_date: "",
-        end_date: ""
+        end_date: "",
+        receipt_type: 'rent' as ReceiptType
     });
-    const { subscription, loading: subLoading } = useSubscription();
+    const isDeposit = formData.receipt_type === 'deposit';
+
+    // Caution déjà détenue pour ce locataire sur ce logement (le serveur refuse d'en émettre une seconde)
+    const selectedTenantForDeposit = tenants.find(t => t.id === formData.tenant_id);
+    const depositTenantIds = [formData.tenant_id, selectedTenantForDeposit?.user_id, tenantId].filter(Boolean);
+    const depositUnitId = unitId || selectedTenantForDeposit?.unit_id;
+    const heldDeposit = receipts.find(r =>
+        isDepositReceipt(r) &&
+        r.status !== 'cancelled' &&
+        !r.settlement_id &&
+        r.property_id === propertyId &&
+        (!depositUnitId || !r.unit_id || r.unit_id === depositUnitId) &&
+        depositTenantIds.includes(r.tenant_id)
+    );
+
+    const { subscription } = useSubscription();
     const [upgradeModal, setUpgradeModal] = useState({
         open: false,
         title: "",
@@ -80,9 +99,11 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
             }));
         }
 
-        // Suggest next month based on history
+        // Suggest next month based on history (quittances de loyer valides uniquement : ni cautions ni reçus annulés)
         if (receipts && receipts.length > 0) {
-            const tenantReceipts = receipts.filter(r => r.tenant_id === formData.tenant_id || r.tenant_id === selectedTenant?.user_id);
+            const tenantReceipts = receipts.filter(r =>
+                isPaidRentReceipt(r) && (r.tenant_id === formData.tenant_id || r.tenant_id === selectedTenant?.user_id)
+            );
             if (tenantReceipts.length > 0) {
                 // Find most recent receipt
                 const latest = tenantReceipts.reduce((prev, curr) => {
@@ -144,6 +165,30 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         }
     };
 
+    const handleReceiptTypeChange = async (value: ReceiptType) => {
+        if (value === 'rent') {
+            setFormData(prev => ({ ...prev, receipt_type: 'rent', amount: monthlyRent ? String(monthlyRent) : prev.amount }));
+            return;
+        }
+
+        setFormData(prev => ({ ...prev, receipt_type: 'deposit', amount: "" }));
+        // Pré-remplir avec la caution prévue au contrat du locataire, s'il y en a un
+        try {
+            const contracts = await getOwnerContracts();
+            const selectedTenant = tenants.find(t => t.id === formData.tenant_id);
+            const tenantIds = [formData.tenant_id, selectedTenant?.user_id, tenantId].filter(Boolean);
+            const contract = contracts
+                .filter(c => tenantIds.includes(c.tenant_id) && c.status !== 'terminated' && Number(c.deposit_amount) > 0)
+                .filter(c => !unitId || !c.unit_id || c.unit_id === unitId)
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+            if (contract) {
+                setFormData(prev => (prev.receipt_type === 'deposit' && !prev.amount ? { ...prev, amount: String(contract.deposit_amount) } : prev));
+            }
+        } catch {
+            // Pré-remplissage facultatif : le propriétaire saisit le montant
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -156,7 +201,8 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
             return;
         }
 
-        if (subscription && subscription.receipts_this_month >= subscription.receipts_limit && subscription.receipts_limit !== -1 && subscription.receipts_limit !== Infinity) {
+        // Les reçus de caution ne comptent pas dans le quota de quittances
+        if (!isDeposit && subscription && subscription.receipts_this_month >= subscription.receipts_limit && subscription.receipts_limit !== -1 && subscription.receipts_limit !== Infinity) {
             setUpgradeModal({
                 open: true,
                 title: "Limite de reçus atteinte",
@@ -178,13 +224,15 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                 amount: Number(formData.amount),
                 month: Number(formData.month),
                 year: Number(formData.year),
-                start_date: formData.period_type !== 'mois' ? formData.start_date : undefined,
-                end_date: formData.period_type !== 'mois' ? formData.end_date : undefined,
+                start_date: !isDeposit && formData.period_type !== 'mois' ? formData.start_date : undefined,
+                end_date: !isDeposit && formData.period_type !== 'mois' ? formData.end_date : undefined,
             });
 
             toast({
-                title: "Reçu créé",
-                description: "Le reçu de paiement a été créé avec succès"
+                title: isDeposit ? "Reçu de caution créé" : "Reçu créé",
+                description: isDeposit
+                    ? "Le reçu de caution a été créé. Vous pourrez enregistrer sa restitution depuis l'historique du locataire."
+                    : "Le reçu de paiement a été créé avec succès"
             });
 
             onSuccess();
@@ -214,7 +262,8 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
             notes: "",
             period_type: 'mois',
             start_date: "",
-            end_date: ""
+            end_date: "",
+            receipt_type: 'rent'
         });
         onOpenChange(false);
     };
@@ -244,7 +293,7 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
         }}>
             <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
                 <DialogHeader>
-                    <DialogTitle>Créer un reçu de paiement</DialogTitle>
+                    <DialogTitle>{isDeposit ? "Créer un reçu de caution" : "Créer un reçu de paiement"}</DialogTitle>
                     <DialogDescription>
                         Générer un reçu PDF pour le locataire de {propertyName}
                     </DialogDescription>
@@ -280,6 +329,41 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                             </div>
 
                             <div className="space-y-2">
+                                <Label htmlFor="receipt_type">Type de reçu</Label>
+                                <Select
+                                    value={formData.receipt_type}
+                                    onValueChange={(value: ReceiptType) => handleReceiptTypeChange(value)}
+                                >
+                                    <SelectTrigger id="receipt_type">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="rent">Loyer</SelectItem>
+                                        <SelectItem value="deposit">Caution (dépôt de garantie)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {isDeposit && heldDeposit ? (
+                                <div className="flex gap-3 p-3 rounded-lg border border-red-200 bg-red-50 text-red-900 dark:bg-red-950/30 dark:border-red-900/60 dark:text-red-200 text-xs leading-relaxed">
+                                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                    <p>
+                                        Une caution de <strong>{formatCurrency(Number(heldDeposit.amount), user?.currency)}</strong> est déjà enregistrée
+                                        pour ce locataire sur ce logement (reçu N° {heldDeposit.receipt_number}). Annulez-la ou restituez-la depuis
+                                        l'historique du locataire avant d'en émettre une nouvelle.
+                                    </p>
+                                </div>
+                            ) : isDeposit ? (
+                                <div className="flex gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:border-amber-900/60 dark:text-amber-200 text-xs leading-relaxed">
+                                    <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
+                                    <p>
+                                        La caution n'est pas un loyer : elle n'apparaît pas dans vos revenus, ne marque aucun mois comme payé
+                                        et ne compte pas dans votre quota de quittances. Vous enregistrerez sa restitution en fin de bail
+                                        depuis l'historique du locataire.
+                                    </p>
+                                </div>
+                            ) : (
+                            <div className="space-y-2">
                                 <Label htmlFor="period_type">Type de période</Label>
                                 <Select
                                     value={formData.period_type}
@@ -295,8 +379,9 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                                     </SelectContent>
                                 </Select>
                             </div>
+                            )}
 
-                            {formData.period_type === 'mois' ? (
+                            {isDeposit ? null : formData.period_type === 'mois' ? (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="month">Mois</Label>
@@ -371,7 +456,7 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                             )}
 
                             <div className="space-y-2">
-                                <Label htmlFor="amount">Montant ({user?.currency || 'XOF'}) *</Label>
+                                <Label htmlFor="amount">{isDeposit ? "Montant de la caution" : "Montant"} ({user?.currency || 'XOF'}) *</Label>
                                 <Input
                                     id="amount"
                                     type="number"
@@ -426,9 +511,9 @@ export const CreateReceiptDialog = ({ open, onOpenChange, onSuccess, propertyId,
                                 <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
                                     Annuler
                                 </Button>
-                                <Button type="submit" disabled={loading}>
+                                <Button type="submit" disabled={loading || (isDeposit && !!heldDeposit)}>
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Créer le reçu
+                                    {isDeposit ? "Créer le reçu de caution" : "Créer le reçu"}
                                 </Button>
                             </DialogFooter>
                         </form>

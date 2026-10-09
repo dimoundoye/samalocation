@@ -185,6 +185,7 @@ const expenseController = {
                 LEFT JOIN properties p ON r.property_id = p.id
                 WHERE (p.owner_id = ANY($1) OR r.tenant_id = ANY($1))
                   AND COALESCE(r.status, 'valid') <> 'cancelled'
+                  AND r.receipt_type <> 'deposit'
                   AND COALESCE(NULLIF(r.year::text, ''), EXTRACT(YEAR FROM r.payment_date)::text, EXTRACT(YEAR FROM r.created_at)::text)::integer = $2
             `;
             const receiptsValues = [ownerIdsList, year];
@@ -194,19 +195,55 @@ const expenseController = {
                 receiptsValues.push(propertyId);
             }
 
+            let groupPropertyIds = [];
             if (groupId) {
                 const { rows: groupRows } = await db.query(
                     `SELECT property_ids FROM property_groups WHERE owner_id = ANY($1) AND id = $2`,
                     [ownerIdsList, groupId]
                 );
-                const propertyIds = (groupRows[0]?.property_ids || []).filter(Boolean);
-                if (propertyIds.length > 0) {
+                groupPropertyIds = (groupRows[0]?.property_ids || []).filter(Boolean);
+                if (groupPropertyIds.length > 0) {
                     receiptsQuery += ` AND r.property_id = ANY($${receiptsValues.length + 1})`;
-                    receiptsValues.push(propertyIds);
+                    receiptsValues.push(groupPropertyIds);
                 }
             }
 
             const { rows: receipts } = await db.query(receiptsQuery, receiptsValues);
+
+            // 2 bis. Cautions (dépôts de garantie) : suivies à part, jamais comptées dans les revenus.
+            // « Détenues » = cautions valides non restituées, toutes années confondues ;
+            // encaissées / restituées / retenues = mouvements de l'année sélectionnée.
+            let depositsQuery = `
+                SELECT
+                    COALESCE(SUM(r.amount) FILTER (WHERE ds.id IS NULL), 0) AS held_amount,
+                    COUNT(*) FILTER (WHERE ds.id IS NULL) AS held_count,
+                    COALESCE(SUM(r.amount) FILTER (WHERE r.year = $2), 0) AS collected_amount,
+                    COALESCE(SUM(ds.refunded_amount) FILTER (WHERE EXTRACT(YEAR FROM ds.settlement_date) = $2), 0) AS refunded_amount,
+                    COALESCE(SUM(ds.retained_amount) FILTER (WHERE EXTRACT(YEAR FROM ds.settlement_date) = $2), 0) AS retained_amount
+                FROM receipts r
+                LEFT JOIN properties p ON r.property_id = p.id
+                LEFT JOIN deposit_settlements ds ON ds.deposit_receipt_id = r.id::text AND ds.status = 'valid'
+                WHERE (p.owner_id = ANY($1) OR r.tenant_id = ANY($1))
+                  AND r.receipt_type = 'deposit'
+                  AND COALESCE(r.status, 'valid') <> 'cancelled'
+            `;
+            const depositsValues = [ownerIdsList, year];
+            if (propertyId) {
+                depositsQuery += ` AND r.property_id = $${depositsValues.length + 1}`;
+                depositsValues.push(propertyId);
+            }
+            if (groupPropertyIds.length > 0) {
+                depositsQuery += ` AND r.property_id = ANY($${depositsValues.length + 1})`;
+                depositsValues.push(groupPropertyIds);
+            }
+            const { rows: depositRows } = await db.query(depositsQuery, depositsValues);
+            const deposits = {
+                heldAmount: parseFloat(depositRows[0]?.held_amount) || 0,
+                heldCount: parseInt(depositRows[0]?.held_count, 10) || 0,
+                collectedAmount: parseFloat(depositRows[0]?.collected_amount) || 0,
+                refundedAmount: parseFloat(depositRows[0]?.refunded_amount) || 0,
+                retainedAmount: parseFloat(depositRows[0]?.retained_amount) || 0
+            };
 
             // 3. Compute totals
             const totalRevenue = receipts.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
@@ -308,7 +345,8 @@ const expenseController = {
                     occupiedUnits,
                     monthlyData,
                     categoryBreakdown,
-                    expenses
+                    expenses,
+                    deposits
                 }
             });
         } catch (error) {

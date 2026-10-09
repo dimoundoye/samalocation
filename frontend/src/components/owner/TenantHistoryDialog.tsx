@@ -20,11 +20,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { Download, FileText, Calendar, Share2, ExternalLink, Ban, AlertTriangle, Loader2, Info } from "lucide-react";
+import { Download, FileText, Calendar, Share2, ExternalLink, Ban, AlertTriangle, Loader2, Info, ShieldCheck, Undo2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { Receipt, Tenant } from "@/types";
-import { downloadReceipt, openReceiptInNewTab, cancelReceipt } from "@/lib/api";
+import { downloadReceipt, openReceiptInNewTab, cancelReceipt, openDepositSettlementInNewTab, downloadDepositSettlement, cancelDepositSettlement } from "@/lib/api";
 import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
+import { DepositSettlementDialog } from "./DepositSettlementDialog";
+import {
+    isDepositReceipt,
+    getDepositStatus,
+    DEPOSIT_STATUS_LABELS,
+    DEPOSIT_STATUS_CLASSES,
+    buildDepositShareText,
+    buildSettlementShareText,
+} from "@/lib/deposits";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +68,11 @@ export const TenantHistoryDialog = ({
     const [selectedPreviewReceipt, setSelectedPreviewReceipt] = useState<{ id: string; number?: string; date?: string } | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
 
+    const [settleReceipt, setSettleReceipt] = useState<Receipt | null>(null);
+    const [settlementToCancel, setSettlementToCancel] = useState<Receipt | null>(null);
+    const [settlementCancelReason, setSettlementCancelReason] = useState("");
+    const [isCancellingSettlement, setIsCancellingSettlement] = useState(false);
+
     if (!tenant) return null;
 
     const tenantReceipts = receipts
@@ -68,10 +82,19 @@ export const TenantHistoryDialog = ({
         )
         .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime());
 
+    // Cautions valides du locataire (détenues ou restituées), présentées à part de l'historique des loyers
+    const tenantDeposits = tenantReceipts.filter(r => isDepositReceipt(r) && r.status !== 'cancelled');
+
     const getMonthName = (month: number, year: number) => {
         const date = new Date(year, month - 1, 1);
         return format(date, "MMMM yyyy", { locale: fr });
     };
+
+    // Libellé de la colonne « Période » : un reçu de caution n'a pas de période
+    const getPeriodLabel = (receipt: Receipt) =>
+        isDepositReceipt(receipt) ? "Caution" : getMonthName(receipt.month, receipt.year);
+
+    const formatDate = (value?: string | null) => (value ? format(new Date(value), "dd/MM/yyyy") : "");
 
     const handlePreview = async (receipt: Receipt) => {
         try {
@@ -89,20 +112,53 @@ export const TenantHistoryDialog = ({
         }
     };
 
-    const shareReceipt = async (receipt: Receipt) => {
-        if (!tenant) return;
+    const shareText = async (title: string, text: string) => {
         const phone = tenant.phone?.replace(/[\s\(\)\-\+]/g, '') || '';
-        const monthLabel = getMonthName(receipt.month, receipt.year);
-        const amount = formatCurrency(receipt.amount, currency);
-        const text = `Bonjour ${tenant.full_name}, votre quittance de loyer pour le mois de ${monthLabel} (${amount}) est disponible sur votre compte Samalocation: https://samalocation.com. Merci !`;
-
         if (navigator.share) {
             try {
-                await navigator.share({ title: 'Quittance Samalocation', text });
+                await navigator.share({ title, text });
                 return;
             } catch (err) { /* fallback */ }
         }
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
+    const shareReceipt = async (receipt: Receipt) => {
+        if (isDepositReceipt(receipt)) {
+            await shareText('Reçu de caution Samalocation', buildDepositShareText(tenant.full_name, receipt, currency));
+            return;
+        }
+        const monthLabel = getMonthName(receipt.month, receipt.year);
+        const amount = formatCurrency(receipt.amount, currency);
+        await shareText(
+            'Quittance Samalocation',
+            `Bonjour ${tenant.full_name}, votre quittance de loyer pour le mois de ${monthLabel} (${amount}) est disponible sur votre compte Samalocation: https://samalocation.com. Merci !`
+        );
+    };
+
+    const shareSettlement = (receipt: Receipt) =>
+        shareText('Restitution de caution Samalocation', buildSettlementShareText(tenant.full_name, receipt, currency));
+
+    const handleConfirmCancelSettlement = async () => {
+        if (!settlementToCancel?.settlement_id || !settlementCancelReason.trim()) return;
+        try {
+            setIsCancellingSettlement(true);
+            await cancelDepositSettlement(settlementToCancel.settlement_id, settlementCancelReason.trim());
+            toast({
+                title: "Restitution annulée",
+                description: "La caution est de nouveau détenue. Vous pouvez enregistrer une nouvelle restitution.",
+            });
+            setSettlementToCancel(null);
+            onRefresh?.();
+        } catch (error: any) {
+            toast({
+                title: "Erreur d'annulation",
+                description: error.message || "Impossible d'annuler la restitution.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsCancellingSettlement(false);
+        }
     };
 
     const handleOpenCancelModal = (receipt: Receipt) => {
@@ -135,8 +191,8 @@ export const TenantHistoryDialog = ({
             setIsCancelling(true);
             await cancelReceipt(receiptToCancel.id, finalReason);
             toast({
-                title: "Quittance annulée",
-                description: `La quittance N° ${receiptToCancel.receipt_number} a été annulée. Une trace indélébile a été enregistrée.`,
+                title: isDepositReceipt(receiptToCancel) ? "Reçu de caution annulé" : "Quittance annulée",
+                description: `${isDepositReceipt(receiptToCancel) ? "Le reçu de caution" : "La quittance"} N° ${receiptToCancel.receipt_number} a été annulé${isDepositReceipt(receiptToCancel) ? "" : "e"}. Une trace indélébile a été enregistrée.`,
             });
             setCancelModalOpen(false);
             setReceiptToCancel(null);
@@ -173,6 +229,92 @@ export const TenantHistoryDialog = ({
                     </DialogHeader>
 
                     <div className="p-4 sm:p-6">
+                        {tenantDeposits.length > 0 && (
+                            <div className="mb-5 space-y-2">
+                                <h3 className="text-sm font-semibold flex items-center gap-2">
+                                    <ShieldCheck className="h-4 w-4 text-primary" />
+                                    Caution
+                                </h3>
+                                {tenantDeposits.map((deposit) => {
+                                    const status = getDepositStatus(deposit);
+                                    return (
+                                        <div key={deposit.id} className="rounded-xl border bg-card p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                            <div className="space-y-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold text-primary">{formatCurrency(deposit.amount, currency)}</span>
+                                                    <Badge variant="outline" className={`text-[10px] font-semibold ${DEPOSIT_STATUS_CLASSES[status]}`}>
+                                                        {DEPOSIT_STATUS_LABELS[status]}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Reçu N° {deposit.receipt_number} — versée le {formatDate(deposit.payment_date)}
+                                                </p>
+                                                {deposit.settlement_id && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Rendu : <strong className="text-foreground">{formatCurrency(Number(deposit.settlement_refunded_amount) || 0, currency)}</strong>
+                                                        {" · "}Retenu : <strong className="text-foreground">{formatCurrency(Number(deposit.settlement_retained_amount) || 0, currency)}</strong>
+                                                        {" · "}le {formatDate(deposit.settlement_date)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5 sm:justify-end shrink-0">
+                                                {status === 'held' ? (
+                                                    <Button size="sm" className="h-8 text-xs gap-1" onClick={() => setSettleReceipt(deposit)}>
+                                                        <Undo2 className="h-3.5 w-3.5" />
+                                                        Restituer la caution
+                                                    </Button>
+                                                ) : (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 text-xs gap-1 bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 font-semibold"
+                                                            onClick={() => openDepositSettlementInNewTab(deposit.settlement_id!).catch(() => undefined)}
+                                                            title="Ouvrir le décompte de restitution"
+                                                        >
+                                                            <ExternalLink className="h-3.5 w-3.5" />
+                                                            Décompte
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 text-xs gap-1 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10"
+                                                            onClick={() => shareSettlement(deposit)}
+                                                        >
+                                                            <Share2 className="h-3.5 w-3.5" />
+                                                            Partager
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 text-xs gap-1 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10"
+                                                            onClick={() => downloadDepositSettlement(deposit.settlement_id!, deposit.settlement_number).catch(() => undefined)}
+                                                        >
+                                                            <Download className="h-3.5 w-3.5" />
+                                                            PDF
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/50 dark:hover:bg-red-950/40"
+                                                            onClick={() => {
+                                                                setSettlementToCancel(deposit);
+                                                                setSettlementCancelReason("");
+                                                            }}
+                                                            title="Annuler cette restitution avec motif"
+                                                        >
+                                                            <Ban className="h-3.5 w-3.5" />
+                                                            Annuler
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                         {tenantReceipts.length === 0 ? (
                             <div className="text-center py-12 border rounded-xl bg-muted/20">
                                 <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-40" />
@@ -204,7 +346,7 @@ export const TenantHistoryDialog = ({
                                                 {/* Period + Date */}
                                                 <div className="flex flex-wrap gap-2 items-center">
                                                     <Badge variant="secondary" className="text-xs capitalize font-medium">
-                                                        {getMonthName(receipt.month, receipt.year)}
+                                                        {getPeriodLabel(receipt)}
                                                     </Badge>
                                                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                                                         <Calendar className="h-3 w-3" />
@@ -268,7 +410,8 @@ export const TenantHistoryDialog = ({
                                                                 size="sm"
                                                                 className="h-8 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/50 dark:hover:bg-red-950/40 justify-center"
                                                                 onClick={() => handleOpenCancelModal(receipt)}
-                                                                title="Annuler cette quittance avec motif"
+                                                                disabled={!!receipt.settlement_id}
+                                                                title={receipt.settlement_id ? "Annulez d'abord la restitution de cette caution" : "Annuler ce reçu avec motif"}
                                                             >
                                                                 <Ban className="h-3.5 w-3.5" />
                                                                 Annuler
@@ -300,7 +443,7 @@ export const TenantHistoryDialog = ({
                                                      <TableRow key={receipt.id} className={isCancelled ? "bg-red-50/40 dark:bg-red-950/10 opacity-80" : ""}>
                                                          <TableCell className="font-mono text-xs">{receipt.receipt_number}</TableCell>
                                                          <TableCell className="capitalize">
-                                                             {getMonthName(receipt.month, receipt.year)}
+                                                             {getPeriodLabel(receipt)}
                                                          </TableCell>
                                                          <TableCell>
                                                              {format(new Date(receipt.payment_date), "dd/MM/yyyy")}
@@ -366,7 +509,8 @@ export const TenantHistoryDialog = ({
                                                                              size="sm"
                                                                              className="h-8 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/50 dark:hover:bg-red-950/40 justify-center px-2"
                                                                              onClick={() => handleOpenCancelModal(receipt)}
-                                                                             title="Annuler cette quittance avec motif"
+                                                                disabled={!!receipt.settlement_id}
+                                                                             title={receipt.settlement_id ? "Annulez d'abord la restitution de cette caution" : "Annuler ce reçu avec motif"}
                                                                          >
                                                                              <Ban className="h-3.5 w-3.5 mr-1" />
                                                                              Annuler
@@ -403,10 +547,12 @@ export const TenantHistoryDialog = ({
                             <div className="p-2 bg-red-100 dark:bg-red-950 rounded-lg shrink-0">
                                 <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
                             </div>
-                            <span>Annuler la quittance N° {receiptToCancel?.receipt_number}</span>
+                            <span>Annuler {receiptToCancel && isDepositReceipt(receiptToCancel) ? "le reçu de caution" : "la quittance"} N° {receiptToCancel?.receipt_number}</span>
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground mt-2">
-                            L'annulation retirera cette somme des revenus enregistrés et conservera une trace indélébile dans le journal d'activité du patron.
+                            {receiptToCancel && isDepositReceipt(receiptToCancel)
+                                ? "La caution ne sera plus considérée comme versée. Une trace indélébile sera conservée dans le journal d'activité du patron."
+                                : "L'annulation retirera cette somme des revenus enregistrés et conservera une trace indélébile dans le journal d'activité du patron."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -482,7 +628,7 @@ export const TenantHistoryDialog = ({
                             <span>Motif d'annulation de quittance</span>
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground mt-1">
-                            Quittance N° <span className="font-mono font-semibold text-foreground">{selectedReasonReceipt?.receipt_number}</span> {selectedReasonReceipt ? `— ${getMonthName(selectedReasonReceipt.month, selectedReasonReceipt.year)}` : ''}
+                            Quittance N° <span className="font-mono font-semibold text-foreground">{selectedReasonReceipt?.receipt_number}</span> {selectedReasonReceipt ? `— ${getPeriodLabel(selectedReasonReceipt)}` : ''}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -517,6 +663,56 @@ export const TenantHistoryDialog = ({
                             className="w-full sm:w-auto"
                         >
                             Fermer
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── RESTITUTION D'UNE CAUTION ── */}
+            <DepositSettlementDialog
+                open={!!settleReceipt}
+                onOpenChange={(isOpen) => { if (!isOpen) setSettleReceipt(null); }}
+                receipt={settleReceipt}
+                currency={currency}
+                onSuccess={onRefresh}
+            />
+
+            {/* ── ANNULATION D'UNE RESTITUTION DE CAUTION ── */}
+            <Dialog open={!!settlementToCancel} onOpenChange={(isOpen) => { if (!isOpen) setSettlementToCancel(null); }}>
+                <DialogContent className="max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                            <div className="p-2 bg-red-100 dark:bg-red-950 rounded-lg shrink-0">
+                                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            </div>
+                            <span>Annuler la restitution N° {settlementToCancel?.settlement_number}</span>
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground mt-2">
+                            La caution redeviendra détenue et vous pourrez enregistrer une nouvelle restitution. Le décompte annulé reste consultable et une trace est conservée dans le journal d'activité.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 py-2">
+                        <Label className="text-xs font-semibold">Motif de l'annulation *</Label>
+                        <Textarea
+                            placeholder="ex : Erreur sur le montant d'une retenue…"
+                            value={settlementCancelReason}
+                            onChange={(e) => setSettlementCancelReason(e.target.value)}
+                            rows={3}
+                            className="text-sm"
+                        />
+                    </div>
+                    <DialogFooter className="flex flex-row justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setSettlementToCancel(null)} disabled={isCancellingSettlement}>
+                            Retour
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleConfirmCancelSettlement}
+                            disabled={isCancellingSettlement || !settlementCancelReason.trim()}
+                            className="bg-red-600 hover:bg-red-700 text-white gap-2"
+                        >
+                            {isCancellingSettlement ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                            Confirmer l'annulation
                         </Button>
                     </DialogFooter>
                 </DialogContent>

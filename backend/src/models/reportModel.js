@@ -6,14 +6,14 @@ const Report = {
      * Sans property_id : signalement d'un propriétaire par un locataire.
      */
     async create(reportData) {
-        const { id, reporter_id, reported_id, reason, property_id = null, category = null } = reportData;
+        const { id, reporter_id, reported_id, reason, property_id = null, category = null, photos = [] } = reportData;
 
         await db.query(
-            'INSERT INTO reports (id, reporter_id, reported_id, reason, status, property_id, category, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
-            [id, reporter_id, reported_id, reason, 'pending', property_id, category]
+            'INSERT INTO reports (id, reporter_id, reported_id, reason, status, property_id, category, photos, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())',
+            [id, reporter_id, reported_id, reason, 'pending', property_id, category, JSON.stringify(photos)]
         );
 
-        return { id, reporter_id, reported_id, reason, property_id, category, status: 'pending' };
+        return { id, reporter_id, reported_id, reason, property_id, category, photos, status: 'pending' };
     },
 
     /** Signalement encore en attente du même utilisateur sur la même annonce (évite les doublons) */
@@ -129,6 +129,8 @@ const Report = {
             ALTER TABLE reports ADD COLUMN IF NOT EXISTS property_id VARCHAR(36);
             ALTER TABLE reports ADD COLUMN IF NOT EXISTS category VARCHAR(50);
             CREATE INDEX IF NOT EXISTS idx_reports_property ON reports(property_id);
+            -- Photos jointes par le locataire comme preuves (URLs Cloudinary)
+            ALTER TABLE reports ADD COLUMN IF NOT EXISTS photos JSONB NOT NULL DEFAULT '[]'::jsonb;
         `);
     }
 };

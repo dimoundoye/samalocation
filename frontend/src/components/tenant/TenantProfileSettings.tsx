@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import { User, Phone, Mail, MapPin, Save, Loader2 } from "lucide-react";
 import { updateTenantProfile } from "@/api/tenant";
+import { TenantIdCard } from "./TenantIdCard";
 
 export const TenantProfileSettings = () => {
   const { toast } = useToast();
@@ -77,6 +78,8 @@ export const TenantProfileSettings = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {user?.customId && <TenantIdCard customId={user.customId} variant="compact" />}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Nom complet */}
           <div className="space-y-2">

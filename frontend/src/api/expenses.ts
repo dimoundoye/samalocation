@@ -36,6 +36,14 @@ export interface FinancialAnalyticsData {
         amount: number;
     }[];
     expenses: ExpenseItem[];
+    /** Cautions : détenues (toutes années), encaissées / restituées / retenues sur l'année */
+    deposits?: {
+        heldAmount: number;
+        heldCount: number;
+        collectedAmount: number;
+        refundedAmount: number;
+        retainedAmount: number;
+    };
 }
 
 export const getExpenses = async (filters?: {

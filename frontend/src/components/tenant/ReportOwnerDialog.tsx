@@ -1,12 +1,20 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, ImagePlus, Loader2, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createReport } from "@/lib/api";
+import { createReport, uploadPhotos } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+
+// Même limite que le serveur (reportController)
+const MAX_PHOTOS = 5;
+
+interface SelectedPhoto {
+    file: File;
+    preview: string;
+}
 
 interface ReportOwnerDialogProps {
     open: boolean;
@@ -21,6 +29,34 @@ export const ReportOwnerDialog = ({ open, onOpenChange, ownerId, ownerName, leas
     const [reason, setReason] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [selectedOwnerId, setSelectedOwnerId] = useState<string>(ownerId || "");
+    const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
+
+    // Libère les aperçus des photos encore affichées quand le composant disparaît
+    const photosRef = useRef(photos);
+    photosRef.current = photos;
+    useEffect(() => () => photosRef.current.forEach(p => URL.revokeObjectURL(p.preview)), []);
+
+    const addPhotos = (fileList: FileList | null) => {
+        if (!fileList) return;
+        const images = Array.from(fileList).filter(file => file.type.startsWith("image/"));
+        const room = MAX_PHOTOS - photos.length;
+        if (images.length > room) {
+            toast({
+                title: "Trop de photos",
+                description: `Vous pouvez joindre ${MAX_PHOTOS} photos au maximum.`,
+                variant: "destructive",
+            });
+        }
+        const added = images.slice(0, Math.max(room, 0)).map(file => ({ file, preview: URL.createObjectURL(file) }));
+        setPhotos(prev => [...prev, ...added]);
+    };
+
+    const removePhoto = (index: number) => {
+        setPhotos(prev => {
+            URL.revokeObjectURL(prev[index].preview);
+            return prev.filter((_, i) => i !== index);
+        });
+    };
 
     // If there's only one lease/owner or a pre-selected ownerId, use it
     const defaultOwnerId = ownerId || (leases.length === 1 ? leases[0].owner_id : "");
@@ -52,14 +88,20 @@ export const ReportOwnerDialog = ({ open, onOpenChange, ownerId, ownerName, leas
 
         setSubmitting(true);
         try {
-            await createReport(currentSelectedId, reason.trim());
+            // Les photos sont d'abord envoyées (compressées) puis rattachées au signalement par leurs URLs
+            const photoUrls: string[] = photos.length > 0 ? await uploadPhotos(photos.map(p => p.file)) : [];
+            await createReport(currentSelectedId, reason.trim(), photoUrls);
 
             toast({
                 title: "Signalement envoyé",
-                description: "Votre signalement a été transmis à l'administrateur",
+                description: photoUrls.length > 0
+                    ? `Votre signalement et ${photoUrls.length} photo(s) ont été transmis à l'administrateur`
+                    : "Votre signalement a été transmis à l'administrateur",
             });
 
             setReason("");
+            photos.forEach(p => URL.revokeObjectURL(p.preview));
+            setPhotos([]);
             onOpenChange(false);
         } catch (error: any) {
             toast({
@@ -74,7 +116,7 @@ export const ReportOwnerDialog = ({ open, onOpenChange, ownerId, ownerName, leas
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px] rounded-[2rem] border-none shadow-strong p-8 overflow-hidden">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto rounded-[2rem] border-none shadow-strong p-6 sm:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500/20" />
                 <DialogHeader className="space-y-3">
                     <div className="mx-auto bg-red-50 p-4 rounded-2xl w-fit mb-2">
@@ -136,6 +178,48 @@ export const ReportOwnerDialog = ({ open, onOpenChange, ownerId, ownerName, leas
                             <p className={`text-[10px] font-bold uppercase tracking-widest ${reason.length < 10 ? 'text-muted-foreground' : 'text-green-600'}`}>
                                 {reason.length}/10 caractères min.
                             </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-xs uppercase font-bold tracking-wider text-muted-foreground ml-1">
+                            Photos (facultatif, {MAX_PHOTOS} max.)
+                        </Label>
+                        <p className="text-xs text-muted-foreground ml-1">
+                            Captures d'écran, photos du logement ou de documents : elles ne seront vues que par l'équipe Samalocation.
+                        </p>
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                            {photos.map((photo, index) => (
+                                <div key={photo.preview} className="relative aspect-square rounded-xl overflow-hidden border border-primary/10 bg-muted">
+                                    <img src={photo.preview} alt={`Photo ${index + 1}`} className="h-full w-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => removePhoto(index)}
+                                        disabled={submitting}
+                                        className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                                        aria-label={`Retirer la photo ${index + 1}`}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </div>
+                            ))}
+                            {photos.length < MAX_PHOTOS && (
+                                <label className={`aspect-square rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors ${submitting ? 'opacity-50' : 'cursor-pointer hover:border-red-400 hover:text-red-600'}`}>
+                                    <ImagePlus className="h-5 w-5" />
+                                    <span className="text-[10px] font-semibold">Ajouter</span>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="hidden"
+                                        disabled={submitting}
+                                        onChange={(e) => {
+                                            addPhotos(e.target.files);
+                                            e.target.value = "";
+                                        }}
+                                    />
+                                </label>
+                            )}
                         </div>
                     </div>
 

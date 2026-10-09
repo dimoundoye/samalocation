@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMe } from "@/lib/api";
 import { disablePush, restorePushForUser } from "@/lib/push";
+import { clearPrivateCaches } from "@/lib/privateCaches";
 
 interface User {
   currency: string;
@@ -160,6 +161,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       disablePush({ forget: false }).catch((error) => console.error("Push unsubscribe error:", error)),
       new Promise((resolve) => setTimeout(resolve, 3000)),
     ]);
+    // Aucune donnée de ce compte ne doit rester dans les caches de l'appareil
+    await clearPrivateCaches();
     try {
       localStorage.removeItem("auth_token");
       setUser(null);

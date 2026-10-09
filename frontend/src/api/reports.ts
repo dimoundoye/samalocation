@@ -1,9 +1,10 @@
 import { baseClient } from './baseClient';
 
-export const createReport = async (reported_id: string, reason: string) => {
+/** Signaler un propriétaire ; photos = URLs déjà envoyées via uploadPhotos (preuves) */
+export const createReport = async (reported_id: string, reason: string, photos: string[] = []) => {
     return baseClient('/reports', {
         method: 'POST',
-        body: JSON.stringify({ reported_id, reason })
+        body: JSON.stringify({ reported_id, reason, photos })
     });
 };
 

@@ -57,34 +57,9 @@ export default defineConfig(({ mode }) => ({
               },
             },
           },
-          {
-            urlPattern: /\/api\/(tenant|receipts|properties|owner|maintenance|notifications|messages)/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 7, // 1 week
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: /\/api\/receipts\/.*\/download/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'receipt-pdfs',
-              expiration: {
-                maxEntries: 20,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
+          // Aucune réponse de l'API ni aucun PDF n'est mis en cache : ces données sont propres à un compte,
+          // et le cache du service worker est partagé par tous les comptes de l'appareil.
+          // Les anciens caches 'api-cache' et 'receipt-pdfs' sont supprimés par src/lib/privateCaches.ts.
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
             handler: 'CacheFirst',

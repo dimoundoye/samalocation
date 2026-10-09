@@ -1,5 +1,7 @@
 const Receipt = require('../models/receiptModel');
-const { generateReceiptPDF } = require('../utils/pdfGenerator');
+const DepositSettlement = require('../models/depositSettlementModel');
+const Subscription = require('../models/subscriptionModel');
+const { generateReceiptPDF, generateDepositSettlementPDF } = require('../utils/pdfGenerator');
 const response = require('../utils/response');
 const logActivity = require('../utils/logActivity');
 const { emitToWorkspace } = require('../utils/socket');
@@ -12,21 +14,31 @@ const receiptController = {
      */
     async createReceipt(req, res, next) {
         try {
-            const { 
-                tenant_id, 
-                property_id, 
-                unit_id, 
-                month, 
-                year, 
-                amount, 
-                payment_date, 
-                payment_method, 
+            const {
+                tenant_id,
+                property_id,
+                unit_id,
+                amount,
+                payment_date,
+                payment_method,
                 notes,
                 period_type,
                 start_date,
                 end_date
             } = req.body;
+            let { month, year } = req.body;
             const ownerId = req.ownerId;
+
+            // Caution (dépôt de garantie) : pas de période, rattachée au mois de son versement
+            const receiptType = req.body.receipt_type === 'deposit' ? 'deposit' : 'rent';
+            const isDeposit = receiptType === 'deposit';
+            if (isDeposit && payment_date) {
+                const paidOn = new Date(payment_date);
+                if (!isNaN(paidOn.getTime())) {
+                    month = paidOn.getMonth() + 1;
+                    year = paidOn.getFullYear();
+                }
+            }
 
             console.log('📋 Creating receipt with data:', {
                 tenant_id,
@@ -66,38 +78,20 @@ const receiptController = {
                 });
             }
 
-            // --- Vérification du quota mensuel de quittances ---
-            const Subscription = require('../models/subscriptionModel');
-            const PLANS = require('../config/plans');
-            
-            // On récupère les stats de consommation actuelles
-            const activeSub = await Subscription.findActiveByUserId(ownerId);
-            let planKey = activeSub ? (activeSub.plan_name ? activeSub.plan_name.toUpperCase() : 'FREE') : 'FREE';
-            if (planKey === 'PROFESSIONNEL' || planKey === 'PROFESSIONEL') planKey = 'PROFESSIONAL';
-            const planConfig = PLANS[planKey] || PLANS.FREE;
-
-            const maxReceipts = planConfig.limits.max_receipts_per_month;
-
-            if (maxReceipts !== Infinity && maxReceipts !== -1) {
-                // Compter les quittances générées ce mois-ci
-                const { rows: countRows } = await db.query(`
-                    SELECT COUNT(*) FROM receipts r
-                    JOIN properties p ON r.property_id = p.id
-                    WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
-                    AND EXTRACT(MONTH FROM r.created_at) = EXTRACT(MONTH FROM NOW())
-                    AND EXTRACT(YEAR FROM r.created_at) = EXTRACT(YEAR FROM NOW())
-                `, [ownerId]);
-                
-                const currentMonthCount = parseInt(countRows[0].count);
-                
-                if (currentMonthCount >= maxReceipts) {
-                    return res.status(403).json({
-                        status: 'error',
-                        message: `Vous avez atteint votre limite mensuelle de ${maxReceipts} quittances pour le plan ${planConfig.name}. Veuillez passer au plan supérieur pour continuer.`
-                    });
+            // Une seule caution détenue à la fois par locataire et par logement
+            if (isDeposit) {
+                const existing = await Receipt.findHeldDeposit({ tenant_id, property_id, unit_id });
+                if (existing) {
+                    const formattedAmount = Number(existing.amount).toLocaleString('fr-FR');
+                    return response.error(
+                        res,
+                        `Une caution de ${formattedAmount} F CFA est déjà enregistrée pour ce locataire sur ce logement (reçu N° ${existing.receipt_number}). Annulez-la ou restituez-la avant d'en émettre une nouvelle.`,
+                        409
+                    );
                 }
             }
-            // --------------------------------------------------
+
+            // Quota mensuel de quittances : contrôlé par checkReceiptLimit (subscriptionMiddleware), cautions exclues
 
             console.log('✅ Property verified and limits checked, creating receipt...');
             const receipt = await Receipt.create({
@@ -110,9 +104,10 @@ const receiptController = {
                 payment_date,
                 payment_method,
                 notes,
-                period_type,
-                start_date,
-                end_date
+                period_type: isDeposit ? 'mois' : period_type,
+                start_date: isDeposit ? null : start_date,
+                end_date: isDeposit ? null : end_date,
+                receipt_type: receiptType
             });
 
             console.log('✅ Receipt created successfully:', receipt);
@@ -124,8 +119,10 @@ const receiptController = {
                     id: uuidv4(),
                     user_id: tenant_id,
                     type: 'receipt',
-                    title: 'Nouveau reçu de loyer',
-                    message: `Votre reçu de paiement N° ${receipt.receipt_number} pour ${month}/${year} est maintenant disponible.`,
+                    title: isDeposit ? 'Nouveau reçu de caution' : 'Nouveau reçu de loyer',
+                    message: isDeposit
+                        ? `Votre reçu de caution N° ${receipt.receipt_number} est maintenant disponible.`
+                        : `Votre reçu de paiement N° ${receipt.receipt_number} pour ${month}/${year} est maintenant disponible.`,
                     link: '/tenant-dashboard/contracts'
                 });
                 console.log('✅ Notification created for tenant');
@@ -142,8 +139,10 @@ const receiptController = {
                     action: 'GENERATE',
                     entityType: 'tenant',
                     entityId: receipt.id,
-                    entityLabel: `Reçu de ${formattedAmount} F CFA pour ${tenantName} — ${propName} (${month}/${year})`,
-                    metadata: { amount, month, year, tenant_id, property_id }
+                    entityLabel: isDeposit
+                        ? `Reçu de caution de ${formattedAmount} F CFA pour ${tenantName} — ${propName}`
+                        : `Reçu de ${formattedAmount} F CFA pour ${tenantName} — ${propName} (${month}/${year})`,
+                    metadata: { amount, month, year, tenant_id, property_id, receipt_type: receiptType }
                 });
             } catch (logErr) { /* silencieux */ }
 
@@ -226,7 +225,6 @@ const receiptController = {
 
             // --- Restriction Branding ---
             // Vérifier si le propriétaire a droit au branding personnalisé
-            const Subscription = require('../models/subscriptionModel');
             const ownerId = properties.length > 0 ? properties[0].owner_id : (receipt.owner_id || null);
             const hasBranding = ownerId ? await Subscription.hasAccessToFeature(ownerId, 'custom_branding') : false;
             
@@ -300,7 +298,13 @@ const receiptController = {
                 });
             }
 
+            const isDeposit = receipt.receipt_type === 'deposit';
+            if (isDeposit && await DepositSettlement.findValidByReceiptId(String(id))) {
+                return response.error(res, "Cette caution a déjà été restituée. Annulez d'abord la restitution.", 409);
+            }
+
             const cancelledReceipt = await Receipt.cancel(id, cancellation_reason.trim(), userId);
+            const documentLabel = isDeposit ? 'Reçu de caution' : 'Quittance';
 
             // Journal d'activité indélébile pour le patron / agence
             try {
@@ -311,7 +315,7 @@ const receiptController = {
                     action: 'CANCEL',
                     entityType: 'tenant',
                     entityId: id,
-                    entityLabel: `Quittance N° ${receipt.receipt_number} de ${formattedAmount} F CFA ANNULÉE — ${tenantName} (${receipt.month}/${receipt.year}) | Motif: ${cancellation_reason.trim()}`,
+                    entityLabel: `${documentLabel} N° ${receipt.receipt_number} de ${formattedAmount} F CFA ANNULÉ${isDeposit ? '' : 'E'} — ${tenantName} (${receipt.month}/${receipt.year}) | Motif: ${cancellation_reason.trim()}`,
                     metadata: { 
                         receipt_number: receipt.receipt_number, 
                         amount: receipt.amount, 
@@ -331,14 +335,16 @@ const receiptController = {
                         id: uuidv4(),
                         user_id: receipt.tenant_id,
                         type: 'receipt',
-                        title: 'Quittance de loyer annulée',
-                        message: `La quittance N° ${receipt.receipt_number} (${receipt.month}/${receipt.year}) a été annulée par le propriétaire. Motif : ${cancellation_reason.trim()}`,
+                        title: isDeposit ? 'Reçu de caution annulé' : 'Quittance de loyer annulée',
+                        message: isDeposit
+                            ? `Le reçu de caution N° ${receipt.receipt_number} a été annulé par le propriétaire. Motif : ${cancellation_reason.trim()}`
+                            : `La quittance N° ${receipt.receipt_number} (${receipt.month}/${receipt.year}) a été annulée par le propriétaire. Motif : ${cancellation_reason.trim()}`,
                         link: '/tenant-dashboard/contracts'
                     });
                 }
             } catch (notifErr) { console.error('Failed to notify tenant:', notifErr); }
 
-            return response.success(res, cancelledReceipt, 'Quittance annulée avec succès.');
+            return response.success(res, cancelledReceipt, `${documentLabel} annulé${isDeposit ? '' : 'e'} avec succès.`);
         } catch (error) {
             next(error);
         }
@@ -389,7 +395,237 @@ const receiptController = {
         } catch (error) {
             next(error);
         }
+    },
+
+    /**
+     * Restituer une caution : en totalité, en partie (avec retenues motivées) ou retenue en totalité
+     */
+    async settleDeposit(req, res, next) {
+        try {
+            const { id } = req.params;
+            const receipt = await Receipt.findById(id);
+            if (!receipt || receipt.receipt_type !== 'deposit') {
+                return response.error(res, 'Caution introuvable', 404);
+            }
+            if (receipt.status === 'cancelled') {
+                return response.error(res, 'Ce reçu de caution est annulé : il ne peut pas être restitué.', 400);
+            }
+
+            const access = await getReceiptAccess(req, receipt);
+            if (!access.isOwner) {
+                return response.error(res, 'Non autorisé à restituer cette caution', 403);
+            }
+            if (await DepositSettlement.findValidByReceiptId(String(id))) {
+                return response.error(res, 'Cette caution a déjà été restituée.', 409);
+            }
+
+            // Retenues : chacune doit avoir un motif et un montant positif
+            const depositAmount = roundAmount(Number(receipt.amount));
+            const rawDeductions = Array.isArray(req.body.deductions) ? req.body.deductions : [];
+            if (rawDeductions.length > 30) {
+                return response.error(res, 'Trop de retenues (30 maximum).', 400);
+            }
+            const deductions = [];
+            for (const item of rawDeductions) {
+                const amount = Number(item?.amount);
+                const label = typeof item?.label === 'string' ? item.label.trim().slice(0, 200) : '';
+                if (!Number.isFinite(amount) || amount < 0) {
+                    return response.error(res, 'Montant de retenue invalide.', 400);
+                }
+                if (amount === 0) continue;
+                if (!label) {
+                    return response.error(res, 'Chaque retenue doit avoir un motif.', 400);
+                }
+                deductions.push({ label, amount: roundAmount(amount) });
+            }
+
+            const retainedAmount = roundAmount(deductions.reduce((sum, d) => sum + d.amount, 0));
+            if (retainedAmount > depositAmount) {
+                return response.error(res, 'Les retenues dépassent le montant de la caution.', 400);
+            }
+            const refundedAmount = roundAmount(depositAmount - retainedAmount);
+
+            const settlementDate = req.body.settlement_date ? new Date(req.body.settlement_date) : new Date();
+            if (isNaN(settlementDate.getTime())) {
+                return response.error(res, 'Date de restitution invalide.', 400);
+            }
+
+            // Signature électronique figée sur le décompte, seulement si le plan l'inclut
+            let ownerSignature = null;
+            if (await Subscription.hasAccessToFeature(access.ownerId, 'electronic_signature')) {
+                const db = require('../config/db');
+                const { rows } = await db.query('SELECT signature_url FROM owner_profiles WHERE user_profile_id = $1', [access.ownerId]);
+                ownerSignature = rows[0]?.signature_url || null;
+            }
+
+            const notes = typeof req.body.notes === 'string' ? req.body.notes.trim().slice(0, 1000) : '';
+            const settlement = await DepositSettlement.create({
+                deposit_receipt_id: String(id),
+                deposit_amount: depositAmount,
+                refunded_amount: refundedAmount,
+                retained_amount: retainedAmount,
+                deductions,
+                settlement_date: settlementDate.toISOString().split('T')[0],
+                payment_method: refundedAmount > 0 ? (req.body.payment_method || 'virement') : null,
+                notes: notes || null,
+                owner_signature: ownerSignature,
+                created_by: req.user.id
+            });
+
+            emitToWorkspace(req.ownerId, 'workspace_updated', { entity: 'receipts', action: 'update', id: receipt.id });
+
+            const outcome = describeSettlement(settlement);
+            try {
+                const formattedRefund = refundedAmount.toLocaleString('fr-FR');
+                await logActivity(req, {
+                    action: 'UPDATE',
+                    entityType: 'tenant',
+                    entityId: receipt.id,
+                    entityLabel: `Caution N° ${receipt.receipt_number} ${outcome} — ${formattedRefund} F CFA rendus à ${receipt.tenant_name || 'Locataire'} (décompte ${settlement.settlement_number})`,
+                    metadata: { settlement_number: settlement.settlement_number, refunded_amount: refundedAmount, retained_amount: retainedAmount }
+                });
+            } catch (logErr) { /* silencieux */ }
+
+            try {
+                if (receipt.tenant_id) {
+                    await Notification.create({
+                        id: uuidv4(),
+                        user_id: receipt.tenant_id,
+                        type: 'receipt',
+                        title: 'Restitution de votre caution',
+                        message: `Votre caution (reçu N° ${receipt.receipt_number}) a été ${outcome}. Le décompte N° ${settlement.settlement_number} est disponible.`,
+                        link: '/tenant-dashboard/contracts'
+                    });
+                }
+            } catch (notifErr) { console.error('Failed to notify tenant:', notifErr); }
+
+            return response.success(res, settlement, 'Restitution de la caution enregistrée.');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Annuler une restitution de caution (avec motif) : la caution redevient détenue
+     */
+    async cancelDepositSettlement(req, res, next) {
+        try {
+            const { settlementId } = req.params;
+            const reason = typeof req.body.cancellation_reason === 'string' ? req.body.cancellation_reason.trim() : '';
+            if (!reason) {
+                return response.error(res, "Un motif d'annulation est obligatoire.", 400);
+            }
+
+            const settlement = await DepositSettlement.findById(settlementId);
+            if (!settlement || settlement.status !== 'valid') {
+                return response.error(res, 'Restitution introuvable ou déjà annulée', 404);
+            }
+            const receipt = await Receipt.findById(settlement.deposit_receipt_id);
+            if (!receipt) {
+                return response.error(res, 'Caution introuvable', 404);
+            }
+            const access = await getReceiptAccess(req, receipt);
+            if (!access.isOwner) {
+                return response.error(res, 'Non autorisé à annuler cette restitution', 403);
+            }
+
+            const cancelled = await DepositSettlement.cancel(settlementId, reason, req.user.id);
+            emitToWorkspace(req.ownerId, 'workspace_updated', { entity: 'receipts', action: 'update', id: receipt.id });
+
+            try {
+                await logActivity(req, {
+                    action: 'CANCEL',
+                    entityType: 'tenant',
+                    entityId: receipt.id,
+                    entityLabel: `Restitution de caution N° ${settlement.settlement_number} ANNULÉE — ${receipt.tenant_name || 'Locataire'} | Motif: ${reason}`,
+                    metadata: { settlement_number: settlement.settlement_number, cancellation_reason: reason }
+                });
+            } catch (logErr) { /* silencieux */ }
+
+            try {
+                if (receipt.tenant_id) {
+                    await Notification.create({
+                        id: uuidv4(),
+                        user_id: receipt.tenant_id,
+                        type: 'receipt',
+                        title: 'Restitution de caution annulée',
+                        message: `Le décompte de restitution N° ${settlement.settlement_number} a été annulé par le propriétaire. Motif : ${reason}`,
+                        link: '/tenant-dashboard/contracts'
+                    });
+                }
+            } catch (notifErr) { console.error('Failed to notify tenant:', notifErr); }
+
+            return response.success(res, cancelled, 'Restitution annulée.');
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Télécharger (ou afficher) le décompte de restitution d'une caution en PDF
+     */
+    async downloadDepositSettlement(req, res, next) {
+        try {
+            const settlement = await DepositSettlement.findById(req.params.settlementId);
+            if (!settlement) {
+                return response.error(res, 'Décompte introuvable', 404);
+            }
+            const receipt = await Receipt.findById(settlement.deposit_receipt_id);
+            if (!receipt) {
+                return response.error(res, 'Caution introuvable', 404);
+            }
+
+            const access = await getReceiptAccess(req, receipt);
+            if (!access.isOwner && !access.isTenant && !access.isAdmin) {
+                return response.error(res, 'Non autorisé à consulter ce décompte', 403);
+            }
+
+            const hasBranding = access.ownerId ? await Subscription.hasAccessToFeature(access.ownerId, 'custom_branding') : false;
+            const doc = await generateDepositSettlementPDF({
+                ...receipt,
+                logo_url: hasBranding ? receipt.logo_url : null,
+                settlement
+            });
+
+            const isInline = req.query.inline === 'true';
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename=restitution-${settlement.settlement_number}.pdf`);
+            doc.pipe(res);
+            doc.end();
+        } catch (error) {
+            next(error);
+        }
     }
 };
+
+/**
+ * Droits de l'utilisateur sur un reçu : propriétaire (ou membre de son organisation), locataire, administrateur
+ */
+async function getReceiptAccess(req, receipt) {
+    const db = require('../config/db');
+    const { rows } = await db.query('SELECT owner_id FROM properties WHERE id = $1', [receipt.property_id]);
+    const ownerId = rows[0]?.owner_id || null;
+    return {
+        ownerId,
+        isOwner: !!ownerId && (ownerId === req.ownerId || ownerId === req.user.id),
+        isTenant: receipt.tenant_id === req.user.id,
+        isAdmin: req.user?.role === 'admin' || req.user?.role === 'ADMIN'
+    };
+}
+
+function roundAmount(value) {
+    return Math.round(value * 100) / 100;
+}
+
+/**
+ * Issue de la restitution, pour les messages : « restituée en totalité », « restituée en partie », « retenue en totalité »
+ */
+function describeSettlement(settlement) {
+    const refunded = Number(settlement.refunded_amount);
+    const retained = Number(settlement.retained_amount);
+    if (retained <= 0) return 'restituée en totalité';
+    if (refunded <= 0) return 'retenue en totalité';
+    return 'restituée en partie';
+}
 
 module.exports = receiptController;

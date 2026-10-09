@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
     Building2, MapPin, Calendar, User, Receipt, FileText, Download, Eye, ExternalLink, Loader2,
-    CheckCircle2, Clock, XCircle, CreditCard, AlertCircle, Info
+    CheckCircle2, Clock, XCircle, CreditCard, AlertCircle, Info, ShieldCheck
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -15,6 +15,8 @@ import { downloadReceipt, openReceiptInNewTab, downloadContract, openContractInN
 import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, cn } from "@/lib/utils";
+import { isDepositReceipt, isPaidRentReceipt } from "@/lib/deposits";
+import { TenantDepositsPanel } from "./TenantDepositsPanel";
 
 export const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
@@ -66,8 +68,13 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
         return months[monthNum - 1] || "N/A";
     };
 
+    // L'onglet « Reçus » ne liste que les loyers ; les cautions ont leur propre onglet
+    const rentReceipts = useMemo(() => receipts.filter(r => !isDepositReceipt(r)), [receipts]);
+    const depositReceipts = useMemo(() => receipts.filter(r => isDepositReceipt(r)), [receipts]);
+
     const latestPaid = useMemo(() => {
-        const validReceipts = receipts.filter(r => r.status !== 'cancelled');
+        // Dernier loyer payé : ni reçu annulé ni caution
+        const validReceipts = receipts.filter(r => isPaidRentReceipt(r));
         if (validReceipts.length === 0) return null;
         return [...validReceipts].sort((a, b) => {
             const dateA = (a.year || 0) * 12 + (a.month || 1);
@@ -332,33 +339,40 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                     <TabsList className="w-full bg-muted/40 p-1 rounded-xl">
                         <TabsTrigger 
                             value="receipts" 
-                            className="flex-1 gap-2 rounded-lg transition-all duration-300 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
+                            className="flex-1 min-w-0 gap-1 sm:gap-2 px-1.5 sm:px-3 text-xs sm:text-sm rounded-lg transition-all duration-300 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
                         >
-                            <Receipt className="w-4 h-4" />
+                            <Receipt className="hidden sm:block w-4 h-4 shrink-0" />
                             Reçus
-                            {receipts.length > 0 && (
-                                <Badge 
+                            {rentReceipts.length > 0 && (
+                                <Badge
                                     className={cn(
-                                        "h-5 px-1.5 text-xs transition-colors border-none",
+                                        "h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs transition-colors border-none shrink-0",
                                         activeTab === "receipts"
                                             ? "bg-white text-primary hover:bg-white"
                                             : "bg-slate-100 text-slate-900"
                                     )}
                                 >
-                                    {receipts.length}
+                                    {rentReceipts.length}
                                 </Badge>
                             )}
                         </TabsTrigger>
+                        <TabsTrigger
+                            value="deposit"
+                            className="flex-1 min-w-0 gap-1 sm:gap-2 px-1.5 sm:px-3 text-xs sm:text-sm rounded-lg transition-all duration-300 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
+                        >
+                            <ShieldCheck className="hidden sm:block w-4 h-4 shrink-0" />
+                            Caution
+                        </TabsTrigger>
                         <TabsTrigger 
                             value="contracts" 
-                            className="flex-1 gap-2 rounded-lg transition-all duration-300 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
+                            className="flex-1 min-w-0 gap-1 sm:gap-2 px-1.5 sm:px-3 text-xs sm:text-sm rounded-lg transition-all duration-300 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:bg-white data-[state=inactive]:text-slate-900 data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=inactive]:shadow-sm font-semibold"
                         >
-                            <FileText className="w-4 h-4" />
+                            <FileText className="hidden sm:block w-4 h-4 shrink-0" />
                             Contrats
                             {contracts.length > 0 && (
                                 <Badge 
                                     className={cn(
-                                        "h-5 px-1.5 text-xs transition-colors border-none",
+                                        "h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs transition-colors border-none shrink-0",
                                         activeTab === "contracts"
                                             ? "bg-white text-primary hover:bg-white"
                                             : "bg-slate-100 text-slate-900"
@@ -377,14 +391,18 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                             </div>
                         ) : (
                             <>
+                                <TabsContent value="deposit" className="mt-0">
+                                    <TenantDepositsPanel deposits={depositReceipts} currency={currency} compact />
+                                </TabsContent>
+
                                 <TabsContent value="receipts" className="mt-0 space-y-3">
-                                    {receipts.length === 0 ? (
+                                    {rentReceipts.length === 0 ? (
                                         <div className="text-center py-12 text-muted-foreground">
                                             <Receipt className="w-10 h-10 mx-auto mb-3 opacity-20" />
                                             <p className="text-sm">Aucun reçu pour ce logement</p>
                                         </div>
                                     ) : (
-                                        receipts.map((r: any) => {
+                                        rentReceipts.map((r: any) => {
                                             const periodLabel = r.period_label || (r.month && r.year ? `${getMonthName(r.month)} ${r.year}` : format(new Date(r.created_at), "MMMM yyyy", { locale: fr }));
                                             const isCancelled = r.status === 'cancelled';
                                             return (

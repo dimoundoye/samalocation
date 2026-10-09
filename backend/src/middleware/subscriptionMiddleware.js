@@ -95,7 +95,8 @@ const checkReceiptLimit = async (req, res, next) => {
         const ownerId = req.ownerId;
         const planConfig = await Subscription.getActivePlan(ownerId);
 
-        if (planConfig.limits.max_receipts_per_month === Infinity) {
+        // Les reçus de caution ne comptent pas dans le quota de quittances
+        if (planConfig.limits.max_receipts_per_month === Infinity || req.body?.receipt_type === 'deposit') {
             return next();
         }
 
@@ -103,7 +104,8 @@ const checkReceiptLimit = async (req, res, next) => {
         const { rows } = await db.query(`
             SELECT COUNT(*) FROM receipts r
             JOIN properties p ON r.property_id = p.id
-            WHERE p.owner_id = $1 
+            WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
+            AND r.receipt_type <> 'deposit'
             AND EXTRACT(MONTH FROM r.created_at) = EXTRACT(MONTH FROM NOW())
             AND EXTRACT(YEAR FROM r.created_at) = EXTRACT(YEAR FROM NOW())
         `, [ownerId]);

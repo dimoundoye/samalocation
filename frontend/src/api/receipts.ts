@@ -1,5 +1,5 @@
 import { baseClient, API_BASE_URL } from "./baseClient";
-import { Receipt, CreateReceiptData } from "@/types";
+import { Receipt, CreateReceiptData, SettleDepositData } from "@/types";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getTabLoaderHtml, getTabErrorHtml } from "@/lib/tabViewerHelpers";
@@ -150,6 +150,73 @@ export const deleteReceipt = async (id: string) => {
     return await baseClient(`/receipts/${id}`, {
         method: "DELETE"
     });
+};
+
+// Restituer une caution (en totalité, en partie avec retenues, ou retenue en totalité)
+export const settleDeposit = async (receiptId: string, data: SettleDepositData) => {
+    return await baseClient(`/receipts/${receiptId}/settlement`, {
+        method: "POST",
+        body: JSON.stringify(data)
+    });
+};
+
+// Annuler une restitution de caution avec motif : la caution redevient détenue
+export const cancelDepositSettlement = async (settlementId: string, cancellation_reason: string) => {
+    return await baseClient(`/receipts/settlements/${settlementId}/cancel`, {
+        method: "PATCH",
+        body: JSON.stringify({ cancellation_reason })
+    });
+};
+
+const fetchSettlementPdf = async (settlementId: string, inline: boolean): Promise<Blob> => {
+    const token = localStorage.getItem("auth_token");
+    const activeContext = localStorage.getItem("active_context");
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    if (activeContext) {
+        headers["X-Active-Context"] = activeContext;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/receipts/settlements/${settlementId}/download${inline ? "?inline=true" : ""}`, { headers });
+    if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || "Impossible de récupérer le décompte de restitution");
+    }
+    return new Blob([await response.blob()], { type: "application/pdf" });
+};
+
+// Ouvrir le décompte de restitution d'une caution dans un nouvel onglet
+export const openDepositSettlementInNewTab = async (settlementId: string) => {
+    const newTab = window.open("", "_blank");
+    if (newTab) {
+        newTab.document.write(getTabLoaderHtml("Préparation du décompte", "Veuillez patienter pendant la génération du décompte de restitution..."));
+    }
+    try {
+        const url = window.URL.createObjectURL(await fetchSettlementPdf(settlementId, true));
+        if (newTab) {
+            newTab.location.href = url;
+        } else {
+            window.location.href = url;
+        }
+    } catch (error: any) {
+        if (newTab) {
+            newTab.document.open();
+            newTab.document.write(getTabErrorHtml("Impossible d'afficher le décompte", error?.message || "Le document est introuvable ou le serveur est indisponible."));
+            newTab.document.close();
+        }
+        throw error;
+    }
+};
+
+// Télécharger le décompte de restitution d'une caution
+export const downloadDepositSettlement = async (settlementId: string, settlementNumber?: string | null) => {
+    const url = window.URL.createObjectURL(await fetchSettlementPdf(settlementId, false));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Restitution caution ${settlementNumber || settlementId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
 };
 
 // Fonction de compatibilité avec l'ancien code
