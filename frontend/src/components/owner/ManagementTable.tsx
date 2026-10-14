@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import XLSX from "xlsx-js-style";
 import { useAuth } from "@/contexts/AuthContext";
+import { getActiveWorkspace } from "@/lib/workspace";
 import { cn, formatCurrency } from "@/lib/utils";
 import { isPaidRentReceipt } from "@/lib/deposits";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -230,7 +231,7 @@ export const ManagementTable = ({
     const { toast } = useToast();
     const { user } = useAuth();
     const { hasFeature, subscription } = useSubscription();
-    const isAgent = !!user?.parentId;
+    const isAgent = !!getActiveWorkspace(user);
     const canExport = hasFeature('excel') && !isAgent; // Export réservé au patron uniquement
     const defaultGroupsKey = useMemo(() => user?.id ? `owner_property_groups_v1_${user.id}` : "owner_property_groups_v1_guest", [user?.id]);
     const userGroupsKey = propUserGroupsKey || defaultGroupsKey;

@@ -17,7 +17,8 @@ const Terms = () => {
                 <div className="container mx-auto max-w-4xl">
                     <div className="text-center mb-12">
                         <h1 className="text-4xl font-bold mb-4">Conditions d'Utilisation</h1>
-                        <p className="text-muted-foreground italic">Dernière mise à jour : 14 juillet 2026</p>
+                        <p className="text-muted-foreground italic">Dernière mise à jour : 13 octobre 2026</p>
+                        {/* Après une modification importante, changer aussi la version dans backend/src/config/legal.js : les utilisateurs seront prévenus dans leur cloche. */}
                     </div>
 
                     
@@ -83,7 +84,7 @@ const Terms = () => {
                                 <div className="space-y-4">
                                     <h3 className="text-lg font-bold text-foreground">1.3 Respect de la vie privée</h3>
                                     <p className="text-muted-foreground text-sm leading-relaxed">
-                                        La confidentialité de vos données personnelles et de gestion est une priorité. Samalocation s'engage à respecter les dispositions de la <strong>Loi n° 2008-12 du 25 janvier 2008</strong> sur la protection des données au Sénégal. Veuillez consulter notre Politique de Confidentialité disponible sur notre site.
+                                        La confidentialité de vos données personnelles et de gestion est une priorité. Samalocation s'engage à respecter les dispositions de la <strong>Loi n° 2008-12 du 25 janvier 2008</strong> sur la protection des données au Sénégal. Les informations partagées entre propriétaires et locataires sont décrites à la section 3, et le traitement de vos données par Samalocation dans notre <a href="/privacy" className="text-primary underline underline-offset-2">Politique de Confidentialité</a>.
                                     </p>
                                 </div>
 
@@ -142,7 +143,7 @@ const Terms = () => {
                                     </p>
                                     <ul className="list-disc list-inside pl-4 text-muted-foreground text-sm space-y-1">
                                         <li>Publier des annonces de biens fictives, non conformes ou ne vous appartenant pas sans mandat légal.</li>
-                                        <li>Publier des informations personnelles de tiers en violation des lois sur la vie privée.</li>
+                                        <li>Publier des informations personnelles de tiers en violation des lois sur la vie privée, ou utiliser les données d'autres utilisateurs en dehors de la gestion du bail (voir section 3.3).</li>
                                         <li>Tenter de frauder les locataires ou bailleurs, ou réaliser des escroqueries financières.</li>
                                     </ul>
                                     <p className="text-muted-foreground text-sm leading-relaxed mt-2">
@@ -208,6 +209,9 @@ const Terms = () => {
                                         <li><strong>Compte Propriétaire (Bailleur) :</strong> Pour enregistrer ses biens, générer des baux et des quittances de loyer.</li>
                                         <li><strong>Compte Locataire :</strong> Pour louer des logements, signer ses contrats de bail, recevoir ses quittances et déclarer des incidents.</li>
                                     </ul>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Un compte propriétaire peut également être invité comme <strong>collaborateur</strong> (gestionnaire ou agent) dans l'espace d'un autre propriétaire, avec les droits que celui-ci lui accorde (voir section 3.4).
+                                    </p>
                                 </div>
                             </section>
 
@@ -215,27 +219,72 @@ const Terms = () => {
                             <section className="space-y-6">
                                 <h2 className="text-2xl font-semibold flex items-center gap-2 text-primary border-b pb-2">
                                     <span className="bg-primary/10 w-8 h-8 rounded-lg flex items-center justify-center text-sm">3</span>
-                                    PAIEMENTS ET GESTION DES LOYERS
+                                    DONNÉES PARTAGÉES ENTRE PROPRIÉTAIRES ET LOCATAIRES
                                 </h2>
-                                
+
                                 <div className="space-y-4">
-                                    <h3 className="text-lg font-bold text-foreground">3.1 Moyens de paiement</h3>
+                                    <h3 className="text-lg font-bold text-foreground">3.1 Informations communiquées au propriétaire</h3>
                                     <p className="text-muted-foreground text-sm leading-relaxed">
-                                        Les règlements de loyer s'effectuent via les moyens de paiement intégrés sur la plateforme (notamment Mobile Money : Wave, Orange Money, Free Money) ou par déclaration de virement/cash validée par les parties.
+                                        <strong>Locataire, vous êtes informé et acceptez</strong> que votre nom, votre numéro de téléphone et votre adresse e-mail soient communiqués au propriétaire ou à l'agence qui gère le bien, ainsi qu'aux collaborateurs que ce dernier a invités dans son espace, dès que vous êtes rattaché à l'un de ses biens, que vous signez un bail, que vous lui partagez votre dossier ou que vous le contactez. Les documents de votre dossier de location ne sont visibles que par les propriétaires avec qui vous choisissez de le partager.
+                                    </p>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Réciproquement, le nom (ou celui de l'agence), le numéro de téléphone et l'adresse e-mail du propriétaire sont communiqués à ses locataires.
                                     </p>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <h3 className="text-lg font-bold text-foreground">3.2 Validation des paiements</h3>
+                                    <h3 className="text-lg font-bold text-foreground">3.2 Mentions figurant sur les reçus, quittances et contrats</h3>
                                     <p className="text-muted-foreground text-sm leading-relaxed">
-                                        Dès qu'un paiement de loyer est effectué avec succès et validé par le bailleur, la quittance de loyer correspondante est générée et mise à disposition dans l'espace du locataire avec notification instantanée.
+                                        Propriétaires et locataires sont informés et acceptent que les documents générés par la plateforme comportent :
+                                    </p>
+                                    <ul className="list-disc list-inside pl-4 text-muted-foreground text-sm space-y-1">
+                                        <li>le nom, l'adresse e-mail et le numéro de téléphone du propriétaire (ou de l'agence) ;</li>
+                                        <li>le nom, l'adresse e-mail et le numéro de téléphone du locataire ;</li>
+                                        <li>les informations du bien loué (nom, adresse, unité) ;</li>
+                                        <li>le montant, la période et le mode de paiement, et, pour les contrats, les signatures des parties.</li>
+                                    </ul>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Ces documents sont enregistrés sur la plateforme et peuvent être téléchargés, imprimés ou transmis par chacune des parties. Une fois un document téléchargé, sa diffusion relève de la seule responsabilité de la personne qui le détient.
                                     </p>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <h3 className="text-lg font-bold text-foreground">3.3 Devises acceptées</h3>
+                                    <h3 className="text-lg font-bold text-foreground">3.3 Mise en garde aux propriétaires et agences : usage des données des locataires</h3>
                                     <p className="text-muted-foreground text-sm leading-relaxed">
-                                        La monnaie officielle de référence sur la plateforme est le <strong>XOF (Franc CFA)</strong>, monnaie légale de l'Union Économique et Monétaire Ouest Africaine (UEMOA).
+                                        Les informations des locataires (identité, coordonnées, dossier, documents, historique de paiement) vous sont confiées <strong>uniquement pour la gestion du bail</strong> : établissement du contrat, encaissement et quittancement des loyers, suivi de l'entretien et communication liée à la location. En utilisant Samalocation, vous vous engagez à :
+                                    </p>
+                                    <ul className="list-disc list-inside pl-4 text-muted-foreground text-sm space-y-1">
+                                        <li>ne pas les vendre, les louer, les céder ou les communiquer à des tiers non concernés par le bail ;</li>
+                                        <li>ne pas les utiliser à des fins de prospection commerciale, de publicité ou pour des messages sans rapport avec la location ;</li>
+                                        <li>ne pas les publier ni les diffuser, notamment sur les réseaux sociaux, dans des groupes de discussion ou dans des « listes noires » de locataires ;</li>
+                                        <li>ne pas les utiliser pour harceler, menacer ou discriminer un locataire ou un candidat ;</li>
+                                        <li>informer le locataire lorsque vous enregistrez vous-même ses informations sur la plateforme (par exemple en lui créant un compte), et ne saisir que des informations exactes et nécessaires ;</li>
+                                        <li>limiter l'accès de vos collaborateurs au strict nécessaire et retirer leur accès lorsqu'ils ne travaillent plus pour vous ;</li>
+                                        <li>cesser d'utiliser ces informations à la fin du bail, hors conservation des pièces justificatives exigée par la loi.</li>
+                                    </ul>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Pour les informations que vous saisissez ou téléchargez vous-même, vous êtes responsable du respect de la <strong>loi n° 2008-12 du 25 janvier 2008</strong> sur la protection des données personnelles. Tout manquement peut entraîner la suspension ou la fermeture de votre compte, sans préjudice des signalements aux autorités compétentes, notamment la <strong>CDP</strong>, et des poursuites que pourraient engager les personnes concernées.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">3.4 Collaborateurs et équipes</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Un propriétaire peut inviter des collaborateurs (gestionnaires, agents) dans son espace et choisir leurs droits. Chaque collaborateur utilise son propre compte : le partage d'identifiants est interdit. Le propriétaire reste responsable des actions réalisées par ses collaborateurs dans son espace, qui sont enregistrées dans un journal d'activité, et peut retirer leur accès à tout moment.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">3.5 Engagement des locataires</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Le locataire s'engage de la même manière à n'utiliser les coordonnées du propriétaire, de l'agence et de ses collaborateurs que pour les besoins de la location.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">3.6 Traitement de vos données par Samalocation</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        La manière dont Samalocation collecte, utilise, conserve et protège vos données, les prestataires techniques auxquels nous faisons appel, la mesure d'audience (Umami, hébergé sur nos propres serveurs, sans cookie) et vos droits sont décrits dans notre <a href="/privacy" className="text-primary underline underline-offset-2">Politique de Confidentialité</a>, qui fait partie intégrante des présentes CGU.
                                     </p>
                                 </div>
                             </section>
@@ -244,6 +293,35 @@ const Terms = () => {
                             <section className="space-y-6">
                                 <h2 className="text-2xl font-semibold flex items-center gap-2 text-primary border-b pb-2">
                                     <span className="bg-primary/10 w-8 h-8 rounded-lg flex items-center justify-center text-sm">4</span>
+                                    PAIEMENTS ET GESTION DES LOYERS
+                                </h2>
+                                
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">4.1 Moyens de paiement</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Les règlements de loyer s'effectuent via les moyens de paiement intégrés sur la plateforme (notamment Mobile Money : Wave, Orange Money, Free Money) ou par déclaration de virement/cash validée par les parties.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">4.2 Validation des paiements</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Dès qu'un paiement de loyer est effectué avec succès et validé par le bailleur, la quittance de loyer correspondante est générée et mise à disposition dans l'espace du locataire avec notification instantanée.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">4.3 Devises acceptées</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        La monnaie officielle de référence sur la plateforme est le <strong>XOF (Franc CFA)</strong>, monnaie légale de l'Union Économique et Monétaire Ouest Africaine (UEMOA).
+                                    </p>
+                                </div>
+                            </section>
+
+                            {/* Section 5 */}
+                            <section className="space-y-6">
+                                <h2 className="text-2xl font-semibold flex items-center gap-2 text-primary border-b pb-2">
+                                    <span className="bg-primary/10 w-8 h-8 rounded-lg flex items-center justify-center text-sm">5</span>
                                     DURÉE DU CONTRAT ET RÉSILIATION
                                 </h2>
                                 
@@ -257,10 +335,10 @@ const Terms = () => {
                                 </div>
                             </section>
 
-                            {/* Section 5 */}
+                            {/* Section 6 */}
                             <section className="space-y-6">
                                 <h2 className="text-2xl font-semibold flex items-center gap-2 text-primary border-b pb-2">
-                                    <span className="bg-primary/10 w-8 h-8 rounded-lg flex items-center justify-center text-sm">5</span>
+                                    <span className="bg-primary/10 w-8 h-8 rounded-lg flex items-center justify-center text-sm">6</span>
                                     COMMISSIONS ET TARIFS
                                 </h2>
                                 
@@ -271,13 +349,13 @@ const Terms = () => {
                                     
                                     <div className="space-y-3 pl-4 border-l-2 border-primary/20 text-muted-foreground text-sm">
                                         <p>
-                                            <strong>5.1 Frais de paiement en ligne (Locataires) :</strong> Les règlements de loyer effectués en ligne via la plateforme (par Wave, Orange Money, Free Money ou Carte Bancaire) sont soumis à des frais de service de <strong>2,5%</strong>. Ces frais sont à la charge exclusive du locataire et s'ajoutent au montant du loyer principal lors de la transaction.
+                                            <strong>6.1 Frais de paiement en ligne (Locataires) :</strong> Les règlements de loyer effectués en ligne via la plateforme (par Wave, Orange Money, Free Money ou Carte Bancaire) sont soumis à des frais de service de <strong>2,5%</strong>. Ces frais sont à la charge exclusive du locataire et s'ajoutent au montant du loyer principal lors de la transaction.
                                         </p>
                                         <p>
-                                            <strong>5.2 Frais de retrait de fonds (Propriétaires) :</strong> Les virements de fonds du portefeuille virtuel d'un propriétaire vers son compte Mobile Money (Wave ou Orange Money) sont soumis à des frais de service de <strong>2,5%</strong>. Ces frais sont directement déduits du montant brut demandé lors du transfert.
+                                            <strong>6.2 Frais de retrait de fonds (Propriétaires) :</strong> Les virements de fonds du portefeuille virtuel d'un propriétaire vers son compte Mobile Money (Wave ou Orange Money) sont soumis à des frais de service de <strong>2,5%</strong>. Ces frais sont directement déduits du montant brut demandé lors du transfert.
                                         </p>
                                         <p>
-                                            <strong>5.3 Restitution des fonds pour comptes bloqués ou suspendus :</strong> En cas de suspension ou de blocage d'un compte propriétaire par l'administration suite à une infraction aux présentes CGU ou pour vérification de sécurité :
+                                            <strong>6.3 Restitution des fonds pour comptes bloqués ou suspendus :</strong> En cas de suspension ou de blocage d'un compte propriétaire par l'administration suite à une infraction aux présentes CGU ou pour vérification de sécurité :
                                             <br />
                                             Les fonds accumulés sur le portefeuille virtuel du propriétaire restent sa propriété légale. Pour récupérer son solde, le propriétaire concerné doit contacter l'assistance de Samalocation par e-mail à l'adresse <strong>contact@samalocation.com</strong> ou par whatsapp au numéro <strong>+221 76 162 95 29</strong>.
                                             <br />
@@ -290,10 +368,10 @@ const Terms = () => {
                                 </div>
                             </section>
 
-                            {/* Section 6 */}
+                            {/* Section 7 */}
                             <section className="space-y-6">
                                 <h2 className="text-2xl font-semibold flex items-center gap-2 text-primary border-b pb-2">
-                                    <span className="bg-primary/10 w-8 h-8 rounded-lg flex items-center justify-center text-sm">6</span>
+                                    <span className="bg-primary/10 w-8 h-8 rounded-lg flex items-center justify-center text-sm">7</span>
                                     Loi Applicable et Juridiction
                                 </h2>
                                 

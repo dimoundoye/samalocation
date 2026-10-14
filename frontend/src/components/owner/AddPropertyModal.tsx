@@ -24,7 +24,8 @@ import {
   Folder,
   FolderPlus,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Hotel
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { createProperty, uploadPhotos, generateAIDescription, getMySubscription, getOwnerProperties } from "@/lib/api";
@@ -135,7 +136,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     area_sqm: "",
     bedrooms: "",
     bathrooms: "",
-    floors: "", // Nombre d'étages (pour maison et villa)
+    floors: "", // Nombre d'étages (pour maison, villa et immeuble)
     rent_period: "mois",
     rooms_count: "",
   });
@@ -167,6 +168,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
   const PROPERTY_LABELS: Record<string, { singular: string; plural: string }> = {
     maison: { singular: "maison", plural: "maisons" },
     garage: { singular: "garage", plural: "garages" },
+    immeuble: { singular: "immeuble", plural: "immeubles" },
     appartement: { singular: "appartement", plural: "appartements" },
     studio: { singular: "studio", plural: "studios" },
     chambre: { singular: "chambre", plural: "chambres" },
@@ -178,6 +180,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
     { value: "maison", label: "Maison", icon: Home },
     { value: "villa", label: "Villa", icon: Layers },
     { value: "appartement", label: "Appartement", icon: Building2 },
+    { value: "immeuble", label: "Immeuble", icon: Hotel },
     { value: "studio", label: "Studio", icon: Building },
     { value: "chambre", label: "Chambre", icon: BedDouble },
     { value: "garage", label: "Garage", icon: Warehouse },
@@ -186,10 +189,10 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
   ];
 
   // Types de biens simples (un seul bien) - tous les types sont maintenant simples
-  const isSimpleProperty = ["maison", "villa", "appartement", "studio", "chambre", "garage", "locale", "terrain"].includes(propertyType);
+  const isSimpleProperty = ["maison", "villa", "immeuble", "appartement", "studio", "chambre", "garage", "locale", "terrain"].includes(propertyType);
 
   // Types qui nécessitent des champs supplémentaires (étages, chambres, salles de bain)
-  const needsDetailedFields = ["maison", "villa", "appartement", "studio", "chambre"].includes(propertyType);
+  const needsDetailedFields = ["maison", "villa", "immeuble", "appartement", "studio", "chambre"].includes(propertyType);
 
   const rentPeriodOptions = [
     { value: "jour", label: "Jour" },
@@ -281,6 +284,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         const unitLabels: Record<string, string> = {
           maison: "Maison",
           villa: "Villa",
+          immeuble: "Immeuble",
           appartement: "Appartement",
           chambre: "Chambre",
           garage: "Garage",
@@ -1020,7 +1024,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
 
                       {needsDetailedFields && (
                         <>
-                          {(propertyType === "maison" || propertyType === "villa") && (
+                          {(propertyType === "maison" || propertyType === "villa" || propertyType === "immeuble") && (
                             <div>
                               <Label htmlFor="simple_floors">Nombre d'étages</Label>
                               <Input
@@ -1132,7 +1136,7 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                 >
                   {uploading
                     ? "Création en cours..."
-                    : `Créer ${propertyType === "maison" ? "bien" : propertyType === "villa" ? "bien" : propertyType}`}
+                    : `Créer ${["maison", "villa", "immeuble"].includes(propertyType) ? "bien" : propertyType}`}
                 </Button>
               </div>
             </>

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Upload, Sparkles, Loader2, Home, Layers, Building2, Building, BedDouble, Warehouse, Store, AlertCircle, Folder, FolderPlus, ChevronDown, ChevronRight } from "lucide-react";
+import { X, Upload, Sparkles, Loader2, Home, Layers, Building2, Building, BedDouble, Warehouse, Store, AlertCircle, Folder, FolderPlus, ChevronDown, ChevronRight, Hotel } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { updateProperty, uploadPhotos, generateAIDescription, getOwnerProperties } from "@/lib/api";
 import { getPropertyGroups, syncPropertyGroups } from "@/api/propertyGroups";
@@ -340,6 +340,7 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
         { value: "maison", label: "Maison", icon: Home },
         { value: "villa", label: "Villa", icon: Layers },
         { value: "appartement", label: "Appartement", icon: Building2 },
+        { value: "immeuble", label: "Immeuble", icon: Hotel },
         { value: "studio", label: "Studio", icon: Building },
         { value: "chambre", label: "Chambre", icon: BedDouble },
         { value: "garage", label: "Garage", icon: Warehouse },
@@ -347,8 +348,8 @@ export const EditPropertyModal = ({ open, onOpenChange, onSuccess, property }: E
         { value: "terrain", label: "Terrain", icon: Layers },
     ];
 
-    const needsDetailedFields = ["maison", "villa", "appartement", "studio", "chambre"].includes(propertyType);
-    const isSimpleProperty = ["maison", "villa", "appartement", "studio", "chambre", "garage", "locale", "terrain"].includes(propertyType);
+    const needsDetailedFields = ["maison", "villa", "immeuble", "appartement", "studio", "chambre"].includes(propertyType);
+    const isSimpleProperty = ["maison", "villa", "immeuble", "appartement", "studio", "chambre", "garage", "locale", "terrain"].includes(propertyType);
 
     const rentPeriodOptions = [
         { value: "jour", label: "Jour" },

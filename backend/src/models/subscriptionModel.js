@@ -87,6 +87,65 @@ const Subscription = {
     },
 
     /**
+     * Vue d'ensemble pour l'onglet « Abonnements » de l'admin.
+     * Actif = statut 'active' et non échu depuis plus de 3 jours (même délai de grâce que findActiveByUserId).
+     */
+    async getAdminOverview() {
+        const userColumns = `
+            up.full_name AS user_name, up.email AS user_email, up.phone AS user_phone, up.role AS user_role,
+            op.company_name`;
+
+        const [active, pending, expired] = await Promise.all([
+            // Abonnement en cours de chaque utilisateur (le plus récent s'il en a plusieurs)
+            db.query(`
+                SELECT * FROM (
+                    SELECT DISTINCT ON (s.user_id)
+                        s.id, s.user_id, s.plan_name, s.price, s.payment_method, s.created_at, s.expires_at,
+                        ${userColumns}
+                    FROM subscriptions s
+                    JOIN user_profiles up ON s.user_id = up.id
+                    LEFT JOIN owner_profiles op ON s.user_id = op.id
+                    WHERE s.status = 'active'
+                      AND (s.expires_at IS NULL OR s.expires_at >= NOW() - INTERVAL '3 days')
+                    ORDER BY s.user_id, s.created_at DESC
+                ) a
+                ORDER BY a.expires_at ASC NULLS LAST
+            `),
+            db.query(`
+                SELECT s.id, s.user_id, s.plan_name, s.price, s.payment_method, s.transaction_id, s.sender_phone,
+                       s.receipt_url, s.created_at, ${userColumns}
+                FROM subscriptions s
+                JOIN user_profiles up ON s.user_id = up.id
+                LEFT JOIN owner_profiles op ON s.user_id = op.id
+                WHERE s.status = 'pending'
+                ORDER BY s.created_at ASC
+            `),
+            // Échus ces 60 derniers jours et sans abonnement en cours : à relancer
+            db.query(`
+                SELECT * FROM (
+                    SELECT DISTINCT ON (s.user_id)
+                        s.id, s.user_id, s.plan_name, s.price, s.expires_at, ${userColumns}
+                    FROM subscriptions s
+                    JOIN user_profiles up ON s.user_id = up.id
+                    LEFT JOIN owner_profiles op ON s.user_id = op.id
+                    WHERE s.status IN ('active', 'expired')
+                      AND s.expires_at < NOW() - INTERVAL '3 days'
+                      AND s.expires_at >= NOW() - INTERVAL '60 days'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM subscriptions cur
+                          WHERE cur.user_id = s.user_id AND cur.status = 'active'
+                            AND (cur.expires_at IS NULL OR cur.expires_at >= NOW() - INTERVAL '3 days')
+                      )
+                    ORDER BY s.user_id, s.expires_at DESC
+                ) e
+                ORDER BY e.expires_at DESC
+            `)
+        ]);
+
+        return { active: active.rows, pending: pending.rows, recently_expired: expired.rows };
+    },
+
+    /**
      * Crée (ou renouvelle) un abonnement suite à un paiement réussi
      */
     async createSubscription(userId, data) {

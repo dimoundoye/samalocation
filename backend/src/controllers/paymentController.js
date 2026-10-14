@@ -7,6 +7,8 @@ const Owner = require('../models/ownerModel');
 const Receipt = require('../models/receiptModel');
 const db = require('../config/db');
 const crypto = require('crypto');
+const Organization = require('../models/organizationModel');
+const { isProfessionalPlan, AGENT_PRO_MESSAGE } = require('../utils/workspaces');
 
 /**
  * Vérifie le hash envoyé par PayDunya (SHA-512 de la MASTER KEY), en temps constant.
@@ -42,6 +44,10 @@ const paymentController = {
 
             if (!plan || planId.toLowerCase() === 'free') {
                 return response.error(res, 'Plan invalide', 400);
+            }
+
+            if (isProfessionalPlan(planKey) && await Organization.isTeamMember(userId)) {
+                return response.error(res, AGENT_PRO_MESSAGE, 403);
             }
 
             const price = period === 'annual' ? plan.price_annual : plan.price_monthly;

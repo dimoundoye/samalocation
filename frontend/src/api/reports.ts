@@ -46,10 +46,15 @@ export const unblockUser = async (id: string) => {
 
 export type PropertyReportCategory = 'scam' | 'unavailable' | 'misleading' | 'price' | 'broker' | 'inappropriate' | 'other';
 
-/** Signaler une annonce publiée (utilisateur connecté) */
-export const reportProperty = async (property_id: string, category: PropertyReportCategory, reason: string) => {
-    return baseClient('/reports', {
+/** Signaler une annonce publiée, avec ou sans compte (contact et identifiant anonyme : visiteurs sans compte) */
+export const reportProperty = async (
+    property_id: string,
+    category: PropertyReportCategory,
+    reason: string,
+    extra: { contact?: string; visitorId?: string | null; website?: string } = {}
+) => {
+    return baseClient('/reports/property', {
         method: 'POST',
-        body: JSON.stringify({ property_id, category, reason })
+        body: JSON.stringify({ property_id, category, reason, ...extra })
     });
 };

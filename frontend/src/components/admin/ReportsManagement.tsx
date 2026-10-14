@@ -289,7 +289,9 @@ export const ReportsManagement = ({ onStatsUpdate }: ReportsManagementProps = {}
                             </p>
                           )}
                           <p className="text-sm text-muted-foreground">
-                            Signalé par: {report.reporter_name} ({report.reporter_email})
+                            Signalé par: {report.reporter_id
+                              ? <>{report.reporter_name} ({report.reporter_email})</>
+                              : <>visiteur sans compte{report.reporter_contact ? ` · à recontacter : ${report.reporter_contact}` : " (aucun contact laissé)"}</>}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             Date: {format(new Date(report.created_at), "dd MMMM yyyy à HH:mm", { locale: fr })}

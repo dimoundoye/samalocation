@@ -27,8 +27,8 @@ import VerificationsManagement from "@/components/admin/VerificationsManagement"
 import AdminEmailsManagement from "@/components/admin/AdminEmailsManagement";
 import { DocumentAudit } from "@/components/admin/DocumentAudit";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { History, ExternalLink, ArrowUpRight, Loader2, Download } from "lucide-react";
-import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getLiveAnalytics, getOwnerBalances, forceOwnerWithdrawal, getAllReceipts, downloadReceipt, openReceiptInNewTab } from "@/lib/api";
+import { History, ExternalLink, ArrowUpRight, Loader2, Download, CalendarClock, ScrollText } from "lucide-react";
+import { getAdminStatistics, getRecentUsers, getPendingVerifications, getAdminTransactions, getRevenueStats, updateUserSubscription, getOwnerBalances, forceOwnerWithdrawal, getAllReceipts, downloadReceipt, openReceiptInNewTab } from "@/lib/api";
 import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
 import { CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +36,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { User, AdminStatistics } from "@/types";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { formatCurrency } from "@/lib/utils";
+import AdminTrafficTab from "@/components/admin/AdminTrafficTab";
+import AdminAuditLog from "@/components/admin/AdminAuditLog";
+import AdminSubscriptionsTab from "@/components/admin/AdminSubscriptionsTab";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -98,8 +101,6 @@ const AdminDashboard = () => {
   const [revenueStats, setRevenueStats] = useState<{ daily: any[], monthly: any[], yearly: any[], adminMonthly: any[], adminYearly: any[] }>({ daily: [], monthly: [], yearly: [], adminMonthly: [], adminYearly: [] });
   const [loadingRevenueStats, setLoadingRevenueStats] = useState(false);
   const [revenuePeriod, setRevenuePeriod] = useState<"monthly" | "yearly">("monthly");
-  const [liveAnalytics, setLiveAnalytics] = useState<any>(null);
-  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [financeSubTab, setFinanceSubTab] = useState<"subscriptions" | "owners">("subscriptions");
   const [ownersWallets, setOwnersWallets] = useState<any[]>([]);
@@ -110,6 +111,7 @@ const AdminDashboard = () => {
   const [selectedOwnerForWithdrawal, setSelectedOwnerForWithdrawal] = useState<any | null>(null);
   const [forceWithdrawalPhone, setForceWithdrawalPhone] = useState("");
   const [forceWithdrawalProvider, setForceWithdrawalProvider] = useState("wave");
+  const [forceWithdrawalPassword, setForceWithdrawalPassword] = useState("");
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [receiptsList, setReceiptsList] = useState<any[]>([]);
   const [loadingReceiptsList, setLoadingReceiptsList] = useState(false);
@@ -189,11 +191,21 @@ const AdminDashboard = () => {
       return;
     }
 
+    if (!forceWithdrawalPassword) {
+      toast({
+        title: "Erreur",
+        description: "Saisissez votre mot de passe administrateur pour confirmer.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setActionLoadingOwnerId(selectedOwnerForWithdrawal.id);
     try {
       await forceOwnerWithdrawal(selectedOwnerForWithdrawal.id, {
         customPhone: cleanPhone,
-        customProvider: forceWithdrawalProvider
+        customProvider: forceWithdrawalProvider,
+        password: forceWithdrawalPassword
       });
       toast({
         title: "Virement forcé initié",
@@ -308,18 +320,6 @@ const AdminDashboard = () => {
     loadReceiptsList(1);
   };
 
-  const loadLiveAnalytics = async () => {
-    setLoadingAnalytics(true);
-    try {
-      const data = await getLiveAnalytics();
-      setLiveAnalytics(data);
-    } catch (error: any) {
-      console.error("Error loading live analytics:", error);
-    } finally {
-      setLoadingAnalytics(false);
-    }
-  };
-
   useEffect(() => {
     if (urlTab) {
       setActiveTab(urlTab);
@@ -336,8 +336,6 @@ const AdminDashboard = () => {
     } else if (activeTab === 'receipts') {
       loadRevenueStats(receiptsYearFilter !== "all" ? receiptsYearFilter : undefined);
       loadReceiptsList(receiptsPage, receiptsYearFilter !== "all" ? receiptsYearFilter : undefined);
-    } else if (activeTab === 'live') {
-      loadLiveAnalytics();
     }
   }, [activeTab, receiptsPage, receiptsYearFilter]);
 
@@ -376,8 +374,10 @@ const AdminDashboard = () => {
           { id: "reports", label: "Signalements", icon: AlertTriangle },
           { id: "support", label: "Messages Support", icon: MessageSquare },
           { id: "emails", label: "Emails & Diffusions", icon: Mail },
+          { id: "subscriptions", label: "Abonnements", icon: CalendarClock },
           { id: "finances", label: "Finances", icon: CreditCard },
           { id: "receipts", label: "Reçus", icon: Receipt },
+          { id: "journal", label: "Journal des actions", icon: ScrollText },
           { id: "settings", label: "Paramètres", icon: Settings },
         ].map((item) => {
           // Calculer le badge en fonction de l'item
@@ -1254,6 +1254,7 @@ const AdminDashboard = () => {
                                   setSelectedOwnerForWithdrawal(owner);
                                   setForceWithdrawalPhone(owner.phone || "");
                                   setForceWithdrawalProvider("wave");
+                                  setForceWithdrawalPassword("");
                                   setWithdrawalModalOpen(true);
                                 };
 
@@ -1668,189 +1669,11 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {activeTab === "live" && (
-            <div className="animate-fade-in space-y-8">
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-3">
-                    <Activity className="h-8 w-8 text-primary animate-pulse" />
-                    Vue en direct
-                  </h1>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-sm font-bold text-green-600">
-                      {liveAnalytics?.online_now || 0} personne{ (liveAnalytics?.online_now || 0) > 1 ? 's' : '' } en ligne
-                    </span>
-                    <span className="text-xs">• Analyse du trafic et robots</span>
-                  </div>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={loadLiveAnalytics} 
-                  disabled={loadingAnalytics}
-                  className="gap-2"
-                >
-                  <History className={`h-4 w-4 ${loadingAnalytics ? 'animate-spin' : ''}`} />
-                  Actualiser
-                </Button>
-              </div>
+          {activeTab === "live" && <AdminTrafficTab />}
 
-              {/* Live Info Card */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6">
-                <Card className="shadow-soft overflow-hidden border-green-500/20 bg-green-500/5 col-span-1">
-                  <CardContent className="p-3.5 sm:p-6 flex flex-col items-center justify-center text-center space-y-1.5 sm:space-y-2">
-                    <div className="relative">
-                      <Users className="h-6 w-6 sm:h-10 sm:w-10 text-green-600" />
-                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 rounded-full border-2 border-white animate-ping" />
-                    </div>
-                    <div>
-                      <span className="text-xl sm:text-3xl font-black text-green-700">{liveAnalytics?.online_now || 0}</span>
-                      <p className="text-[9px] sm:text-xs font-bold text-green-600 uppercase tracking-tighter">En direct</p>
-                    </div>
-                  </CardContent>
-                </Card>
+          {activeTab === "subscriptions" && <AdminSubscriptionsTab />}
 
-                {[
-                  { title: "24h", fullTitle: "Dernières 24h", data: liveAnalytics?.daily },
-                  { title: "30 jours", fullTitle: "30 derniers jours", data: liveAnalytics?.monthly },
-                ].map((period, idx) => (
-                  <Card key={idx} className="shadow-soft overflow-hidden border-primary/10">
-                    <CardHeader className="bg-primary/5 py-2.5 sm:py-4 px-3.5 sm:px-6 border-b">
-                      <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider truncate">{period.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3.5 sm:p-6 space-y-2 sm:space-y-3">
-                      <div className="flex justify-between items-end">
-                        <span className="text-muted-foreground text-[10px] sm:text-xs">Visites</span>
-                        <span className="text-sm sm:text-xl font-black">{formatNumber(period.data?.total || 0)}</span>
-                      </div>
-                      <div className="flex justify-between items-end">
-                        <span className="text-muted-foreground text-[10px] sm:text-xs">Uniques</span>
-                        <span className="text-xs sm:text-lg font-bold text-blue-600">{formatNumber(period.data?.unique_visitors || 0)}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-
-                <Card className="shadow-soft overflow-hidden border-red-500/10">
-                  <CardHeader className="bg-red-500/5 py-2.5 sm:py-4 px-3.5 sm:px-6 border-b">
-                    <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider text-red-600 truncate">Robots</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3.5 sm:p-6">
-                    <div className="flex justify-between items-end pt-1 sm:pt-2">
-                      <span className="text-red-500 text-[10px] sm:text-xs font-bold flex items-center gap-1">
-                        <Bot className="h-3 w-3" />
-                        Identifiés
-                      </span>
-                      <Badge variant="destructive" className="bg-red-500/10 text-red-600 border-red-500/20 text-[10px] px-1.5 py-0.5">
-                        {formatNumber(liveAnalytics?.monthly?.bots || 0)}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Chart */}
-              <Card className="shadow-soft">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-primary" />
-                    Évolution du trafic (30 jours)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="h-[400px]">
-                  {loadingAnalytics ? (
-                    <div className="h-full flex items-center justify-center">Chargement...</div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={liveAnalytics?.growth || []}>
-                        <defs>
-                          <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="colorBots" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1} />
-                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                        <XAxis 
-                          dataKey="date" 
-                          tickFormatter={(val) => formatDate(val)}
-                          style={{ fontSize: 10 }}
-                        />
-                        <YAxis style={{ fontSize: 10 }} />
-                        <Tooltip 
-                          formatter={(val: any) => [formatNumber(val), ""]}
-                          labelFormatter={(label) => formatDate(label)}
-                        />
-                        <Area 
-                          type="monotone" 
-                          name="Visites"
-                          dataKey="total" 
-                          stroke="hsl(var(--primary))" 
-                          fillOpacity={1} 
-                          fill="url(#colorVisits)" 
-                          strokeWidth={3}
-                        />
-                        <Area 
-                          type="monotone" 
-                          name="Robots"
-                          dataKey="bots" 
-                          stroke="#ef4444" 
-                          fillOpacity={1} 
-                          fill="url(#colorBots)" 
-                          strokeWidth={1}
-                          strokeDasharray="5 5"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Bots Table */}
-              <Card className="shadow-soft">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <MousePointer2 className="h-5 w-5 text-red-500" />
-                    Systèmes automatisés (Robots détectés)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0 overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-secondary/20">
-                      <TableRow>
-                        <TableHead>User Agent (Identité)</TableHead>
-                        <TableHead className="text-right w-32 shrink-0">Requêtes</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {liveAnalytics?.topBots?.length > 0 ? (
-                        liveAnalytics.topBots.map((bot: any, i: number) => (
-                          <TableRow key={i}>
-                            <TableCell className="font-mono text-xs opacity-80">
-                              <span className="block max-w-[200px] md:max-w-md truncate">{bot.user_agent}</span>
-                            </TableCell>
-                            <TableCell className="text-right font-black">
-                              {formatNumber(bot.count)}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={2} className="text-center py-8 text-muted-foreground italic">
-                            Aucun robot identifié pour le moment.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+          {activeTab === "journal" && <AdminAuditLog />}
 
           {/* Overview Tab */}
           {activeTab === "overview" && (
@@ -2117,6 +1940,23 @@ const AdminDashboard = () => {
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="admin-password" className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                Votre mot de passe administrateur
+              </Label>
+              <Input
+                id="admin-password"
+                type="password"
+                autoComplete="current-password"
+                value={forceWithdrawalPassword}
+                onChange={(e) => setForceWithdrawalPassword(e.target.value)}
+                className="h-12 rounded-xl bg-muted/30 border-border/80 text-base"
+              />
+              <p className="text-[10px] text-muted-foreground/80 mt-1 leading-relaxed">
+                Requis pour tout virement forcé. Le propriétaire est prévenu et l'opération est inscrite au journal admin.
+              </p>
+            </div>
+
             <div className="flex gap-3 pt-3">
               <Button
                 variant="outline"
@@ -2127,7 +1967,7 @@ const AdminDashboard = () => {
               </Button>
               <Button
                 onClick={submitForcedWithdrawal}
-                disabled={actionLoadingOwnerId !== null || !forceWithdrawalPhone.trim()}
+                disabled={actionLoadingOwnerId !== null || !forceWithdrawalPhone.trim() || !forceWithdrawalPassword}
                 className="flex-1 h-12 rounded-xl font-bold bg-destructive text-white hover:bg-destructive/95"
               >
                 {actionLoadingOwnerId ? (

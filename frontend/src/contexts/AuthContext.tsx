@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getMe } from "@/lib/api";
 import { disablePush, restorePushForUser } from "@/lib/push";
 import { clearPrivateCaches } from "@/lib/privateCaches";
+import { dropStaleWorkspace, setActiveWorkspaceId, type Workspace } from "@/lib/workspace";
 
 interface User {
   currency: string;
@@ -21,6 +22,7 @@ interface User {
   };
   referral_count?: number;
   referred_by?: string;
+  organizations?: Workspace[];
 }
 
 interface AuthContextType {
@@ -84,8 +86,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUserState(newUser);
     if (newUser) {
       localStorage.setItem("auth_user", JSON.stringify(newUser));
+      dropStaleWorkspace(newUser);
     } else {
       localStorage.removeItem("auth_user");
+      setActiveWorkspaceId(null);
     }
   };
 

@@ -15,12 +15,12 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
+import { getActiveWorkspace } from "@/lib/workspace";
 
 export const OwnerWalletTab = () => {
     const { toast } = useToast();
     const { user } = useAuth();
-    const activeContext = localStorage.getItem("active_context") || "personal";
-    const isInPatronContext = !!user?.parentId && activeContext !== "personal";
+    const isInPatronContext = !!getActiveWorkspace(user);
 
     const [loading, setLoading] = useState(true);
     const [walletData, setWalletData] = useState<any>({

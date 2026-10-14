@@ -107,7 +107,17 @@
     },
     "for_sale": "À Vendre",
     "for_rent": "À Louer",
-    "owner_logo_alt": "Logo du propriétaire"
+    "owner_logo_alt": "Logo du propriétaire",
+    "specs": {
+      "rooms_one": "{{count}} pièce",
+      "rooms_other": "{{count}} pièces",
+      "bedrooms_one": "{{count}} chambre",
+      "bedrooms_other": "{{count}} chambres",
+      "bathrooms_one": "{{count}} salle de bain",
+      "bathrooms_other": "{{count}} salles de bain",
+      "area": "{{value}} m²",
+      "title": "Caractéristiques du bien"
+    }
   },
   "theme": {
     "toggle": "Changer le thème",

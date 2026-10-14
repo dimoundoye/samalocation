@@ -81,7 +81,7 @@ const parseSearchQuery = async (query) => {
 
             Format de sortie attendu (JSON uniquement, sans texte autour) :
             {
-                "type": "maison" | "villa" | "appartement" | "studio" | "chambre" | "garage" | "locale" | null,
+                "type": "maison" | "villa" | "immeuble" | "appartement" | "studio" | "chambre" | "garage" | "locale" | null,
                 "location": string | null,
                 "maxPrice": number | null,
                 "minBedrooms": number | null,
@@ -312,7 +312,7 @@ const parseRawListing = async (text) => {
 
             Format de sortie attendu (JSON uniquement, sans texte autour) :
             {
-                "property_type": "appartement" | "villa" | "studio" | "maison" | "chambre" | "garage" | "locale" | "garage",
+                "property_type": "appartement" | "villa" | "immeuble" | "studio" | "maison" | "chambre" | "garage" | "locale" | "garage",
                 "listing_type": "location" | "vente",
                 "name": "Titre court, accrocheur et propre en français (ex: Studio meublé à Mermoz)",
                 "address": "Quartier ou ville identifié (ex: Mermoz, Dakar)",
@@ -321,7 +321,7 @@ const parseRawListing = async (text) => {
                 "sale_price": number | null,
                 "units": [
                     {
-                        "unit_type": "appartement" | "villa" | "studio" | "maison" | "chambre" | "garage" | "locale" | "garage",
+                        "unit_type": "appartement" | "villa" | "immeuble" | "studio" | "maison" | "chambre" | "garage" | "locale" | "garage",
                         "unit_number": "1",
                         "monthly_rent": number | null,
                         "area_sqm": number | null,

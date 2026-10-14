@@ -169,6 +169,8 @@ export const NotificationBell = () => {
         return "📄";
       case "maintenance":
         return "🛠️";
+      case "legal":
+        return "📜";
       default:
         return "🔔";
     }

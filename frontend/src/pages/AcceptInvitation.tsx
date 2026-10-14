@@ -75,7 +75,7 @@ const AcceptInvitation = () => {
             setIsAccepting(true);
             await acceptInvitation(token!);
             
-            // AUTOMATIC SWITCH: On définit le contexte sur l'entreprise dès l'acceptation
+            // On ouvre directement l'espace du propriétaire qui vient d'inviter (les autres équipes restent accessibles)
             if (invitation.inviter_id) {
                 localStorage.setItem("active_context", invitation.inviter_id);
             }
@@ -84,7 +84,7 @@ const AcceptInvitation = () => {
                 title: "Succès !",
                 description: "Vous faites maintenant partie de l'équipe.",
             });
-            // Recharger la page pour mettre à jour l'état de l'utilisateur (parentId)
+            // Recharger la page pour récupérer la nouvelle liste des espaces
             window.location.href = "/owner-dashboard";
         } catch (error: any) {
             toast({

@@ -446,6 +446,22 @@ const DetailPropriete = () => {
   const propertyRentPeriod =
     rentPeriodLabels[(property as any).primary_rent_period ?? "mois"] ?? t('period.mois');
 
+  // Caractéristiques affichées (une valeur vide ou nulle n'est pas montrée)
+  const PROPERTY_TYPE_KEYS: Record<string, string> = {
+    maison: 'house', villa: 'villa', immeuble: 'building', appartement: 'apartment', studio: 'studio',
+    chambre: 'room', garage: 'garage', locale: 'office', terrain: 'land',
+  };
+  const typeKey = PROPERTY_TYPE_KEYS[String(property.property_type || '').toLowerCase()];
+  const propertyTypeLabel = typeKey
+    ? t(`search.types.${typeKey}`)
+    : (property.property_type ? property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1) : null);
+  const firstUnit = property.property_units?.[0];
+  const positive = (value: unknown) => (Number(value) > 0 ? Number(value) : null);
+  const areaValue = positive(property.aggregated_area) ?? positive(firstUnit?.area_sqm);
+  const roomsValue = positive(property.aggregated_rooms_count) ?? positive(firstUnit?.rooms_count);
+  const bedroomsValue = positive(aggregatedBedrooms) ?? positive(firstUnit?.bedrooms);
+  const bathroomsValue = positive(property.aggregated_bathrooms) ?? positive(firstUnit?.bathrooms);
+
   return (
     <div className="min-h-screen bg-background">
       <SEO 
@@ -568,71 +584,47 @@ const DetailPropriete = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div>
-                    <span className="text-2xl md:text-4xl font-bold text-primary">
-                      {property.listing_type === 'vente'
-                        ? (property.sale_price ? formatCurrency(property.sale_price, property.currency) : t('property.on_request'))
-                        : (property.rent_amount && property.rent_amount > 0
-                          ? formatCurrency(property.rent_amount, property.currency)
-                          : t('property.on_request'))}
-                    </span>
-                    {property.listing_type === 'location' && property.rent_amount && property.rent_amount > 0 && (
-                      <span className="text-muted-foreground text-lg">/{propertyRentPeriod}</span>
-                    )}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <div>
+                      <span className="text-2xl md:text-4xl font-bold text-primary">
+                        {property.listing_type === 'vente'
+                          ? (property.sale_price ? formatCurrency(property.sale_price, property.currency) : t('property.on_request'))
+                          : (property.rent_amount && property.rent_amount > 0
+                            ? formatCurrency(property.rent_amount, property.currency)
+                            : t('property.on_request'))}
+                      </span>
+                      {property.listing_type === 'location' && property.rent_amount && property.rent_amount > 0 && (
+                        <span className="text-muted-foreground text-lg">/{propertyRentPeriod}</span>
+                      )}
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`gap-1 font-semibold ${availableUnits > 0 ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-border bg-secondary text-muted-foreground"}`}
+                    >
+                      <Shield className="h-3.5 w-3.5" />
+                      {availableUnits > 0 ? t('property.available') : t('property.occupied')}
+                    </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="flex items-center gap-2">
-                      <Home className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t('common.type')}</p>
-                        <p className="font-semibold capitalize">{property.property_type}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Square className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t('common.area')}</p>
-                        <p className="font-semibold">{property.aggregated_area || property.property_units?.[0]?.area_sqm || "—"} m²</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <BedDouble className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t('common.bedrooms')}</p>
-                        <p className="font-semibold">
-                          {aggregatedBedrooms || property.property_units?.[0]?.bedrooms || "—"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Bath className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t('common.bathrooms')}</p>
-                        <p className="font-semibold">
-                          {property.aggregated_bathrooms || property.property_units?.[0]?.bathrooms || "—"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Layers className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t('property.rooms')}</p>
-                        <p className="font-semibold">
-                          {property.aggregated_rooms_count || property.property_units?.[0]?.rooms_count || "—"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t('common.status')}</p>
-                        <p className="font-semibold">
-                          {availableUnits > 0 ? t('property.available') : t('property.occupied')}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Caractéristiques : étiquettes sur une ou deux lignes ; celles sans valeur sont masquées */}
+                  <ul className="flex flex-wrap gap-2" aria-label={t('property.specs.title')}>
+                    {[
+                      { icon: Home, label: t('common.type'), text: propertyTypeLabel },
+                      { icon: Square, label: t('common.area'), text: areaValue ? t('property.specs.area', { value: areaValue }) : null },
+                      { icon: Layers, label: t('property.rooms'), text: roomsValue ? t('property.specs.rooms', { count: roomsValue }) : null },
+                      { icon: BedDouble, label: t('common.bedrooms'), text: bedroomsValue ? t('property.specs.bedrooms', { count: bedroomsValue }) : null },
+                      { icon: Bath, label: t('common.bathrooms'), text: bathroomsValue ? t('property.specs.bathrooms', { count: bathroomsValue }) : null },
+                    ].filter(item => item.text).map(item => (
+                      <li
+                        key={item.label}
+                        title={item.label}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-3 py-1.5 text-sm font-medium"
+                      >
+                        <item.icon className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+                        {item.text}
+                      </li>
+                    ))}
+                  </ul>
 
 
                   {property.description && (

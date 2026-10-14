@@ -13,7 +13,8 @@ router.get('/:id/public-profile', ownerController.getPublicProfile);
 router.get('/profile', authMiddleware, ownerController.getProfile);
 
 // Update/Upsert owner profile
-router.patch('/profile', authMiddleware, ownerController.updateProfile);
+// Réservé au titulaire : le profil contient la signature apposée sur les contrats et reçus
+router.patch('/profile', authMiddleware, can('org.settings'), ownerController.updateProfile);
 
 // Gestion des collaborateurs (Multi-utilisateurs - Plan Professionnel)
 router.get('/collaborators', authMiddleware, can('team.manage'), ownerController.getCollaborators);

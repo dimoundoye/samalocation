@@ -91,14 +91,36 @@ const reportController = {
     },
 
     /**
-     * Signaler une annonce publiée (tout utilisateur connecté).
+     * Signaler une annonce publiée, avec ou sans compte.
      * Le signalement vise le propriétaire de l'annonce (reported_id) et garde le bien concerné.
+     * Sans compte : coordonnées facultatives pour être recontacté, identifiant anonyme du navigateur contre les doublons.
      */
     async createPropertyReport(req, res, next) {
         try {
             const { property_id, category } = req.body;
             const details = String(req.body.reason || '').trim();
-            const reporter_id = req.user.id;
+            const reporter_id = req.user?.id || null;
+
+            // Champ invisible pour les humains : s'il est rempli, c'est un robot (réponse normale, rien n'est enregistré)
+            if (req.body.website) {
+                return res.status(201).json({ status: 'success', message: 'Signalement envoyé. Merci, notre équipe va examiner cette annonce.' });
+            }
+
+            let contact = null;
+            let visitorId = null;
+            if (!reporter_id) {
+                const rawContact = String(req.body.contact || '').trim();
+                if (rawContact) {
+                    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawContact) && rawContact.length <= 255;
+                    const isPhone = /^\+?[\d\s.-]{8,20}$/.test(rawContact);
+                    if (!isEmail && !isPhone) {
+                        return res.status(400).json({ status: 'error', message: 'Indiquez une adresse e-mail ou un numéro de téléphone valide, ou laissez le champ vide.' });
+                    }
+                    contact = rawContact;
+                }
+                const rawVisitor = String(req.body.visitorId || '');
+                visitorId = /^[a-zA-Z0-9-]{8,64}$/.test(rawVisitor) ? rawVisitor : null;
+            }
 
             if (!PROPERTY_REPORT_CATEGORIES[category]) {
                 return res.status(400).json({ status: 'error', message: 'Motif de signalement invalide' });
@@ -119,10 +141,13 @@ const reportController = {
             if (!property || !property.is_published) {
                 return res.status(404).json({ status: 'error', message: 'Annonce introuvable' });
             }
-            if (String(property.owner_id) === String(reporter_id) || (req.ownerId && String(property.owner_id) === String(req.ownerId))) {
+            if (reporter_id && (String(property.owner_id) === String(reporter_id) || (req.ownerId && String(property.owner_id) === String(req.ownerId)))) {
                 return res.status(400).json({ status: 'error', message: 'Vous ne pouvez pas signaler votre propre annonce' });
             }
-            if (await Report.findPendingForProperty(reporter_id, String(property.id))) {
+            const alreadyReported = reporter_id
+                ? await Report.findPendingForProperty(reporter_id, String(property.id))
+                : visitorId && await Report.findPendingForVisitor(visitorId, String(property.id));
+            if (alreadyReported) {
                 return res.status(409).json({ status: 'error', message: 'Vous avez déjà signalé cette annonce. Notre équipe l\'examine.' });
             }
 
@@ -137,6 +162,8 @@ const reportController = {
                 reason,
                 property_id: String(property.id),
                 category,
+                reporter_contact: contact,
+                reporter_visitor_id: visitorId,
             });
 
             res.status(201).json({

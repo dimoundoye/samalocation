@@ -40,8 +40,8 @@ const notificationController = {
 
             const isAdmin = req.user.role === 'admin';
             if (!isAdmin) {
-                // Les types système sont réservés à la plateforme
-                if (['system', 'admin_alert'].includes(type)) {
+                // Les types système sont réservés à la plateforme (dont les annonces de mise à jour des conditions)
+                if (['system', 'admin_alert', 'legal'].includes(type)) {
                     return response.error(res, 'Type de notification non autorisé', 403);
                 }
 

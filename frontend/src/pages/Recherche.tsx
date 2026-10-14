@@ -244,6 +244,7 @@ const Recherche = () => {
                       <SelectItem value="maison">{t('search.types.house')}</SelectItem>
                       <SelectItem value="villa">{t('search.types.villa')}</SelectItem>
                       <SelectItem value="appartement">{t('search.types.apartment')}</SelectItem>
+                      <SelectItem value="immeuble">{t('search.types.building')}</SelectItem>
                       <SelectItem value="studio">{t('search.types.studio')}</SelectItem>
                       <SelectItem value="chambre">{t('search.types.room')}</SelectItem>
                       <SelectItem value="garage">{t('search.types.garage')}</SelectItem>
@@ -296,6 +297,7 @@ const Recherche = () => {
                                 <SelectItem value="maison">{t('search.types.house')}</SelectItem>
                                 <SelectItem value="villa">{t('search.types.villa')}</SelectItem>
                                 <SelectItem value="appartement">{t('search.types.apartment')}</SelectItem>
+                                <SelectItem value="immeuble">{t('search.types.building')}</SelectItem>
                                 <SelectItem value="studio">{t('search.types.studio')}</SelectItem>
                                 <SelectItem value="chambre">{t('search.types.room')}</SelectItem>
                                 <SelectItem value="garage">{t('search.types.garage')}</SelectItem>

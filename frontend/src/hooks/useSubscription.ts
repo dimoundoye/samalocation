@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getMySubscription } from "@/lib/api";
+import { WORKSPACE_CHANGED_EVENT } from "@/lib/workspace";
 
 export const useSubscription = () => {
     const [subscription, setSubscription] = useState<any>(null);
@@ -36,6 +37,9 @@ export const useSubscription = () => {
 
     useEffect(() => {
         loadSubscription();
+        // L'abonnement affiché est celui de l'espace actif : on le recharge quand l'agent change d'espace
+        window.addEventListener(WORKSPACE_CHANGED_EVENT, loadSubscription);
+        return () => window.removeEventListener(WORKSPACE_CHANGED_EVENT, loadSubscription);
     }, []);
 
     const hasFeature = (feature: string) => {

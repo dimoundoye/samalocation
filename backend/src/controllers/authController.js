@@ -1,6 +1,6 @@
 const User = require('../models/userModel');
-const Organization = require('../models/organizationModel');
 const response = require('../utils/response');
+const { listWorkspacesForUser } = require('../utils/workspaces');
 const { generateToken, verifyToken, generateVerificationToken, hashToken, isSessionRevoked } = require('../utils/auth');
 const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const bcrypt = require('bcryptjs');
@@ -230,7 +230,7 @@ const authController = {
             }
 
             const token = generateToken({ id: user.id, email: user.email, role: profile.role, parentId: user.parent_id });
-            const organizations = await Organization.findForUser(user.id);
+            const organizations = await listWorkspacesForUser(user.id);
             return response.success(res, {
                 token,
                 user: {
@@ -280,7 +280,7 @@ const authController = {
                 return response.error(res, 'Votre compte a été bloqué. Veuillez contacter l\'administrateur.', 403);
             }
 
-            const organizations = await Organization.findForUser(profile.id);
+            const organizations = await listWorkspacesForUser(profile.id);
 
             return response.success(res, {
                 user: {

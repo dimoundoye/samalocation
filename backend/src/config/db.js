@@ -31,8 +31,19 @@ setInterval(() => {
   }
 }, 300000);
 
+// Derrière le pooler Supabase en mode transaction (port 6543), un SET de session n'est pas fiable :
+// le search_path y est fixé au niveau du rôle (migration set_role_search_path.sql).
+const usesTransactionPooler = (() => {
+  try {
+    const port = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL).port : process.env.DB_PORT;
+    return String(port) === '6543';
+  } catch {
+    return false;
+  }
+})();
+
 pool.on('connect', (client) => {
-  client.query('SET search_path TO public, auth, extensions');
+  if (!usesTransactionPooler) client.query('SET search_path TO public, auth, extensions');
   newConnectionCount++;
 });
 

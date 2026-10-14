@@ -34,6 +34,10 @@ router.get('/verifications/pending', adminController.getPendingVerifications);
 router.get('/verifications', adminController.getVerifications);
 router.patch('/verifications/:ownerId/status', adminController.updateVerificationStatus);
 router.patch('/users/:userId/subscription', adminController.updateUserSubscription);
+router.get('/subscriptions', adminController.getSubscriptionsOverview);
+
+// Journal des actions sensibles des administrateurs
+router.get('/audit-logs', adminController.getAuditLogs);
 
 // Transactions et revenus
 router.get('/revenue-stats', adminController.getRevenueStats);

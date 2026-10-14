@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Flag, Loader2, LogIn } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Flag, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { reportProperty, type PropertyReportCategory } from "@/api/reports";
+import { getVisitorId } from "@/lib/analytics";
 
 const CATEGORIES: PropertyReportCategory[] = ["scam", "unavailable", "misleading", "price", "broker", "inappropriate", "other"];
 
@@ -20,37 +21,49 @@ interface ReportPropertyDialogProps {
   propertyName?: string;
 }
 
-// Signalement d'une annonce publiée : motif prédéfini + précisions (obligatoires pour « Autre »)
+// Signalement d'une annonce publiée, avec ou sans compte : motif prédéfini + précisions (obligatoires pour « Autre »).
+// Sans compte : coordonnées facultatives pour être recontacté.
 export const ReportPropertyDialog = ({ open, onOpenChange, propertyId, propertyName }: ReportPropertyDialogProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [category, setCategory] = useState<PropertyReportCategory | "">("");
   const [details, setDetails] = useState("");
+  const [contact, setContact] = useState("");
+  // Champ invisible : seul un robot le remplit
+  const [website, setWebsite] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
       setCategory("");
       setDetails("");
+      setContact("");
+      setWebsite("");
     }
   }, [open]);
 
   const detailsRequired = category === "other";
-  const canSubmit = !!category && (!detailsRequired || details.trim().length >= 10) && !submitting;
+  const contactValue = contact.trim();
+  const contactValid = !contactValue || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactValue) || /^\+?[\d\s.-]{8,20}$/.test(contactValue);
+  const canSubmit = !!category && (!detailsRequired || details.trim().length >= 10) && (!!user || contactValid) && !submitting;
 
   const handleSubmit = async () => {
     if (!category) return;
     setSubmitting(true);
     try {
-      await reportProperty(propertyId, category, details.trim());
+      await reportProperty(
+        propertyId,
+        category,
+        details.trim(),
+        user ? {} : { contact: contactValue || undefined, visitorId: getVisitorId(), website: website || undefined }
+      );
       toast({ title: t("report_property.sent_title"), description: t("report_property.sent_desc") });
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: t("common.error"),
-        description: error?.message || t("report_property.error"),
+        description: (error instanceof Error && error.message) || t("report_property.error"),
         variant: "destructive",
       });
     } finally {
@@ -71,25 +84,6 @@ export const ReportPropertyDialog = ({ open, onOpenChange, propertyId, propertyN
           </DialogDescription>
         </DialogHeader>
 
-        {!user ? (
-          <>
-            <p className="text-sm text-muted-foreground">{t("report_property.login_required")}</p>
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-              <Button
-                className="gap-2"
-                onClick={() => {
-                  // Retour sur l'annonce après connexion
-                  try { localStorage.setItem("redirectAfterLogin", window.location.pathname); } catch { /* stockage indisponible */ }
-                  navigate("/auth");
-                }}
-              >
-                <LogIn className="h-4 w-4" /> {t("report_property.login")}
-              </Button>
-            </DialogFooter>
-          </>
-        ) : (
-        <>
         <div className="space-y-4">
           <RadioGroup value={category} onValueChange={(v) => setCategory(v as PropertyReportCategory)} className="space-y-1">
             {CATEGORIES.map((key) => (
@@ -120,6 +114,32 @@ export const ReportPropertyDialog = ({ open, onOpenChange, propertyId, propertyN
             )}
           </div>
 
+          {!user && (
+            <div className="space-y-2">
+              <Label htmlFor="report-contact" className="text-sm">{t("report_property.contact_label")}</Label>
+              <Input
+                id="report-contact"
+                value={contact}
+                onChange={(e) => setContact(e.target.value.slice(0, 255))}
+                placeholder={t("report_property.contact_placeholder")}
+                autoComplete="email"
+              />
+              {!contactValid && <p className="text-xs text-destructive">{t("report_property.contact_invalid")}</p>}
+            </div>
+          )}
+
+          {/* Piège à robots : invisible et ignoré par les personnes */}
+          <input
+            type="text"
+            name="website"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            className="absolute -left-[9999px] h-0 w-0 opacity-0"
+          />
+
           <p className="text-xs text-muted-foreground">{t("report_property.confidential")}</p>
         </div>
 
@@ -132,8 +152,6 @@ export const ReportPropertyDialog = ({ open, onOpenChange, propertyId, propertyN
             {t("report_property.submit")}
           </Button>
         </DialogFooter>
-        </>
-        )}
       </DialogContent>
     </Dialog>
   );

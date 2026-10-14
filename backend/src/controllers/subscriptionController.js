@@ -3,6 +3,8 @@ const response = require('../utils/response');
 const Notification = require('../models/notificationModel');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../config/db');
+const Organization = require('../models/organizationModel');
+const { isProfessionalPlan, AGENT_PRO_MESSAGE } = require('../utils/workspaces');
 
 const subscriptionController = {
     /**
@@ -87,6 +89,10 @@ const subscriptionController = {
 
             if (!senderPhone || senderPhone.trim().length < 7) {
                 return response.error(res, "Le numéro de téléphone du transfert est requis.", 400);
+            }
+
+            if (isProfessionalPlan(planName) && await Organization.isTeamMember(userId)) {
+                return response.error(res, AGENT_PRO_MESSAGE, 403);
             }
 
             const sub = await Subscription.createPending(userId, {

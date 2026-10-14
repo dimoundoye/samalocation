@@ -32,13 +32,11 @@ const authMiddleware = async (req, res, next) => {
         });
     }
 
-    // Normaliser parentId pour qu'il soit accessible de façon consistante
-    const effectiveParentId = userProfile.parent_id || decoded.parentId;
-    
-    req.user = { 
-        ...decoded, 
-        ...userProfile,
-        parent_id: effectiveParentId
+    // Les droits viennent uniquement des adhésions lues en base à chaque requête,
+    // jamais du jeton (un parentId ancien dans un JWT ne donne aucun accès).
+    req.user = {
+        ...decoded,
+        ...userProfile
     };
 
     // Organisation active : celle demandée via x-active-context si l'utilisateur en est membre,

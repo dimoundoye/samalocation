@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './AuthContext';
+import { getActiveWorkspace } from '@/lib/workspace';
 
 interface SocketContextType {
     socket: Socket | null;
@@ -39,13 +40,10 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 setConnected(true);
                 // Join user-specific room for private messages/notifications
                 newSocket.emit('join', user.id);
-                // If collaborator/agent, also join the parent owner's context room to receive messages/notifications
-                if (user.parentId) {
-                    newSocket.emit('join', user.parentId);
-                }
-                const activeContext = localStorage.getItem('active_context');
-                if (activeContext && activeContext !== 'personal') {
-                    newSocket.emit('join', activeContext);
+                // Agent : rejoindre l'espace du propriétaire pour lequel il travaille (le serveur vérifie l'adhésion)
+                const activeWorkspace = getActiveWorkspace(user);
+                if (activeWorkspace) {
+                    newSocket.emit('join', activeWorkspace.id);
                 }
             });
 

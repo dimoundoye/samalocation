@@ -14,6 +14,7 @@ export interface User {
     };
     referral_count?: number;
     referred_by?: string;
+    organizations?: import("@/lib/workspace").Workspace[];
 }
 
 export interface Property {
@@ -159,8 +160,12 @@ export interface Report {
     id: string;
     sender_id: string;
     sender_name?: string;
+    /** null pour un signalement envoyé sans compte */
+    reporter_id?: string | null;
     reporter_name?: string;
     reporter_email?: string;
+    /** Signalement sans compte : coordonnées laissées volontairement */
+    reporter_contact?: string | null;
     reported_id: string;
     reported_name?: string;
     reported_email?: string;

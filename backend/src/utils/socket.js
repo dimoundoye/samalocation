@@ -59,6 +59,27 @@ module.exports = {
         }
         return io;
     },
+    /**
+     * Met à jour les connexions ouvertes d'un utilisateur quand il rejoint ou quitte une équipe :
+     * un agent retiré cesse immédiatement de recevoir les événements de l'organisation.
+     */
+    syncMembership: async (userId, organizationId, isMember) => {
+        try {
+            if (!io || !userId || !organizationId) return;
+            const orgId = String(organizationId);
+            const sockets = await io.in(String(userId)).fetchSockets();
+            for (const s of sockets) {
+                if (isMember) {
+                    s.data.orgIds?.add(orgId);
+                } else {
+                    s.data.orgIds?.delete(orgId);
+                    s.leave(orgId);
+                }
+            }
+        } catch (err) {
+            console.error('[SOCKET] Error syncing membership:', err.message);
+        }
+    },
     emitToWorkspace: (workspaceId, event, data = {}) => {
         try {
             if (io && workspaceId) {

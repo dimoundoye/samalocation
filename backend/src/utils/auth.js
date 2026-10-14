@@ -23,7 +23,8 @@ const generateToken = (user) => {
             parentId: user.parentId || null
         },
         JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        // Session admin plus courte : un appareil oublié ouvert donne moins longtemps accès au tableau de bord
+        { expiresIn: user.role === 'admin' ? (process.env.JWT_ADMIN_EXPIRES_IN || '12h') : (process.env.JWT_EXPIRES_IN || '7d') }
     );
 };
 

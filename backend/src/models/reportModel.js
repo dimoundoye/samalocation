@@ -6,11 +6,11 @@ const Report = {
      * Sans property_id : signalement d'un propriétaire par un locataire.
      */
     async create(reportData) {
-        const { id, reporter_id, reported_id, reason, property_id = null, category = null, photos = [] } = reportData;
+        const { id, reporter_id, reported_id, reason, property_id = null, category = null, photos = [], reporter_contact = null, reporter_visitor_id = null } = reportData;
 
         await db.query(
-            'INSERT INTO reports (id, reporter_id, reported_id, reason, status, property_id, category, photos, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())',
-            [id, reporter_id, reported_id, reason, 'pending', property_id, category, JSON.stringify(photos)]
+            'INSERT INTO reports (id, reporter_id, reported_id, reason, status, property_id, category, photos, reporter_contact, reporter_visitor_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())',
+            [id, reporter_id, reported_id, reason, 'pending', property_id, category, JSON.stringify(photos), reporter_contact, reporter_visitor_id]
         );
 
         return { id, reporter_id, reported_id, reason, property_id, category, photos, status: 'pending' };
@@ -21,6 +21,15 @@ const Report = {
         const { rows } = await db.query(
             "SELECT id FROM reports WHERE reporter_id = $1 AND property_id = $2 AND status = 'pending' LIMIT 1",
             [reporter_id, property_id]
+        );
+        return rows[0] || null;
+    },
+
+    /** Même chose pour un visiteur sans compte (identifiant anonyme du navigateur) */
+    async findPendingForVisitor(visitor_id, property_id) {
+        const { rows } = await db.query(
+            "SELECT id FROM reports WHERE reporter_visitor_id = $1 AND property_id = $2 AND status = 'pending' LIMIT 1",
+            [visitor_id, property_id]
         );
         return rows[0] || null;
     },

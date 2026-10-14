@@ -82,6 +82,7 @@ import { formatConversationTime, formatMessageDay, startsNewDay } from "@/lib/me
 import { COMPACT_LAYOUT_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { fr, enUS } from "date-fns/locale";
 import { transformProperty } from "@/lib/property";
+import { getActiveWorkspace, getTeamWorkspaces, isTeamMember, setActiveWorkspaceId } from "@/lib/workspace";
 import { Property, PropertyUnit, Tenant, Message, Receipt } from "@/types";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -176,20 +177,22 @@ const DashboardProprietaire = () => {
   const [assignTenantOpen, setAssignTenantOpen] = useState(false);
   const [editTenantOpen, setEditTenantOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-  const [activeContext, setActiveContext] = useState(localStorage.getItem("active_context") || "personal");
+  const [activeContext, setActiveContext] = useState(() => localStorage.getItem("active_context") || "personal");
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
+  // Équipes de propriétaires rejointes (un agent peut gérer pour plusieurs propriétaires)
+  const teamWorkspaces = useMemo(() => getTeamWorkspaces(user), [user]);
+  // Équipe active, ou null dans l'espace personnel (un espace mémorisé devenu inaccessible est ignoré)
+  const activeWorkspace = useMemo(() => getActiveWorkspace(user, activeContext), [user, activeContext]);
+
   const switchContext = (context: string) => {
-    if (context === "personal") {
-      localStorage.removeItem("active_context");
-    } else {
-      localStorage.setItem("active_context", context);
-    }
+    setActiveWorkspaceId(context);
     setActiveContext(context);
     loadData();
+    const target = teamWorkspaces.find(w => w.id === context);
     toast({
-      title: "Changement de compte",
-      description: context === "personal" ? "Basculement vers votre compte personnel." : "Basculement vers le compte de l'entreprise.",
+      title: "Changement d'espace",
+      description: target ? `Vous travaillez maintenant pour ${target.name}.` : "Retour à votre espace personnel.",
     });
   };
   const [selectedTenantForHistory, setSelectedTenantForHistory] = useState<Tenant | null>(null);
@@ -209,11 +212,8 @@ const DashboardProprietaire = () => {
   const [tenantStatusFilter, setTenantStatusFilter] = useState<"active" | "inactive">("active");
 
   const activeOwnerId = useMemo(() => {
-    if (user?.parentId && activeContext !== "personal") {
-      return user.parentId;
-    }
-    return user?.id;
-  }, [user?.id, user?.parentId, activeContext]);
+    return activeWorkspace?.id || user?.id;
+  }, [user?.id, activeWorkspace]);
 
   const userGroupsKey = useMemo(() => activeOwnerId ? `owner_property_groups_v1_${activeOwnerId}` : "owner_property_groups_v1_guest", [activeOwnerId]);
   const [customGroups, setCustomGroups] = useState<{ id: string; name: string; propertyIds: string[]; parentId?: string }[]>([]);
@@ -345,7 +345,7 @@ const DashboardProprietaire = () => {
     };
   }, [userGroupsKey, activeOwnerId]);
 
-  const canSeeRevenue = !user?.parentId || activeContext === 'personal' || user?.permissions?.can_view_revenue;
+  const canSeeRevenue = !activeWorkspace || activeWorkspace.permissions.includes("finance.read");
 
   const groupedData = useMemo(() => {
     // 1. Prepare all properties and their units
@@ -619,8 +619,8 @@ const DashboardProprietaire = () => {
     if (!socket) return;
 
     // Rejoindre la room de l'espace actif si en mode entreprise/agence
-    if (activeContext && activeContext !== "personal") {
-      socket.emit("join", activeContext);
+    if (activeWorkspace) {
+      socket.emit("join", activeWorkspace.id);
     }
 
     const handleWorkspaceUpdated = (payload: { entity: string; action: string; id?: string }) => {
@@ -634,7 +634,7 @@ const DashboardProprietaire = () => {
     return () => {
       socket.off("workspace_updated", handleWorkspaceUpdated);
     };
-  }, [socket, activeContext]);
+  }, [socket, activeWorkspace]);
 
   // Rafraîchissement automatique lors du retour sur l'onglet ou l'application
   useEffect(() => {
@@ -759,7 +759,8 @@ const DashboardProprietaire = () => {
       });
 
       // --- CHECK ONBOARDING ---
-      if (profileData && profileData.id) {
+      // Seulement dans son propre espace : la devise d'un autre propriétaire est la sienne à choisir
+      if (profileData && profileData.id && !getActiveWorkspace(user)) {
         const onboardingSeen = localStorage.getItem(`onboarding_currency_seen_${profileData.id}`);
         // Si l'utilisateur n'a pas de propriétés et n'a pas encore vu le modal, on lui demande sa devise
         if (!onboardingSeen && (propsData || []).length === 0) {
@@ -946,14 +947,14 @@ const DashboardProprietaire = () => {
           </button>
         </div>
 
-        {/* Context Switcher for Collaborators */}
+        {/* Choix de l'espace : personnel ou équipe d'un propriétaire (agents) */}
         {
-          user?.parentId && (
-            <div className={`flex flex-col gap-2 mb-6 p-2 rounded-2xl bg-secondary/30 ${isSidebarCollapsed ? 'items-center' : 'items-stretch'}`}>
+          teamWorkspaces.length > 0 && (
+            <div className={`flex flex-col gap-2 mb-6 p-2 rounded-2xl bg-secondary/30 max-h-64 overflow-y-auto ${isSidebarCollapsed ? 'items-center' : 'items-stretch'}`}>
               <button
                 onClick={() => switchContext("personal")}
-                title="Compte Personnel"
-                className={`flex items-center gap-3 p-2.5 rounded-xl transition-all ${activeContext === "personal"
+                title="Mon espace personnel"
+                className={`flex items-center gap-3 p-2.5 rounded-xl transition-all ${!activeWorkspace
                   ? "bg-white text-primary shadow-soft font-bold"
                   : "text-muted-foreground hover:bg-white/50"
                   }`}
@@ -961,17 +962,20 @@ const DashboardProprietaire = () => {
                 <UserIcon className="h-4 w-4 shrink-0" />
                 {showLabels && <span className="text-sm">Personnel</span>}
               </button>
-              <button
-                onClick={() => switchContext(user.parentId!)}
-                title="Compte Entreprise"
-                className={`flex items-center gap-3 p-2.5 rounded-xl transition-all ${activeContext !== "personal"
-                  ? "bg-primary text-white shadow-medium font-bold"
-                  : "text-primary hover:bg-white/50"
-                  }`}
-              >
-                <Briefcase className="h-4 w-4 shrink-0" />
-                {showLabels && <span className="text-sm">Entreprise</span>}
-              </button>
+              {teamWorkspaces.map(workspace => (
+                <button
+                  key={workspace.id}
+                  onClick={() => switchContext(workspace.id)}
+                  title={workspace.name}
+                  className={`flex items-center gap-3 p-2.5 rounded-xl transition-all min-w-0 ${activeWorkspace?.id === workspace.id
+                    ? "bg-primary text-white shadow-medium font-bold"
+                    : "text-primary hover:bg-white/50"
+                    }`}
+                >
+                  <Briefcase className="h-4 w-4 shrink-0" />
+                  {showLabels && <span className="text-sm truncate">{workspace.name}</span>}
+                </button>
+              ))}
             </div>
           )
         }
@@ -995,8 +999,10 @@ const DashboardProprietaire = () => {
             { id: "settings", label: t('dashboard.sidebar.settings'), icon: Settings },
             { id: "guide", label: "Guide", icon: HelpCircle },
           ].filter(item => {
-            // Collaborators (with parentId) shouldn't manage the team or billing
-            if (user?.parentId && (item.id === "team" || item.id === "subscription")) return false;
+            // Un agent n'a pas d'équipe à gérer (pas de plan Professionnel), même dans son espace personnel
+            if (item.id === "team" && isTeamMember(user)) return false;
+            // Dans l'équipe d'un propriétaire : ni son abonnement, ni son profil (signature)
+            if (activeWorkspace && (item.id === "subscription" || item.id === "public-profile")) return false;
             // Collaborators without revenue permission shouldn't see Trésorerie & ROI
             if (!canSeeRevenue && item.id === "financials") return false;
             return true;
@@ -2762,9 +2768,9 @@ const DashboardProprietaire = () => {
             {activeTab === "wallet" && <OwnerWalletTab />}
 
             {/* Team Tab */}
-            {activeTab === "team" && <OwnerTeamTab />}
+            {activeTab === "team" && !isTeamMember(user) && <OwnerTeamTab />}
 
-            {activeTab === "team-history" && (
+            {activeTab === "team-history" && !isTeamMember(user) && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2">
                   <Button 

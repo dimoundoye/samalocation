@@ -7,6 +7,9 @@ const { v4: uuidv4 } = require('uuid');
 const Property = require('../models/propertyModel');
 const TeamInvitation = require('../models/teamInvitationModel');
 const logActivity = require('../utils/logActivity');
+const Organization = require('../models/organizationModel');
+const { syncMembership } = require('../utils/socket');
+const { hasProfessionalPlan, PRO_AGENT_MESSAGE } = require('../utils/workspaces');
 
 const ownerController = {
     /**
@@ -102,10 +105,7 @@ const ownerController = {
      */
     async getCollaborators(req, res, next) {
         try {
-            const requestedOwnerId = req.ownerId;
-            console.log(`[TEAM] getCollaborators called. Using parentId: ${requestedOwnerId}`);
-            const collaborators = await User.findCollaboratorsByParentId(requestedOwnerId);
-            console.log(`[TEAM] findCollaboratorsByParentId(${requestedOwnerId}) result:`, JSON.stringify(collaborators));
+            const collaborators = await Organization.findCollaborators(req.ownerId);
             return response.success(res, collaborators);
         } catch (error) {
             next(error);
@@ -117,36 +117,44 @@ const ownerController = {
      */
     async addCollaborator(req, res, next) {
         try {
-            const { email, permissions } = req.body;
-            const parentId = req.ownerId;
+            const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+            // Seul ce choix est accepté : le rôle (gestionnaire / agent) en découle, rien d'autre n'est stocké
+            const permissions = { can_view_revenue: req.body.permissions?.can_view_revenue === true };
+            const organizationId = req.ownerId;
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return response.error(res, "Adresse e-mail invalide.", 400);
+            }
 
             // Récupérer le nom du propriétaire pour l'e-mail
-            const ownerProfile = await Owner.findProfileById(parentId);
+            const ownerProfile = await Owner.findProfileById(organizationId);
             const ownerName = ownerProfile?.full_name || "Votre agence SamaLocation";
 
             // Vérifier si l'email existe déjà
             const existingUser = await User.findByEmail(email);
 
             if (existingUser) {
+                if (existingUser.id === organizationId || existingUser.id === req.user.id) {
+                    return response.error(res, "Vous ne pouvez pas vous inviter vous-même.", 400);
+                }
+
                 // Un compte locataire ne peut pas être un collaborateur (règle métier)
                 if (existingUser.role === 'tenant') {
                     return response.error(res, "Un compte locataire ne peut pas être ajouté comme collaborateur d'agence.", 400);
                 }
 
-                // Si l'utilisateur appartient déjà à une équipe, on refuse pour l'instant (sécurité)
-                if (existingUser.parent_id) {
-                    return response.error(res, "Cet utilisateur appartient déjà à une équipe.", 400);
+                // Un agent peut appartenir à plusieurs équipes, mais pas deux fois à la même
+                if (await Organization.isActiveMember(existingUser.id, organizationId)) {
+                    return response.error(res, "Cet utilisateur fait déjà partie de votre équipe.", 400);
+                }
+
+                if (await hasProfessionalPlan(existingUser.id)) {
+                    return response.error(res, PRO_AGENT_MESSAGE, 400);
                 }
             }
 
-            // Vérifier si une invitation est déjà en cours
-            const existingInvite = await TeamInvitation.findByEmailAndInviter(email, parentId);
-            if (existingInvite) {
-                return response.error(res, "Une invitation est déjà en cours pour cet email.", 400);
-            }
-
-            // Créer l'invitation
-            const invitation = await TeamInvitation.create(parentId, email, permissions || { can_view_revenue: false });
+            // Créer l'invitation (une invitation encore en attente est renouvelée et renvoyée)
+            const invitation = await TeamInvitation.create(organizationId, email, permissions);
 
             // Envoyer l'e-mail d'invitation avec le lien d'acceptation
             await sendTeamInvitationLink(email, ownerName, invitation.token, !!existingUser);
@@ -167,7 +175,7 @@ const ownerController = {
     },
 
     /**
-     * Get invitation details
+     * Get invitation details (route publique : seul le nécessaire à l'affichage est renvoyé)
      */
     async getInvitationDetails(req, res, next) {
         try {
@@ -178,7 +186,13 @@ const ownerController = {
                 return response.error(res, "Invitation invalide ou expirée.", 404);
             }
 
-            return response.success(res, invitation);
+            return response.success(res, {
+                inviter_id: invitation.inviter_id,
+                inviter_name: invitation.inviter_name,
+                invitee_email: invitation.invitee_email,
+                permissions: { can_view_revenue: invitation.permissions?.can_view_revenue === true },
+                expires_at: invitation.expires_at
+            });
         } catch (error) {
             next(error);
         }
@@ -201,15 +215,28 @@ const ownerController = {
             if (user.email?.toLowerCase() !== invitation.invitee_email?.toLowerCase()) {
                 return response.error(res, "Cette invitation a été envoyée à une autre adresse e-mail. Connectez-vous avec le compte invité.", 403);
             }
+            if (user.role === 'tenant') {
+                return response.error(res, "Un compte locataire ne peut pas rejoindre une équipe de gestion.", 403);
+            }
+            if (user.id === invitation.inviter_id) {
+                return response.error(res, "Vous ne pouvez pas rejoindre votre propre équipe.", 400);
+            }
+            // Le plan a pu être pris entre l'envoi de l'invitation et son acceptation
+            if (await hasProfessionalPlan(user.id)) {
+                return response.error(res, PRO_AGENT_MESSAGE, 403);
+            }
 
-            // Mettre à jour l'utilisateur
-            await User.updateParentId(user.id, invitation.inviter_id);
-            await User.updatePermissions(user.id, invitation.permissions);
-            
-            // Marquer l'invitation comme acceptée
-            await TeamInvitation.updateStatus(invitation.id, 'accepted');
+            // Usage unique : si deux acceptations arrivent en même temps, une seule passe
+            const claimed = await TeamInvitation.updateStatus(invitation.id, 'accepted');
+            if (!claimed) {
+                return response.error(res, "Invitation invalide ou expirée.", 404);
+            }
 
-            return response.success(res, null, 'Félicitations ! Vous avez rejoint l\'équipe.');
+            // Ajoute l'équipe sans retirer les autres (un agent peut gérer pour plusieurs propriétaires)
+            await User.joinTeam(user.id, invitation.inviter_id, invitation.permissions);
+            await syncMembership(user.id, invitation.inviter_id, true);
+
+            return response.success(res, { organization_id: invitation.inviter_id }, 'Félicitations ! Vous avez rejoint l\'équipe.');
         } catch (error) {
             next(error);
         }
@@ -221,26 +248,25 @@ const ownerController = {
     async updateCollaboratorPermissions(req, res, next) {
         try {
             const { id } = req.params;
-            const { permissions } = req.body;
-            const parentId = req.ownerId;
+            const permissions = { can_view_revenue: req.body.permissions?.can_view_revenue === true };
+            const organizationId = req.ownerId;
 
-            // Security: check if user is a collaborator of the requester
-            const collaborators = await User.findCollaboratorsByParentId(parentId);
-            const isMine = collaborators.some(c => c.id === id);
+            // Sécurité : seul un membre de l'équipe de l'organisation active peut être modifié
+            const collaborators = await Organization.findCollaborators(organizationId);
+            const targetUser = collaborators.find(c => c.id === id);
 
-            if (!isMine) {
+            if (!targetUser) {
                 return response.error(res, "Vous n'avez pas accès à ce collaborateur.", 403);
             }
 
-            await User.updatePermissions(id, permissions);
+            await User.updateTeamPermissions(id, organizationId, permissions);
 
             // Journal d'activité
-            const targetUser = collaborators.find(c => c.id === id);
             await logActivity(req, {
                 action: 'UPDATE',
                 entityType: 'team',
                 entityId: id,
-                entityLabel: `Permissions de ${targetUser?.full_name || id} modifiées`,
+                entityLabel: `Permissions de ${targetUser.full_name || id} modifiées`,
                 metadata: { permissions }
             });
 
@@ -256,21 +282,25 @@ const ownerController = {
     async removeCollaborator(req, res, next) {
         try {
             const { id } = req.params;
-            const parentId = req.ownerId;
+            const organizationId = req.ownerId;
 
-            // Récupérer le nom de l'agent avant suppression
-            const collaboratorsBefore = await User.findCollaboratorsByParentId(parentId);
-            const agentToRemove = collaboratorsBefore.find(c => c.id === id);
+            const collaborators = await Organization.findCollaborators(organizationId);
+            const agentToRemove = collaborators.find(c => c.id === id);
+            if (!agentToRemove) {
+                return response.error(res, "Vous n'avez pas accès à ce collaborateur.", 403);
+            }
 
-            await User.removeCollaborator(id, parentId);
+            // Retire uniquement l'accès à cette organisation : ses autres équipes ne sont pas touchées
+            await User.leaveTeam(id, organizationId);
+            await syncMembership(id, organizationId, false);
 
             // Journal d'activité
             await logActivity(req, {
                 action: 'REMOVE',
                 entityType: 'team',
                 entityId: id,
-                entityLabel: `Agent ${agentToRemove?.full_name || agentToRemove?.email || id} retiré de l'équipe`,
-                metadata: { email: agentToRemove?.email }
+                entityLabel: `Agent ${agentToRemove.full_name || agentToRemove.email || id} retiré de l'équipe`,
+                metadata: { email: agentToRemove.email }
             });
 
             return response.success(res, null, 'Collaborateur retiré de l\'équipe');

@@ -144,6 +144,7 @@
       "all": "All types",
       "house": "House",
       "villa": "Villa",
+      "building": "Building",
       "apartment": "Apartment",
       "studio": "Studio",
       "room": "Room",
@@ -338,7 +339,8 @@
     "sent_title": "Report sent",
     "sent_desc": "Thank you, our team will review this listing.",
     "error": "Unable to send the report. Please try again later.",
-    "login_required": "Sign in to report a listing. This helps us prevent abusive reports.",
-    "login": "Sign in"
+    "contact_label": "Your email or phone (optional)",
+    "contact_placeholder": "So our team can get back to you",
+    "contact_invalid": "Enter a valid email address or phone number, or leave this field empty."
   }
 }

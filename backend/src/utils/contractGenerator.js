@@ -813,6 +813,27 @@ async function getSharedBrowser() {
     return await browserInitializing;
 }
 
+// ── Limite de rendus simultanés ─────────────────────────────────────────
+// Chaque onglet Chrome consomme de la RAM : au-delà de PDF_MAX_CONCURRENCY, les demandes
+// attendent leur tour (file FIFO) au lieu de saturer la mémoire du serveur.
+const PDF_MAX_CONCURRENCY = Math.max(1, parseInt(process.env.PDF_MAX_CONCURRENCY, 10) || 3);
+let activeRenders = 0;
+const renderQueue = [];
+
+async function acquireRenderSlot() {
+    if (activeRenders < PDF_MAX_CONCURRENCY) {
+        activeRenders++;
+        return;
+    }
+    await new Promise(resolve => renderQueue.push(resolve));
+}
+
+function releaseRenderSlot() {
+    const next = renderQueue.shift();
+    if (next) next(); // le créneau passe directement au suivant
+    else activeRenders--;
+}
+
 /**
  * Génère un PDF depuis un contenu HTML personnalisé (TipTap/Rich Editor)
  * en utilisant Puppeteer (Chrome headless) optimisé pour un rendu instantané.
@@ -1009,6 +1030,7 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
 </body>
 </html>`;
 
+    await acquireRenderSlot();
     try {
         const browser = await getSharedBrowser();
         const page = await browser.newPage();
@@ -1049,6 +1071,8 @@ async function generateCustomContractPDFWithBrowser(htmlContent, meta = {}) {
             doc.on('error', reject);
             doc.end();
         });
+    } finally {
+        releaseRenderSlot();
     }
 }
 

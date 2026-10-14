@@ -420,6 +420,9 @@ const adminController = {
             `, [status, isVerified, status, ownerId]);
 
             // Optionnel : Envoyer une notification au propriétaire ici
+            const { rows: [verifiedUser] } = await db.query('SELECT full_name FROM user_profiles WHERE id = $1', [ownerId]);
+            await require('../utils/adminAudit').logAdminAction(req, { action: isVerified ? 'verification_approve' : 'verification_reject', targetType: 'owner', targetId: ownerId, targetLabel: verifiedUser?.full_name || null, details: reason ? { reason } : null });
+
             return response.success(res, null, `Profil propriétaire ${isVerified ? 'vérifié' : 'rejeté'} avec succès`);
         } catch (error) {
             console.error('Error updating verification status:', error);
@@ -596,74 +599,91 @@ const adminController = {
     async forceOwnerWithdrawal(req, res, next) {
         const client = await db.connect();
         const axios = require('axios');
+        const bcrypt = require('bcryptjs');
+        const { logAdminAction } = require('../utils/adminAudit');
         const FEE_RATE_USER = parseFloat(process.env.PAYMENT_FEE_CLIENT || '0.025');
         const FEE_RATE_PAYDUNYA = parseFloat(process.env.PAYDUNYA_REAL_FEE_RATE || '0.02');
-        
+        const PROVIDERS = { wave: 'wave-senegal', orange_money: 'orange-money-senegal', free_money: 'free-money-senegal' };
+        let inTransaction = false;
+
         try {
             const { ownerId } = req.params;
-            const { customPhone, customProvider } = req.body;
+            const { customPhone, customProvider, password } = req.body;
 
-            // 1. Récupérer le solde
-            const { rows: profiles } = await client.query(
-                'SELECT balance, currency FROM owner_profiles WHERE id = $1',
-                [ownerId]
-            );
-
-            if (profiles.length === 0) {
+            const { rows: [ownerUser] } = await client.query('SELECT phone, full_name FROM user_profiles WHERE id = $1', [ownerId]);
+            if (!ownerUser) {
                 return response.error(res, 'Profil propriétaire non trouvé.', 404);
             }
 
-            const ownerProfile = profiles[0];
-            const amount = parseFloat(ownerProfile.balance);
+            // 1. Confirmation par le mot de passe de l'admin : un compte admin ouvert ne suffit pas à déplacer de l'argent
+            if (!password) {
+                return response.error(res, "Saisissez votre mot de passe administrateur pour confirmer le virement.", 400);
+            }
+            const { rows: [adminUser] } = await client.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+            if (!adminUser?.password_hash || !(await bcrypt.compare(String(password), adminUser.password_hash))) {
+                await logAdminAction(req, { action: 'force_withdrawal_denied', targetType: 'owner', targetId: ownerId, targetLabel: ownerUser.full_name, details: { reason: 'mot de passe incorrect' } });
+                return response.error(res, 'Mot de passe administrateur incorrect.', 403);
+            }
 
-            if (amount <= 0) {
+            // 2. Destinataire : numéro mobile sénégalais valide obligatoire (jamais de numéro par défaut)
+            const phone = String(customPhone || ownerUser.phone || '').replace(/\D/g, '').slice(-9);
+            if (!/^7[05678]\d{7}$/.test(phone)) {
+                return response.error(res, "Numéro de destination invalide : indiquez un numéro mobile sénégalais (9 chiffres commençant par 70, 75, 76, 77 ou 78).", 400);
+            }
+
+            const provider = String(customProvider || 'wave').toLowerCase();
+            const pdProvider = PROVIDERS[provider];
+            if (!pdProvider) {
+                return response.error(res, 'Opérateur invalide (wave, orange_money ou free_money).', 400);
+            }
+
+            // 3. Solde lu ET verrouillé dans la transaction : deux demandes simultanées ne peuvent pas payer deux fois
+            await client.query('BEGIN');
+            inTransaction = true;
+            const { rows: profiles } = await client.query(
+                'SELECT balance, currency FROM owner_profiles WHERE id = $1 FOR UPDATE',
+                [ownerId]
+            );
+            if (profiles.length === 0) {
+                await client.query('ROLLBACK');
+                inTransaction = false;
+                return response.error(res, 'Profil propriétaire non trouvé.', 404);
+            }
+
+            const amount = parseFloat(profiles[0].balance);
+            if (!(amount > 0)) {
+                await client.query('ROLLBACK');
+                inTransaction = false;
                 return response.error(res, 'Le solde du propriétaire est déjà nul ou négatif.', 400);
             }
 
-            // 2. Récupérer les coordonnées
-            const { rows: userProfiles } = await client.query(
-                'SELECT phone, full_name FROM user_profiles WHERE id = $1',
-                [ownerId]
-            );
-            
-            const rawPhone = customPhone || userProfiles[0]?.phone || '770000000';
-            const phone = rawPhone.replace(/\D/g, '').slice(-9);
-
-            const provider = customProvider || 'wave';
-            let pdProvider = provider.toLowerCase();
-            if (pdProvider === 'orange_money') pdProvider = 'orange-money-senegal';
-            if (pdProvider === 'free_money') pdProvider = 'free-money-senegal';
-            if (pdProvider === 'wave') pdProvider = 'wave-senegal';
-
-            // 3. Calculs des frais (2.5% utilisateur, 2% PayDunya)
+            // 4. Calculs des frais (2.5% utilisateur, 2% PayDunya)
             const fee = amount * FEE_RATE_USER;
             const netAmount = amount - fee;
 
-            await client.query('BEGIN');
-
-            // 4. Créer la demande de retrait en statut 'pending'
+            // 5. Créer la demande de retrait en statut 'pending'
             const { rows: wRows } = await client.query(
-                `INSERT INTO withdrawals 
-                (owner_id, amount, fee, net_amount, provider, recipient_details, status) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                `INSERT INTO withdrawals
+                (owner_id, amount, fee, net_amount, provider, recipient_details, status)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING *`,
                 [ownerId, amount, fee, netAmount, provider, phone, 'pending']
             );
             const withdrawalId = wRows[0].id;
 
-            // 5. Mettre à jour le solde à 0
+            // 6. Mettre à jour le solde à 0
             await client.query(
                 'UPDATE owner_profiles SET balance = 0, updated_at = NOW() WHERE id = $1',
                 [ownerId]
             );
 
-            // 6. Créer la transaction de grand livre en statut 'pending'
+            // 7. Créer la transaction de grand livre en statut 'pending'
             const expectedPayDunyaFee = netAmount * FEE_RATE_PAYDUNYA;
             const estimatedSurplus = fee - expectedPayDunyaFee;
 
             await client.query(
-                `INSERT INTO ledger_transactions 
-                (owner_id, type, amount, fee, net_amount, platform_surplus, status, description, reference_id) 
+                `INSERT INTO ledger_transactions
+                (owner_id, type, amount, fee, net_amount, platform_surplus, status, description, reference_id)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
                 [
                     ownerId, 'force_withdrawal', amount, fee, netAmount, estimatedSurplus, 'pending',
@@ -672,8 +692,32 @@ const adminController = {
             );
 
             await client.query('COMMIT');
+            inTransaction = false;
 
-            // 7. Virement réel via PayDunya
+            // Trace et information du propriétaire (le numéro est masqué dans la notification)
+            const maskedPhone = `${phone.slice(0, 2)} *** ** ${phone.slice(-2)}`;
+            await logAdminAction(req, {
+                action: 'force_withdrawal',
+                targetType: 'owner',
+                targetId: ownerId,
+                targetLabel: ownerUser.full_name,
+                details: { withdrawal_id: withdrawalId, amount, net_amount: netAmount, provider, phone, custom_phone: !!customPhone }
+            });
+            try {
+                const Notification = require('../models/notificationModel');
+                await Notification.create({
+                    id: require('uuid').v4(),
+                    user_id: ownerId,
+                    type: 'system',
+                    title: 'Virement de votre solde par Samalocation',
+                    message: `L'équipe Samalocation a lancé le virement de votre solde (${netAmount.toLocaleString('fr-FR')} F CFA après frais) vers le ${maskedPhone}. Si vous n'en êtes pas à l'origine, contactez-nous immédiatement.`,
+                    link: '/owner-dashboard/wallet'
+                });
+            } catch (notifError) {
+                console.error('[FORCE WITHDRAWAL] Notification non envoyée :', notifError.message);
+            }
+
+            // 8. Virement réel via PayDunya
             const isTestMode = process.env.PAYDUNYA_MODE === 'test';
             if (isTestMode) {
                 // Simulation
@@ -762,7 +806,7 @@ const adminController = {
             }
 
         } catch (error) {
-            await client.query('ROLLBACK');
+            if (inTransaction) await client.query('ROLLBACK').catch(() => {});
             next(error);
         } finally {
             client.release();
@@ -786,6 +830,15 @@ const adminController = {
                 price,
                 subscriptionId,
                 reason
+            });
+
+            const { rows: [subUser] } = await db.query('SELECT full_name, email FROM user_profiles WHERE id = $1', [userId]);
+            await require('../utils/adminAudit').logAdminAction(req, {
+                action: `subscription_${status || 'update'}`,
+                targetType: 'user',
+                targetId: userId,
+                targetLabel: subUser?.full_name || subUser?.email || null,
+                details: { plan: planName || null, duration_days: durationDays || null, price: price ?? null, subscription_id: subscriptionId || null, reason: reason || null }
             });
 
             // Envoyer une notification à l'utilisateur
@@ -821,6 +874,29 @@ const adminController = {
     /**
      * Obtenir les dernières transactions (abonnements)
      */
+    /**
+     * Journal des actions sensibles des administrateurs
+     */
+    async getAuditLogs(req, res, next) {
+        try {
+            const { listAdminActions } = require('../utils/adminAudit');
+            return response.success(res, await listAdminActions(req.query.limit));
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Onglet « Abonnements » : abonnés actifs et échéances, demandes en attente, échus récemment
+     */
+    async getSubscriptionsOverview(req, res, next) {
+        try {
+            const Subscription = require('../models/subscriptionModel');
+            return response.success(res, await Subscription.getAdminOverview());
+        } catch (error) {
+            next(error);
+        }
+    },
     async getRecentTransactions(req, res, next) {
         try {
             const Subscription = require('../models/subscriptionModel');
@@ -933,10 +1009,13 @@ const adminController = {
     async updatePlatformSettings(req, res, next) {
         try {
             const { key, value } = req.body;
-            if (!key) return response.error(res, "La clé du paramètre est requise.", 400);
+            // Seuls les paramètres gérés par l'écran Paramètres de l'admin
+            const ALLOWED_SETTINGS = ['maintenance_mode', 'admin_notifications', 'security_settings', 'general_settings'];
+            if (!ALLOWED_SETTINGS.includes(key)) return response.error(res, "Paramètre inconnu.", 400);
 
             const PlatformSettings = require('../models/settingsModel');
             const result = await PlatformSettings.update(key, value);
+            await require('../utils/adminAudit').logAdminAction(req, { action: 'setting_update', targetType: 'setting', targetId: key, targetLabel: key, details: { value } });
             return response.success(res, result, 'Paramètre mis à jour avec succès');
         } catch (error) {
             console.error('Error updating platform setting:', error);

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useState, useEffect, useMemo } from "react";
 import { getPropertiesOverview } from "@/lib/api";
-import { Home, Layers, Building2, Building, BedDouble, Warehouse, Store, PieChart as PieIcon } from "lucide-react";
+import { Home, Layers, Building2, Building, BedDouble, Warehouse, Store, Hotel, PieChart as PieIcon } from "lucide-react";
 
 // Configuration et couleurs harmonisées pour les types de propriétés officiels de SamaLocation
 const PROPERTY_TYPE_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
@@ -10,6 +10,7 @@ const PROPERTY_TYPE_CONFIG: Record<string, { label: string; color: string; icon:
   villa:       { label: "Villa",       color: "#8B5CF6", icon: Layers },      // Violet
   appartement: { label: "Appartement", color: "#2D3FE2", icon: Building2 },   // Bleu SamaLocation
   apartment:   { label: "Appartement", color: "#2D3FE2", icon: Building2 },
+  immeuble:    { label: "Immeuble",    color: "#EC4899", icon: Hotel },       // Rose
   studio:      { label: "Studio",      color: "#06B6D4", icon: Building },    // Cyan
   chambre:     { label: "Chambre",     color: "#10B981", icon: BedDouble },   // Émeraude
   garage:      { label: "Garage",      color: "#64748B", icon: Warehouse },   // Ardoise

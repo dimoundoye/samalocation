@@ -42,6 +42,19 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SEO from "@/components/SEO";
 
+// Libellés des types de bien (valeurs enregistrées en base)
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  maison: "Maison",
+  villa: "Villa",
+  immeuble: "Immeuble",
+  appartement: "Appartement",
+  studio: "Studio",
+  chambre: "Chambre",
+  garage: "Garage",
+  locale: "Local",
+  terrain: "Terrain",
+};
+
 const OwnerPublicProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -366,7 +379,7 @@ const OwnerPublicProfile = () => {
                           />
                           <div className="absolute top-4 left-4">
                             <Badge className="bg-white/90 text-black border-none backdrop-blur-md font-bold">
-                              {prop.property_type === 'house' ? 'Maison' : prop.property_type === 'apartment' ? 'Appartement' : 'Commerce'}
+                              {PROPERTY_TYPE_LABELS[prop.property_type] || 'Bien'}
                             </Badge>
                           </div>
                         </div>

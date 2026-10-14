@@ -8,6 +8,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const cron = require('node-cron');
 const Message = require('./models/messageModel');
 const db = require('./config/db');
+const { announceLegalUpdates } = require('./utils/legalAnnouncements');
 
 const paymentRoutes = require('./routes/paymentRoutes');
 const propertiesRoutes = require('./routes/propertyRoutes');
@@ -34,9 +35,9 @@ const contractTemplateRoutes = require('./routes/contractTemplateRoutes');
 const withdrawalRoutes = require('./routes/withdrawalRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const pushRoutes = require('./routes/pushRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const securityMiddleware = require('./middleware/security');
-const { trackVisit } = require('./middleware/analyticsMiddleware');
 const { maintenanceMiddleware } = require('./middleware/maintenanceMiddleware');
 
 // Models for migrations
@@ -85,7 +86,6 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// app.use(trackVisit);
 app.use(maintenanceMiddleware);
 
 // Security - Custom middleware
@@ -206,6 +206,7 @@ app.use('/api/contract-templates', contractTemplateRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // ─── Keep-alive Cron Job (Every 14 minutes to prevent Supabase pausing) ───────
 cron.schedule('*/14 * * * *', async () => {
@@ -219,18 +220,16 @@ cron.schedule('*/14 * * * *', async () => {
     }
 });
 
-/*
-// ─── Analytics Cleanup Job (Every day at 03:00 AM) ───────
+// ─── Mesure d'audience : suppression des visites de plus d'un an (chaque jour à 03:00) ───────
+// Durée annoncée dans la Politique de confidentialité (frontend/src/pages/Privacy.tsx, section 5.2)
 cron.schedule('0 3 * * *', async () => {
     try {
-        console.log('[Cleanup] 🧹 Nettoyage des anciennes visites (site_visits)...');
-        const result = await db.query("DELETE FROM site_visits WHERE created_at < NOW() - INTERVAL '90 days'");
-        console.log(`[Cleanup] ✅ ${result.rowCount} anciennes visites supprimées.`);
+        const result = await db.query("DELETE FROM site_visits WHERE created_at < NOW() - INTERVAL '1 year'");
+        console.log(`[Cleanup] ✅ ${result.rowCount} visite(s) de plus d'un an supprimée(s).`);
     } catch (err) {
-        console.error(`[Cleanup] ❌ Échec du nettoyage: ${err.message}`);
+        console.error(`[Cleanup] ❌ Échec du nettoyage des visites: ${err.message}`);
     }
 });
-*/
 
 // Error handler MUST be last
 app.use(errorHandler);
@@ -273,6 +272,13 @@ async function prepareDatabase() {
         console.log('  [DB] ✅ Migrations terminées.\n');
     } catch (err) {
         console.error('  [DB] ❌ Erreur pendant les migrations des modèles:', err.message, '\n');
+    }
+
+    // Pages juridiques modifiées (config/legal.js) : notification aux utilisateurs, non bloquant
+    try {
+        await announceLegalUpdates();
+    } catch (err) {
+        console.error('  [LÉGAL] ❌ Annonce de mise à jour des conditions non envoyée:', err.message);
     }
 }
 

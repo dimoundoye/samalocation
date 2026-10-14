@@ -52,7 +52,9 @@ const Organization = {
             `INSERT INTO memberships (user_id, organization_id, role, status, invited_by)
              VALUES ($1, $2, $3, 'active', $4)
              ON CONFLICT (user_id, organization_id)
-             DO UPDATE SET role = EXCLUDED.role, status = 'active', updated_at = now()`,
+             -- Ne jamais rétrograder le titulaire d'une organisation (ex. un propriétaire invité dans son propre espace)
+             DO UPDATE SET role = CASE WHEN memberships.role = 'owner' THEN 'owner' ELSE EXCLUDED.role END,
+                           status = 'active', updated_at = now()`,
             [userId, organizationId, role, invitedBy]
         ));
     },
@@ -71,6 +73,45 @@ const Organization = {
              WHERE user_id = $1 AND organization_id = $2 AND role <> 'owner'`,
             [userId, organizationId]
         ));
+    },
+
+    /**
+     * Membres invités (hors titulaire) actifs d'une organisation.
+     * permissions.can_view_revenue reste fourni pour l'interface (manager = accès aux finances).
+     */
+    async findCollaborators(organizationId) {
+        const { rows } = await db.query(
+            `SELECT u.id, u.email, up.full_name, up.role, m.created_at,
+                    json_build_object('can_view_revenue', m.role = 'manager') AS permissions
+             FROM memberships m
+             JOIN users u ON u.id = m.user_id
+             JOIN user_profiles up ON up.id = u.id
+             WHERE m.organization_id = $1 AND m.status = 'active' AND m.role <> 'owner'
+             ORDER BY m.created_at`,
+            [organizationId]
+        );
+        return rows;
+    },
+
+    async isActiveMember(userId, organizationId) {
+        const { rows } = await db.query(
+            `SELECT 1 FROM memberships WHERE user_id = $1 AND organization_id = $2 AND status = 'active'`,
+            [userId, organizationId]
+        );
+        return rows.length > 0;
+    },
+
+    /**
+     * Vrai si l'utilisateur travaille dans l'équipe d'au moins un autre propriétaire (agent / collaborateur).
+     */
+    async isTeamMember(userId) {
+        const { rows } = await db.query(
+            `SELECT 1 FROM memberships
+             WHERE user_id = $1 AND organization_id <> $1 AND status = 'active' AND role <> 'owner'
+             LIMIT 1`,
+            [userId]
+        );
+        return rows.length > 0;
     },
 
     /**

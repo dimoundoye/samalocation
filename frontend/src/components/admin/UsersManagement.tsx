@@ -308,7 +308,8 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
               filteredUsers.map((user) => {
                 const isOwner = user.role === "owner";
                 const self = isSelf(user.id);
-                const hasBlockAction = !self;
+                // Ni soi-même ni un autre administrateur (refusé aussi par le serveur)
+                const hasBlockAction = !self && user.role !== "admin";
                 const hasSubAction = isOwner;
                 const totalActions = (hasBlockAction ? 1 : 0) + (hasSubAction ? 1 : 0);
 
@@ -456,7 +457,7 @@ const UsersManagement = ({ initialSearchTerm = "" }: UsersManagementProps) => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {!isSelf(user.id) && (user.is_blocked ? (
+                            {!isSelf(user.id) && user.role !== "admin" && (user.is_blocked ? (
                               <Button
                                 variant="outline"
                                 size="sm"

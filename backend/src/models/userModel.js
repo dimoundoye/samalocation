@@ -189,55 +189,47 @@ const User = {
         );
     },
 
-    async findCollaboratorsByParentId(parentId) {
-        const { rows } = await db.query(`
-            SELECT u.id, u.email, up.full_name, up.role, u.created_at, u.permissions
-            FROM users u
-            JOIN user_profiles up ON u.id = up.id
-            WHERE u.parent_id = $1
-        `, [parentId]);
-        return rows;
+    /**
+     * Rejoint l'équipe d'une organisation. Un même compte peut appartenir à plusieurs équipes
+     * (ex. agent d'une agence qui gère pour plusieurs propriétaires) : les autres adhésions sont conservées.
+     */
+    async joinTeam(userId, organizationId, permissions) {
+        await Organization.upsertMembership(userId, organizationId, Organization.roleFromLegacyPermissions(permissions), { invitedBy: organizationId });
+        await this.syncLegacyTeam(userId);
     },
 
-    async updateParentId(userId, parentId) {
-        const { rows: [before] } = await db.query('SELECT parent_id, permissions FROM users WHERE id = $1', [userId]);
+    async updateTeamPermissions(userId, organizationId, permissions) {
+        await Organization.updateMembershipRole(userId, organizationId, Organization.roleFromLegacyPermissions(permissions));
+        await this.syncLegacyTeam(userId);
+    },
 
+    async leaveTeam(userId, organizationId) {
+        await Organization.revokeMembership(userId, organizationId);
+        await this.syncLegacyTeam(userId);
+    },
+
+    /**
+     * Anciennes colonnes users.parent_id / users.permissions (une seule équipe possible) :
+     * plus utilisées pour les droits, mais gardées cohérentes avec la plus ancienne équipe active
+     * pour permettre un retour arrière vers l'ancien code.
+     */
+    async syncLegacyTeam(userId) {
         await db.query(`
-            UPDATE users
-            SET parent_id = $1
-            WHERE id = $2
-        `, [parentId, userId]);
-
-        // Synchronisation memberships : parent_id ne permet qu'une équipe, on reproduit ce comportement
-        if (before?.parent_id && before.parent_id !== parentId) {
-            await Organization.revokeMembership(userId, before.parent_id);
-        }
-        if (parentId) {
-            await Organization.upsertMembership(userId, parentId, Organization.roleFromLegacyPermissions(before?.permissions), { invitedBy: parentId });
-        }
-    },
-
-    async updatePermissions(userId, permissions) {
-        const { rows: [user] } = await db.query(`
-            UPDATE users
-            SET permissions = $1
-            WHERE id = $2
-            RETURNING parent_id
-        `, [permissions, userId]);
-
-        if (user?.parent_id) {
-            await Organization.updateMembershipRole(userId, user.parent_id, Organization.roleFromLegacyPermissions(permissions));
-        }
-    },
-
-    async removeCollaborator(userId, parentId) {
-        // We don't delete the user, just detach them from the team
-        await db.query(`
-            UPDATE users
-            SET parent_id = NULL
-            WHERE id = $1 AND parent_id = $2
-        `, [userId, parentId]);
-        await Organization.revokeMembership(userId, parentId);
+            UPDATE users u
+            SET parent_id = t.organization_id,
+                permissions = COALESCE(t.permissions, u.permissions)
+            FROM (SELECT $1::varchar AS user_id) x
+            LEFT JOIN LATERAL (
+                SELECT m.organization_id,
+                       jsonb_build_object('can_view_revenue', m.role = 'manager') AS permissions
+                FROM memberships m
+                WHERE m.user_id = x.user_id AND m.status = 'active' AND m.role <> 'owner'
+                  AND m.organization_id <> x.user_id
+                ORDER BY m.created_at
+                LIMIT 1
+            ) t ON true
+            WHERE u.id = x.user_id
+        `, [userId]);
     },
 
     async delete(userId) {

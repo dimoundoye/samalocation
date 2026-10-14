@@ -1,20 +1,31 @@
 const db = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
+const { generateVerificationToken, hashToken } = require('../utils/auth');
 
 const TeamInvitation = {
+    /**
+     * Crée l'invitation (ou renouvelle celle encore en attente pour ce destinataire).
+     * Seule l'empreinte du jeton est stockée ; le jeton en clair n'existe que dans le lien envoyé.
+     */
     async create(inviterId, email, permissions) {
-        const id = uuidv4();
-        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        
-        console.log(`[TeamInvitation] Creating invitation: inviter=${inviterId}, email=${email}, token=${token}`);
-        
+        const token = generateVerificationToken();
+        const tokenHash = hashToken(token);
+
+        const { rows: [renewed] } = await db.query(`
+            UPDATE team_invitations
+            SET token = $3, permissions = $4, created_at = NOW(), expires_at = NOW() + INTERVAL '7 days'
+            WHERE LOWER(invitee_email) = LOWER($2) AND inviter_id = $1 AND status = 'pending'
+            RETURNING *
+        `, [inviterId, email, tokenHash, permissions]);
+        if (renewed) return { ...renewed, token };
+
         const { rows } = await db.query(`
             INSERT INTO team_invitations ("id", "inviter_id", "invitee_email", "token", "permissions")
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-        `, [id, inviterId, email, token, permissions]);
-        
-        return rows[0];
+        `, [uuidv4(), inviterId, email, tokenHash, permissions]);
+
+        return { ...rows[0], token };
     },
 
     async findByToken(token) {
@@ -23,22 +34,19 @@ const TeamInvitation = {
             FROM team_invitations i
             JOIN user_profiles p ON i.inviter_id = p.id
             WHERE i.token = $1 AND i.status = 'pending' AND i.expires_at > NOW()
-        `, [token]);
+        `, [hashToken(token)]);
         return rows[0] || null;
     },
 
-    async findByEmailAndInviter(email, inviterId) {
-        const { rows } = await db.query(`
-            SELECT * FROM team_invitations
-            WHERE LOWER(invitee_email) = LOWER($1) AND inviter_id = $2 AND status = 'pending'
-        `, [email, inviterId]);
-        return rows[0] || null;
-    },
-
+    /**
+     * Passe l'invitation de 'pending' à un autre statut. Renvoie false si elle n'était plus en attente
+     * (déjà acceptée entre-temps) : une invitation ne sert qu'une fois.
+     */
     async updateStatus(id, status) {
-        await db.query(`
-            UPDATE team_invitations SET status = $1 WHERE id = $2
+        const { rowCount } = await db.query(`
+            UPDATE team_invitations SET status = $1 WHERE id = $2 AND status = 'pending'
         `, [status, id]);
+        return rowCount > 0;
     },
 
     async migrate() {

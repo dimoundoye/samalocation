@@ -144,11 +144,12 @@
       "all": "Tous les types",
       "house": "Maison",
       "villa": "Villa",
+      "building": "Immeuble",
       "apartment": "Appartement",
       "studio": "Studio",
       "room": "Chambre",
       "garage": "Garage",
-      "office": "Locale",
+      "office": "Local",
       "land": "Terrain"
     },
     "prices": {
@@ -338,7 +339,8 @@
     "sent_title": "Signalement envoyé",
     "sent_desc": "Merci, notre équipe va examiner cette annonce.",
     "error": "Impossible d'envoyer le signalement. Réessayez plus tard.",
-    "login_required": "Connectez-vous pour signaler une annonce. Cela nous permet d'éviter les signalements abusifs.",
-    "login": "Se connecter"
+    "contact_label": "Votre e-mail ou téléphone (facultatif)",
+    "contact_placeholder": "Pour que notre équipe puisse vous recontacter",
+    "contact_invalid": "Indiquez une adresse e-mail ou un numéro de téléphone valide, ou laissez le champ vide."
   }
 }

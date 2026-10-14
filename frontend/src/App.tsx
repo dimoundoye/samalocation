@@ -12,6 +12,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { OfflineStatus } from "./components/OfflineStatus";
 import { PushInvitePrompt } from "@/components/shared/PushInvitePrompt";
 import ScrollToTop from "./components/ScrollToTop";
+import PageViewTracker from "./components/PageViewTracker";
 import SEO from "./components/SEO";
 // import Chatbot from "./components/Chatbot";
 
@@ -68,6 +69,7 @@ const App = () => (
             {/* Titre et description par défaut, dans la langue active (les pages peuvent les remplacer) */}
             <SEO />
             <ScrollToTop />
+            <PageViewTracker />
             <AuthProvider>
               <SocketProvider>
                 <Suspense fallback={<PageLoader />}>

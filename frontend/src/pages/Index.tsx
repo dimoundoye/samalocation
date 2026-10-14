@@ -230,6 +230,7 @@ const Index = () => {
                       <SelectItem value="appartement" className="rounded-lg cursor-pointer">{t('search.types.apartment') || "Appartement"}</SelectItem>
                       <SelectItem value="maison" className="rounded-lg cursor-pointer">{t('search.types.house') || "Maison"}</SelectItem>
                       <SelectItem value="villa" className="rounded-lg cursor-pointer">{t('search.types.villa') || "Villa"}</SelectItem>
+                      <SelectItem value="immeuble" className="rounded-lg cursor-pointer">{t('search.types.building') || "Immeuble"}</SelectItem>
                       <SelectItem value="studio" className="rounded-lg cursor-pointer">{t('search.types.studio') || "Studio"}</SelectItem>
                       <SelectItem value="chambre" className="rounded-lg cursor-pointer">{t('search.types.room') || "Chambre"}</SelectItem>
                       <SelectItem value="garage" className="rounded-lg cursor-pointer">{t('search.types.garage') || "Garage"}</SelectItem>

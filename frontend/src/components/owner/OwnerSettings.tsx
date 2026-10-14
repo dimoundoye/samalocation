@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { UpgradeModal } from "./UpgradeModal";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/contexts/AuthContext";
+import { getActiveWorkspace } from "@/lib/workspace";
 import { baseClient } from "@/api/baseClient";
 import classicImg from "@/assets/classic.png";
 import modernImg from "@/assets/modern.png";
@@ -29,9 +30,8 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isAgent = !!user?.parentId;
-  // Agent is operating in the patron's space when active_context is set to a non-personal value
-  const isInPatronContext = isAgent && !!localStorage.getItem("active_context") && localStorage.getItem("active_context") !== "personal";
+  // Dans l'équipe d'un propriétaire : ce ne sont pas ses paramètres à lui
+  const isInPatronContext = !!getActiveWorkspace(user);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     fullName: "",

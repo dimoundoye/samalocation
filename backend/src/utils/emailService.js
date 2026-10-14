@@ -153,8 +153,14 @@ const sendResetPasswordEmail = async (email, token) => {
     return await sendEmail(email, 'Réinitialisation de votre mot de passe - Samalocation', html);
 };
 
-const sendTeamInvitationLink = async (email, ownerName, token, isExistingUser = false) => {
-    const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/accept-invitation?token=${token}`;
+// Texte libre saisi par un utilisateur (ex. nom du propriétaire) inséré dans un e-mail HTML
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+}[c]));
+
+const sendTeamInvitationLink = async (email, rawOwnerName, token, isExistingUser = false) => {
+    const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/accept-invitation?token=${encodeURIComponent(token)}`;
+    const ownerName = escapeHtml(rawOwnerName);
 
     const html = `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; border: 1px solid #f0f0f0; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
@@ -166,10 +172,11 @@ const sendTeamInvitationLink = async (email, ownerName, token, isExistingUser = 
                 <p style="font-size: 16px;"><strong>${ownerName}</strong> vous invite à rejoindre son équipe de gestion immobilière sur <strong>Samalocation</strong> en tant qu'agent.</p>
                 
                 <div style="background-color: #fff8f1; border-left: 4px solid #ff9800; padding: 20px; margin: 25px 0; border-radius: 8px;">
-                    <p style="margin: 0 0 10px 0; color: #855d00; font-weight: bold; font-size: 14px;">⚠️ Information importante sur l'abonnement :</p>
+                    <p style="margin: 0 0 10px 0; color: #855d00; font-weight: bold; font-size: 14px;">À savoir :</p>
                     <p style="margin: 0; color: #855d00; font-size: 14px;">
-                        En acceptant ce rôle, votre compte sera rattaché à l'agence de ${ownerName}. 
-                        Vous ne pourrez plus souscrire au plan <strong>Entreprise</strong>, mais vous pourrez toujours bénéficier du plan <strong>Premium</strong> pour vos activités personnelles.
+                        Vous gardez votre espace personnel et vos autres équipes : vous passerez de l'un à l'autre depuis votre tableau de bord.
+                        ${ownerName} choisit vos droits et peut retirer cet accès à tout moment.
+                        Un compte agent ne peut pas souscrire au plan <strong>Professionnel</strong> (les plans Gratuit et Premium restent possibles pour votre espace personnel).
                     </p>
                 </div>
 
@@ -192,7 +199,9 @@ const sendTeamInvitationLink = async (email, ownerName, token, isExistingUser = 
         </div>
     `;
 
-    return await sendEmail(email, `Invitation de ${ownerName} - Samalocation`, html);
+    // Objet en texte brut : nom d'origine, sans retour à la ligne
+    const subjectName = String(rawOwnerName ?? '').replace(/[\r\n]+/g, ' ').slice(0, 100);
+    return await sendEmail(email, `Invitation de ${subjectName} - Samalocation`, html);
 };
 
 module.exports = {

@@ -107,7 +107,17 @@
     },
     "for_sale": "For Sale",
     "for_rent": "For Rent",
-    "owner_logo_alt": "Owner logo"
+    "owner_logo_alt": "Owner logo",
+    "specs": {
+      "rooms_one": "{{count}} room",
+      "rooms_other": "{{count}} rooms",
+      "bedrooms_one": "{{count}} bedroom",
+      "bedrooms_other": "{{count}} bedrooms",
+      "bathrooms_one": "{{count}} bathroom",
+      "bathrooms_other": "{{count}} bathrooms",
+      "area": "{{value}} m²",
+      "title": "Property features"
+    }
   },
   "theme": {
     "toggle": "Change theme",

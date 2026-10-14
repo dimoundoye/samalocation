@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Check, Zap, Shield, Crown, Building2, HelpCircle, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { isTeamMember } from "@/lib/workspace";
 import { useNavigate } from "react-router-dom";
 import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +24,8 @@ const Pricing = () => {
     const [loading, setLoading] = useState(false);
     const [subscription, setSubscription] = useState<any>(null);
     const { toast } = useToast();
-    const isAgent = user?.parentId != null;
+    // Règle provisoire : un agent (membre de l'équipe d'un propriétaire) ne prend pas le plan Professionnel
+    const isAgent = isTeamMember(user);
 
     useEffect(() => {
         if (user) {
@@ -52,8 +54,8 @@ const Pricing = () => {
 
         if (plan.id === 'professional' && isAgent) {
             toast({
-                title: "Accès restraint",
-                description: "Les comptes 'Agent/Collaborateur' ne peuvent pas souscrire à une offre Entreprise.",
+                title: "Accès restreint",
+                description: "Un compte agent (membre de l'équipe d'un propriétaire) ne peut pas souscrire au plan Professionnel.",
                 variant: "destructive"
             });
             return;

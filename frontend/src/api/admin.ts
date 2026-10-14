@@ -59,7 +59,11 @@ export const getAdminEvents = async (limit = 20) => {
     return await baseClient(`/admin/events?limit=${limit}`);
 };
 
-export const updateUserSubscription = async (userId: string, data: { planName: string, status: string, durationDays?: number, price?: number, subscriptionId?: string }) => {
+export const getAdminSubscriptions = async () => {
+    return await baseClient("/admin/subscriptions");
+};
+
+export const updateUserSubscription = async (userId: string, data: { planName: string, status: string, durationDays?: number, price?: number, subscriptionId?: string, reason?: string }) => {
     return await baseClient(`/admin/users/${userId}/subscription`, {
         method: "PATCH",
         body: JSON.stringify(data)
@@ -93,11 +97,15 @@ export const getOwnerBalances = async () => {
     return await baseClient("/admin/owners/balances");
 };
 
-export const forceOwnerWithdrawal = async (ownerId: string, data?: { customPhone?: string; customProvider?: string }) => {
+export const forceOwnerWithdrawal = async (ownerId: string, data: { customPhone?: string; customProvider?: string; password: string }) => {
     return await baseClient(`/admin/owners/${ownerId}/force-withdrawal`, {
         method: "POST",
-        body: data ? JSON.stringify(data) : undefined
+        body: JSON.stringify(data)
     });
+};
+
+export const getAdminAuditLogs = async (limit = 100) => {
+    return await baseClient(`/admin/audit-logs?limit=${limit}`);
 };
 
 export const getAllReceipts = async (params?: any) => {
