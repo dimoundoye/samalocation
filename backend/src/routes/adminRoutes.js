@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
+const { requireRentOnlinePayment } = require('../config/features');
 const adminMiddleware = require('../middleware/adminMiddleware');
 const multer = require('multer');
 
@@ -44,7 +45,7 @@ router.get('/revenue-stats', adminController.getRevenueStats);
 router.get('/transactions', adminController.getRecentTransactions);
 router.get('/owners/balances', adminController.getOwnerBalances);
 router.get('/receipts/list', adminController.getAllReceipts);
-router.post('/owners/:ownerId/force-withdrawal', adminController.forceOwnerWithdrawal);
+router.post('/owners/:ownerId/force-withdrawal', requireRentOnlinePayment, adminController.forceOwnerWithdrawal);
 
 // Activité en temps réel (flux d'événements)
 router.get('/events', adminController.getEvents);

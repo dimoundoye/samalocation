@@ -26,6 +26,7 @@ const MIGRATIONS = [
     'create_admin_audit_logs.sql',
     'add_anonymous_reports.sql',
     'set_role_search_path.sql',
+    'create_owner_payment_methods.sql',
 ];
 
 const MIGRATIONS_DIR = path.join(__dirname, '../migrations');

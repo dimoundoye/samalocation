@@ -199,8 +199,6 @@
       "brave_disabled": "Brave blocks notifications by default. Open Brave settings → Privacy and security, turn on “Use Google services for push messaging”, restart Brave, then try again."
     },
     "draw_signature": "Sign on screen",
-    "signature_ready": "Signature ready",
-    "signature_save_reminder": "Click “Save changes” to use it on your next receipts and contracts.",
     "signature_tip": "Tip: sign on screen from a phone or tablet for a better result. For a company stamp, upload a photo instead."
   },
   "signature_scanner": {

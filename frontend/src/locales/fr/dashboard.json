@@ -199,8 +199,6 @@
       "brave_disabled": "Brave bloque les notifications par défaut. Ouvrez les paramètres de Brave → Confidentialité et sécurité, activez « Utiliser les services Google pour la messagerie push », redémarrez Brave puis réessayez."
     },
     "draw_signature": "Signer à l'écran",
-    "signature_ready": "Signature prête",
-    "signature_save_reminder": "Cliquez sur « Enregistrer les modifications » pour l'utiliser sur vos prochains reçus et contrats.",
     "signature_tip": "Conseil : signez à l'écran depuis un téléphone ou une tablette pour un meilleur rendu. Pour un cachet, importez plutôt une photo."
   },
   "signature_scanner": {

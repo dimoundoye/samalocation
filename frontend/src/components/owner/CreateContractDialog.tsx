@@ -127,18 +127,23 @@ export const CreateContractDialog = ({ open, onOpenChange, onSuccess, propertyId
             try {
                 const prop = await getPropertyById(formData.property_id);
                 if (prop) {
-                    // Find active tenant for this property if any
-                    const propertyTenant = tenants.find(t => t.property_id === formData.property_id);
+                    const propertyTenants = tenants.filter(t => t.property_id === formData.property_id);
 
-                    setFormData(prev => ({
-                        ...prev,
-                        detailed_address: prop.address || prev.detailed_address,
-                        property_type: prop.type || prev.property_type,
-                        // Auto-select tenant if found and only one for this property
-                        tenant_id: propertyTenant ? propertyTenant.user_id : prev.tenant_id,
-                        rent_amount: propertyTenant ? String(propertyTenant.monthly_rent) : prev.rent_amount,
-                        deposit_amount: propertyTenant ? String(propertyTenant.monthly_rent * 2) : prev.deposit_amount
-                    }));
+                    setFormData(prev => {
+                        // Le locataire déjà choisi habite ce bien : on le garde (sinon un immeuble à plusieurs
+                        // locataires remplaçait toujours le choix par le premier de la liste)
+                        // Sinon, sélection automatique seulement s'il n'y a qu'un locataire pour ce bien
+                        const propertyTenant = propertyTenants.find(t => t.user_id === prev.tenant_id)
+                            || (propertyTenants.length === 1 ? propertyTenants[0] : null);
+                        return {
+                            ...prev,
+                            detailed_address: prop.address || prev.detailed_address,
+                            property_type: prop.type || prev.property_type,
+                            tenant_id: propertyTenant ? propertyTenant.user_id : prev.tenant_id,
+                            rent_amount: propertyTenant ? String(propertyTenant.monthly_rent) : prev.rent_amount,
+                            deposit_amount: propertyTenant ? String(propertyTenant.monthly_rent * 2) : prev.deposit_amount
+                        };
+                    });
                 }
             } catch (error) {
                 console.error("Error loading property details:", error);

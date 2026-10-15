@@ -185,6 +185,9 @@ export const OwnerDocumentationTab = () => {
       ],
       tip: "Chaque retenue doit correspondre à une somme réellement due (loyer impayé, dégâts constatés à l'état des lieux de sortie) : motivez-la précisément et gardez vos justificatifs. Un état des lieux d'entrée avec photos évite bien des litiges."
     },
+    // Paiement du loyer en ligne (PayDunya + portefeuille) désactivé pour l'instant (RENT_ONLINE_PAYMENT_ENABLED) :
+    // section à réafficher si la fonctionnalité est réactivée.
+    /*
     {
       id: "online-payment",
       title: "Activer les paiements en ligne",
@@ -198,6 +201,33 @@ export const OwnerDocumentationTab = () => {
         "Pour retirer vos fonds cumulés, cliquez sur 'Retirer mes fonds' dans l'onglet 'Mon portefeuille', saisissez votre numéro de virement, le montant et confirmez avec votre mot de passe."
       ],
       tip: "Activer cette option réduit vos retards de paiement de 80% car vos locataires n'ont plus besoin de se déplacer ou de faire des transferts manuels."
+    },
+    */
+    {
+      id: "payment-methods",
+      title: "Enregistrer vos moyens de paiement",
+      icon: <Smartphone className="h-5 w-5 text-sky-500" />,
+      purpose: "Indiquez où vos locataires doivent vous payer le loyer : lien Wave, numéro Wave, numéro Orange Money ou compte bancaire. Ils voient ces coordonnées dans leur espace avec le montant de leur loyer et vous paient directement, sans frais SamaLocation. L'argent arrive chez vous : la plateforme ne le touche jamais.",
+      steps: [
+        "Allez dans 'Paramètres', onglet 'Profil', jusqu'à la carte 'Moyens de paiement du loyer'.",
+        "Choisissez le type de moyen de paiement dans la liste ('Lien de paiement Wave', 'Numéro Wave', 'Numéro Orange Money' ou 'Virement bancaire'), puis cliquez sur 'Ajouter'.",
+        "Remplissez les informations : le lien (il doit commencer par https://pay.wave.com/), le numéro et le nom affiché sur le compte, ou le titulaire, la banque et le RIB / IBAN.",
+        "Ajoutez si besoin une consigne pour le locataire (ex : 'Indiquer le numéro de l'appartement en référence').",
+        "Répétez l'opération pour chaque moyen que vous acceptez (6 au maximum), puis cliquez sur 'Enregistrer'.",
+        "Vos locataires trouvent ces coordonnées dans le bloc 'Payer mon loyer' du détail de leur bail : bouton 'Payer avec Wave' (montant pré-rempli) et boutons 'Copier' pour les numéros et le RIB.",
+        "À réception du paiement, créez le reçu comme d'habitude depuis l'onglet 'Locataires' (bouton 'Reçu') : le locataire est notifié."
+      ],
+      subSections: [
+        {
+          title: "Obtenir votre lien Wave",
+          content: "Dans l'application Wave Business, ouvrez 'Recevoir un paiement' et copiez votre lien de paiement. Le locataire l'ouvre avec le montant de son loyer déjà rempli."
+        },
+        {
+          title: "Confidentialité et sécurité",
+          content: "Vos coordonnées ne sont visibles que par vos locataires ayant un bail actif, jamais sur votre profil public. À chaque modification de coordonnées déjà enregistrées, vos locataires sont prévenus : cela déjoue les tentatives de détournement de paiement."
+        }
+      ],
+      tip: "Vérifiez soigneusement votre numéro et votre RIB avant d'enregistrer : SamaLocation ne transite pas l'argent et ne peut pas récupérer un paiement envoyé à un mauvais numéro."
     },
     {
       id: "financial-dashboard",

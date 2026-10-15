@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
 const authMiddleware = require('../middleware/authMiddleware');
+const { requireRentOnlinePayment } = require('../config/features');
 
 /**
  * @route   POST /api/payment/request
@@ -9,7 +10,7 @@ const authMiddleware = require('../middleware/authMiddleware');
  * @access  Private (Owner/User)
  */
 router.post('/request', authMiddleware, paymentController.initializePayment);
-router.post('/rent/request', authMiddleware, paymentController.initializeRentPayment);
+router.post('/rent/request', authMiddleware, requireRentOnlinePayment, paymentController.initializeRentPayment);
 
 /**
  * @route   POST /api/payment/callback

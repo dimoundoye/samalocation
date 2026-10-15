@@ -115,9 +115,11 @@ const receiptController = {
 
             // Créer une notification pour le locataire
             try {
+                // tenant_id peut être l'identifiant du bail (tenants.id) : la notification va au compte du locataire
+                const { rows: leaseRows } = await db.query('SELECT user_id FROM tenants WHERE id = $1', [tenant_id]);
                 await Notification.create({
                     id: uuidv4(),
-                    user_id: tenant_id,
+                    user_id: leaseRows[0]?.user_id || tenant_id,
                     type: 'receipt',
                     title: isDeposit ? 'Nouveau reçu de caution' : 'Nouveau reçu de loyer',
                     message: isDeposit

@@ -25,6 +25,7 @@ import classicImg from "@/assets/classic.png";
 import modernImg from "@/assets/modern.png";
 import minimalImg from "@/assets/minimal.png";
 import agenceImg from "@/assets/agence.png";
+import { OwnerPaymentMethodsCard } from "./OwnerPaymentMethodsCard";
 
 export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { toast } = useToast();
@@ -484,10 +485,6 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                       disabled={!profile.idCardUrl || !profile.ownershipProofUrl || !profile.livenessSelfieUrl || loading}
                       onClick={() => {
                         setProfile({ ...profile, verificationStatus: 'pending' });
-                        toast({
-                          title: t('common.success'),
-                          description: t('settings.verification_pending'),
-                        });
                       }}
                     >
                       {t('settings.submit_id')}
@@ -567,7 +564,6 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                           if (urls && urls.length > 0) {
                             setProfile({ ...profile, signatureUrl: urls[0] });
                             setSignaturePadOpen(false);
-                            toast({ title: t('settings.signature_ready'), description: t('settings.signature_save_reminder') });
                           }
                         } catch (error) {
                           toast({
@@ -617,7 +613,6 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                           const urls = await uploadPhotos([file]);
                           if (urls && urls.length > 0) {
                             setProfile({ ...profile, signatureUrl: urls[0] });
-                            toast({ title: t('settings.signature_ready'), description: t('settings.signature_save_reminder') });
                           }
                         } catch (error) {
                           toast({
@@ -808,6 +803,8 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
               )}
             </CardContent>
           </Card>
+
+          <OwnerPaymentMethodsCard />
           </TabsContent>
 
         <TabsContent value="account" className="space-y-4">

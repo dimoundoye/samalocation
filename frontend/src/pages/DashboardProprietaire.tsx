@@ -62,6 +62,7 @@ import { AddPropertyModal } from "@/components/owner/AddPropertyModal";
 import { EditPropertyModal } from "@/components/owner/EditPropertyModal";
 import { OwnerSettings } from "@/components/owner/OwnerSettings";
 import { OwnerWalletTab } from "@/components/owner/OwnerWalletTab";
+import { RENT_ONLINE_PAYMENT_ENABLED } from "@/lib/features";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfile } from "@/components/UserProfile";
 import { AssignTenantDialog } from "@/components/owner/AssignTenantDialog";
@@ -999,6 +1000,8 @@ const DashboardProprietaire = () => {
             { id: "settings", label: t('dashboard.sidebar.settings'), icon: Settings },
             { id: "guide", label: "Guide", icon: HelpCircle },
           ].filter(item => {
+            // Portefeuille masqué tant que le paiement du loyer en ligne est désactivé
+            if (item.id === "wallet" && !RENT_ONLINE_PAYMENT_ENABLED) return false;
             // Un agent n'a pas d'équipe à gérer (pas de plan Professionnel), même dans son espace personnel
             if (item.id === "team" && isTeamMember(user)) return false;
             // Dans l'équipe d'un propriétaire : ni son abonnement, ni son profil (signature)
@@ -2765,7 +2768,7 @@ const DashboardProprietaire = () => {
             {activeTab === "subscription" && <OwnerSubscription />}
 
             {/* Wallet Tab */}
-            {activeTab === "wallet" && <OwnerWalletTab />}
+            {activeTab === "wallet" && RENT_ONLINE_PAYMENT_ENABLED && <OwnerWalletTab />}
 
             {/* Team Tab */}
             {activeTab === "team" && !isTeamMember(user) && <OwnerTeamTab />}

@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, cn } from "@/lib/utils";
 import { isDepositReceipt, isPaidRentReceipt } from "@/lib/deposits";
 import { TenantDepositsPanel } from "./TenantDepositsPanel";
+import { RENT_ONLINE_PAYMENT_ENABLED } from "@/lib/features";
+import { RentPaymentPanel } from "./RentPaymentPanel";
 
 export const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
@@ -194,8 +196,8 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                     </div>
                 </div>
 
-                {/* Section Paiement en Ligne (PayDunya) */}
-                {(() => {
+                {/* Paiement du loyer : en ligne via PayDunya si activé, sinon paiement direct au bailleur */}
+                {RENT_ONLINE_PAYMENT_ENABLED ? (() => {
                     const rentAmount = parseFloat(lease.monthly_rent) || 0;
                     const feeAmount = rentAmount * 0.025;
                     const totalAmount = rentAmount + feeAmount;
@@ -333,7 +335,10 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                             )}
                         </div>
                     );
-                })()}
+                })() : (
+                    // Paiement direct au bailleur avec ses coordonnées
+                    <RentPaymentPanel lease={lease} currency={currency} />
+                )}
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
                     <TabsList className="w-full bg-muted/40 p-1 rounded-xl">
