@@ -16,6 +16,7 @@ import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, cn } from "@/lib/utils";
 import { isDepositReceipt, isPaidRentReceipt } from "@/lib/deposits";
+import { getReceiptRemaining, getRentMonthBalance, isPartialReceipt, isUnpaidNotice } from "@/lib/rentBalance";
 import { TenantDepositsPanel } from "./TenantDepositsPanel";
 import { RENT_ONLINE_PAYMENT_ENABLED } from "@/lib/features";
 import { RentPaymentPanel } from "./RentPaymentPanel";
@@ -85,9 +86,28 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
         })[0];
     }, [receipts]);
 
+    // Solde d'un mois d'après les reçus de ce logement (un loyer peut être réglé en plusieurs versements)
+    const getMonthBalance = (month: number, year: number) =>
+        getRentMonthBalance(receipts.filter(r => Number(r.month) === month && Number(r.year) === year));
+
+    // Mois réglés en partie : reste à payer, du plus ancien au plus récent
+    const partialMonths = useMemo(() => {
+        const keys = new Set<string>();
+        receipts.filter(isPaidRentReceipt).forEach(r => keys.add(`${r.year}-${r.month}`));
+        return Array.from(keys)
+            .map(key => {
+                const [year, month] = key.split('-').map(Number);
+                return { year, month, ...getRentMonthBalance(receipts.filter(r => Number(r.month) === month && Number(r.year) === year)) };
+            })
+            .filter(m => m.isDue)
+            .sort((a, b) => (a.year * 12 + a.month) - (b.year * 12 + b.month));
+    }, [receipts]);
+
     useEffect(() => {
         if (latestPaid) {
-            let nextMonth = (latestPaid.month || 1) + 1;
+            // Le dernier mois n'est pas soldé : on propose d'en régler le reste
+            const latestIsPartial = getMonthBalance(latestPaid.month || 1, latestPaid.year).isDue;
+            let nextMonth = (latestPaid.month || 1) + (latestIsPartial ? 0 : 1);
             let nextYear = latestPaid.year;
             if (nextMonth > 12) {
                 nextMonth = 1;
@@ -194,11 +214,28 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                             {formatCurrency(lease.monthly_rent || 0, currency)}
                         </span>
                     </div>
+                    {partialMonths.length > 0 && (
+                        <div className="pt-2 border-t space-y-1">
+                            {partialMonths.map(m => (
+                                <div key={`${m.year}-${m.month}`} className="flex items-center justify-between text-orange-700 dark:text-orange-400">
+                                    <span className="text-xs font-medium flex items-center gap-1.5">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        Reste à payer — {getMonthName(m.month)} {m.year}
+                                    </span>
+                                    <span className="text-sm font-black">{formatCurrency(m.remaining, currency)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Paiement du loyer : en ligne via PayDunya si activé, sinon paiement direct au bailleur */}
                 {RENT_ONLINE_PAYMENT_ENABLED ? (() => {
-                    const rentAmount = parseFloat(lease.monthly_rent) || 0;
+                    // Montant du mois choisi : le reste dû s'il a déjà été réglé en partie (même calcul côté serveur)
+                    const selectedBalance = getMonthBalance(selectedMonth, selectedYear);
+                    const monthSettled = selectedBalance.status === 'paid';
+                    const isRemainder = selectedBalance.isDue;
+                    const rentAmount = isRemainder ? selectedBalance.remaining : monthSettled ? 0 : (parseFloat(lease.monthly_rent) || 0);
                     const feeAmount = rentAmount * 0.025;
                     const totalAmount = rentAmount + feeAmount;
 
@@ -281,7 +318,7 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                                                 value={selectedYear}
                                                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                                             >
-                                                {[2025, 2026, 2027, 2028].map((y) => (
+                                                {Array.from(new Set([new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1, new Date().getFullYear() + 2, selectedYear])).sort((a, b) => a - b).map((y) => (
                                                     <option key={y} value={y}>{y}</option>
                                                 ))}
                                             </select>
@@ -295,8 +332,15 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                                                 <span className="text-green-600 font-bold">{getMonthName(latestPaid.month)} {latestPaid.year}</span>
                                             </div>
                                         )}
+                                        {monthSettled ? (
+                                            <div className="flex items-center gap-1.5 text-green-700 font-semibold">
+                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                Le loyer de {getMonthName(selectedMonth)} {selectedYear} est déjà réglé.
+                                            </div>
+                                        ) : (
+                                        <>
                                         <div className="flex justify-between text-muted-foreground">
-                                            <span>Loyer :</span>
+                                            <span>{isRemainder && selectedBalance.paid > 0 ? `Reste du loyer (déjà versé ${formatCurrency(selectedBalance.paid, currency)}) :` : "Loyer :"}</span>
                                             <span>{formatCurrency(rentAmount, currency)}</span>
                                         </div>
                                         <div className="flex justify-between text-muted-foreground">
@@ -307,12 +351,14 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                                             <span>Total à payer :</span>
                                             <span className="text-primary font-black">{formatCurrency(totalAmount, currency)}</span>
                                         </div>
+                                        </>
+                                        )}
                                     </div>
 
                                     <Button 
                                         className="w-full text-xs font-semibold h-9 rounded-lg"
                                         onClick={handlePayment}
-                                        disabled={paymentLoading}
+                                        disabled={paymentLoading || monthSettled}
                                     >
                                         {paymentLoading ? (
                                             <>
@@ -424,9 +470,25 @@ export const LeaseDetailModal = ({ lease, open, onClose, currency = 'XOF' }: Lea
                                                                     ANNULÉ
                                                                 </Badge>
                                                             )}
+                                                            {!isCancelled && isPartialReceipt(r) && (
+                                                                <Badge variant="outline" className="text-[10px] font-bold uppercase bg-orange-50 text-orange-700 border-orange-200">
+                                                                    Acompte
+                                                                </Badge>
+                                                            )}
+                                                            {!isCancelled && isUnpaidNotice(r) && (
+                                                                <Badge variant="outline" className="text-[10px] font-bold uppercase bg-red-50 text-red-700 border-red-200">
+                                                                    Impayé
+                                                                </Badge>
+                                                            )}
                                                         </div>
                                                         <p className={`text-xs ${isCancelled ? 'line-through text-muted-foreground' : 'text-muted-foreground'}`}>
                                                             {formatCurrency(r.amount || r.monthly_rent || 0, currency)}
+                                                            {!isCancelled && isPartialReceipt(r) && (
+                                                                <span className="text-orange-700 font-semibold"> · reste {formatCurrency(getReceiptRemaining(r), currency)} à l'émission</span>
+                                                            )}
+                                                            {!isCancelled && isUnpaidNotice(r) && (
+                                                                <span className="text-red-700 font-semibold"> · montant dû {formatCurrency(getReceiptRemaining(r), currency)}</span>
+                                                            )}
                                                         </p>
                                                     </div>
                                                     <div className="flex items-center gap-1.5">

@@ -60,12 +60,14 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
     title: "",
     description: ""
   });
-  const initialProfileRef = useRef<string>("");
+  // Dernière version enregistrée du profil (JSON). En état et non en ref : après un enregistrement,
+  // la mise à jour provoque un nouveau rendu et fait disparaître la barre « modifications non enregistrées ».
+  const [savedProfile, setSavedProfile] = useState<string>("");
 
   const hasChanges = useMemo(() => {
-    if (!initialProfileRef.current) return false;
-    return JSON.stringify(profile) !== initialProfileRef.current;
-  }, [profile]);
+    if (!savedProfile) return false;
+    return JSON.stringify(profile) !== savedProfile;
+  }, [profile, savedProfile]);
 
   useEffect(() => {
     if (!isInPatronContext) loadProfile();
@@ -94,7 +96,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
           receiptTemplate: data.receipt_template || "classic",
           currency: data.currency || "XOF",
         });
-        initialProfileRef.current = JSON.stringify({
+        setSavedProfile(JSON.stringify({
           fullName: data.full_name || "",
           contactPhone: data.contact_phone || "",
           phone: data.phone || "",
@@ -110,7 +112,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
           verificationStatus: data.verification_status || "none",
           receiptTemplate: data.receipt_template || "classic",
           currency: data.currency || "XOF",
-        });
+        }));
       }
     } catch (error: any) {
       toast({
@@ -151,7 +153,7 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
         throw new Error("Erreur lors de la mise à jour du profil");
       }
 
-      initialProfileRef.current = JSON.stringify(profile);
+      setSavedProfile(JSON.stringify(profile));
       toast({
         title: t('common.success'),
         description: t('common.save_success'),
@@ -778,8 +780,8 @@ export const OwnerSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          if (initialProfileRef.current) {
-                            setProfile(JSON.parse(initialProfileRef.current));
+                          if (savedProfile) {
+                            setProfile(JSON.parse(savedProfile));
                           }
                         }}
                         disabled={loading}

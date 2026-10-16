@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import PropertyCard from "@/components/PropertyCard";
 import { Input } from "@/components/ui/input";
@@ -171,13 +172,13 @@ const Recherche = () => {
   const filteredProperties = properties;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background">
       <SEO 
         title={t('seo.search.title')}
         description={t('seo.search.description')}
       />
       <Navbar />
-      <div className={cn("pt-32 px-4 transition-all duration-300", isSearchActive && "pt-20 sm:pt-32")}>
+      <div className={cn("pt-32 pb-24 px-4 transition-all duration-300", isSearchActive && "pt-20 sm:pt-32")}>
         <div className="container mx-auto">
           {/* Back Button for authenticated users */}
           {isAuthenticated && (
@@ -667,6 +668,8 @@ const Recherche = () => {
           </div>
         </div>
       </div>
+
+      <Footer />
 
       {/* Floating View Toggle Button */}
       {!isSearchActive && (

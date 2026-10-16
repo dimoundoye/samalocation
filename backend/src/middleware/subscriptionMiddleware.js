@@ -96,8 +96,17 @@ const checkReceiptLimit = async (req, res, next) => {
         const planConfig = await Subscription.getActivePlan(ownerId);
 
         // Les reçus de caution ne comptent pas dans le quota de quittances
-        if (planConfig.limits.max_receipts_per_month === Infinity || req.body?.receipt_type === 'deposit') {
+        if (planConfig.limits.max_receipts_per_month === Infinity || req.body?.receipt_type === 'deposit' || req.body?.receipt_type === 'notice') {
             return next();
+        }
+
+        // Un mois réglé en plusieurs versements ne compte qu'une fois : le versement suivant d'un mois
+        // déjà entamé passe sans contrôle, et seuls les premiers versements sont comptés (paid_before vide ou nul)
+        const { tenant_id, property_id, unit_id, month, year } = req.body || {};
+        if (tenant_id && property_id && month && year) {
+            const Receipt = require('../models/receiptModel');
+            const balance = await Receipt.getPeriodBalance({ tenant_id, property_id, unit_id, month, year });
+            if (balance.payments_count > 0) return next();
         }
 
         const db = require('../config/db');
@@ -106,6 +115,8 @@ const checkReceiptLimit = async (req, res, next) => {
             JOIN properties p ON r.property_id = p.id
             WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
             AND r.receipt_type <> 'deposit'
+            AND COALESCE(r.paid_before, 0) = 0
+            AND r.amount > 0
             AND EXTRACT(MONTH FROM r.created_at) = EXTRACT(MONTH FROM NOW())
             AND EXTRACT(YEAR FROM r.created_at) = EXTRACT(YEAR FROM NOW())
         `, [ownerId]);

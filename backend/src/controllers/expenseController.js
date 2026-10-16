@@ -245,6 +245,58 @@ const expenseController = {
                 retainedAmount: parseFloat(depositRows[0]?.retained_amount) || 0
             };
 
+            // 2 ter. Reste à encaisser : loyers de l'année réglés en partie (par locataire, logement et mois).
+            // Le dernier versement du mois porte le loyer dû figé ; un mois sans loyer dû (reçus d'avant le suivi) est soldé.
+            const periods = new Map();
+            receipts.forEach(r => {
+                if (!r.month) return;
+                const key = `${r.tenant_id}|${r.unit_id || r.property_id}|${r.month}`;
+                if (!periods.has(key)) periods.set(key, []);
+                periods.get(key).push(r);
+            });
+            const outstandingItems = [];
+            for (const periodReceipts of periods.values()) {
+                periodReceipts.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                const lastWithDue = [...periodReceipts].reverse().find(r => r.rent_due !== null && r.rent_due !== undefined);
+                if (!lastWithDue) continue;
+                const paid = periodReceipts.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                const rentDue = parseFloat(lastWithDue.rent_due) || 0;
+                const remaining = Math.round((rentDue - paid) * 100) / 100;
+                if (remaining <= 0) continue;
+                outstandingItems.push({
+                    tenant_id: lastWithDue.tenant_id,
+                    tenant_name: lastWithDue.tenant_name || null,
+                    property_id: lastWithDue.property_id,
+                    month: parseInt(lastWithDue.month, 10),
+                    year,
+                    rent_due: rentDue,
+                    paid,
+                    remaining
+                });
+            }
+            if (outstandingItems.length > 0) {
+                const { rows: propertyRows } = await db.query(
+                    'SELECT id, name FROM properties WHERE id = ANY($1)',
+                    [[...new Set(outstandingItems.map(i => i.property_id))]]
+                );
+                const propertyNames = Object.fromEntries(propertyRows.map(p => [String(p.id), p.name]));
+                const missingTenantIds = [...new Set(outstandingItems.filter(i => !i.tenant_name).map(i => String(i.tenant_id)))];
+                const { rows: tenantRows } = missingTenantIds.length > 0
+                    ? await db.query('SELECT id, full_name FROM user_profiles WHERE id::text = ANY($1)', [missingTenantIds])
+                    : { rows: [] };
+                const tenantNames = Object.fromEntries(tenantRows.map(t => [String(t.id), t.full_name]));
+                outstandingItems.forEach(i => {
+                    i.property_name = propertyNames[String(i.property_id)] || null;
+                    i.tenant_name = i.tenant_name || tenantNames[String(i.tenant_id)] || null;
+                });
+                outstandingItems.sort((a, b) => a.month - b.month);
+            }
+            const outstanding = {
+                amount: Math.round(outstandingItems.reduce((sum, i) => sum + i.remaining, 0) * 100) / 100,
+                count: outstandingItems.length,
+                items: outstandingItems
+            };
+
             // 3. Compute totals
             const totalRevenue = receipts.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
             const totalExpense = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
@@ -346,7 +398,8 @@ const expenseController = {
                     monthlyData,
                     categoryBreakdown,
                     expenses,
-                    deposits
+                    deposits,
+                    outstanding
                 }
             });
         } catch (error) {

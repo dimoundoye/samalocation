@@ -18,16 +18,22 @@ const receiptController = {
                 tenant_id,
                 property_id,
                 unit_id,
-                amount,
-                payment_date,
-                payment_method,
                 notes,
-                period_type,
                 start_date,
                 end_date
             } = req.body;
-            let { month, year } = req.body;
+            let { month, year, amount, payment_date, payment_method, period_type } = req.body;
             const ownerId = req.ownerId;
+
+            // Avis de loyer impayé : document sans versement (0 F), enregistré comme un loyer du mois.
+            // Il réclame le reste dû du mois (tout le loyer, ou le reste après un acompte).
+            const isUnpaidNotice = req.body.receipt_type === 'notice';
+            if (isUnpaidNotice) {
+                amount = 0;
+                period_type = 'mois';
+                payment_method = 'avis';
+                payment_date = new Date().toISOString().split('T')[0];
+            }
 
             // Caution (dépôt de garantie) : pas de période, rattachée au mois de son versement
             const receiptType = req.body.receipt_type === 'deposit' ? 'deposit' : 'rent';
@@ -54,8 +60,13 @@ const receiptController = {
                 ownerId
             });
 
-            // Validation
-            if (!tenant_id || !property_id || !month || !year || !amount || !payment_date) {
+            // Validation (montant positif, sauf pour un avis de loyer impayé)
+            const amountValue = Number(amount);
+            const hasAmount = Number.isFinite(amountValue) && (isUnpaidNotice ? amountValue === 0 : amountValue > 0);
+            if (!isUnpaidNotice && amount !== undefined && amount !== null && amount !== '' && amountValue === 0) {
+                return response.error(res, 'Le montant doit être supérieur à 0. Pour signaler un loyer non payé, émettez un avis de loyer impayé.', 400);
+            }
+            if (!tenant_id || !property_id || !month || !year || !hasAmount || !payment_date) {
                 console.log('❌ Validation failed - missing fields');
                 return res.status(400).json({
                     status: 'error',
@@ -93,6 +104,31 @@ const receiptController = {
 
             // Quota mensuel de quittances : contrôlé par checkReceiptLimit (subscriptionMiddleware), cautions exclues
 
+            // Suivi du reste à payer (loyers mensuels) : loyer dû et déjà versé figés sur le reçu
+            let rentDue = null;
+            let paidBefore = null;
+            if (!isDeposit && (period_type || 'mois') === 'mois') {
+                const balance = await Receipt.getPeriodBalance({ tenant_id, property_id, unit_id, month, year });
+                const requestedDue = Number(req.body.rent_due);
+                rentDue = Number.isFinite(requestedDue) && requestedDue > 0 ? roundAmount(requestedDue) : balance.rent_due;
+                paidBefore = balance.paid;
+
+                if (rentDue !== null) {
+                    const remaining = roundAmount(rentDue - paidBefore);
+                    if (remaining <= 0) {
+                        return response.error(res, `Le loyer de ${month}/${year} est déjà entièrement réglé pour ce locataire.`, 409);
+                    }
+                    if (roundAmount(amountValue) > remaining) {
+                        const formattedRemaining = Number(remaining).toLocaleString('fr-FR');
+                        return response.error(res, `Le montant dépasse le reste à payer pour ${month}/${year} (${formattedRemaining} F CFA).`, 400);
+                    }
+                }
+            }
+
+            if (isUnpaidNotice && rentDue === null) {
+                return response.error(res, "Indiquez le loyer dû du mois pour émettre un avis de loyer impayé.", 400);
+            }
+
             console.log('✅ Property verified and limits checked, creating receipt...');
             const receipt = await Receipt.create({
                 tenant_id,
@@ -107,8 +143,13 @@ const receiptController = {
                 period_type: isDeposit ? 'mois' : period_type,
                 start_date: isDeposit ? null : start_date,
                 end_date: isDeposit ? null : end_date,
-                receipt_type: receiptType
+                receipt_type: receiptType,
+                rent_due: rentDue,
+                paid_before: paidBefore
             });
+
+            const remainingAfter = rentDue === null ? 0 : Math.max(roundAmount(rentDue - paidBefore - Number(amount)), 0);
+            const formattedRemainingAfter = Number(remainingAfter).toLocaleString('fr-FR');
 
             console.log('✅ Receipt created successfully:', receipt);
             emitToWorkspace(ownerId, 'workspace_updated', { entity: 'receipts', action: 'create', id: receipt.id });
@@ -121,10 +162,16 @@ const receiptController = {
                     id: uuidv4(),
                     user_id: leaseRows[0]?.user_id || tenant_id,
                     type: 'receipt',
-                    title: isDeposit ? 'Nouveau reçu de caution' : 'Nouveau reçu de loyer',
+                    title: isDeposit ? 'Nouveau reçu de caution' : isUnpaidNotice ? 'Avis de loyer impayé' : remainingAfter > 0 ? "Nouveau reçu d'acompte" : 'Nouveau reçu de loyer',
                     message: isDeposit
                         ? `Votre reçu de caution N° ${receipt.receipt_number} est maintenant disponible.`
-                        : `Votre reçu de paiement N° ${receipt.receipt_number} pour ${month}/${year} est maintenant disponible.`,
+                        : isUnpaidNotice
+                            ? paidBefore > 0
+                                ? `Le loyer de ${month}/${year} n'est pas entièrement réglé. Reste à payer : ${formattedRemainingAfter} F CFA. Avis N° ${receipt.receipt_number}.`
+                                : `Aucun paiement n'a été enregistré pour le loyer de ${month}/${year}. Montant dû : ${formattedRemainingAfter} F CFA. Avis N° ${receipt.receipt_number}.`
+                        : remainingAfter > 0
+                            ? `Votre reçu d'acompte N° ${receipt.receipt_number} pour ${month}/${year} est disponible. Reste à payer : ${formattedRemainingAfter} F CFA.`
+                            : `Votre reçu de paiement N° ${receipt.receipt_number} pour ${month}/${year} est maintenant disponible.`,
                     link: '/tenant-dashboard/contracts'
                 });
                 console.log('✅ Notification created for tenant');
@@ -143,14 +190,40 @@ const receiptController = {
                     entityId: receipt.id,
                     entityLabel: isDeposit
                         ? `Reçu de caution de ${formattedAmount} F CFA pour ${tenantName} — ${propName}`
-                        : `Reçu de ${formattedAmount} F CFA pour ${tenantName} — ${propName} (${month}/${year})`,
-                    metadata: { amount, month, year, tenant_id, property_id, receipt_type: receiptType }
+                        : `Reçu de ${formattedAmount} F CFA pour ${tenantName} — ${propName} (${month}/${year})${remainingAfter > 0 ? ` — reste ${formattedRemainingAfter} F CFA` : ''}`,
+                    metadata: { amount, month, year, tenant_id, property_id, receipt_type: receiptType, rent_due: rentDue, remaining: remainingAfter }
                 });
             } catch (logErr) { /* silencieux */ }
 
             return response.success(res, receipt, 'Reçu créé avec succès');
         } catch (error) {
             console.error('❌ Error in createReceipt:', error);
+            next(error);
+        }
+    },
+
+    /**
+     * Solde d'un mois de loyer (loyer dû, déjà versé, reste à payer) pour le formulaire de reçu
+     */
+    async getPeriodBalance(req, res, next) {
+        try {
+            const { tenant_id, property_id, unit_id, month, year } = req.query;
+            if (!tenant_id || !property_id || !month || !year) {
+                return response.error(res, 'Locataire, logement, mois et année requis', 400);
+            }
+
+            const db = require('../config/db');
+            const { rows: properties } = await db.query(
+                'SELECT id FROM properties WHERE id = $1 AND owner_id = $2',
+                [property_id, req.ownerId]
+            );
+            if (properties.length === 0) {
+                return response.error(res, 'Propriété non trouvée ou non autorisée', 403);
+            }
+
+            const balance = await Receipt.getPeriodBalance({ tenant_id, property_id, unit_id: unit_id || null, month, year });
+            return response.success(res, balance);
+        } catch (error) {
             next(error);
         }
     },
@@ -234,6 +307,24 @@ const receiptController = {
                 receipt.logo_url = null;
             }
             // ----------------------------
+
+            // Avis de loyer impayé : échéance prévue au bail et coordonnées de paiement du propriétaire
+            if (receipt.receipt_type !== 'deposit' && Number(receipt.amount) === 0 && receipt.rent_due !== null) {
+                const { rows: contractRows } = await db.query(
+                    `SELECT payment_day FROM rental_contracts
+                     WHERE property_id::text = $1
+                       AND ($2::text IS NULL OR unit_id IS NULL OR unit_id::text = $2)
+                       AND (tenant_id::text = $3 OR tenant_id::text IN (SELECT id::text FROM tenants WHERE user_id::text = $3))
+                     ORDER BY (status = 'active') DESC, created_at DESC
+                     LIMIT 1`,
+                    [String(receipt.property_id), receipt.unit_id ? String(receipt.unit_id) : null, String(receipt.tenant_id)]
+                ).catch(() => ({ rows: [] }));
+                receipt.payment_day = contractRows[0]?.payment_day || null;
+                if (ownerId) {
+                    const PaymentMethod = require('../models/paymentMethodModel');
+                    receipt.owner_payment_methods = (await PaymentMethod.getMethods(ownerId)).methods;
+                }
+            }
 
             // Générer le PDF
             const doc = await generateReceiptPDF(receipt);

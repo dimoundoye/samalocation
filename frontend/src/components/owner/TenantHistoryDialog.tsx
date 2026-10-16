@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Download, FileText, Calendar, Share2, ExternalLink, Ban, AlertTriangle, Loader2, Info, ShieldCheck, Undo2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { getReceiptRemaining, isPartialReceipt, isUnpaidNotice } from "@/lib/rentBalance";
 import { Receipt, Tenant } from "@/types";
 import { downloadReceipt, openReceiptInNewTab, cancelReceipt, openDepositSettlementInNewTab, downloadDepositSettlement, cancelDepositSettlement } from "@/lib/api";
 import { ReceiptPreviewModal } from "@/components/receipts/ReceiptPreviewModal";
@@ -130,6 +131,22 @@ export const TenantHistoryDialog = ({
         }
         const monthLabel = getMonthName(receipt.month, receipt.year);
         const amount = formatCurrency(receipt.amount, currency);
+        if (isUnpaidNotice(receipt)) {
+            const due = formatCurrency(getReceiptRemaining(receipt), currency);
+            await shareText(
+                'Avis de loyer impayé Samalocation',
+                `Bonjour ${tenant.full_name}, aucun paiement n'a été enregistré pour le loyer du mois de ${monthLabel}. Montant dû : ${due}. L'avis est disponible sur votre compte Samalocation: https://samalocation.com. Merci !`
+            );
+            return;
+        }
+        if (isPartialReceipt(receipt)) {
+            const remaining = formatCurrency(getReceiptRemaining(receipt), currency);
+            await shareText(
+                "Reçu d'acompte Samalocation",
+                `Bonjour ${tenant.full_name}, votre reçu d'acompte pour le mois de ${monthLabel} (${amount}) est disponible sur votre compte Samalocation: https://samalocation.com. Reste à payer : ${remaining}. Merci !`
+            );
+            return;
+        }
         await shareText(
             'Quittance Samalocation',
             `Bonjour ${tenant.full_name}, votre quittance de loyer pour le mois de ${monthLabel} (${amount}) est disponible sur votre compte Samalocation: https://samalocation.com. Merci !`
@@ -340,6 +357,16 @@ export const TenantHistoryDialog = ({
                                                     </span>
                                                     <span className={`font-bold text-sm ${isCancelled ? 'line-through text-muted-foreground' : 'text-primary'}`}>
                                                         {formatCurrency(receipt.amount, currency)}
+                                                        {!isCancelled && isUnpaidNotice(receipt) && (
+                                                            <span className="block text-[10px] font-semibold text-red-700 text-right">
+                                                                Avis d'impayé · dû {formatCurrency(getReceiptRemaining(receipt), currency)}
+                                                            </span>
+                                                        )}
+                                                        {!isCancelled && isPartialReceipt(receipt) && (
+                                                            <span className="block text-[10px] font-semibold text-orange-700 text-right">
+                                                                Acompte · reste {formatCurrency(getReceiptRemaining(receipt), currency)}
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 </div>
 
@@ -450,6 +477,16 @@ export const TenantHistoryDialog = ({
                                                          </TableCell>
                                                          <TableCell className={`font-semibold ${isCancelled ? 'line-through text-muted-foreground' : 'text-primary'}`}>
                                                              {formatCurrency(receipt.amount, currency)}
+                                                             {!isCancelled && isUnpaidNotice(receipt) && (
+                                                                 <span className="block text-[10px] font-semibold text-red-700">
+                                                                     Avis d'impayé · dû {formatCurrency(getReceiptRemaining(receipt), currency)}
+                                                                 </span>
+                                                             )}
+                                                             {!isCancelled && isPartialReceipt(receipt) && (
+                                                                 <span className="block text-[10px] font-semibold text-orange-700">
+                                                                     Acompte · reste {formatCurrency(getReceiptRemaining(receipt), currency)}
+                                                                 </span>
+                                                             )}
                                                          </TableCell>
                                                          <TableCell className="text-right">
                                                              <div className="grid grid-cols-2 gap-1.5 w-[180px] ml-auto">

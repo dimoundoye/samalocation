@@ -2,6 +2,7 @@ import { Fragment, useState, useEffect, useRef, useMemo } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { formatCurrency } from "@/lib/utils";
 import { isDepositReceipt, isPaidRentReceipt } from "@/lib/deposits";
+import { getReceiptRemaining, getRentMonthBalance, isPartialReceipt, isUnpaidNotice } from "@/lib/rentBalance";
 import { TenantDepositsPanel } from "@/components/tenant/TenantDepositsPanel";
 import { TenantIdCard } from "@/components/tenant/TenantIdCard";
 import { useCopyTenantId } from "@/hooks/use-copy-tenant-id";
@@ -18,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, Eye, ExternalLink, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2, Info, Calendar, Copy } from "lucide-react";
+import { Home, Search, Settings, LogOut, MessageSquare, FileText, Menu, Send, Download, Eye, ExternalLink, TrendingUp, Trash2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, HelpCircle, ChevronLeft, ChevronRight, Shield, MapPin, Loader2, Building2, Info, Calendar, Copy, Wallet } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -38,7 +39,7 @@ import { formatConversationTime, formatMessageDay, startsNewDay } from "@/lib/me
 import { COMPACT_LAYOUT_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { fr, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
-import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, openReceiptInNewTab, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead, getTenantMaintenanceRequests } from "@/lib/api";
+import { getTenantMe, getReceipts, getTenantReceipts, downloadReceipt, openReceiptInNewTab, getMessages, sendMessage, deleteMessage, updateTenantProfile, markMessagesAsRead, getNotifications, markNotificationAsRead } from "@/lib/api";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useSocket } from "@/contexts/SocketContext";
@@ -149,17 +150,24 @@ const DashboardLocataire = () => {
     loadNotifications(); // Charger les notifications au montage
   }, []); // Charge une seule fois au montage
 
-  // Demandes de maintenance non résolues (en attente ou en cours), rechargées à chaque retour sur l'accueil
-  const [openMaintenanceCount, setOpenMaintenanceCount] = useState<number | null>(null);
-  useEffect(() => {
-    if (activeTab !== "dashboard") return;
-    getTenantMaintenanceRequests()
-      .then((data: any) => {
-        const requests = Array.isArray(data) ? data : [];
-        setOpenMaintenanceCount(requests.filter((r: any) => r.status === "pending" || r.status === "in_progress").length);
-      })
-      .catch((error: unknown) => console.error("Error loading maintenance requests:", error));
-  }, [activeTab]);
+  // Reste à payer : total des loyers réglés en partie (par logement et par mois), tous baux confondus
+  const outstandingRent = useMemo(() => {
+    const periods = new Map<string, any[]>();
+    receipts.filter(isPaidRentReceipt).forEach((r: any) => {
+      const key = `${r.unit_id || r.property_id}|${r.year}|${r.month}`;
+      periods.set(key, [...(periods.get(key) || []), r]);
+    });
+    let amount = 0;
+    let count = 0;
+    periods.forEach(periodReceipts => {
+      const balance = getRentMonthBalance(periodReceipts);
+      if (balance.isDue) {
+        amount += balance.remaining;
+        count += 1;
+      }
+    });
+    return { amount, count, currency: receipts[0]?.currency };
+  }, [receipts]);
 
   const { socket, connected } = useSocket();
 
@@ -708,16 +716,23 @@ const DashboardLocataire = () => {
                   </Card>
                   <Card
                     className="shadow-soft hover:shadow-md transition-all cursor-pointer flex flex-col"
-                    onClick={() => navigate("/tenant-dashboard/maintenance")}
+                    onClick={() => navigate("/tenant-dashboard/contracts")}
                   >
                     <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
                       <CardTitle className="text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2">
-                        <Wrench className="h-4 w-4 text-orange-500 shrink-0" />
-                        Maintenance en cours
+                        <Wallet className={`h-4 w-4 shrink-0 ${outstandingRent.amount > 0 ? "text-orange-500" : "text-emerald-500"}`} />
+                        Reste à payer
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0 mt-auto">
-                      <p className="text-3xl font-black text-foreground">{openMaintenanceCount ?? "–"}</p>
+                      <p className={`text-xl sm:text-3xl font-black truncate ${outstandingRent.amount > 0 ? "text-orange-600" : "text-foreground"}`}>
+                        {formatCurrencyLocal(outstandingRent.amount, outstandingRent.currency)}
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+                        {outstandingRent.count > 0
+                          ? `${outstandingRent.count} loyer${outstandingRent.count > 1 ? "s" : ""} non soldé${outstandingRent.count > 1 ? "s" : ""}`
+                          : "Aucun loyer en attente"}
+                      </p>
                     </CardContent>
                   </Card>
                 </div>
@@ -1254,9 +1269,29 @@ const DashboardLocataire = () => {
                                             ANNULÉ
                                           </Badge>
                                         )}
+                                        {!isCancelled && isPartialReceipt(receipt) && (
+                                          <Badge variant="outline" className="text-[10px] font-bold uppercase bg-orange-50 text-orange-700 border-orange-200">
+                                            {t('tenant.receipt_partial')}
+                                          </Badge>
+                                        )}
+                                        {!isCancelled && isUnpaidNotice(receipt) && (
+                                          <Badge variant="outline" className="text-[10px] font-bold uppercase bg-red-50 text-red-700 border-red-200">
+                                            {t('tenant.receipt_unpaid')}
+                                          </Badge>
+                                        )}
                                       </div>
                                       <p className={`text-xs sm:text-sm ${isCancelled ? 'line-through text-muted-foreground' : 'text-muted-foreground'}`}>
                                         {monthName} - {formatCurrencyLocal(receipt.amount, receipt.currency)}
+                                        {!isCancelled && isUnpaidNotice(receipt) && (
+                                          <span className="text-red-700 font-semibold">
+                                            {' · '}{t('tenant.receipt_amount_due', { amount: formatCurrencyLocal(getReceiptRemaining(receipt), receipt.currency) })}
+                                          </span>
+                                        )}
+                                        {!isCancelled && isPartialReceipt(receipt) && (
+                                          <span className="text-orange-700 font-semibold">
+                                            {' · '}{t('tenant.receipt_remaining', { amount: formatCurrencyLocal(getReceiptRemaining(receipt), receipt.currency) })}
+                                          </span>
+                                        )}
                                       </p>
                                       <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                                         {receipt.property_name || t('hero.search_property')}

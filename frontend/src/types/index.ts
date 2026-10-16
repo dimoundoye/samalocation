@@ -103,7 +103,18 @@ export interface CreateReceiptData {
     period_type?: 'mois' | 'semaine' | 'jour';
     start_date?: string;
     end_date?: string;
-    receipt_type?: ReceiptType;
+    /** 'notice' : avis de loyer impayé (aucun versement, enregistré comme un loyer à 0 F) */
+    receipt_type?: ReceiptType | 'notice';
+    /** Loyer dû pour la période (modifiable dans le formulaire) ; par défaut, loyer de référence du locataire */
+    rent_due?: number;
+}
+
+/** Solde d'un mois de loyer : loyer dû, déjà versé, reste à payer (null si le loyer dû est inconnu) */
+export interface RentPeriodBalance {
+    rent_due: number | null;
+    paid: number;
+    remaining: number | null;
+    payments_count: number;
 }
 
 /** 'rent' : quittance de loyer ; 'deposit' : reçu de caution (dépôt de garantie), hors revenus */
@@ -141,6 +152,9 @@ export interface Receipt {
     cancellation_reason?: string;
     cancelled_at?: string;
     receipt_type?: ReceiptType;
+    // Suivi du reste à payer, figé à l'émission (null pour les reçus émis avant le suivi)
+    rent_due?: number | string | null;
+    paid_before?: number | string | null;
     // Restitution valide de la caution (reçus de caution restitués uniquement)
     settlement_id?: string | null;
     settlement_number?: string | null;

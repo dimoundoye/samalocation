@@ -518,7 +518,8 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
         >
           <div>
             <Label>Type de propriété *</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-3">
+            {/* 3 colonnes dès le mobile (9 types : grille 3 × 3), cartes plus compactes sur petit écran */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-3">
               {propertyTypes.map((type) => (
                 <Card
                   key={type.value}
@@ -558,9 +559,9 @@ export const AddPropertyModal = ({ open, onOpenChange, onSuccess }: AddPropertyM
                     }
                   }}
                 >
-                  <CardContent className="p-6 text-center">
-                    <type.icon className="h-8 w-8 mx-auto mb-2 text-primary" />
-                    <p className="font-medium">{type.label}</p>
+                  <CardContent className="p-3 sm:p-6 text-center">
+                    <type.icon className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1.5 sm:mb-2 text-primary" />
+                    <p className="text-xs sm:text-base font-medium truncate">{type.label}</p>
                   </CardContent>
                 </Card>
               ))}

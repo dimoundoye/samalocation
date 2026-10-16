@@ -44,6 +44,22 @@ export interface FinancialAnalyticsData {
         refundedAmount: number;
         retainedAmount: number;
     };
+    /** Reste à encaisser : loyers de l'année réglés en partie */
+    outstanding?: {
+        amount: number;
+        count: number;
+        items: {
+            tenant_id: string;
+            tenant_name: string | null;
+            property_id: string;
+            property_name: string | null;
+            month: number;
+            year: number;
+            rent_due: number;
+            paid: number;
+            remaining: number;
+        }[];
+    };
 }
 
 export const getExpenses = async (filters?: {

@@ -145,25 +145,32 @@ const paymentController = {
 
             const lease = leases[0];
             const ownerId = lease.owner_id;
-            const rentAmount = parseFloat(lease.monthly_rent);
-            const feeRateUser = 0.025; // 2.5% Mobile Money
-            const feeAmount = rentAmount * feeRateUser;
-            const totalAmount = rentAmount + feeAmount;
 
             // 2. Vérifier si le propriétaire a activé les paiements en ligne
             if (!lease.online_payment_enabled) {
                 return response.error(res, "Votre bailleur n'a pas activé l'option de paiement en ligne.", 403);
             }
 
-            // 3. Vérifier si le loyer de ce mois est déjà payé (reçu existant)
-            const { rows: existingReceipts } = await db.query(
-                "SELECT id FROM receipts WHERE tenant_id = $1 AND property_id = $2 AND month = $3 AND year = $4 AND COALESCE(status, 'valid') <> 'cancelled' AND receipt_type <> 'deposit'",
-                [tenantId, propertyId, month, year]
-            );
+            // 3. Montant à payer : le reste dû du mois (loyer de la fiche locataire, sinon du logement,
+            //    moins les versements déjà enregistrés). Un mois entièrement réglé ne peut plus être payé.
+            const balance = await Receipt.getPeriodBalance({
+                tenant_id: tenantId || lease.id,
+                property_id: propertyId,
+                unit_id: unitId,
+                month,
+                year
+            });
+            const rentDue = balance.rent_due ?? (parseFloat(lease.monthly_rent) || null);
+            const rentAmount = rentDue === null ? 0 : Math.round((rentDue - balance.paid) * 100) / 100;
 
-            if (existingReceipts.length > 0) {
+            if (rentAmount <= 0) {
                 return response.error(res, 'Le loyer pour cette période a déjà été payé.', 400);
             }
+
+            const feeRateUser = 0.025; // 2.5% Mobile Money
+            const feeAmount = rentAmount * feeRateUser;
+            const totalAmount = rentAmount + feeAmount;
+            const isPartialBalance = balance.paid > 0;
 
             const backendUrl = process.env.BACKEND_URL || process.env.URL_BACKEND || process.env.API_URL || `https://${process.env.APP_DOMAIN}`;
             const frontendUrl = process.env.FRONTEND_URL || process.env.URL_FRONTEND || `https://${process.env.APP_DOMAIN}`;
@@ -173,7 +180,7 @@ const paymentController = {
                 invoice: {
                     items: [
                         {
-                            name: `Loyer - Mois de ${month}/${year}`,
+                            name: isPartialBalance ? `Reste du loyer - Mois de ${month}/${year}` : `Loyer - Mois de ${month}/${year}`,
                             quantity: 1,
                             unit_price: rentAmount,
                             total_price: rentAmount,
@@ -210,6 +217,7 @@ const paymentController = {
                     month,
                     year,
                     amount: rentAmount,
+                    rentDue,
                     ownerId
                 }
             };
@@ -384,7 +392,7 @@ const paymentController = {
                 const { paymentType } = customData;
 
                 if (paymentType === 'rent') {
-                    const { tenantId, propertyId, unitId, month, year, amount, ownerId } = customData;
+                    const { tenantId, propertyId, unitId, month, year, amount, ownerId, rentDue } = customData;
                     
                     // 1. Idempotency Check: Verify if receipt already exists
                     const { rows: existing } = await db.query(
@@ -435,6 +443,10 @@ const paymentController = {
 
                         // 5. Create Receipt
                         const cleanMethodName = `En ligne (${method.includes('card') || method.includes('visa') || method.includes('mastercard') || method.includes('cb') ? 'Carte' : method.toUpperCase()})`;
+                        // Déjà versé recalculé au moment du paiement (un autre versement a pu être enregistré entre-temps)
+                        const balanceAtPayment = await Receipt.getPeriodBalance({
+                            tenant_id: tenantId, property_id: propertyId, unit_id: unitId, month, year
+                        });
                         await Receipt.create({
                             tenant_id: tenantId,
                             property_id: propertyId,
@@ -444,7 +456,9 @@ const paymentController = {
                             amount: amount,
                             payment_date: new Date(),
                             payment_method: cleanMethodName,
-                            notes: 'Paiement effectué en ligne via SamaLocation/PayDunya.'
+                            notes: 'Paiement effectué en ligne via SamaLocation/PayDunya.',
+                            rent_due: rentDue ?? balanceAtPayment.rent_due,
+                            paid_before: balanceAtPayment.paid
                         });
 
                         await client.query('COMMIT');

@@ -4,7 +4,7 @@ import { getNotifications, createNotification, markNotificationAsRead, markAllNo
 import { login, signup, getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword } from "../api/auth";
 import { getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile } from "../api/tenant";
 import { getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator, getPublicOwnerProfile } from "../api/owner";
-import { getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, previewReceipt, openReceiptInNewTab, deleteReceipt, cancelReceipt, settleDeposit, cancelDepositSettlement, openDepositSettlementInNewTab, downloadDepositSettlement } from "../api/receipts";
+import { getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, getReceiptBalance, downloadReceipt, previewReceipt, openReceiptInNewTab, deleteReceipt, cancelReceipt, settleDeposit, cancelDepositSettlement, openDepositSettlementInNewTab, downloadDepositSettlement } from "../api/receipts";
 import { createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser } from "../api/reports";
 import { getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminSubscriptions, getAdminAuditLogs, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting, verifyPDFDocument, getOwnerBalances, forceOwnerWithdrawal, getAllReceipts, getAIPerformance } from "../api/admin";
 import { getContactMessages, updateContactMessageStatus } from "../api/contact";
@@ -23,7 +23,7 @@ export {
     getMe, searchUsers, createTenantAccount, completeSetup, forgotPassword, resetPassword,
     getTenantMe, getOwnerTenants, assignTenant, updateTenant, deleteTenant, updateTenantProfile,
     getOwnerProfile, updateOwnerProfile, getCollaborators, addCollaborator, getPublicOwnerProfile,
-    getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, downloadReceipt, previewReceipt, openReceiptInNewTab, deleteReceipt, cancelReceipt, settleDeposit, cancelDepositSettlement, openDepositSettlementInNewTab, downloadDepositSettlement,
+    getReceipts, getTenantReceipts, getOwnerReceipts, createReceipt, getReceiptBalance, downloadReceipt, previewReceipt, openReceiptInNewTab, deleteReceipt, cancelReceipt, settleDeposit, cancelDepositSettlement, openDepositSettlementInNewTab, downloadDepositSettlement,
     createReport, getAllReports, getReportStatistics, updateReport, getAllUsers, blockUser, unblockUser,
     getAdminStatistics, getRecentUsers, getUserGrowthData, getPropertiesOverview, getAllProperties, getPendingVerifications, updateVerificationStatus, getAdminTransactions, getAdminSubscriptions, getAdminAuditLogs, getAdminEvents, updateUserSubscription, getRevenueStats, getLiveAnalytics, getPlatformSettings, updatePlatformSetting, verifyPDFDocument, getOwnerBalances, forceOwnerWithdrawal, getAllReceipts, getAIPerformance,
     getContactMessages, updateContactMessageStatus,

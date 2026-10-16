@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -219,16 +220,7 @@ const Contact = () => {
                 </div>
             </main>
 
-            <footer className="py-8 px-4 border-t bg-secondary/20">
-                <div className="container mx-auto text-center text-muted-foreground">
-                    <p>{t('footer.copyright')}</p>
-                    <div className="flex flex-wrap justify-center gap-6 mt-4">
-                        <a href="/privacy" className="hover:text-primary transition-colors">{t('footer.legal.privacy')}</a>
-                        <a href="/terms" className="hover:text-primary transition-colors">{t('footer.legal.terms')}</a>
-                        <a href="/contact" className="text-primary font-medium">{t('nav.contact')}</a>
-                    </div>
-                </div>
-            </footer>
+            <Footer />
         </div>
     );
 };

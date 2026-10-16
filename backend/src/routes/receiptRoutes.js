@@ -8,6 +8,9 @@ const { can } = require('../middleware/permissionMiddleware');
 const { checkReceiptLimit } = require('../middleware/subscriptionMiddleware');
 router.post('/', authMiddleware, can('receipt.write'), checkReceiptLimit, receiptController.createReceipt);
 
+// Solde d'un mois de loyer (reste à payer) pour le formulaire de reçu
+router.get('/balance', authMiddleware, can('receipt.read'), receiptController.getPeriodBalance);
+
 // Récupérer les reçus d'un locataire
 router.get('/tenant', authMiddleware, receiptController.getTenantReceipts);
 

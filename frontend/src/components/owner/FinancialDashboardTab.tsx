@@ -28,7 +28,8 @@ import {
     Lock,
     Loader2,
     Building2,
-    ShieldCheck
+    ShieldCheck,
+    Clock
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -413,74 +414,134 @@ export const FinancialDashboardTab: React.FC<FinancialDashboardTabProps> = ({
     };
 
     const handleDownloadPDF = () => {
+        if (!analytics) return;
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
             window.print();
             return;
         }
 
-        const formattedCashFlow = formatCurrency(analytics?.netCashFlow || 0, currency);
-        const formattedRevenue = formatCurrency(analytics?.totalRevenue || 0, currency);
-        const formattedExpense = formatCurrency(analytics?.totalExpense || 0, currency);
-        const occupancyStr = `${analytics?.occupancyRate || 0}% (${analytics?.occupiedUnits || 0}/${analytics?.totalUnits || 0} louée(s))`;
+        // Textes saisis par l'utilisateur (descriptions, noms) : échappés avant d'être insérés dans la page d'impression
+        const esc = (value: unknown) => String(value ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const money = (value: number) => esc(formatCurrency(value || 0, currency));
+        const categoryLabel = (value: string) => {
+            const catObj = CATEGORIES.find(c => c.value === value);
+            // Retire l'émoji de tête (y compris ses caractères invisibles de variante)
+            return catObj ? catObj.label.replace(/^[^\p{L}\p{N}]+/u, '') : value;
+        };
 
-        const maxMonthlyVal = Math.max(...(analytics?.monthlyData || []).map(m => Math.max(m.revenue, m.expense)), 1);
+        // Périmètre du rapport : les mêmes filtres que la page
+        const propertyName = selectedPropertyId !== "all" ? properties.find(p => p.id === selectedPropertyId)?.name : null;
+        const groupName = selectedGroupId !== "all" ? customGroups.find(g => g.id === selectedGroupId)?.name : null;
+        const scopeParts = [
+            `Exercice ${selectedYear}`,
+            propertyName ? `Bien : ${propertyName}` : groupName ? `Dossier : ${groupName}` : "Tous les biens",
+            selectedCategory !== "all" ? `Dépenses : ${categoryLabel(selectedCategory)}` : null
+        ].filter(Boolean);
 
-        const monthlyBarsHtml = (analytics?.monthlyData || []).map(m => {
+        const netCashFlow = analytics.netCashFlow || 0;
+        const monthlyData = analytics.monthlyData || [];
+        const maxMonthlyVal = Math.max(...monthlyData.map(m => Math.max(m.revenue, m.expense)), 1);
+
+        const monthlyBarsHtml = monthlyData.map(m => {
             const revHeight = m.revenue > 0 ? Math.max(Math.round((m.revenue / maxMonthlyVal) * 75), 8) : 0;
             const expHeight = m.expense > 0 ? Math.max(Math.round((m.expense / maxMonthlyVal) * 75), 8) : 0;
             const hasData = m.revenue > 0 || m.expense > 0;
-
             return `
                 <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                    <div style="height:80px;display:flex;align-items:flex-end;gap:3px;position:relative;">
-                        ${m.revenue > 0 ? `<div style="width:10px;height:${revHeight}px;background-color:#10b981 !important;border:1px solid #059669;border-radius:2px;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;" title="Revenus: ${formatCurrency(m.revenue, currency)}"></div>` : ''}
-                        ${m.expense > 0 ? `<div style="width:10px;height:${expHeight}px;background-color:#ef4444 !important;border:1px solid #dc2626;border-radius:2px;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;" title="Dépenses: ${formatCurrency(m.expense, currency)}"></div>` : ''}
-                        ${!hasData ? `<div style="width:10px;height:2px;background-color:#cbd5e1 !important;-webkit-print-color-adjust:exact !important;"></div>` : ''}
+                    <div style="height:80px;display:flex;align-items:flex-end;gap:3px;">
+                        ${m.revenue > 0 ? `<div style="width:10px;height:${revHeight}px;background-color:#10b981;border:1px solid #059669;border-radius:2px;"></div>` : ''}
+                        ${m.expense > 0 ? `<div style="width:10px;height:${expHeight}px;background-color:#ef4444;border:1px solid #dc2626;border-radius:2px;"></div>` : ''}
+                        ${!hasData ? `<div style="width:10px;height:2px;background-color:#cbd5e1;"></div>` : ''}
                     </div>
                     <span style="font-size:9px;color:${hasData ? '#1e293b' : '#94a3b8'};font-weight:${hasData ? '700' : '500'};">${MONTH_NAMES[m.month - 1]}</span>
-                </div>
-            `;
+                </div>`;
         }).join('');
 
-        // Génération du diagramme circulaire SVG (Donut Chart)
+        // Montants du flux mensuel (sur la page, ils s'affichent au survol du graphique)
+        const monthlyRowsHtml = monthlyData.map(m => `
+            <tr>
+                <td>${MONTH_NAMES[m.month - 1]}</td>
+                <td class="num" style="color:#059669;">${m.revenue ? money(m.revenue) : '-'}</td>
+                <td class="num" style="color:#e11d48;">${m.expense ? money(m.expense) : '-'}</td>
+                <td class="num" style="font-weight:700;color:${m.cashFlow >= 0 ? '#059669' : '#e11d48'};">${m.revenue || m.expense ? money(m.cashFlow) : '-'}</td>
+            </tr>`).join('');
+
+        // Répartition des charges (diagramme circulaire)
         const radius = 35;
         const circumference = 2 * Math.PI * radius;
         let accumulatedPercent = 0;
-        const totalExp = analytics?.totalExpense || 1;
-
-        const categorySlicesSvg = (analytics?.categoryBreakdown || []).map((item, idx) => {
+        const categories = (analytics.categoryBreakdown || []).filter(item => item.amount > 0);
+        const totalExp = categories.reduce((sum, item) => sum + item.amount, 0) || 1;
+        const categorySlicesSvg = categories.map((item, idx) => {
             const pct = item.amount / totalExp;
             const strokeDasharray = `${pct * circumference} ${circumference * (1 - pct)}`;
             const strokeDashoffset = -(accumulatedPercent * circumference);
             accumulatedPercent += pct;
-            const color = COLORS[idx % COLORS.length];
-
-            return `<circle cx="50" cy="50" r="${radius}" fill="none" stroke="${color}" stroke-width="16" stroke-dasharray="${strokeDasharray}" stroke-dashoffset="${strokeDashoffset}" style="-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;" />`;
+            return `<circle cx="50" cy="50" r="${radius}" fill="none" stroke="${COLORS[idx % COLORS.length]}" stroke-width="16" stroke-dasharray="${strokeDasharray}" stroke-dashoffset="${strokeDashoffset}" />`;
         }).join('');
+        const categoryLegendHtml = categories.map((item, idx) => `
+            <div style="display:flex;align-items:center;gap:5px;font-size:10px;">
+                <span style="width:8px;height:8px;background-color:${COLORS[idx % COLORS.length]};border-radius:2px;display:inline-block;"></span>
+                <span style="font-weight:600;color:#334155;">${esc(categoryLabel(item.category))} (${Math.round((item.amount / totalExp) * 100)}%) — ${money(item.amount)}</span>
+            </div>`).join('');
 
-        const categoryLegendHtml = (analytics?.categoryBreakdown || []).map((item, idx) => {
-            const catObj = CATEGORIES.find(c => c.value === item.category);
-            const label = catObj ? catObj.label.replace(/^[\p{Emoji}\s]+/gu, '') : item.category;
-            const pct = Math.round((item.amount / totalExp) * 100);
-            const color = COLORS[idx % COLORS.length];
-            return `
-                <div style="display:flex;align-items:center;gap:5px;font-size:10px;">
-                    <span style="width:8px;height:8px;background-color:${color} !important;border-radius:2px;display:inline-block;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;"></span>
-                    <span style="font-weight:600;color:#334155;">${label} (${pct}%) — ${formatCurrency(item.amount, currency)}</span>
+        // Reste à encaisser
+        const outstanding = analytics.outstanding;
+        const outstandingHtml = outstanding ? `
+            <div class="section ${outstanding.count > 0 ? 'section-alert' : ''}">
+                <div class="section-head">
+                    <div>
+                        <div class="section-title">Reste à encaisser (${selectedYear})</div>
+                        <div class="section-sub">${outstanding.count > 0
+                            ? `${outstanding.count} loyer${outstanding.count > 1 ? 's' : ''} non soldé${outstanding.count > 1 ? 's' : ''} (réglés en partie ou impayés) : ce reste n'est pas compté dans les revenus.`
+                            : 'Aucun loyer en attente sur cette période.'}</div>
+                    </div>
+                    <div class="section-amount" style="color:${outstanding.count > 0 ? '#ea580c' : '#059669'};">${money(outstanding.amount)}</div>
                 </div>
-            `;
-        }).join('');
+                ${outstanding.count > 0 ? `
+                <table>
+                    <thead><tr><th>Locataire</th><th>Bien</th><th>Mois</th><th class="num">Versé / Loyer dû</th><th class="num">Reste</th></tr></thead>
+                    <tbody>
+                        ${outstanding.items.map(item => `
+                        <tr>
+                            <td style="font-weight:600;">${esc(item.tenant_name || 'Locataire')}</td>
+                            <td>${esc(item.property_name || '-')}</td>
+                            <td style="text-transform:capitalize;">${esc(new Date(item.year, item.month - 1, 1).toLocaleDateString('fr-FR', { month: 'long' }))}</td>
+                            <td class="num">${item.paid > 0 ? `${money(item.paid)} / ${money(item.rent_due)}` : `Impayé / ${money(item.rent_due)}`}</td>
+                            <td class="num" style="font-weight:700;color:${item.paid > 0 ? '#ea580c' : '#dc2626'};">${money(item.remaining)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>` : ''}
+            </div>` : '';
 
+        // Cautions
+        const deposits = analytics.deposits;
+        const depositsHtml = deposits ? `
+            <div class="section">
+                <div class="section-title">Cautions (dépôts de garantie)</div>
+                <div class="section-sub">Sommes à rendre en fin de bail : elles ne sont pas comptées dans les revenus.</div>
+                <div class="kpi-grid" style="margin-top:10px;margin-bottom:0;">
+                    <div class="kpi-card"><div class="kpi-label">Détenues actuellement</div><div class="kpi-value" style="color:#d97706;">${money(deposits.heldAmount)}</div><div class="kpi-hint">${deposits.heldCount} caution(s) à restituer</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Encaissées en ${selectedYear}</div><div class="kpi-value" style="color:#1e3a8a;">${money(deposits.collectedAmount)}</div><div class="kpi-hint">Cautions versées</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Restituées en ${selectedYear}</div><div class="kpi-value" style="color:#059669;">${money(deposits.refundedAmount)}</div><div class="kpi-hint">Rendues aux locataires</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Retenues en ${selectedYear}</div><div class="kpi-value" style="color:#e11d48;">${money(deposits.retainedAmount)}</div><div class="kpi-hint">Déduites des cautions</div></div>
+                </div>
+            </div>` : '';
+
+        // Historique des dépenses (mêmes colonnes que la page, sans les actions)
+        const filteredTotal = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
         const expenseRowsHtml = filteredExpenses.map(e => `
             <tr>
-                <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${new Date(e.expense_date).toLocaleDateString('fr-FR')}</td>
-                <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:600;text-transform:capitalize;">${e.category}</td>
-                <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${e.property_name || 'Global'}</td>
-                <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${e.description || '-'}</td>
-                <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:bold;color:#e11d48;">${formatCurrency(e.amount, currency)}</td>
-            </tr>
-        `).join('');
+                <td style="white-space:nowrap;">${e.expense_date ? new Date(e.expense_date).toLocaleDateString('fr-FR') : '-'}</td>
+                <td style="font-weight:600;">${esc(categoryLabel(e.category))}</td>
+                <td>${e.property_name ? esc(e.property_name) : e.group_id ? 'Dossier' : 'Global'}</td>
+                <td>${esc(e.description || '-')}${e.is_recurring ? ` <span style="color:#64748b;">(récurrente${e.recurrence_period ? ` : ${esc(e.recurrence_period)}` : ''})</span>` : ''}</td>
+                <td class="num" style="font-weight:700;color:#e11d48;white-space:nowrap;">-${money(e.amount)}</td>
+                <td style="text-align:center;">${e.receipt_url ? 'Oui' : '-'}</td>
+            </tr>`).join('');
 
         printWindow.document.write(`
             <!DOCTYPE html>
@@ -489,120 +550,100 @@ export const FinancialDashboardTab: React.FC<FinancialDashboardTabProps> = ({
                 <meta charset="utf-8" />
                 <title>Rapport_Financier_${selectedYear}_SamaLocation</title>
                 <style>
-                    * {
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                        color-adjust: exact !important;
-                    }
-                    @media print {
-                        * {
-                            -webkit-print-color-adjust: exact !important;
-                            print-color-adjust: exact !important;
-                            color-adjust: exact !important;
-                        }
-                        body {
-                            padding-bottom: 50px !important;
-                        }
-                        .footer {
-                            position: fixed !important;
-                            bottom: 0 !important;
-                            left: 0 !important;
-                            right: 0 !important;
-                        }
-                    }
-                    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 25px; padding-bottom: 60px; color: #1e293b; max-width: 900px; margin: 0 auto; position: relative; min-height: 95vh; box-sizing: border-box; }
-                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1e3a8a; padding-bottom: 12px; margin-bottom: 20px; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+                    @page { margin: 14mm 12mm 18mm; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; color: #1e293b; max-width: 900px; margin: 0 auto; box-sizing: border-box; }
+                    .header { border-bottom: 3px solid #1e3a8a; padding-bottom: 12px; margin-bottom: 18px; }
                     .brand { font-size: 22px; font-weight: 800; color: #1e3a8a; }
                     .subtitle { font-size: 12px; color: #64748b; margin-top: 3px; }
-                    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-                    .kpi-card { background-color: #f8fafc !important; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; -webkit-print-color-adjust: exact !important; }
+                    .scope { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+                    .chip { font-size: 10px; font-weight: 700; color: #1e3a8a; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 999px; padding: 2px 9px; }
+                    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+                    .kpi-card { background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; }
                     .kpi-label { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; }
                     .kpi-value { font-size: 16px; font-weight: 800; margin-top: 4px; }
-                    .charts-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 15px; margin-bottom: 25px; }
-                    .chart-card { background-color: #f8fafc !important; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; -webkit-print-color-adjust: exact !important; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-                    th { background-color: #f1f5f9 !important; text-align: left; padding: 8px; border-bottom: 2px solid #94a3b8; font-weight: 700; color: #334155; -webkit-print-color-adjust: exact !important; }
-                    .footer { position: fixed; bottom: 10px; left: 0; right: 0; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; background-color: #ffffff !important; -webkit-print-color-adjust: exact !important; }
+                    .kpi-hint { font-size: 9px; color: #64748b; margin-top: 2px; }
+                    .section { border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 18px; break-inside: avoid; }
+                    .section-alert { border-color: #fdba74; background-color: #fff7ed; }
+                    .section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+                    .section-title { font-size: 13px; font-weight: 800; color: #1e293b; }
+                    .section-sub { font-size: 10px; color: #64748b; margin-top: 2px; }
+                    .section-amount { font-size: 18px; font-weight: 800; white-space: nowrap; }
+                    .charts-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 15px; margin-bottom: 18px; break-inside: avoid; }
+                    .chart-card { background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+                    th { background-color: #f1f5f9; text-align: left; padding: 6px 8px; border-bottom: 2px solid #94a3b8; font-weight: 700; color: #334155; }
+                    td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+                    tr { break-inside: avoid; }
+                    .num { text-align: right; white-space: nowrap; }
+                    tfoot td { font-weight: 800; border-top: 2px solid #94a3b8; border-bottom: none; }
+                    h3 { margin: 20px 0 6px; font-size: 14px; color: #1e293b; break-after: avoid; }
+                    .keep-together { break-inside: avoid; }
+                    .footer { margin-top: 24px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; }
                 </style>
             </head>
             <body>
                 <div class="header">
-                    <div>
-                        <div class="brand">Samalocation — Rapport Financier & ROI</div>
-                        <div class="subtitle">Exercice comptable : ${selectedYear} | Généré le ${new Date().toLocaleDateString('fr-FR')}</div>
-                    </div>
+                    <div class="brand">Samalocation — Trésorerie & Rentabilité (ROI)</div>
+                    <div class="subtitle">Rapport généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div class="scope">${scopeParts.map(part => `<span class="chip">${esc(part)}</span>`).join('')}</div>
                 </div>
 
                 <div class="kpi-grid">
-                    <div class="kpi-card">
-                        <div class="kpi-label">Cash Flow Net</div>
-                        <div class="kpi-value" style="color: #059669;">${formattedCashFlow}</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Loyers Encaissés</div>
-                        <div class="kpi-value" style="color: #059669;">${formattedRevenue}</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Dépenses Totales</div>
-                        <div class="kpi-value" style="color: #e11d48;">${formattedExpense}</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Taux d'Occupation</div>
-                        <div class="kpi-value" style="color: #d97706;">${occupancyStr}</div>
-                    </div>
+                    <div class="kpi-card"><div class="kpi-label">Cash Flow (${selectedYear})</div><div class="kpi-value" style="color:${netCashFlow >= 0 ? '#059669' : '#e11d48'};">${money(netCashFlow)}</div><div class="kpi-hint">Revenus nets</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Loyers encaissés</div><div class="kpi-value" style="color:#059669;">${money(analytics.totalRevenue)}</div><div class="kpi-hint">Quittances validées</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Dépenses totales</div><div class="kpi-value" style="color:#e11d48;">${money(analytics.totalExpense)}</div><div class="kpi-hint">Charges & entretien</div></div>
+                    <div class="kpi-card"><div class="kpi-label">Taux d'occupation</div><div class="kpi-value" style="color:#d97706;">${analytics.occupancyRate || 0}%</div><div class="kpi-hint">${analytics.occupiedUnits || 0} / ${analytics.totalUnits || 0} louée(s)</div></div>
                 </div>
 
-                <!-- Diagrammes et Visualisations -->
+                ${outstandingHtml}
+                ${depositsHtml}
+
                 <div class="charts-grid">
                     <div class="chart-card">
-                        <div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
-                            <span>Flux de Trésorerie Mensuel (${selectedYear})</span>
+                        <div style="font-size:12px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;">
+                            <span>Flux de trésorerie mensuel (${selectedYear})</span>
                             <span style="font-size:10px;color:#64748b;"><span style="color:#10b981;">■</span> Revenus &nbsp;<span style="color:#ef4444;">■</span> Dépenses</span>
                         </div>
-                        <div style="display:flex;align-items:flex-end;gap:3px;height:85px;padding-bottom:5px;">
-                            ${monthlyBarsHtml}
-                        </div>
+                        <div style="display:flex;align-items:flex-end;gap:3px;height:85px;padding-bottom:5px;">${monthlyBarsHtml}</div>
                     </div>
-
                     <div class="chart-card">
-                        <div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:8px;">Répartition des Charges</div>
-                        ${(analytics?.categoryBreakdown || []).length > 0 ? `
-                            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 0;">
-                                <svg width="90" height="90" viewBox="0 0 100 100" style="transform: rotate(-90deg);overflow:visible;">
-                                    ${categorySlicesSvg}
-                                </svg>
-                                <div style="margin-top:10px;display:flex;flex-direction:column;gap:3px;align-items:flex-start;width:100%;">
-                                    ${categoryLegendHtml}
-                                </div>
-                            </div>
-                        ` : '<div style="font-size:11px;color:#94a3b8;text-align:center;padding:15px;">Aucune charge enregistrée.</div>'}
+                        <div style="font-size:12px;font-weight:700;margin-bottom:8px;">Répartition des charges</div>
+                        ${categories.length > 0 ? `
+                            <div style="display:flex;flex-direction:column;align-items:center;padding:5px 0;">
+                                <svg width="90" height="90" viewBox="0 0 100 100" style="transform:rotate(-90deg);overflow:visible;">${categorySlicesSvg}</svg>
+                                <div style="margin-top:10px;display:flex;flex-direction:column;gap:3px;width:100%;">${categoryLegendHtml}</div>
+                            </div>` : '<div style="font-size:11px;color:#94a3b8;text-align:center;padding:15px;">Aucune charge enregistrée.</div>'}
                     </div>
                 </div>
 
-                <h3 style="margin-top:20px;margin-bottom:8px;font-size:14px;color:#1e293b;">Détail des Dépenses Enregistrées (${filteredExpenses.length})</h3>
+                <div class="keep-together">
+                <h3>Détail mensuel (${selectedYear})</h3>
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Catégorie</th>
-                            <th>Bien / Affectation</th>
-                            <th>Description</th>
-                            <th style="text-align:right;">Montant</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Mois</th><th class="num">Revenus</th><th class="num">Dépenses</th><th class="num">Cash flow</th></tr></thead>
+                    <tbody>${monthlyRowsHtml}</tbody>
+                    <tfoot><tr>
+                        <td>Total</td>
+                        <td class="num" style="color:#059669;">${money(analytics.totalRevenue)}</td>
+                        <td class="num" style="color:#e11d48;">${money(analytics.totalExpense)}</td>
+                        <td class="num" style="color:${netCashFlow >= 0 ? '#059669' : '#e11d48'};">${money(netCashFlow)}</td>
+                    </tr></tfoot>
+                </table>
+                </div>
+
+                <h3>Historique des dépenses (${filteredExpenses.length} entrée${filteredExpenses.length > 1 ? 's' : ''}${selectedCategory !== "all" ? ` — ${esc(categoryLabel(selectedCategory))}` : ''})</h3>
+                <table>
+                    <thead><tr><th>Date</th><th>Catégorie</th><th>Affectation</th><th>Description</th><th class="num">Montant</th><th style="text-align:center;">Justificatif</th></tr></thead>
                     <tbody>
-                        ${expenseRowsHtml || '<tr><td colspan="5" style="text-align:center;padding:15px;color:#94a3b8;">Aucune dépense enregistrée pour cet exercice.</td></tr>'}
+                        ${expenseRowsHtml || '<tr><td colspan="6" style="text-align:center;padding:15px;color:#94a3b8;">Aucune dépense enregistrée pour les filtres sélectionnés.</td></tr>'}
                     </tbody>
+                    ${filteredExpenses.length > 0 ? `<tfoot><tr><td colspan="4">Total des dépenses listées</td><td class="num" style="color:#e11d48;">-${money(filteredTotal)}</td><td></td></tr></tfoot>` : ''}
                 </table>
 
-                <div class="footer">
-                    Document officiel généré par Samalocation — Plateforme de Gestion Immobilière
-                </div>
+                <div class="footer">Document généré par Samalocation — Plateforme de gestion immobilière</div>
 
                 <script>
-                    window.onload = function() {
-                        window.print();
-                    };
+                    window.onload = function() { window.print(); };
                 </script>
             </body>
             </html>
@@ -820,6 +861,54 @@ export const FinancialDashboardTab: React.FC<FinancialDashboardTabProps> = ({
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Reste à encaisser : loyers de l'année réglés en partie (non comptés dans les revenus tant qu'ils ne sont pas versés) */}
+            {analytics?.outstanding && (
+                <Card className={`shadow-sm ${analytics.outstanding.count > 0 ? "border-orange-200 dark:border-orange-900/60" : ""}`}>
+                    <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2 flex flex-row items-start justify-between gap-3 space-y-0">
+                        <div className="min-w-0">
+                            <CardTitle className="text-xs sm:text-sm font-semibold flex items-center gap-2">
+                                <Clock className={`h-4 w-4 shrink-0 ${analytics.outstanding.count > 0 ? "text-orange-600" : "text-emerald-600"}`} />
+                                <span>Reste à encaisser ({selectedYear})</span>
+                            </CardTitle>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">
+                                {analytics.outstanding.count > 0
+                                    ? `${analytics.outstanding.count} loyer${analytics.outstanding.count > 1 ? "s" : ""} non soldé${analytics.outstanding.count > 1 ? "s" : ""} (réglés en partie ou impayés) : ce reste n'est pas compté dans vos revenus.`
+                                    : "Aucun loyer en attente sur cette période."}
+                            </p>
+                        </div>
+                        <div className={`text-base sm:text-2xl font-bold whitespace-nowrap ${analytics.outstanding.count > 0 ? "text-orange-600" : "text-emerald-600"}`}>
+                            {formatCurrency(analytics.outstanding.amount, currency)}
+                        </div>
+                    </CardHeader>
+                    {analytics.outstanding.count > 0 && (
+                        <CardContent className="p-3 pt-1 sm:p-4 sm:pt-1">
+                            <div className="divide-y rounded-lg bg-muted/40">
+                                {analytics.outstanding.items.map(item => (
+                                    <div key={`${item.tenant_id}-${item.property_id}-${item.month}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-3 p-2.5 text-xs">
+                                        <div className="min-w-0">
+                                            <span className="font-semibold">{item.tenant_name || "Locataire"}</span>
+                                            <span className="text-muted-foreground">
+                                                {item.property_name ? ` — ${item.property_name}` : ""} · {new Date(item.year, item.month - 1, 1).toLocaleDateString("fr-FR", { month: "long" })}
+                                            </span>
+                                        </div>
+                                        <div className="whitespace-nowrap">
+                                            {item.paid > 0 ? (
+                                                <>
+                                                    <span className="text-muted-foreground">{formatCurrency(item.paid, currency)} / {formatCurrency(item.rent_due, currency)}</span>
+                                                    <span className="font-bold text-orange-600"> · reste {formatCurrency(item.remaining, currency)}</span>
+                                                </>
+                                            ) : (
+                                                <span className="font-bold text-red-600">Impayé · {formatCurrency(item.remaining, currency)}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    )}
+                </Card>
+            )}
 
             {/* Cautions : suivies à part, jamais comptées dans les revenus ni dans le cash flow */}
             {analytics?.deposits && (

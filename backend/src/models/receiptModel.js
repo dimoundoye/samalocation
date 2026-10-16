@@ -12,6 +12,14 @@ const SETTLEMENT_COLUMNS = `
                 ds.settlement_date,
                 ds.payment_method as settlement_payment_method`;
 
+// tenant_id d'un reçu : id du compte ou d'une fiche locataire. Les deux sont rapprochés ($1 = l'un ou l'autre).
+const TENANT_IDS_SQL = `
+                   SELECT $1::text
+                   UNION SELECT user_id::text FROM tenants WHERE id::text = $1 AND user_id IS NOT NULL
+                   UNION SELECT id::text FROM tenants WHERE user_id::text = $1`;
+
+const roundAmount = (value) => Math.round(Number(value) * 100) / 100;
+
 const Receipt = {
     async create(data) {
         const {
@@ -27,7 +35,9 @@ const Receipt = {
             period_type = 'mois',
             start_date = null,
             end_date = null,
-            receipt_type = 'rent'
+            receipt_type = 'rent',
+            rent_due = null,
+            paid_before = null
         } = data;
 
         const id = uuidv4();
@@ -101,9 +111,9 @@ const Receipt = {
             try {
                 await db.query(
                     `INSERT INTO receipts 
-                    (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone, receipt_type)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
-                    [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone, receipt_type]
+                    (id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone, receipt_type, rent_due, paid_before)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
+                    [id, tenant_id, property_id, unit_id, month, year, amount, payment_date, payment_method, receipt_number, notes, owner_signature, receipt_template, owner_logo, period_type, start_date, end_date, owner_name, tenant_name, currency, owner_email, owner_phone, tenant_email, tenant_phone, receipt_type, rent_due, paid_before]
                 );
                 break;
             } catch (err) {
@@ -287,6 +297,72 @@ const Receipt = {
             [String(tenant_id), String(property_id), unit_id ? String(unit_id) : null]
         );
         return rows[0] || null;
+    },
+
+    /**
+     * Solde d'un mois de loyer pour un locataire sur un logement (suivi du reste à payer).
+     * - rent_due : loyer figé sur le dernier versement du mois s'il y en a un, sinon loyer de référence
+     *   (fiche du locataire, ou loyer du logement à défaut). null si aucun loyer n'est connu.
+     * - paid : total des quittances de loyer valides du mois (ni cautions ni reçus annulés).
+     * - remaining : reste à payer (jamais négatif), null si rent_due est inconnu.
+     */
+    async getPeriodBalance({ tenant_id, property_id, unit_id = null, month, year }) {
+        const { rows } = await db.query(
+            `SELECT r.amount, r.rent_due
+             FROM receipts r
+             WHERE r.receipt_type <> 'deposit'
+               AND COALESCE(r.status, 'valid') <> 'cancelled'
+               AND r.property_id::text = $2
+               AND ($3::text IS NULL OR r.unit_id IS NULL OR r.unit_id::text = $3)
+               AND r.month = $4 AND r.year = $5
+               AND r.tenant_id::text IN (${TENANT_IDS_SQL})
+             ORDER BY r.created_at ASC`,
+            [String(tenant_id), String(property_id), unit_id ? String(unit_id) : null, Number(month), Number(year)]
+        );
+
+        const paid = roundAmount(rows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0));
+        const lastWithDue = [...rows].reverse().find(r => r.rent_due !== null && r.rent_due !== undefined);
+
+        // Versements antérieurs au suivi (rent_due NULL) : on repart du loyer de référence,
+        // pour pouvoir enregistrer le reste d'un mois que le propriétaire avait noté en remarque.
+        const rentDue = lastWithDue
+            ? Number(lastWithDue.rent_due)
+            : await this.getReferenceRent({ tenant_id, property_id, unit_id });
+
+        return {
+            rent_due: rentDue,
+            paid,
+            remaining: rentDue === null ? null : Math.max(roundAmount(rentDue - paid), 0),
+            payments_count: rows.length
+        };
+    },
+
+    /**
+     * Loyer de référence : celui de la fiche du locataire, sinon celui du logement.
+     */
+    async getReferenceRent({ tenant_id, property_id, unit_id = null }) {
+        const { rows } = await db.query(
+            `SELECT t.monthly_rent AS tenant_rent, pu.monthly_rent AS unit_rent
+             FROM tenants t
+             LEFT JOIN property_units pu ON pu.id = t.unit_id
+             WHERE (t.id::text = $1 OR t.user_id::text = $1)
+               AND ($3::text IS NULL OR t.unit_id::text = $3)
+               AND (pu.property_id IS NULL OR pu.property_id::text = $2)
+             ORDER BY (t.status = 'active') DESC, t.move_in_date DESC NULLS LAST
+             LIMIT 1`,
+            [String(tenant_id), String(property_id), unit_id ? String(unit_id) : null]
+        );
+        const tenantRent = Number(rows[0]?.tenant_rent);
+        if (tenantRent > 0) return tenantRent;
+        const unitRent = Number(rows[0]?.unit_rent);
+        if (unitRent > 0) return unitRent;
+
+        if (unit_id) {
+            const { rows: units } = await db.query('SELECT monthly_rent FROM property_units WHERE id::text = $1', [String(unit_id)]);
+            const rent = Number(units[0]?.monthly_rent);
+            if (rent > 0) return rent;
+        }
+        return null;
     },
 
     async delete(id) {

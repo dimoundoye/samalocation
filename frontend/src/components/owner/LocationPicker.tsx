@@ -4,6 +4,8 @@ import L from "leaflet";
 import { Search, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { addBaseLayers } from "@/lib/mapLayers";
+import { addLocateControl } from "@/lib/mapLocate";
 
 // Fix pour les icônes Leaflet par défaut
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -49,10 +51,7 @@ const LocationPicker = ({ initialLat, initialLng, onChange }: LocationPickerProp
 
         if (!mapRef.current) {
             mapRef.current = L.map(mapContainerRef.current).setView([defaultLat, defaultLng], 13);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(mapRef.current);
+            const removeBaseLayers = addBaseLayers(mapRef.current);
 
             markerRef.current = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(mapRef.current);
 
@@ -60,6 +59,12 @@ const LocationPicker = ({ initialLat, initialLng, onChange }: LocationPickerProp
                 const marker = event.target;
                 const position = marker.getLatLng();
                 onChangeRef.current(position.lat, position.lng);
+            });
+
+            // « Ma position » : place directement le marqueur à l'endroit où se trouve le propriétaire
+            const removeLocate = addLocateControl(mapRef.current, ({ lat, lng }) => {
+                markerRef.current?.setLatLng([lat, lng]);
+                onChangeRef.current(lat, lng);
             });
 
             mapRef.current.on('click', (event) => {
@@ -77,6 +82,8 @@ const LocationPicker = ({ initialLat, initialLng, onChange }: LocationPickerProp
 
             return () => {
                 clearTimeout(timer);
+                removeLocate();
+                removeBaseLayers();
                 if (mapRef.current) {
                     mapRef.current.remove();
                     mapRef.current = null;

@@ -127,19 +127,97 @@ function formatPeriodLabel(receiptData) {
 const DEPOSIT_FOOTER = 'Somme versée à titre de dépôt de garantie (caution). Elle sera restituée au locataire en fin de bail, '
     + 'déduction faite des sommes dont il resterait redevable (loyers ou charges impayés, réparations locatives), sur justificatifs.';
 
+const UNPAID_NOTICE_FOOTER = "Avis de loyer impayé : il signale un loyer non réglé, en tout ou en partie, pour la période mentionnée "
+    + "ci-dessus. Ce document n'est ni un reçu ni une quittance.";
+
+const PARTIAL_FOOTER = "Reçu d'acompte : il atteste d'un versement partiel du loyer de la période mentionnée ci-dessus "
+    + "et ne vaut pas quittance tant que le reste à payer n'est pas réglé.";
+
 /**
- * Textes qui changent entre une quittance de loyer et un reçu de caution (dépôt de garantie)
+ * Suivi du reste à payer, figé à l'émission (rent_due, paid_before). null pour une caution ou un reçu
+ * émis avant le suivi. isPartial : il reste un montant dû après ce versement (reçu d'acompte).
+ */
+function getBalanceInfo(receiptData) {
+    if (receiptData.receipt_type === 'deposit' || receiptData.rent_due === null || receiptData.rent_due === undefined) return null;
+    const rentDue = Number(receiptData.rent_due) || 0;
+    const paidBefore = Number(receiptData.paid_before) || 0;
+    const amount = Number(receiptData.amount) || 0;
+    const remaining = Math.max(Math.round((rentDue - paidBefore - amount) * 100) / 100, 0);
+    return {
+        rentDue,
+        paidBefore,
+        amount,
+        remaining,
+        isPartial: remaining > 0 && amount > 0,
+        // Avis de loyer impayé : document à 0 F pour signaler qu'aucun versement n'a été fait sur le mois
+        isUnpaidNotice: remaining > 0 && amount === 0,
+        // Le détail n'apporte rien pour un loyer réglé en une fois
+        showBreakdown: remaining > 0 || paidBefore > 0
+    };
+}
+
+/**
+ * Loyer affiché dans la section du bien : celui figé sur le reçu, sinon le loyer actuel
+ */
+function getDisplayedRent(receiptData) {
+    if (receiptData.rent_due !== null && receiptData.rent_due !== undefined) return receiptData.rent_due;
+    return receiptData.unit_base_rent || receiptData.tenant_rent;
+}
+
+/**
+ * Textes qui changent entre une quittance de loyer, un reçu d'acompte et un reçu de caution (dépôt de garantie)
  */
 function getReceiptTexts(receiptData) {
     const isDeposit = receiptData.receipt_type === 'deposit';
+    const balance = getBalanceInfo(receiptData);
+    const isPartial = !!balance?.isPartial;
+    const isUnpaidNotice = !!balance?.isUnpaidNotice;
     return {
         isDeposit,
-        title: (rentTitle) => (isDeposit ? 'REÇU DE CAUTION' : rentTitle),
+        isPartial,
+        isUnpaidNotice,
+        title: (rentTitle) => (isDeposit ? 'REÇU DE CAUTION' : isUnpaidNotice ? 'AVIS DE LOYER IMPAYÉ' : isPartial ? "REÇU D'ACOMPTE" : rentTitle),
         periodHeading: isDeposit ? 'Objet' : 'Période',
         periodValue: isDeposit ? 'Dépôt de garantie (caution)' : formatPeriodLabel(receiptData),
-        amountLabel: (rentLabel) => (isDeposit ? 'MONTANT DE LA CAUTION' : rentLabel),
-        amountInWordsPrefix: isDeposit ? 'Arrêté le présent reçu à la somme de' : 'Arrêté la présente quittance à la somme de'
+        amountLabel: (rentLabel) => (isDeposit ? 'MONTANT DE LA CAUTION' : isUnpaidNotice ? 'MONTANT VERSÉ' : isPartial ? 'MONTANT DE CE VERSEMENT' : rentLabel),
+        amountInWordsPrefix: isUnpaidNotice
+            ? 'Montant versé à ce jour'
+            : isDeposit || isPartial ? 'Arrêté le présent reçu à la somme de' : 'Arrêté la présente quittance à la somme de'
     };
+}
+
+/**
+ * Détail du solde de la période : loyer dû, déjà versé, ce versement, reste à payer.
+ * Dessiné à partir de doc.y ; rien pour un loyer réglé en une fois.
+ */
+function drawBalanceBlock(doc, receiptData, { labelColor = '#64748b', valueColor = '#0f172a', alertColor = '#c2410c' } = {}) {
+    const info = getBalanceInfo(receiptData);
+    if (!info || !info.showBreakdown) return;
+
+    const currency = receiptData.currency || 'XOF';
+    const rows = [
+        ['Loyer dû pour la période', formatCurrency(info.rentDue, currency)],
+        ['Déjà versé', formatCurrency(info.paidBefore, currency)],
+        ['Ce versement', formatCurrency(info.amount, currency)]
+    ];
+
+    doc.moveDown(0.5);
+    let y = doc.y;
+    doc.font('Helvetica').fontSize(10);
+    for (const [label, value] of rows) {
+        doc.fillColor(labelColor).text(label, 70, y);
+        doc.fillColor(valueColor).text(value, 300, y, { align: 'right', width: 240 });
+        y += 16;
+    }
+
+    doc.strokeColor('#e2e8f0').lineWidth(1).moveTo(70, y + 2).lineTo(540, y + 2).stroke();
+    y += 8;
+    doc.font('Helvetica-Bold').fontSize(11);
+    doc.fillColor(info.remaining > 0 ? alertColor : valueColor).text('RESTE À PAYER', 70, y);
+    doc.text(formatCurrency(info.remaining, currency), 300, y, { align: 'right', width: 240 });
+    doc.font('Helvetica');
+    doc.y = y + 24;
+    doc.x = 50;
 }
 
 /**
@@ -168,7 +246,9 @@ async function generateReceiptPDF(receiptData) {
         fetchImageSource(receiptData.signature_url, { required: true })
     ]);
 
-    if (template === 'modern') {
+    if (getBalanceInfo(receiptData)?.isUnpaidNotice) {
+        await drawUnpaidNoticeTemplate(doc, receiptData);
+    } else if (template === 'modern') {
         await drawModernTemplate(doc, receiptData);
     } else if (template === 'minimal') {
         await drawMinimalTemplate(doc, receiptData);
@@ -227,7 +307,7 @@ async function drawClassicTemplate(doc, receiptData) {
         .text(`Propriété : ${receiptData.property_name || 'N/A'}`)
         .text(`Adresse : ${receiptData.property_address || 'N/A'}`)
         .text(`Unité : ${receiptData.unit_number || 'N/A'}`)
-        .text(`${rentLabel} : ${formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent, receiptData.currency)}`)
+        .text(`${rentLabel} : ${formatCurrency(getDisplayedRent(receiptData), receiptData.currency)}`)
         .moveDown(1.5);
 
     doc.strokeColor(grayColor).lineWidth(1).moveTo(50, doc.y).lineTo(550, doc.y).stroke().moveDown(1.5);
@@ -242,6 +322,7 @@ async function drawClassicTemplate(doc, receiptData) {
 
     doc.fontSize(16).fillColor(primaryColor).text(`${texts.amountLabel('MONTANT PAYÉ')}: ${formatCurrency(receiptData.amount, receiptData.currency)}`, { align: 'center', bold: true });
     doc.fontSize(10).fillColor(textColor).text(`Soit : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, { align: 'center', italic: true }).moveDown(2);
+    drawBalanceBlock(doc, receiptData, { valueColor: textColor });
 
     if (receiptData.notes) {
         doc.fontSize(10).fillColor(grayColor).text(`Notes: ${receiptData.notes}`).moveDown(1);
@@ -294,10 +375,9 @@ async function drawModernTemplate(doc, receiptData) {
     doc.text(format(new Date(receiptData.payment_date), 'dd/MM/yyyy'), col1 + 80, detailsY + 30);
     doc.text((receiptData.payment_method || 'Virement').toUpperCase(), col1 + 80, detailsY + 60);
 
-    doc.moveDown(6);
-
-    // Parties
-    const partiesY = doc.y + 40;
+    // Positions fixes : les sections s'enchaînent sans grands vides, pour tenir sur une page
+    // (même avec le détail du reste à payer et la signature)
+    const partiesY = detailsY + 95;
     doc.fillColor(accentColor).fontSize(12).text('PROPRIÉTAIRE', col1, partiesY, { bold: true });
     doc.fillColor(textColor).fontSize(10)
         .text(receiptData.owner_name, col1, partiesY + 20)
@@ -311,8 +391,7 @@ async function drawModernTemplate(doc, receiptData) {
         .text(receiptData.tenant_phone || '');
 
     // Section Bien Loué (Ajoutée)
-    doc.moveDown(3);
-    const bienY = doc.y;
+    const bienY = partiesY + 80;
     doc.fillColor(accentColor).fontSize(13).text('INFORMATION DU BIEN', 50, bienY, { bold: true });
     doc.rect(50, bienY + 18, 512, 1).fill('#e2e8f0');
 
@@ -327,17 +406,17 @@ async function drawModernTemplate(doc, receiptData) {
     doc.text(receiptData.property_name || 'N/A', col1 + 80, bienDetailsY);
     doc.text(receiptData.property_address || 'N/A', col1 + 80, bienDetailsY + 20);
     doc.text(receiptData.unit_number || 'N/A', col2 + 100, bienDetailsY);
-    doc.text(formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent, receiptData.currency), col2 + 100, bienDetailsY + 20);
+    doc.text(formatCurrency(getDisplayedRent(receiptData), receiptData.currency), col2 + 100, bienDetailsY + 20);
 
     // Section Montant Total
-    doc.moveDown(3);
-    const totalBoxY = doc.y;
+    const totalBoxY = bienDetailsY + 50;
     doc.rect(50, totalBoxY, 512, 50).fill('#f8fafc');
     doc.fillColor('#64748b').fontSize(10).text(texts.amountLabel('MONTANT TOTAL PAYÉ'), 70, totalBoxY + 18);
     doc.fillColor(accentColor).fontSize(18).text(formatCurrency(receiptData.amount, receiptData.currency), 300, totalBoxY + 15, { bold: true, align: 'right', width: 240 });
 
     doc.fillColor(textColor).fontSize(9).text(`${texts.amountInWordsPrefix} : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, totalBoxY + 55, { italic: true });
     doc.y = totalBoxY + 75;
+    drawBalanceBlock(doc, receiptData, { valueColor: accentColor });
 
     if (receiptData.notes) {
         doc.moveDown(1);
@@ -389,13 +468,14 @@ async function drawMinimalTemplate(doc, receiptData) {
     doc.fillColor(textColor); // Reset color
     doc.moveDown(1);
 
-    // Section Bien
+    // Section Bien (doc.x est resté sur la colonne du locataire)
+    doc.x = 50;
     doc.fontSize(10).text('BIEN LOUÉ:', { bold: true });
     doc.fontSize(10)
         .text(`Propriété : ${receiptData.property_name || 'N/A'}`)
         .text(`Adresse : ${receiptData.property_address || 'N/A'}`)
         .text(`Unité : ${receiptData.unit_number || 'N/A'}`)
-        .text(`${getRentLabel(receiptData.rent_period)} : ${formatCurrency(receiptData.unit_base_rent || receiptData.tenant_rent, receiptData.currency)}`)
+        .text(`${getRentLabel(receiptData.rent_period)} : ${formatCurrency(getDisplayedRent(receiptData), receiptData.currency)}`)
         .moveDown(1.5);
 
     doc.rect(50, doc.y, 512, 0.5).fill('#eeeeee');
@@ -416,6 +496,7 @@ async function drawMinimalTemplate(doc, receiptData) {
     doc.y += 35;
     doc.moveDown(1);
     doc.fontSize(10).fillColor(textColor).text(`Soit : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, { italic: true }).moveDown(1.5);
+    drawBalanceBlock(doc, receiptData, { labelColor: '#444444', valueColor: textColor, alertColor: textColor });
 
     if (receiptData.notes) {
         doc.fontSize(9).fillColor('#444444').font('Helvetica-Oblique').text(`Notes: ${receiptData.notes}`, 50, doc.y);
@@ -427,13 +508,151 @@ async function drawMinimalTemplate(doc, receiptData) {
     drawFooter(doc, receiptData);
 }
 
+/**
+ * Libellés des moyens de paiement du propriétaire (owner_payment_methods), pour l'avis de loyer impayé
+ */
+function formatPaymentMethodLine(method) {
+    const holder = method.holder ? ` (${method.holder})` : '';
+    switch (method.type) {
+        case 'wave': return method.phone ? `Wave : ${method.phone}${holder}` : null;
+        case 'orange_money': return method.phone ? `Orange Money : ${method.phone}${holder}` : null;
+        case 'wave_link': return method.url ? `Lien de paiement Wave : ${method.url}` : null;
+        case 'bank': return method.iban ? `Virement${method.bank_name ? ` (${method.bank_name})` : ''} : ${method.iban}${holder}` : null;
+        default: return null;
+    }
+}
+
+/**
+ * Échéance du loyer : jour de paiement prévu au bail (borné au dernier jour du mois). null si inconnu.
+ */
+function getRentDueDate(receiptData) {
+    const day = parseInt(receiptData.payment_day, 10);
+    const year = parseInt(receiptData.year, 10);
+    const month = parseInt(receiptData.month, 10);
+    if (!day || !year || !month) return null;
+    const lastDay = new Date(year, month, 0).getDate();
+    return new Date(year, month - 1, Math.min(day, lastDay));
+}
+
+/**
+ * Avis de loyer impayé : relance pour un loyer non réglé (en tout ou en partie).
+ * Pas de versement, donc ni date ni mode de paiement : période, échéance, montant à régler et moyens de paiement.
+ */
+async function drawUnpaidNoticeTemplate(doc, receiptData) {
+    // « loyer d'octobre », « loyer de mars »
+    const periodLabel = formatPeriodLabel(receiptData);
+    const ofPeriod = /^[aeiouyàâéèêh]/i.test(periodLabel) ? `d'${periodLabel}` : `de ${periodLabel}`;
+    const alertColor = '#b91c1c';
+    const textColor = '#1f2937';
+    const mutedColor = '#6b7280';
+    const lineColor = '#e5e7eb';
+    const info = getBalanceInfo(receiptData);
+    const currency = receiptData.currency || 'XOF';
+    const issuedAt = new Date(receiptData.created_at || Date.now());
+
+    // En-tête
+    const logoSource = await fetchImageSource(receiptData.logo_url);
+    if (logoSource) {
+        doc.image(logoSource, 50, 40, { fit: [70, 50] });
+    }
+    doc.font('Helvetica-Bold').fontSize(20).fillColor(alertColor).text('AVIS DE LOYER IMPAYÉ', 50, 45, { align: 'right', width: 512 });
+    doc.font('Helvetica').fontSize(9).fillColor(mutedColor)
+        .text(`N° ${receiptData.receipt_number}`, 50, 72, { align: 'right', width: 512 })
+        .text(`Émis le ${format(issuedAt, 'dd MMMM yyyy', { locale: fr })}`, 50, 85, { align: 'right', width: 512 });
+    doc.rect(50, 108, 512, 2).fill(alertColor);
+
+    // Parties
+    const partiesY = 125;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(alertColor).text('BAILLEUR', 50, partiesY);
+    doc.font('Helvetica').fontSize(10).fillColor(textColor)
+        .text(receiptData.owner_name || 'N/A', 50, partiesY + 16)
+        .text(receiptData.owner_email || '', 50)
+        .text(receiptData.owner_phone || '', 50);
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(alertColor).text('LOCATAIRE', 320, partiesY);
+    doc.font('Helvetica').fontSize(10).fillColor(textColor)
+        .text(receiptData.tenant_name || 'N/A', 320, partiesY + 16)
+        .text(receiptData.tenant_email || '', 320)
+        .text(receiptData.tenant_phone || '', 320);
+
+    // Logement
+    const bienY = partiesY + 80;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(alertColor).text('LOGEMENT', 50, bienY);
+    const unitLabel = receiptData.unit_number ? ` — Unité ${receiptData.unit_number}` : '';
+    doc.font('Helvetica').fontSize(10).fillColor(textColor)
+        .text(`${receiptData.property_name || 'N/A'}${unitLabel}`, 50, bienY + 16)
+        .text(receiptData.property_address || '', 50);
+
+    // Objet, échéance, retard
+    const objetY = bienY + 60;
+    doc.rect(50, objetY, 512, 1).fill(lineColor);
+    const dueDate = getRentDueDate(receiptData);
+    const lateDays = dueDate ? Math.floor((issuedAt.setHours(0, 0, 0, 0) - dueDate.getTime()) / 86400000) : 0;
+    let y = objetY + 14;
+    const drawRow = (label, value, { bold = false, color = textColor, size = 10 } = {}) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(size);
+        doc.fillColor(bold ? color : mutedColor).text(label, 70, y);
+        doc.fillColor(color).text(value, 300, y, { align: 'right', width: 240 });
+        y += size + 8;
+    };
+    drawRow('Objet', `Loyer ${ofPeriod}`, { color: textColor });
+    if (dueDate) {
+        drawRow('Échéance', format(dueDate, 'dd MMMM yyyy', { locale: fr }));
+        if (lateDays > 0) drawRow('Retard', `${lateDays} jour${lateDays > 1 ? 's' : ''}`, { color: alertColor });
+    }
+
+    // Montant à régler
+    y += 6;
+    doc.rect(50, y, 512, 1).fill(lineColor);
+    y += 12;
+    drawRow('Loyer dû pour la période', formatCurrency(info.rentDue, currency));
+    drawRow('Déjà versé', formatCurrency(info.paidBefore, currency));
+    y += 2;
+    doc.rect(50, y - 4, 512, 34).fill('#fef2f2');
+    y += 6;
+    drawRow('MONTANT À RÉGLER', formatCurrency(info.remaining, currency), { bold: true, color: alertColor, size: 13 });
+    doc.font('Helvetica-Oblique').fontSize(9).fillColor(mutedColor)
+        .text(`Soit : ${formatAmountInWords(info.remaining, currency)}`, 70, y + 2, { width: 470 });
+    y = doc.y + 16;
+
+    // Message
+    doc.font('Helvetica').fontSize(10).fillColor(textColor).text(
+        info.paidBefore > 0
+            ? `Madame, Monsieur, sauf erreur de notre part, le loyer ${ofPeriod} n'a été réglé qu'en partie. `
+                + 'Nous vous prions de bien vouloir régler le montant restant dans les meilleurs délais.'
+            : `Madame, Monsieur, sauf erreur de notre part, nous n'avons pas reçu le règlement du loyer ${ofPeriod}. `
+                + 'Nous vous prions de bien vouloir régulariser cette situation dans les meilleurs délais.',
+        50, y, { width: 512, align: 'justify' }
+    );
+    if (receiptData.notes) {
+        doc.moveDown(0.6);
+        doc.font('Helvetica-Oblique').fontSize(10).fillColor(textColor).text(`Message du bailleur : ${receiptData.notes}`, 50, doc.y, { width: 512 });
+    }
+
+    // Comment payer
+    const methodLines = (receiptData.owner_payment_methods || [])
+        .flatMap(m => [formatPaymentMethodLine(m), m.instructions ? `   ${m.instructions}` : null])
+        .filter(Boolean);
+    if (methodLines.length > 0) {
+        doc.moveDown(1);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor(alertColor).text('COMMENT PAYER', 50, doc.y);
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(10).fillColor(textColor);
+        methodLines.forEach(line => doc.text(line.startsWith('   ') ? line.trim() : `• ${line}`, line.startsWith('   ') ? 62 : 50, doc.y, { width: 500 }));
+    }
+    doc.font('Helvetica');
+    doc.x = 50;
+
+    await embedSignature(doc, receiptData);
+    drawFooter(doc, receiptData);
+}
+
 async function embedSignature(doc, receiptData) {
     if (receiptData.signature_url) {
         const imageSource = await fetchImageSource(receiptData.signature_url, { required: true });
         if (imageSource) {
             doc.moveDown(2);
-            const currentY = doc.y;
-            if (currentY > 700) doc.addPage();
+            // Bloc signature (~95 pt) au-dessus du pied de page (hash + mention) : sinon page suivante
+            if (doc.y + 95 > doc.page.height - 95) doc.addPage();
 
             doc.fontSize(10).fillColor('#6b7280').text('Signature / Cachet :', 400, doc.y);
             doc.image(imageSource, 400, doc.y + 5, { width: 100 });
@@ -479,6 +698,7 @@ async function drawCorporateTemplate(doc, receiptData) {
         .text(receiptData.tenant_phone || '');
 
     doc.y = headerY + 120;
+    doc.x = 50; // doc.x est resté sur la colonne du locataire
 
     // Body content
     doc.fontSize(12).fillColor(primaryColor).text('OBJET DU PAIEMENT', { underline: true }).moveDown(0.5);
@@ -501,11 +721,12 @@ async function drawCorporateTemplate(doc, receiptData) {
     const amountY = doc.y;
     doc.strokeColor(primaryColor).lineWidth(1.5).rect(50, amountY, 512, 45).stroke();
     doc.fillColor('#f8fafc').rect(51, amountY + 1, 510, 43).fill();
-    doc.fillColor(primaryColor).fontSize(14).text(`MONTANT NET PERÇU :`, 70, amountY + 15, { bold: true });
+    doc.fillColor(primaryColor).fontSize(14).text(texts.isUnpaidNotice ? 'MONTANT VERSÉ :' : texts.isPartial ? 'MONTANT DE CE VERSEMENT :' : 'MONTANT NET PERÇU :', 70, amountY + 15, { bold: true });
     doc.fontSize(16).text(formatCurrency(receiptData.amount, receiptData.currency), 300, amountY + 14, { bold: true, align: 'right', width: 240 });
 
     doc.fillColor(textColor).fontSize(10).text(`${texts.amountInWordsPrefix} : ${formatAmountInWords(receiptData.amount, receiptData.currency || 'XOF')}`, 50, amountY + 52, { italic: true });
     doc.y = amountY + 75;
+    drawBalanceBlock(doc, receiptData, { labelColor: secondaryColor, valueColor: primaryColor });
 
     if (receiptData.notes) {
         doc.fontSize(9).fillColor(secondaryColor).font('Helvetica-Oblique').text(`Remarques: ${receiptData.notes}`);
@@ -517,8 +738,10 @@ async function drawCorporateTemplate(doc, receiptData) {
 }
 
 function drawFooter(doc, receiptData) {
-    // La mention de la caution tient sur deux lignes : on la remonte pour rester dans la page
-    const bottom = doc.page.height - (receiptData?.receipt_type === 'deposit' ? 80 : 70);
+    // Les mentions de caution et d'acompte tiennent sur deux lignes : on les remonte pour rester dans la page
+    const balanceInfo = receiptData ? getBalanceInfo(receiptData) : null;
+    const twoLines = receiptData?.receipt_type === 'deposit' || !!(balanceInfo?.isPartial || balanceInfo?.isUnpaidNotice);
+    const bottom = doc.page.height - (twoLines ? 80 : 70);
     if (receiptData) {
         const crypto = require('crypto');
         const rawData = `${receiptData.receipt_number || ''}${receiptData.id || ''}${receiptData.amount || ''}`;
@@ -533,6 +756,10 @@ function drawFooter(doc, receiptData) {
     const isOnline = receiptData && receiptData.payment_method && receiptData.payment_method.startsWith('En ligne');
     const footerText = receiptData?.receipt_type === 'deposit'
         ? DEPOSIT_FOOTER
+        : balanceInfo?.isUnpaidNotice
+            ? UNPAID_NOTICE_FOOTER
+        : balanceInfo?.isPartial
+            ? PARTIAL_FOOTER
         : isOnline
             ? 'Quittance émise par la plateforme Samalocation, gérée par YAKIRIX (RCCM : SN.DKR.2026.A.14009 — NINEA : 012978435) en qualité de mandataire de collecte pour le compte du bailleur.'
             : 'Ce reçu atteste du paiement du loyer pour la période mentionnée ci-dessus.';

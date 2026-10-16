@@ -174,6 +174,8 @@ const DashboardProprietaire = () => {
   const [createReceiptOpen, setCreateReceiptOpen] = useState(false);
   const [showCurrencyOnboarding, setShowCurrencyOnboarding] = useState(false);
   const [selectedPropertyForReceipt, setSelectedPropertyForReceipt] = useState<Tenant | null>(null);
+  // Avis de loyer impayé ouvert depuis le tableau de gérance : mois imposé
+  const [noticePreset, setNoticePreset] = useState<{ month: number; year: number } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [assignTenantOpen, setAssignTenantOpen] = useState(false);
   const [editTenantOpen, setEditTenantOpen] = useState(false);
@@ -463,9 +465,10 @@ const DashboardProprietaire = () => {
 
     const currentNodes = getCurrentNodes();
 
-    const getReceiptForNode = (nodeId: string, tenant: any, monthId: number) => {
-      if (!receipts) return null;
-      return receipts.find(r => {
+    // Tous les versements du mois (un loyer peut être réglé en plusieurs fois)
+    const getReceiptsForNode = (nodeId: string, tenant: any, monthId: number) => {
+      if (!receipts) return [];
+      return receipts.filter(r => {
         if (!isPaidRentReceipt(r)) return false; // ni reçu annulé ni caution
         const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
         const rMonth = typeof r.month === 'string' ? parseInt(r.month) : r.month;
@@ -492,8 +495,9 @@ const DashboardProprietaire = () => {
       nodes.forEach(n => {
         if (n.type === 'property') {
           (n.units || []).forEach(({ unit, tenant }: any) => {
-            const r = getReceiptForNode(unit?.id, tenant, monthId);
-            if (r) total += (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0);
+            getReceiptsForNode(unit?.id, tenant, monthId).forEach(r => {
+              total += (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0);
+            });
           });
         } else if (n.children) {
           total += calculateMonthlyTotalRecursive(n.children, monthId);
@@ -2721,6 +2725,11 @@ const DashboardProprietaire = () => {
                     currency={ownerProfile?.currency}
                     userGroupsKey={userGroupsKey}
                     canSeeRevenue={canSeeRevenue}
+                    onSendNotice={(tenant, month, year) => {
+                      setSelectedPropertyForReceipt(tenant);
+                      setNoticePreset({ month, year });
+                      setCreateReceiptOpen(true);
+                    }}
                   />
                 )}
               </div>
@@ -2842,7 +2851,13 @@ const DashboardProprietaire = () => {
       {selectedPropertyForReceipt && (
         <CreateReceiptDialog
           open={createReceiptOpen}
-          onOpenChange={setCreateReceiptOpen}
+          onOpenChange={(isOpen) => {
+            setCreateReceiptOpen(isOpen);
+            if (!isOpen) setNoticePreset(null);
+          }}
+          initialReceiptType={noticePreset ? 'notice' : undefined}
+          initialMonth={noticePreset?.month}
+          initialYear={noticePreset?.year}
           propertyId={selectedPropertyForReceipt.property_id}
           propertyName={selectedPropertyForReceipt.property_name || t('common.property')}
           tenantId={selectedPropertyForReceipt.user_id}
@@ -2853,6 +2868,7 @@ const DashboardProprietaire = () => {
           onSuccess={() => {
             loadReceipts();
             setCreateReceiptOpen(false);
+            setNoticePreset(null);
           }}
         />
       )}

@@ -29,12 +29,15 @@ const subscriptionController = {
             `, [userId]);
             const unitsCount = parseInt(countRows[0].active_assignments);
 
-            // Quittances du mois (hors reçus de caution, qui ne comptent pas dans le quota)
+            // Quittances du mois (hors reçus de caution, qui ne comptent pas dans le quota ;
+            // un loyer réglé en plusieurs versements ne compte qu'une fois)
             const { rows: receiptRows } = await db.query(`
                 SELECT COUNT(*) FROM receipts r
                 JOIN properties p ON r.property_id = p.id
                 WHERE (p.owner_id = $1 OR p.owner_id IN (SELECT id FROM owner_profiles WHERE user_profile_id = $1))
                 AND r.receipt_type <> 'deposit'
+                AND COALESCE(r.paid_before, 0) = 0
+                AND r.amount > 0
                 AND EXTRACT(MONTH FROM r.created_at) = EXTRACT(MONTH FROM NOW())
                 AND EXTRACT(YEAR FROM r.created_at) = EXTRACT(YEAR FROM NOW())
             `, [userId]);

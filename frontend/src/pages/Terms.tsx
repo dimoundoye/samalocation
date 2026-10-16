@@ -344,7 +344,7 @@ const Terms = () => {
                                 
                                 <div className="space-y-4">
                                     <p className="text-muted-foreground text-sm leading-relaxed">
-                                        La création de compte, la recherche de biens et la publication d'annonces de base sont gratuites. Les frais liés aux services complémentaires (comme la signature électronique de baux, les abonnements premium ou professionnel) sont spécifiés dans nos grilles tarifaires.
+                                        La création de compte, la recherche de biens et la publication d'annonces de base sont gratuites. Les frais liés aux services complémentaires (comme la signature électronique de baux, les abonnements premium ou professionnel) sont spécifiés dans nos grilles tarifaires. Les conditions des abonnements sont détaillées à la section 7.
                                     </p>
                                     
                                     <div className="space-y-3 pl-4 border-l-2 border-primary/20 text-muted-foreground text-sm">
@@ -372,6 +372,60 @@ const Terms = () => {
                             <section className="space-y-6">
                                 <h2 className="text-2xl font-semibold flex items-center gap-2 text-primary border-b pb-2">
                                     <span className="bg-primary/10 w-8 h-8 rounded-lg flex items-center justify-center text-sm">7</span>
+                                    ABONNEMENTS
+                                </h2>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">7.1 Plans proposés</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Les propriétaires peuvent utiliser Samalocation avec le plan <strong>Gratuit</strong> ou souscrire un abonnement payant <strong>Premium</strong> ou <strong>Professionnel</strong>, qui donne accès à des fonctionnalités et des limites étendues. Le contenu de chaque plan et ses prix en vigueur sont présentés sur la page <a href="/pricing" className="text-primary underline underline-offset-2">Tarifs</a>. Le prix applicable est celui affiché au moment du paiement.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">7.2 Durée et paiement</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        L'abonnement est souscrit pour une durée de <strong>30 jours</strong> (formule mensuelle) ou de <strong>365 jours</strong> (formule annuelle), à compter de la validation du paiement. Il est réglé en une seule fois, d'avance, par les moyens de paiement proposés sur la plateforme, ou validé par l'administration de Samalocation après réception d'un paiement effectué hors ligne.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">7.3 Absence de renouvellement automatique</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        L'abonnement <strong>n'est pas renouvelé automatiquement</strong> et aucun prélèvement n'est effectué sans action de votre part. Pour continuer à bénéficier de votre plan, vous devez le renouveler avant son expiration. Un renouvellement du même plan effectué avant l'expiration s'ajoute à la fin de la période en cours : vous ne perdez aucun jour déjà payé.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">7.4 Changement de plan</h3>
+                                    <ul className="list-disc list-inside pl-4 text-muted-foreground text-sm space-y-1">
+                                        <li><strong>Passage à un plan supérieur :</strong> le nouveau plan prend effet immédiatement, pour toute la durée achetée. La période restante de l'ancien plan n'est ni reportée, ni déduite du prix, ni remboursée.</li>
+                                        <li><strong>Passage à un plan équivalent ou inférieur :</strong> le nouveau plan commence à l'expiration de l'abonnement en cours.</li>
+                                    </ul>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">7.5 Expiration</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        À l'expiration de l'abonnement, vous disposez d'un délai de grâce de <strong>3 jours</strong> pendant lequel les fonctionnalités de votre plan restent accessibles. Passé ce délai, votre compte repasse automatiquement au plan Gratuit et les limites de ce plan s'appliquent de nouveau.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">7.6 Absence de remboursement</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        <strong>Les abonnements sont fermes et non remboursables.</strong> Toute période commencée est due en totalité. Aucun remboursement, total ou partiel, n'est accordé notamment en cas de non-utilisation des services, de résiliation ou de fermeture du compte à votre initiative, de changement de plan, ou de suspension ou suppression du compte pour violation des présentes CGU (section 5).
+                                    </p>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        Par exception, un paiement débité en double ou un paiement débité sans que l'abonnement ait été activé, suite à une erreur technique avérée, sera remboursé ou converti en jours d'abonnement, au choix de l'utilisateur. La demande doit être adressée à <strong>contact@samalocation.com</strong> dans un délai de 30 jours suivant le paiement, accompagnée de la référence de la transaction.
+                                    </p>
+                                </div>
+                            </section>
+
+                            {/* Section 8 */}
+                            <section className="space-y-6">
+                                <h2 className="text-2xl font-semibold flex items-center gap-2 text-primary border-b pb-2">
+                                    <span className="bg-primary/10 w-8 h-8 rounded-lg flex items-center justify-center text-sm">8</span>
                                     Loi Applicable et Juridiction
                                 </h2>
                                 

@@ -3,6 +3,8 @@ import L from 'leaflet';
 // import 'leaflet/dist/leaflet.css'; // Removed in favor of global import in index.css
 import { FormattedProperty } from '@/lib/property';
 import { useNavigate } from 'react-router-dom';
+import { addBaseLayers } from '@/lib/mapLayers';
+import { addLocateControl } from '@/lib/mapLocate';
 
 // Fix for default marker icon in Leaflet
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -32,6 +34,7 @@ const MapComponent = ({ properties, center = [14.7167, -17.4677], zoom = 12 }: M
     const mapRef = useRef<L.Map | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const markersRef = useRef<L.LayerGroup>(L.layerGroup());
+    const removeControlsRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
         if (!mapContainerRef.current) return;
@@ -39,10 +42,12 @@ const MapComponent = ({ properties, center = [14.7167, -17.4677], zoom = 12 }: M
         // Initialize map if not already done
         if (!mapRef.current) {
             mapRef.current = L.map(mapContainerRef.current).setView(center, zoom);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(mapRef.current);
+            const removeBaseLayers = addBaseLayers(mapRef.current);
+            const removeLocate = addLocateControl(mapRef.current);
+            removeControlsRef.current = () => {
+                removeLocate();
+                removeBaseLayers();
+            };
 
             markersRef.current.addTo(mapRef.current);
         } else {
@@ -67,6 +72,8 @@ const MapComponent = ({ properties, center = [14.7167, -17.4677], zoom = 12 }: M
 
         return () => {
             clearTimeout(timer);
+            removeControlsRef.current?.();
+            removeControlsRef.current = null;
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;

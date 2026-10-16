@@ -1,5 +1,5 @@
 import { baseClient, API_BASE_URL } from "./baseClient";
-import { Receipt, CreateReceiptData, SettleDepositData } from "@/types";
+import { Receipt, CreateReceiptData, SettleDepositData, RentPeriodBalance } from "@/types";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getTabLoaderHtml, getTabErrorHtml } from "@/lib/tabViewerHelpers";
@@ -10,6 +10,18 @@ export const createReceipt = async (data: CreateReceiptData) => {
         method: "POST",
         body: JSON.stringify(data)
     });
+};
+
+// Solde d'un mois de loyer (loyer dû, déjà versé, reste à payer) pour le formulaire de reçu
+export const getReceiptBalance = async (params: { tenant_id: string; property_id: string; unit_id?: string | null; month: number; year: number }): Promise<RentPeriodBalance> => {
+    const query = new URLSearchParams({
+        tenant_id: params.tenant_id,
+        property_id: params.property_id,
+        month: String(params.month),
+        year: String(params.year),
+        ...(params.unit_id ? { unit_id: params.unit_id } : {})
+    });
+    return await baseClient(`/receipts/balance?${query.toString()}`);
 };
 
 // Récupérer les reçus d'un locataire

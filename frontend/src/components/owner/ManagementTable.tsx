@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getActiveWorkspace } from "@/lib/workspace";
 import { cn, formatCurrency } from "@/lib/utils";
 import { isPaidRentReceipt } from "@/lib/deposits";
+import { getRentMonthBalance } from "@/lib/rentBalance";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
     Table,
@@ -63,6 +64,8 @@ interface ManagementTableProps {
     currency?: string;
     userGroupsKey?: string;
     canSeeRevenue?: boolean;
+    /** Raccourci : envoyer un avis de loyer impayé pour ce locataire et ce mois */
+    onSendNotice?: (tenant: Tenant, month: number, year: number) => void;
 }
 
 export const HierarchicalGroupSelector = ({
@@ -226,7 +229,8 @@ export const ManagementTable = ({
     years,
     currency = 'XOF',
     userGroupsKey: propUserGroupsKey,
-    canSeeRevenue = true
+    canSeeRevenue = true,
+    onSendNotice
 }: ManagementTableProps) => {
     const { toast } = useToast();
     const { user } = useAuth();
@@ -495,6 +499,43 @@ export const ManagementTable = ({
         window.open(waUrl, '_blank');
     };
 
+
+    // Loyers de l'année réglés en partie (regroupés par locataire, logement et mois)
+    const partialMonths = useMemo(() => {
+        const year = parseInt(selectedYear);
+        const groups = new Map<string, Receipt[]>();
+        (receipts || []).forEach(r => {
+            if (!isPaidRentReceipt(r)) return;
+            const rYear = typeof r.year === 'string' ? parseInt(r.year) : r.year;
+            if (rYear !== year) return;
+            const tenant = tenants.find(t => String(t.id) === String(r.tenant_id) || String(t.user_id) === String(r.tenant_id));
+            const key = `${tenant ? tenant.id : r.tenant_id}|${r.unit_id || r.property_id}|${r.month}`;
+            groups.set(key, [...(groups.get(key) || []), r]);
+        });
+
+        const monthFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'long' });
+        return Array.from(groups.entries())
+            .map(([key, monthReceipts]) => {
+                const balance = getRentMonthBalance(monthReceipts);
+                const first = monthReceipts[0];
+                const tenant = tenants.find(t => String(t.id) === String(first.tenant_id) || String(t.user_id) === String(first.tenant_id));
+                return {
+                    key,
+                    month: Number(first.month),
+                    tenantName: tenant?.full_name || first.tenant_name || "Locataire",
+                    propertyName: first.property_name,
+                    monthLabel: monthFormatter.format(new Date(year, Number(first.month) - 1, 1)),
+                    paid: balance.paid,
+                    rentDue: balance.rentDue ?? 0,
+                    remaining: balance.remaining,
+                    status: balance.status,
+                    isDue: balance.isDue
+                };
+            })
+            .filter(p => p.isDue)
+            .sort((a, b) => a.month - b.month);
+    }, [receipts, tenants, selectedYear]);
+    const partialTotal = partialMonths.reduce((sum, p) => sum + p.remaining, 0);
 
     const getReceiptsForMonth = (unitId: string, tenant: Tenant | null | undefined, monthId: number) => {
         if (!receipts) return [];
@@ -1018,6 +1059,35 @@ export const ManagementTable = ({
             </CardHeader>
 
             <CardContent className="p-0">
+                {/* Loyers réglés en partie sur l'année : reste à encaisser */}
+                {canSeeRevenue && partialMonths.length > 0 && (
+                    <details className="px-6 py-3 bg-orange-50 border-y border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/60 group/partial">
+                        <summary className="flex flex-wrap items-center gap-x-3 gap-y-1 cursor-pointer list-none">
+                            <Clock className="h-4 w-4 text-orange-600 shrink-0" />
+                            <span className="text-sm font-bold text-orange-900 dark:text-orange-200">
+                                Reste à encaisser en {selectedYear} : {formatCurrency(partialTotal, currency)}
+                            </span>
+                            <span className="text-xs text-orange-800/80 dark:text-orange-300/80">
+                                {partialMonths.length} loyer{partialMonths.length > 1 ? "s" : ""} non soldé{partialMonths.length > 1 ? "s" : ""}
+                            </span>
+                            <ChevronDown className="h-4 w-4 text-orange-700 ml-auto transition-transform group-open/partial:rotate-180" />
+                        </summary>
+                        <ul className="mt-3 space-y-1.5">
+                            {partialMonths.map(p => (
+                                <li key={p.key} className="flex flex-wrap items-center justify-between gap-2 text-xs text-orange-950 dark:text-orange-100">
+                                    <span>
+                                        <strong>{p.tenantName}</strong>
+                                        {p.propertyName ? ` — ${p.propertyName}` : ""} · {p.monthLabel}
+                                    </span>
+                                    <span className={cn("font-semibold whitespace-nowrap", p.status === 'unpaid' && "text-red-700 dark:text-red-400")}>
+                                        {p.status === 'unpaid' ? "Impayé · " : `${formatCurrency(p.paid, currency)} / `}{formatCurrency(p.rentDue, currency)}{p.status === 'unpaid' ? "" : ` · reste ${formatCurrency(p.remaining, currency)}`}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </details>
+                )}
+
                 {/* Guide d'utilisation visible directement */}
                 <div className="px-6 py-4 bg-primary/5 border-y border-primary/10 flex flex-col md:flex-row md:items-center gap-4 animate-in fade-in duration-500">
                     <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
@@ -1252,20 +1322,40 @@ export const ManagementTable = ({
                                                                         const nodeReceipts = getReceiptsForMonth(u.unit?.id, u.tenant, month.id);
                                                                          const monthAmount = nodeReceipts.reduce((sum, r) => sum + (typeof r.amount === 'number' ? r.amount : parseFloat(r.amount) || 0), 0);
                                                                          tenantYearTotal += monthAmount;
+                                                                         // Mois réglé en partie : reste à payer d'après le loyer dû figé sur les reçus
+                                                                         const monthBalance = getRentMonthBalance(nodeReceipts);
+                                                                         const isPartialMonth = monthBalance.status === 'partial';
+                                                                         // Avis de loyer impayé (reçu à 0 F) : le mois est en rouge
+                                                                         const isUnpaidMonth = monthBalance.status === 'unpaid' && monthBalance.isDue;
+                                                                         const latestReceipt = [...nodeReceipts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+                                                                         // Avis possible sur un mois commencé (pas sur les mois à venir), s'il n'est pas soldé
+                                                                         const monthStarted = new Date(parseInt(selectedYear), month.id - 1, 1) <= new Date();
+                                                                         const canSendNotice = !!onSendNotice && !!u.tenant && monthStarted;
 
                                                                         return (
                                                                             <TableCell key={month.id} className="text-center p-2">
                                                                                 {nodeReceipts.length > 0 ? (
                                                                                     <div className="flex flex-col items-center gap-0.5 group relative">
-                                                                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                                                                                        <span className="text-[9px] font-semibold text-green-700">
+                                                                                        {isUnpaidMonth ? (
+                                                                                            <XCircle className="h-3.5 w-3.5 text-red-500" />
+                                                                                        ) : isPartialMonth ? (
+                                                                                            <Clock className="h-3.5 w-3.5 text-orange-500" />
+                                                                                        ) : (
+                                                                                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                                                                        )}
+                                                                                        <span className={cn("text-[9px] font-semibold", isUnpaidMonth ? "text-red-700" : isPartialMonth ? "text-orange-700" : "text-green-700")}>
                                                                                             {canSeeRevenue ? `${(monthAmount / 1000).toFixed(1).replace(/\.0$/, '')}k` : "🔒"}
                                                                                         </span>
-                                                                                        
+                                                                                        {(isPartialMonth || isUnpaidMonth) && canSeeRevenue && (
+                                                                                            <span className={cn("text-[8px] font-bold leading-none", isUnpaidMonth ? "text-red-600" : "text-orange-600")} title={`Reste à payer : ${formatCurrency(monthBalance.remaining, currency)}`}>
+                                                                                                -{(monthBalance.remaining / 1000).toFixed(1).replace(/\.0$/, '')}k
+                                                                                            </span>
+                                                                                        )}
+
                                                                                         {/* Action Buttons */}
                                                                                         <div className="hidden group-hover:flex absolute -top-10 left-1/2 -translate-x-1/2 bg-white border border-border shadow-strong rounded-lg p-1.5 z-50 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
-                                                                                            <button 
-                                                                                                onClick={() => shareReceipt(u.tenant, nodeReceipts[0])}
+                                                                                            <button
+                                                                                                onClick={() => shareReceipt(u.tenant, latestReceipt)}
                                                                                                 className="p-1 px-2 bg-primary/5 text-primary hover:bg-primary/10 rounded-md flex items-center gap-1.5 transition-all border border-primary/10 shadow-sm"
                                                                                                 title="Partager la quittance"
                                                                                             >
@@ -1273,10 +1363,39 @@ export const ManagementTable = ({
                                                                                                 <span className="text-[10px] font-black uppercase tracking-wider">Partager</span>
                                                                                             </button>
                                                                                             <div className="w-[1px] h-3 bg-border mx-1"></div>
-                                                                                            <span className="text-[10px] font-bold text-primary px-1">
+                                                                                            <span className="text-[10px] font-bold text-primary px-1 whitespace-nowrap">
                                                                                                 {canSeeRevenue ? formatCurrency(monthAmount, currency) : "🔒"}
                                                                                             </span>
+                                                                                            {(isPartialMonth || isUnpaidMonth) && canSeeRevenue && (
+                                                                                                <span className={cn("text-[10px] font-bold px-1 whitespace-nowrap", isUnpaidMonth ? "text-red-600" : "text-orange-600")}>
+                                                                                                    {isUnpaidMonth ? "Impayé" : "Reste"} {formatCurrency(monthBalance.remaining, currency)}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {monthBalance.isDue && canSendNotice && (
+                                                                                                <button
+                                                                                                    onClick={() => onSendNotice!(u.tenant, month.id, parseInt(selectedYear))}
+                                                                                                    className="p-1 px-2 bg-red-50 text-red-700 hover:bg-red-100 rounded-md flex items-center gap-1.5 transition-all border border-red-200 shadow-sm whitespace-nowrap"
+                                                                                                    title="Relancer le locataire avec un avis de loyer impayé"
+                                                                                                >
+                                                                                                    <Send className="h-3.5 w-3.5" />
+                                                                                                    <span className="text-[10px] font-black uppercase tracking-wider">Relancer</span>
+                                                                                                </button>
+                                                                                            )}
                                                                                         </div>
+                                                                                    </div>
+                                                                                ) : canSendNotice ? (
+                                                                                    <div className="flex flex-col items-center gap-0.5 group relative">
+                                                                                        <div className="flex flex-col items-center gap-0.5 opacity-30 group-hover:opacity-0 transition-opacity">
+                                                                                            <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                                            <span className="text-[9px]">---</span>
+                                                                                        </div>
+                                                                                        <button
+                                                                                            onClick={() => onSendNotice!(u.tenant, month.id, parseInt(selectedYear))}
+                                                                                            className="absolute inset-0 hidden group-hover:flex items-center justify-center rounded-md bg-red-50 text-red-700 border border-red-200 text-[9px] font-black uppercase"
+                                                                                            title="Envoyer un avis de loyer impayé pour ce mois"
+                                                                                        >
+                                                                                            Avis
+                                                                                        </button>
                                                                                     </div>
                                                                                 ) : (
                                                                                     <div className="flex flex-col items-center gap-0.5 opacity-30">

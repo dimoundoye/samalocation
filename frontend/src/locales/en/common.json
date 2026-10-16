@@ -132,5 +132,13 @@
   },
   "phone": {
     "country_code": "Country code"
+  },
+  "map": {
+    "plan": "Map",
+    "satellite": "Satellite",
+    "locate_me": "Locate me",
+    "my_position": "My location",
+    "locate_denied": "Location access denied. Allow it in your browser settings.",
+    "locate_unavailable": "Unable to determine your location."
   }
 }
